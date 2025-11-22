@@ -52,14 +52,17 @@ CLOUDFLARE_R2_BUCKET=m
 ### as cli
 
 ```bash
-# generate image with fal
+# generate image with ai-sdk (recommended)
+bun run lib/ai-sdk/fal.ts generate_image "a beautiful sunset" "fal-ai/flux/dev" "16:9"
+
+# generate image with fal client (advanced features)
 bun run lib/fal.ts generate_image "a beautiful sunset"
+
+# generate video from image
+bun run lib/fal.ts image_to_video "person talking" https://example.com/image.jpg 5
 
 # generate soul character
 bun run lib/higgsfield.ts generate_soul "professional headshot"
-
-# create video from image
-bun run service/video.ts from_image "person talking" https://example.com/image.jpg 5 true
 
 # upload file to s3
 bun run utilities/s3.ts upload ./video.mp4 videos/output.mp4
@@ -97,7 +100,8 @@ console.log(`uploaded: ${url}`)
 
 ### lib
 core libraries for video/audio processing:
-- **fal**: serverless ai models (image/video generation)
+- **ai-sdk/fal**: fal.ai using vercel ai sdk (recommended for images)
+- **fal**: fal.ai using direct client (for video & advanced features)
 - **higgsfield**: soul character generation
 
 ### service

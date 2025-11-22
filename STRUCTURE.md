@@ -1,64 +1,92 @@
 # sdk structure
 
-## generated files
+## lib/ - two fal implementations
 
-### lib/
-- `fal.ts`: fal.ai wrapper with cli support
-  - `image_to_video <prompt> <imageUrl> [duration]`
-  - `text_to_video <prompt> [duration]`
-  - `generate_image <prompt> [model]`
+### lib/ai-sdk/fal.ts
+uses `@ai-sdk/fal` with vercel ai sdk
 
-- `higgsfield.ts`: higgsfield soul wrapper with cli support
-  - `generate_soul <prompt> [customReferenceId]`
-  - `list_styles`
-  - `create_character <name> <imageUrl1> [imageUrl2...]`
-  - `get_character <id>`
-  - `list_characters`
+**when to use:**
+- standard image generation
+- need consistent api across providers
+- want automatic image format handling
+- prefer typed aspect ratios
 
-### service/
-- `image.ts`: high-level image generation service
-  - `fal <prompt> [model] [upload]`
-  - `soul <prompt> [customReferenceId] [upload]`
-
-- `video.ts`: high-level video generation service
-  - `from_image <prompt> <imageUrl> [duration] [upload]`
-  - `from_text <prompt> [duration] [upload]`
-
-### utilities/
-- `s3.ts`: cloudflare r2/s3 storage wrapper
-  - `upload <filePath> <objectKey>`
-  - `upload_from_url <url> <objectKey>`
-  - `presigned_url <objectKey> [expiresIn]`
-
-### pipeline/cookbooks/
-- `talking-character.md`: step-by-step guide for creating talking character videos
-
-### root
-- `index.ts`: main export file for library usage
-- `package.json`: dependencies (fal, higgsfield, aws-sdk)
-- `README.md`: comprehensive usage docs
-- `.env.example`: example environment variables
-
-## usage patterns
-
-### cli mode
+**commands:**
 ```bash
-bun run lib/fal.ts generate_image "sunset"
-bun run service/video.ts from_text "ocean waves" 5 true
+bun run lib/ai-sdk/fal.ts generate_image <prompt> [model] [aspectRatio]
 ```
 
-### library mode
-```typescript
-import { generateImage, imageToVideo } from "varg.ai-sdk"
+### lib/fal.ts
+uses `@fal-ai/client` directly
 
-const img = await generateImage({ prompt: "sunset" })
-const vid = await imageToVideo({ prompt: "waves", imageUrl: img.url })
+**when to use:**
+- video generation (image-to-video, text-to-video)
+- advanced fal features
+- need queue/streaming updates
+- custom api parameters
+
+**commands:**
+```bash
+bun run lib/fal.ts generate_image <prompt> [model] [imageSize]
+bun run lib/fal.ts image_to_video <prompt> <imageUrl> [duration]
+bun run lib/fal.ts text_to_video <prompt> [duration]
 ```
 
-## dependencies installed
-- @ai-sdk/fal
-- @ai-sdk/replicate
-- @higgsfield/client
-- @aws-sdk/client-s3
-- @aws-sdk/s3-request-presigner
-- ai
+### lib/higgsfield.ts
+uses `@higgsfield/client` for soul character generation
+
+**commands:**
+```bash
+bun run lib/higgsfield.ts generate_soul <prompt> [customReferenceId]
+bun run lib/higgsfield.ts create_character <name> <imageUrl1> [imageUrl2...]
+bun run lib/higgsfield.ts list_styles
+```
+
+## service/ - high-level wrappers
+
+### service/image.ts
+combines fal + higgsfield for image generation
+
+```bash
+bun run service/image.ts fal <prompt> [model] [upload]
+bun run service/image.ts soul <prompt> [customReferenceId] [upload]
+```
+
+### service/video.ts
+video generation with optional s3 upload
+
+```bash
+bun run service/video.ts from_image <prompt> <imageUrl> [duration] [upload]
+bun run service/video.ts from_text <prompt> [duration] [upload]
+```
+
+## utilities/
+
+### utilities/s3.ts
+cloudflare r2 / s3 storage operations
+
+```bash
+bun run utilities/s3.ts upload <filePath> <objectKey>
+bun run utilities/s3.ts upload_from_url <url> <objectKey>
+bun run utilities/s3.ts presigned_url <objectKey> [expiresIn]
+```
+
+## pipeline/cookbooks/
+markdown guides for complex workflows
+
+- `talking-character.md`: create talking character videos
+
+## dependencies
+
+- `@ai-sdk/fal` - vercel ai sdk fal provider
+- `@fal-ai/client` - official fal client
+- `@higgsfield/client` - higgsfield api client
+- `@aws-sdk/client-s3` - s3 storage
+- `ai` - vercel ai sdk core
+
+## key decisions
+
+1. **two fal implementations** - ai-sdk for simplicity, client for power
+2. **all scripts are cli + library** - can be run directly or imported
+3. **consistent logging** - `[module] message` format
+4. **auto image opening** - ai-sdk version opens images automatically
