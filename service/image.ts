@@ -39,13 +39,13 @@ export async function generateWithFal(
 
 export async function generateWithSoul(
   prompt: string,
-  options: { customReferenceId?: string; upload?: boolean } = {}
+  options: { styleId?: string; upload?: boolean } = {}
 ): Promise<ImageGenerationResult> {
   console.log(`[service/image] generating with higgsfield soul`)
   
   const result = await generateSoul({
     prompt,
-    customReferenceId: options.customReferenceId,
+    styleId: options.styleId,
   })
   
   const imageUrl = result.jobs?.[0]?.results?.raw?.url
@@ -70,6 +70,13 @@ if (import.meta.main) {
   
   switch (command) {
     case "fal":
+      if (!args[0]) {
+        console.log(`
+usage:
+  bun run service/image.ts fal <prompt> [model] [upload]
+        `)
+        process.exit(1)
+      }
       const falResult = await generateWithFal(args[0], {
         model: args[1],
         upload: args[2] === "true",
@@ -78,8 +85,15 @@ if (import.meta.main) {
       break
       
     case "soul":
+      if (!args[0]) {
+        console.log(`
+usage:
+  bun run service/image.ts soul <prompt> [styleId] [upload]
+        `)
+        process.exit(1)
+      }
       const soulResult = await generateWithSoul(args[0], {
-        customReferenceId: args[1],
+        styleId: args[1],
         upload: args[2] === "true",
       })
       console.log(JSON.stringify(soulResult, null, 2))
@@ -89,7 +103,7 @@ if (import.meta.main) {
       console.log(`
 usage:
   bun run service/image.ts fal <prompt> [model] [upload]
-  bun run service/image.ts soul <prompt> [customReferenceId] [upload]
+  bun run service/image.ts soul <prompt> [styleId] [upload]
       `)
       process.exit(1)
   }

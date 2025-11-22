@@ -83,6 +83,13 @@ if (import.meta.main) {
   
   switch (command) {
     case "from_image":
+      if (!args[0] || !args[1]) {
+        console.log(`
+usage:
+  bun run service/video.ts from_image <prompt> <imageUrl> [duration] [upload]
+        `)
+        process.exit(1)
+      }
       const imgResult = await generateVideoFromImage(args[0], args[1], {
         duration: args[2] ? parseInt(args[2]) as 5 | 10 : 5,
         upload: args[3] === "true",
@@ -91,6 +98,13 @@ if (import.meta.main) {
       break
       
     case "from_text":
+      if (!args[0]) {
+        console.log(`
+usage:
+  bun run service/video.ts from_text <prompt> [duration] [upload]
+        `)
+        process.exit(1)
+      }
       const txtResult = await generateVideoFromText(args[0], {
         duration: args[1] ? parseInt(args[1]) as 5 | 10 : 5,
         upload: args[2] === "true",

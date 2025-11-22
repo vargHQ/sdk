@@ -79,16 +79,37 @@ if (import.meta.main) {
   
   switch (command) {
     case "upload":
+      if (!args[0] || !args[1]) {
+        console.log(`
+usage:
+  bun run utilities/s3.ts upload <filePath> <objectKey>
+        `)
+        process.exit(1)
+      }
       const uploadResult = await uploadFile(args[0], args[1])
       console.log(uploadResult)
       break
       
     case "upload_from_url":
+      if (!args[0] || !args[1]) {
+        console.log(`
+usage:
+  bun run utilities/s3.ts upload_from_url <url> <objectKey>
+        `)
+        process.exit(1)
+      }
       const urlUploadResult = await uploadFromUrl(args[0], args[1])
       console.log(urlUploadResult)
       break
       
     case "presigned_url":
+      if (!args[0]) {
+        console.log(`
+usage:
+  bun run utilities/s3.ts presigned_url <objectKey> [expiresIn]
+        `)
+        process.exit(1)
+      }
       const presignedUrl = await generatePresignedUrl(args[0], parseInt(args[1] || "3600"))
       console.log(presignedUrl)
       break
