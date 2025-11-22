@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";
+import { getCompositionTemplate, getRootTemplate } from "./templates";
 
 export interface RenderOptions {
   entryPoint: string;
@@ -74,71 +75,10 @@ export async function createComposition(
   const rootPath = join(compositionsDir, `${name}.root.tsx`);
 
   // create template composition file
-  const compositionTemplate = `import React from "react";
-import {
-  AbsoluteFill,
-  OffthreadVideo,
-  Audio,
-  Img,
-  useCurrentFrame,
-  useVideoConfig,
-  interpolate,
-  staticFile,
-} from "remotion";
-
-export const ${name}: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // TODO: customize your composition
-  // Example: const video = staticFile("video.mp4");
-  // Example: const audio = staticFile("audio.mp3");
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: "black" }}>
-      {/* Add your content here */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 60,
-          color: "white",
-        }}
-      >
-        Frame {frame}
-      </div>
-    </AbsoluteFill>
-  );
-};
-`;
+  const compositionTemplate = getCompositionTemplate(name);
 
   // create template root file
-  const rootTemplate = `import React from "react";
-import { Composition, registerRoot } from "remotion";
-import { ${name} } from "./${name}";
-
-// TODO: configure your composition settings
-const fps = 30;
-const durationInFrames = 150; // 5 seconds at 30fps
-const width = 1920;
-const height = 1080;
-
-registerRoot(() => {
-  return (
-    <>
-      <Composition
-        id="${name}"
-        component={${name}}
-        durationInFrames={durationInFrames}
-        fps={fps}
-        width={width}
-        height={height}
-      />
-    </>
-  );
-});
-`;
+  const rootTemplate = getRootTemplate(name);
 
   // write files
   writeFileSync(compositionPath, compositionTemplate);
