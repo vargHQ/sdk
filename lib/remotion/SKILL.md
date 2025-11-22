@@ -184,6 +184,18 @@ const subtitle = subtitles.find(
   - trim the audio to match video length
 - verify before rendering: check that composition duration >= audio duration
 
+### image dimensions and aspect ratios
+- be mindful of image aspect ratios vs composition dimensions
+- images may not fill the frame properly (leaving black bars or getting cropped)
+- common solutions:
+  - `objectFit: "cover"` - fills frame but crops image
+  - `objectFit: "contain"` - fits full image but may leave black bars
+  - **blurred background technique** - best of both worlds:
+    1. layer 1 (background): same image scaled to fill, with blur filter
+    2. layer 2 (foreground): full image fitted with `objectFit: "contain"`
+    3. result: no black bars, full image visible, aesthetic blurred background
+- always check how images look in final composition, especially portrait images in landscape frames
+
 ### media file paths
 - copy media to `public/` directory in project
 - use `staticFile("filename.mp4")` to reference
@@ -453,6 +465,47 @@ return (
   }}>
     <Img src={staticFile("image.jpg")} />
   </div>
+);
+```
+
+### image with blurred background (aspect ratio fix)
+```typescript
+// fits any image into frame without black bars
+// works great for portrait images in landscape compositions
+const imageSrc = staticFile("portrait-image.jpg");
+
+return (
+  <AbsoluteFill>
+    {/* blurred background layer - fills entire frame */}
+    <AbsoluteFill>
+      <Img 
+        src={imageSrc} 
+        style={{ 
+          width: "100%", 
+          height: "100%", 
+          objectFit: "cover",
+          filter: "blur(40px)",
+          opacity: 0.6
+        }} 
+      />
+    </AbsoluteFill>
+    
+    {/* foreground layer - full image fitted */}
+    <AbsoluteFill style={{ 
+      display: "flex", 
+      justifyContent: "center", 
+      alignItems: "center" 
+    }}>
+      <Img 
+        src={imageSrc} 
+        style={{ 
+          maxWidth: "100%", 
+          maxHeight: "100%", 
+          objectFit: "contain"
+        }} 
+      />
+    </AbsoluteFill>
+  </AbsoluteFill>
 );
 ```
 
