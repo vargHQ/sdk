@@ -251,6 +251,59 @@ export async function extractAudio(
   });
 }
 
+export interface ProbeResult {
+  duration: number;
+  width: number;
+  height: number;
+  fps: number;
+  codec: string;
+  format: string;
+}
+
+export async function probe(input: string): Promise<ProbeResult> {
+  if (!input) {
+    throw new Error("input is required");
+  }
+
+  if (!existsSync(input)) {
+    throw new Error(`input file not found: ${input}`);
+  }
+
+  console.log(`[ffmpeg] probing ${input}...`);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(input, (err, metadata) => {
+      if (err) {
+        console.error(`[ffmpeg] error:`, err);
+        reject(err);
+        return;
+      }
+
+      const videoStream = metadata.streams.find(
+        (s) => s.codec_type === "video",
+      );
+      if (!videoStream) {
+        reject(new Error("no video stream found"));
+        return;
+      }
+
+      const result: ProbeResult = {
+        duration: metadata.format.duration || 0,
+        width: videoStream.width || 0,
+        height: videoStream.height || 0,
+        fps: eval(videoStream.r_frame_rate || "0") || 0,
+        codec: videoStream.codec_name || "",
+        format: metadata.format.format_name || "",
+      };
+
+      console.log(
+        `[ffmpeg] ${result.width}x${result.height} @ ${result.fps}fps, ${result.duration}s, codec: ${result.codec}`,
+      );
+      resolve(result);
+    });
+  });
+}
+
 // cli
 async function cli() {
   const args = process.argv.slice(2);
@@ -262,6 +315,7 @@ usage:
   bun run lib/ffmpeg.ts <command> [args]
 
 commands:
+  probe <input>                                    get video metadata
   concat <output> <input1> <input2> [input3...]    concatenate videos
   add_audio <video> <audio> <output>               add audio to video
   resize <input> <output> <width> <height>         resize video
@@ -271,6 +325,7 @@ commands:
   help                                             show this help
 
 examples:
+  bun run lib/ffmpeg.ts probe input.mp4
   bun run lib/ffmpeg.ts concat output.mp4 video1.mp4 video2.mp4
   bun run lib/ffmpeg.ts add_audio video.mp4 audio.mp3 output.mp4
   bun run lib/ffmpeg.ts resize input.mp4 output.mp4 1920 1080
@@ -288,6 +343,23 @@ requirements:
 
   try {
     switch (command) {
+      case "probe": {
+        const input = args[1];
+
+        if (!input) {
+          throw new Error("input is required");
+        }
+
+        const result = await probe(input);
+        console.log("\nmetadata:");
+        console.log(`  duration: ${result.duration}s`);
+        console.log(`  resolution: ${result.width}x${result.height}`);
+        console.log(`  fps: ${result.fps}`);
+        console.log(`  codec: ${result.codec}`);
+        console.log(`  format: ${result.format}`);
+        break;
+      }
+
       case "concat": {
         const output = args[1];
         const inputs = args.slice(2);
