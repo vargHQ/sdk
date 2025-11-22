@@ -75,38 +75,32 @@ bun run lib/ffmpeg.ts probe media/video2.mp4
 - total frames = duration * fps
 - end frame for concatenation
 
-### step 2: create remotion project
+### step 2: setup composition
 ```bash
-bun run lib/remotion.ts create
+bun run lib/remotion/index.ts create MyVideo
 ```
 
 **output:**
-- projectDir: temp directory path
-- entryPoint: src/index.ts path
-- cleanup: function to remove temp dir
+- compositionPath: lib/remotion/compositions/MyVideo.tsx
+- rootPath: lib/remotion/compositions/MyVideo.root.tsx
+- compositionsDir: lib/remotion/compositions/
 
-**save projectDir** for editing files
+### step 3: create composition component
+create new file `lib/remotion/compositions/MyVideo.tsx`
 
-### step 3: prepare media files
-copy all media to project's public directory
-
-```bash
-cp media/video1.mp4 {projectDir}/public/
-cp media/video2.mp4 {projectDir}/public/
-cp media/audio.mp3 {projectDir}/public/
-```
+**media files:**
+- use absolute paths: `/Users/aleks/Github/SecurityQQ/sdk/media/video.mp4`
+- no need to copy files anywhere
+- can reference any file on disk
 
 if using subtitles, read and parse SRT files:
 ```typescript
-const srtContent = await Bun.file("media/subtitles.srt").text();
+const srtContent = await Bun.file("/Users/aleks/Github/SecurityQQ/sdk/media/subtitles.srt").text();
 ```
-
-### step 4: create composition component
-create new file in `{projectDir}/src/MyComposition.tsx`
 
 **basic structure:**
 ```typescript
-import { AbsoluteFill, Video, useCurrentFrame, useVideoConfig, staticFile } from "remotion";
+import { AbsoluteFill, Video, useCurrentFrame, useVideoConfig } from "remotion";
 
 export const MyComposition: React.FC = () => {
   const frame = useCurrentFrame();
@@ -114,7 +108,7 @@ export const MyComposition: React.FC = () => {
   
   return (
     <AbsoluteFill>
-      <Video src={staticFile("video1.mp4")} />
+      <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video1.mp4" />
     </AbsoluteFill>
   );
 };
@@ -159,33 +153,32 @@ const video1EndFrame = 1430; // calculated from probe
 const video2StartFrame = video1EndFrame;
 
 {frame < video1EndFrame ? (
-  <Video src={staticFile("video1.mp4")} />
+  <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video1.mp4" />
 ) : (
   <OffthreadVideo 
-    src={staticFile("video2.mp4")}
+    src="/Users/aleks/Github/SecurityQQ/sdk/media/video2.mp4"
     startFrom={Math.floor((frame - video2StartFrame) * (24/30))}
   />
 )}
 ```
 
-### step 5: register composition
-edit `{projectDir}/src/Root.tsx`
+### step 4: register composition
+create `lib/remotion/compositions/MyVideo.root.tsx`
 
 ```typescript
-import { MyComposition } from "./MyComposition";
+import { Composition } from "remotion";
+import { MyComposition } from "./MyVideo";
 
-export const RemotionRoot: React.FC = () => {
+export const RemotionRoot = () => {
   return (
-    <>
-      <Composition
-        id="MyVideo"
-        component={MyComposition}
-        durationInFrames={1582}  // total frames
-        fps={30}
-        width={1920}
-        height={1080}
-      />
-    </>
+    <Composition
+      id="MyVideo"
+      component={MyComposition}
+      durationInFrames={1582}  // total frames
+      fps={30}
+      width={1920}
+      height={1080}
+    />
   );
 };
 ```
@@ -195,9 +188,9 @@ export const RemotionRoot: React.FC = () => {
 - concatenated: `video1Frames + video2Frames`
 - use fps from probe results
 
-### step 6: verify compositions
+### step 5: verify compositions
 ```bash
-bun run lib/remotion.ts compositions {projectDir}/src/index.ts
+bun run lib/remotion/index.ts compositions lib/remotion/compositions/MyVideo.root.tsx
 ```
 
 **check output:**
@@ -206,9 +199,9 @@ bun run lib/remotion.ts compositions {projectDir}/src/index.ts
 - fps is correct
 - durationInFrames is correct
 
-### step 7: render video
+### step 6: render video
 ```bash
-bun run lib/remotion.ts render {projectDir}/src/index.ts MyVideo output.mp4
+bun run lib/remotion/index.ts render lib/remotion/compositions/MyVideo.root.tsx MyVideo media/output.mp4
 ```
 
 **rendering process:**
@@ -223,9 +216,9 @@ bun run lib/remotion.ts render {projectDir}/src/index.ts MyVideo output.mp4
 - frames rendered
 - frames encoded
 
-### step 8: verify output
+### step 7: verify output
 ```bash
-bun run lib/ffmpeg.ts probe output.mp4
+bun run lib/ffmpeg.ts probe media/output.mp4
 ```
 
 check:
@@ -233,33 +226,26 @@ check:
 - fps is correct
 - resolution is correct
 
-### step 9: cleanup (optional)
-```typescript
-// if you saved the cleanup function from step 2
-project.cleanup();
-```
-
 ## common workflows
 
 ### workflow 1: video + captions
 ```
 1. probe video → get duration, fps
-2. create project
-3. copy video to public/
-4. create composition with Video + captions
-5. parse SRT file into subtitle array
-6. sync captions with useCurrentFrame()
-7. register composition
-8. render
+2. setup composition
+3. create composition with Video + captions
+4. parse SRT file into subtitle array
+5. sync captions with useCurrentFrame()
+6. register composition in root
+7. render
 ```
 
 ### workflow 2: concatenate videos
 ```
 1. probe all videos → get durations, fps
 2. calculate frame boundaries
-3. create project
-4. copy all videos to public/
-5. create composition with frame-based switching
+3. setup composition
+4. create composition with frame-based switching
+5. use absolute paths to media files
 6. handle fps conversions if needed
 7. register composition with total duration
 8. render
@@ -390,8 +376,8 @@ const scale = Math.min(width / 1920, height / 1080);
 
 ### issue: video not loading
 **solution:**
-- verify file is in `public/` directory
-- use `staticFile("filename.mp4")` not absolute path
+- use absolute paths to media files
+- verify file exists with full path
 - check file permissions
 
 ### issue: captions out of sync
@@ -414,8 +400,8 @@ const scale = Math.min(width / 1920, height / 1080);
 
 ### issue: render fails
 **solution:**
-- check all media files exist in public/
-- verify composition is registered
+- check all media files exist at absolute paths
+- verify composition is registered in root
 - ensure durationInFrames is sufficient
 - check console for webpack errors
 
@@ -452,46 +438,37 @@ bun run lib/ffmpeg.ts probe media/fitness-demo.mp4
 bun run lib/ffmpeg.ts probe media/kangaroo-scene.mp4
 # output: 1920x1080 @ 24fps, 5.04s
 
-# 2. create project
-bun run lib/remotion.ts create
-# directory: /tmp/remotion-xyz
-# entryPoint: /tmp/remotion-xyz/src/index.ts
+# 2. setup composition
+bun run lib/remotion/index.ts create Demo
 
-# 3. copy media
-cp media/fitness-demo.mp4 /tmp/remotion-xyz/public/
-cp media/kangaroo-scene.mp4 /tmp/remotion-xyz/public/
+# 3. create composition files
+# edit lib/remotion/compositions/Demo.tsx
+# edit lib/remotion/compositions/Demo.root.tsx
 
-# 4-5. create and register composition
-# (edit src/DemoComposition.tsx and src/Root.tsx)
-
-# 6. verify
-bun run lib/remotion.ts compositions /tmp/remotion-xyz/src/index.ts
+# 4. verify
+bun run lib/remotion/index.ts compositions lib/remotion/compositions/Demo.root.tsx
 # Demo: 360x640 @ 30fps (1582 frames)
 
-# 7. render
-bun run lib/remotion.ts render /tmp/remotion-xyz/src/index.ts Demo media/output.mp4
+# 5. render
+bun run lib/remotion/index.ts render lib/remotion/compositions/Demo.root.tsx Demo media/output.mp4
 # [remotion] progress: 100.0% | rendered: 1582 | encoded: 1582
 # [remotion] saved to media/output.mp4
 
-# 8. verify output
+# 6. verify output
 bun run lib/ffmpeg.ts probe media/output.mp4
 # 360x640 @ 30fps, 52.73s
 ```
 
 ### example 2: custom thumbnail with overlay
 ```bash
-# 1. create project
-bun run lib/remotion.ts create
-# directory: /tmp/remotion-abc
+# 1. setup composition
+bun run lib/remotion/index.ts create Thumbnail
 
-# 2. copy video
-cp media/video.mp4 /tmp/remotion-abc/public/
-
-# 3. create thumbnail composition (src/Thumbnail.tsx)
-# import { AbsoluteFill, Video, staticFile } from "remotion";
+# 2. create thumbnail composition lib/remotion/compositions/Thumbnail.tsx
+# import { AbsoluteFill, Video } from "remotion";
 # export const Thumbnail = () => (
 #   <AbsoluteFill>
-#     <Video src={staticFile("video.mp4")} />
+#     <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video.mp4" />
 #     <div style={{
 #       position: "absolute",
 #       bottom: 50,
@@ -506,34 +483,29 @@ cp media/video.mp4 /tmp/remotion-abc/public/
 #   </AbsoluteFill>
 # );
 
-# 4. register in Root.tsx
+# 3. create root lib/remotion/compositions/Thumbnail.root.tsx
 
-# 5. render frame 90 (3 seconds in @ 30fps)
-bun run lib/remotion.ts still /tmp/remotion-abc/src/index.ts Thumbnail 90 thumbnail.png
-# [remotion] saved to thumbnail.png
+# 4. render frame 90 (3 seconds in @ 30fps)
+bun run lib/remotion/index.ts still lib/remotion/compositions/Thumbnail.root.tsx Thumbnail 90 media/thumbnail.png
+# [remotion] saved to media/thumbnail.png
 ```
 
 ### example 3: zoom effect with audio
 ```bash
-# 1. create project
-bun run lib/remotion.ts create
+# 1. setup composition
+bun run lib/remotion/index.ts create Zoom
 
-# 2. copy media
-cp media/image.jpg /tmp/remotion-xyz/public/
-cp media/music.mp3 /tmp/remotion-xyz/public/
-
-# 3. create composition with zoom (src/Zoom.tsx)
+# 2. create composition lib/remotion/compositions/Zoom.tsx
 # const scale = interpolate(frame, [0, 150], [1, 1.5]);
 # <div style={{ transform: `scale(${scale})` }}>
-#   <Img src={staticFile("image.jpg")} />
+#   <Img src="/Users/aleks/Github/SecurityQQ/sdk/media/image.jpg" />
 # </div>
-# <Audio src={staticFile("music.mp3")} />
+# <Audio src="/Users/aleks/Github/SecurityQQ/sdk/media/music.mp3" />
 
-# 4. register composition
-# durationInFrames: 150 (5 seconds @ 30fps)
+# 3. create root with durationInFrames: 150 (5 seconds @ 30fps)
 
-# 5. render
-bun run lib/remotion.ts render /tmp/remotion-xyz/src/index.ts Zoom zoomed.mp4
+# 4. render
+bun run lib/remotion/index.ts render lib/remotion/compositions/Zoom.root.tsx Zoom media/zoomed.mp4
 ```
 
 ### example 4: side-by-side comparison
@@ -542,21 +514,19 @@ bun run lib/remotion.ts render /tmp/remotion-xyz/src/index.ts Zoom zoomed.mp4
 bun run lib/ffmpeg.ts probe media/before.mp4
 bun run lib/ffmpeg.ts probe media/after.mp4
 
-# 2. create project and copy videos
-bun run lib/remotion.ts create
-cp media/before.mp4 /tmp/remotion-xyz/public/
-cp media/after.mp4 /tmp/remotion-xyz/public/
+# 2. setup and create composition
+bun run lib/remotion/index.ts create Comparison
 
-# 3. create side-by-side composition
+# 3. create side-by-side composition lib/remotion/compositions/Comparison.tsx
 # <AbsoluteFill style={{ width: "50%", left: 0 }}>
-#   <Video src={staticFile("before.mp4")} />
+#   <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/before.mp4" />
 # </AbsoluteFill>
 # <AbsoluteFill style={{ width: "50%", left: "50%" }}>
-#   <Video src={staticFile("after.mp4")} />
+#   <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/after.mp4" />
 # </AbsoluteFill>
 
 # 4. render
-bun run lib/remotion.ts render /tmp/remotion-xyz/src/index.ts Comparison comparison.mp4
+bun run lib/remotion/index.ts render lib/remotion/compositions/Comparison.root.tsx Comparison media/comparison.mp4
 ```
 
 ## see also

@@ -163,20 +163,15 @@ const subtitle = subtitles.find(
 
 1. **probe videos** (get duration, fps, resolution)
    ```bash
-   bun run lib/ffmpeg.ts probe video.mp4
+   bun run lib/ffmpeg.ts probe media/video.mp4
    ```
 
-2. **create project**
+2. **setup composition**
    ```bash
-   bun run lib/remotion.ts create
+   bun run lib/remotion/index.ts create MyVideo
    ```
 
-3. **copy media files**
-   ```bash
-   cp video.mp4 /path/to/project/public/
-   ```
-
-4. **create composition** (src/MyComp.tsx)
+3. **create composition** (lib/remotion/compositions/MyVideo.tsx)
    - import remotion components
    - use `useCurrentFrame()` and `useVideoConfig()`
    - add videos, images, text
@@ -201,19 +196,19 @@ const subtitle = subtitles.find(
 
 ## tools available
 
-### lib/remotion.ts
+### lib/remotion/index.ts
 ```bash
-# create project from template
-bun run lib/remotion.ts create [template-url]
+# setup composition directory
+bun run lib/remotion/index.ts create <name>
 
 # list compositions
-bun run lib/remotion.ts compositions <entry-point.ts>
+bun run lib/remotion/index.ts compositions <root-file.tsx>
 
 # render video
-bun run lib/remotion.ts render <entry-point.ts> <comp-id> <output.mp4>
+bun run lib/remotion/index.ts render <root-file.tsx> <comp-id> <output.mp4>
 
 # render still frame
-bun run lib/remotion.ts still <entry-point.ts> <comp-id> <frame> <out.png>
+bun run lib/remotion/index.ts still <root-file.tsx> <comp-id> <frame> <out.png>
 ```
 
 ### lib/ffmpeg.ts
@@ -365,7 +360,7 @@ const currentSubtitle = subtitles.find(
 
 return (
   <AbsoluteFill>
-    <Video src={staticFile("video.mp4")} />
+    <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video.mp4" />
     {currentSubtitle && (
       <div className="caption">{currentSubtitle.text}</div>
     )}
@@ -377,15 +372,14 @@ return (
 ```typescript
 const fitnessEnd = 1430; // 47.67s * 30fps
 const kangarooStart = fitnessEnd;
-const kangarooEnd = kangarooStart + 152; // 5.04s * 30fps
 
 return (
   <AbsoluteFill>
     {frame < fitnessEnd ? (
-      <Video src={staticFile("fitness.mp4")} />
+      <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/fitness.mp4" />
     ) : (
       <OffthreadVideo 
-        src={staticFile("kangaroo.mp4")}
+        src="/Users/aleks/Github/SecurityQQ/sdk/media/kangaroo.mp4"
         startFrom={Math.floor((frame - kangarooStart) * (24/30))}
       />
     )}

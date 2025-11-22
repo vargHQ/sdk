@@ -4,17 +4,20 @@
  * remotion wrapper for programmatic video creation
  * requires @remotion/cli and remotion packages
  *
- * usage: bun run lib/remotion.ts <command> <args>
+ * usage: bun run lib/remotion/index.ts <command> <args>
  *
- * typical workflow:
- * 1. createProject() - creates new remotion project from template in temp dir
- * 2. agent edits project files (compositions, components, etc)
- * 3. render() - bundles and renders the composition to video
- * 4. optional: cleanup() to remove temp directory
+ * simplified workflow (no cloning needed!):
+ * 1. create composition file in lib/remotion/compositions/MyComp.tsx
+ * 2. create root file that registers the composition
+ * 3. render() directly from lib/remotion/compositions/
+ *
+ * media files can be:
+ * - absolute paths in the composition
+ * - relative to sdk root (media/video.mp4)
+ * - no need to copy anywhere!
  */
 
-import { existsSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";
@@ -36,92 +39,58 @@ export interface CompositionInfo {
   durationInFrames: number;
 }
 
-export interface CreateProjectOptions {
-  templateUrl?: string;
+export interface CreateCompositionOptions {
+  name: string;
   dir?: string;
 }
 
-export interface CreateProjectResult {
-  projectDir: string;
-  entryPoint: string;
-  cleanup: () => void;
+export interface CreateCompositionResult {
+  compositionPath: string;
+  rootPath: string;
+  compositionsDir: string;
 }
 
 /**
- * create a new remotion project from template in temp directory
+ * create composition directory structure
+ *
+ * much simpler than cloning templates!
+ * just creates lib/remotion/compositions/ folder if needed
+ * agent can then create .tsx files directly there
  *
  * flow:
- * 1. clone template repository (default: caffeinum/remotion-template)
- * 2. install dependencies with bun
- * 3. return projectDir path for agent to edit
- * 4. return entryPoint (src/index.ts) for rendering
- * 5. return cleanup() function to delete temp dir (optional)
- *
- * after calling this, agent can:
- * - edit src/*.tsx files to create/modify compositions
- * - copy media files to public/ directory
- * - modify package.json, tsconfig.json, etc
- * - then call render() to generate video
+ * 1. ensure lib/remotion/compositions/ exists
+ * 2. return paths for agent to create files
+ * 3. no cleanup needed - files stay in repo
  */
-export async function createProject(
-  options: CreateProjectOptions = {},
-): Promise<CreateProjectResult> {
-  const templateUrl =
-    options.templateUrl || "https://github.com/caffeinum/remotion-template.git";
+export async function createComposition(
+  options: CreateCompositionOptions,
+): Promise<CreateCompositionResult> {
+  const { name, dir } = options;
 
-  // generate unique temp directory name with timestamp + random suffix
-  const projectDir =
-    options.dir ||
-    join(
-      tmpdir(),
-      `remotion-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    );
+  // use provided dir or default to lib/remotion/compositions
+  const compositionsDir =
+    dir || join(process.cwd(), "lib/remotion/compositions");
 
-  console.log(`[remotion] creating project from ${templateUrl}...`);
-  console.log(`[remotion] directory: ${projectDir}`);
-
-  // step 1: clone git template repository
-  const cloneProc = Bun.spawn(["git", "clone", templateUrl, projectDir], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  await cloneProc.exited;
-
-  if (cloneProc.exitCode !== 0) {
-    const error = await new Response(cloneProc.stderr).text();
-    throw new Error(`failed to clone template: ${error}`);
+  // ensure directory exists
+  if (!existsSync(compositionsDir)) {
+    mkdirSync(compositionsDir, { recursive: true });
+    console.log(`[remotion] created directory: ${compositionsDir}`);
   }
 
-  console.log("[remotion] installing dependencies...");
+  const compositionPath = join(compositionsDir, `${name}.tsx`);
+  const rootPath = join(compositionsDir, `${name}.root.tsx`);
 
-  // step 2: install npm packages with bun
-  const installProc = Bun.spawn(["bun", "install"], {
-    cwd: projectDir,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  console.log(`[remotion] composition setup ready`);
+  console.log(`[remotion] create composition at: ${compositionPath}`);
+  console.log(`[remotion] create root at: ${rootPath}`);
+  console.log(
+    `[remotion] media files can use absolute paths or relative to sdk root`,
+  );
 
-  await installProc.exited;
-
-  if (installProc.exitCode !== 0) {
-    const error = await new Response(installProc.stderr).text();
-    throw new Error(`failed to install dependencies: ${error}`);
-  }
-
-  const entryPoint = join(projectDir, "src/index.ts");
-
-  console.log("[remotion] project ready!");
-  console.log(`[remotion] entry point: ${entryPoint}`);
-
-  // return paths and cleanup function
   return {
-    projectDir,
-    entryPoint,
-    cleanup: () => {
-      console.log(`[remotion] cleaning up ${projectDir}...`);
-      rmSync(projectDir, { recursive: true, force: true });
-    },
+    compositionPath,
+    rootPath,
+    compositionsDir,
   };
 }
 
@@ -325,18 +294,17 @@ usage:
   bun run lib/remotion.ts <command> [args]
 
 commands:
-  create [template-url]                                create new project from template
-  compositions <entry-point.ts>                        list all compositions
-  render <entry-point.ts> <comp-id> <output.mp4>      render video
-  still <entry-point.ts> <comp-id> <frame> <out.png>  render still frame
+  create <name>                                        setup composition directory
+  compositions <root-file.tsx>                         list all compositions
+  render <root-file.tsx> <comp-id> <output.mp4>       render video
+  still <root-file.tsx> <comp-id> <frame> <out.png>   render still frame
   help                                                 show this help
 
 examples:
-  bun run lib/remotion.ts create
-  bun run lib/remotion.ts create https://github.com/user/template.git
-  bun run lib/remotion.ts compositions src/index.ts
-  bun run lib/remotion.ts render src/index.ts MyVideo output.mp4
-  bun run lib/remotion.ts still src/index.ts MyVideo 30 frame.png
+  bun run lib/remotion/index.ts create MyVideo
+  bun run lib/remotion/index.ts compositions lib/remotion/compositions/MyVideo.root.tsx
+  bun run lib/remotion/index.ts render lib/remotion/compositions/MyVideo.root.tsx Demo output.mp4
+  bun run lib/remotion/index.ts still lib/remotion/compositions/MyVideo.root.tsx Demo 30 frame.png
 
 requirements:
   remotion and @remotion/cli must be installed
@@ -348,16 +316,21 @@ requirements:
   try {
     switch (command) {
       case "create": {
-        const templateUrl = args[1];
+        const name = args[1];
 
-        const result = await createProject({
-          templateUrl,
-        });
+        if (!name) {
+          throw new Error("composition name is required");
+        }
 
-        console.log("\nproject created successfully!");
-        console.log(`directory: ${result.projectDir}`);
-        console.log(`entry point: ${result.entryPoint}`);
-        console.log("\nnote: cleanup() available but not called automatically");
+        const result = await createComposition({ name });
+
+        console.log("\ncomposition setup complete!");
+        console.log(`\nnext steps:`);
+        console.log(`1. create ${result.compositionPath}`);
+        console.log(`2. create ${result.rootPath}`);
+        console.log(
+          `3. render using: bun run lib/remotion/index.ts render ${result.rootPath} <comp-id> output.mp4`,
+        );
         break;
       }
 
