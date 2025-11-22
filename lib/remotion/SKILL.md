@@ -40,10 +40,10 @@ programmatic video creation with react components using remotion
 - emoji support and rich formatting
 
 ### 6. thumbnail generation
-- extract first frame as preview image
-- render specific frames as stills
-- create animated thumbnails
-- generate multiple preview frames
+- render specific frames as stills (using remotion's renderStill)
+- create custom thumbnail compositions with text/graphics
+- generate multiple preview frames at different timestamps
+- design animated thumbnail previews
 
 ### 7. advanced effects
 - motion graphics and animations
@@ -224,18 +224,33 @@ bun run lib/ffmpeg.ts probe <input.mp4>
 
 ## examples
 
-### extract first frame as thumbnail
+### render specific frame as thumbnail
 ```bash
-# render frame 0 as image
-bun run lib/remotion.ts still /path/to/project/src/index.ts MyVideo 0 thumbnail.png
+# render frame 100 as image (useful for video preview)
+bun run lib/remotion.ts still /path/to/project/src/index.ts MyVideo 100 thumbnail.png
 ```
 
 ```typescript
-// or render first frame in composition
-import { staticFile } from "remotion";
+// create custom thumbnail composition with graphics
+export const Thumbnail: React.FC = () => {
+  return (
+    <AbsoluteFill>
+      <Video src={staticFile("video.mp4")} />
+      {/* add title overlay */}
+      <div style={{
+        position: "absolute",
+        bottom: 50,
+        fontSize: 60,
+        fontWeight: "bold",
+        color: "white",
+      }}>
+        My Video Title
+      </div>
+    </AbsoluteFill>
+  );
+};
 
-// this will capture the first frame
-<Img src={staticFile("video.mp4")} />
+// then render frame 0 of this composition
 ```
 
 ### zoom in effect

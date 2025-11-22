@@ -28,10 +28,10 @@ create programmatic videos using react components with remotion
 - **rich formatting**: bold, italic, emoji, multi-line
 
 ### thumbnail generation
-- **first frame extraction**: get video preview image
-- **specific frame render**: capture any frame as still image
-- **animated thumbnails**: create gif-like previews
-- **batch generation**: multiple frames for scrubbing preview
+- **specific frame render**: capture any frame as still image using renderStill
+- **custom thumbnails**: create compositions with overlaid text/graphics
+- **multiple previews**: render several frames at different timestamps
+- **branded thumbnails**: add logos, titles, watermarks to frame captures
 
 ### advanced capabilities
 - **motion graphics**: animated text, shapes, data visualizations
@@ -277,14 +277,14 @@ project.cleanup();
 8. render
 ```
 
-### workflow 4: extract thumbnail (first frame)
+### workflow 4: render custom thumbnail
 ```
-1. probe video → verify it exists
-2. create project
-3. copy video to public/
-4. create simple composition with Video component
+1. create project
+2. copy video to public/
+3. create thumbnail composition with Video + overlays
+4. add text, logos, graphics on top
 5. register composition
-6. render still frame 0 as png/jpg
+6. render specific frame as png/jpg using renderStill
 ```
 
 ### workflow 5: zoom & pan effect
@@ -478,27 +478,38 @@ bun run lib/ffmpeg.ts probe media/output.mp4
 # 360x640 @ 30fps, 52.73s
 ```
 
-### example 2: extract first frame as thumbnail
+### example 2: custom thumbnail with overlay
 ```bash
-# 1. probe video
-bun run lib/ffmpeg.ts probe media/video.mp4
-# output: 1920x1080 @ 30fps, 60s
-
-# 2. create project
+# 1. create project
 bun run lib/remotion.ts create
 # directory: /tmp/remotion-abc
 
-# 3. copy video
+# 2. copy video
 cp media/video.mp4 /tmp/remotion-abc/public/
 
-# 4. create simple composition (src/Thumbnail.tsx)
-# import { Video, staticFile } from "remotion";
-# export const Thumbnail = () => <Video src={staticFile("video.mp4")} />;
+# 3. create thumbnail composition (src/Thumbnail.tsx)
+# import { AbsoluteFill, Video, staticFile } from "remotion";
+# export const Thumbnail = () => (
+#   <AbsoluteFill>
+#     <Video src={staticFile("video.mp4")} />
+#     <div style={{
+#       position: "absolute",
+#       bottom: 50,
+#       left: 50,
+#       fontSize: 72,
+#       fontWeight: "bold",
+#       color: "white",
+#       textShadow: "4px 4px 8px black"
+#     }}>
+#       MY VIDEO TITLE
+#     </div>
+#   </AbsoluteFill>
+# );
 
-# 5. register in Root.tsx with durationInFrames: 1
+# 4. register in Root.tsx
 
-# 6. render first frame
-bun run lib/remotion.ts still /tmp/remotion-abc/src/index.ts Thumbnail 0 thumbnail.png
+# 5. render frame 90 (3 seconds in @ 30fps)
+bun run lib/remotion.ts still /tmp/remotion-abc/src/index.ts Thumbnail 90 thumbnail.png
 # [remotion] saved to thumbnail.png
 ```
 
