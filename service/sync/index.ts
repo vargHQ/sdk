@@ -5,8 +5,8 @@
  * supports wav2lip, synclabs, and simple audio overlay
  */
 
-import { addAudio } from "../lib/ffmpeg";
-import { runModel } from "../lib/replicate";
+import { addAudio } from "../../lib/ffmpeg";
+import { runModel } from "../../lib/replicate";
 
 // types
 export interface LipsyncOptions {

@@ -4,8 +4,8 @@
  * usage: bun run service/video.ts <command> <args>
  */
 
-import { imageToVideo, textToVideo } from "../lib/fal";
-import { uploadFromUrl } from "../utilities/s3";
+import { imageToVideo, textToVideo } from "../../lib/fal";
+import { uploadFromUrl } from "../../utilities/s3";
 
 export interface VideoGenerationResult {
   videoUrl: string;

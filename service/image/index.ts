@@ -4,9 +4,9 @@
  * usage: bun run service/image.ts <command> <args>
  */
 
-import { generateImage } from "../lib/fal";
-import { generateSoul } from "../lib/higgsfield";
-import { uploadFromUrl } from "../utilities/s3";
+import { generateImage } from "../../lib/fal";
+import { generateSoul } from "../../lib/higgsfield";
+import { uploadFromUrl } from "../../utilities/s3";
 
 export interface ImageGenerationResult {
   imageUrl: string;
