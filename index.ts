@@ -27,6 +27,7 @@ export * from "./lib/higgsfield";
 // lib exports - replicate
 export * from "./lib/replicate";
 // service exports
+export * from "./service/captions";
 export * from "./service/image";
 export * from "./service/sync";
 export * from "./service/transcribe";
