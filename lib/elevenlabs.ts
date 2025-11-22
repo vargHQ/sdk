@@ -27,6 +27,20 @@ export interface VoiceSettings {
   useSpeakerBoost?: boolean;
 }
 
+export interface MusicGenerationOptions {
+  prompt?: string;
+  musicLengthMs?: number;
+  outputPath?: string;
+}
+
+export interface SoundEffectOptions {
+  text: string;
+  durationSeconds?: number;
+  promptInfluence?: number;
+  loop?: boolean;
+  outputPath?: string;
+}
+
 // popular voices
 export const VOICES = {
   RACHEL: "21m00Tcm4TlvDq8ikWAM",
@@ -114,6 +128,97 @@ export async function getVoice(voiceId: string) {
   }
 }
 
+export async function generateMusic(options: MusicGenerationOptions) {
+  const { prompt, musicLengthMs, outputPath } = options;
+
+  if (!prompt) {
+    throw new Error("prompt is required");
+  }
+
+  console.log(`[elevenlabs] generating music from prompt: "${prompt}"...`);
+
+  try {
+    const audio = await elevenlabs.music.compose({
+      prompt,
+      musicLengthMs,
+      modelId: "music_v1",
+    });
+
+    // convert readablestream to buffer
+    const reader = audio.getReader();
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const buffer = Buffer.concat(chunks);
+
+    // save to file if path provided
+    if (outputPath) {
+      writeFileSync(outputPath, buffer);
+      console.log(`[elevenlabs] saved to ${outputPath}`);
+    }
+
+    console.log(`[elevenlabs] generated ${buffer.length} bytes`);
+    return buffer;
+  } catch (error) {
+    console.error(`[elevenlabs] error:`, error);
+    throw error;
+  }
+}
+
+export async function generateSoundEffect(options: SoundEffectOptions) {
+  const {
+    text,
+    durationSeconds,
+    promptInfluence = 0.3,
+    loop = false,
+    outputPath,
+  } = options;
+
+  if (!text) {
+    throw new Error("text is required");
+  }
+
+  console.log(`[elevenlabs] generating sound effect: "${text}"...`);
+
+  try {
+    const audio = await elevenlabs.textToSoundEffects.convert({
+      text,
+      durationSeconds,
+      promptInfluence,
+      loop,
+    });
+
+    // convert readablestream to buffer
+    const reader = audio.getReader();
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const buffer = Buffer.concat(chunks);
+
+    // save to file if path provided
+    if (outputPath) {
+      writeFileSync(outputPath, buffer);
+      console.log(`[elevenlabs] saved to ${outputPath}`);
+    }
+
+    console.log(`[elevenlabs] generated ${buffer.length} bytes`);
+    return buffer;
+  } catch (error) {
+    console.error(`[elevenlabs] error:`, error);
+    throw error;
+  }
+}
+
 // cli
 async function cli() {
   const args = process.argv.slice(2);
@@ -125,14 +230,17 @@ usage:
   bun run lib/elevenlabs.ts <command> [args]
 
 commands:
-  tts <text> [voiceId] [outputPath]    generate speech from text
-  voices                               list available voices
-  voice <voiceId>                      get voice details
-  help                                 show this help
+  tts <text> [voiceId] [outputPath]           generate speech from text
+  music <prompt> [lengthMs] [outputPath]      generate music from prompt
+  sfx <text> [durationSec] [outputPath]       generate sound effect
+  voices                                      list available voices
+  voice <voiceId>                             get voice details
+  help                                        show this help
 
 examples:
-  bun run lib/elevenlabs.ts tts "hello world" "21m00Tcm4TlvDq8ikWAM" output.mp3
   bun run lib/elevenlabs.ts tts "hello world" rachel output.mp3
+  bun run lib/elevenlabs.ts music "upbeat electronic dance music" 30000 music.mp3
+  bun run lib/elevenlabs.ts sfx "ocean waves crashing" 5 waves.mp3
   bun run lib/elevenlabs.ts voices
   bun run lib/elevenlabs.ts voice 21m00Tcm4TlvDq8ikWAM
 
@@ -213,6 +321,48 @@ environment:
           category: voice.category,
           labels: voice.labels,
         });
+        break;
+      }
+
+      case "music": {
+        const prompt = args[1];
+        const musicLengthMs = args[2]
+          ? Number.parseInt(args[2], 10)
+          : undefined;
+        const outputPath = args[3];
+
+        if (!prompt) {
+          throw new Error("prompt is required");
+        }
+
+        const buffer = await generateMusic({
+          prompt,
+          musicLengthMs,
+          outputPath: outputPath || join(process.cwd(), "music.mp3"),
+        });
+
+        console.log(`[elevenlabs] generated ${buffer.length} bytes`);
+        break;
+      }
+
+      case "sfx": {
+        const text = args[1];
+        const durationSeconds = args[2]
+          ? Number.parseFloat(args[2])
+          : undefined;
+        const outputPath = args[3];
+
+        if (!text) {
+          throw new Error("text is required");
+        }
+
+        const buffer = await generateSoundEffect({
+          text,
+          durationSeconds,
+          outputPath: outputPath || join(process.cwd(), "sfx.mp3"),
+        });
+
+        console.log(`[elevenlabs] generated ${buffer.length} bytes`);
         break;
       }
 

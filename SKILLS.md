@@ -20,6 +20,11 @@ located in `service/<name>/SKILL.md`:
    - generate realistic text-to-speech audio using elevenlabs
    - cli: `bun run service/voice generate|elevenlabs <text> [options]`
 
+3b. **music-generation** (`lib/elevenlabs.ts`)
+   - generate music from text prompts using elevenlabs
+   - generate sound effects from descriptions
+   - cli: `bun run lib/elevenlabs.ts music|sfx <prompt> [options]`
+
 4. **video-lipsync** (`service/sync/`)
    - sync video with audio using wav2lip or simple overlay
    - cli: `bun run service/sync sync|wav2lip|overlay <args>`
@@ -119,6 +124,7 @@ each skill includes:
 | image-generation | image | create ai images, character headshots |
 | video-generation | video | animate images, generate video clips |
 | voice-synthesis | voice | text-to-speech, voiceovers |
+| music-generation | elevenlabs | generate music, create sound effects |
 | video-lipsync | sync | sync audio with video, talking characters |
 | video-captions | captions | add subtitles, accessibility |
 | video-editing | edit | resize, trim, social media optimization |

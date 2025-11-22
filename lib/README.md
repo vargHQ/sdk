@@ -86,3 +86,54 @@ uses `@higgsfield/client` for soul character generation
 ```bash
 HF_API_KEY=xxx HF_API_SECRET=xxx bun run lib/higgsfield.ts generate_soul "professional headshot"
 ```
+
+## elevenlabs.ts
+
+uses `@elevenlabs/elevenlabs-js` for voice, music, and sound effects generation
+
+**features:**
+- text-to-speech with multiple voices
+- music generation from text prompts
+- sound effects generation
+- voice management
+
+**examples:**
+```bash
+# text-to-speech
+bun run lib/elevenlabs.ts tts "hello world" rachel output.mp3
+
+# music generation
+bun run lib/elevenlabs.ts music "upbeat electronic dance music" 30000 music.mp3
+
+# sound effects
+bun run lib/elevenlabs.ts sfx "ocean waves crashing" 5 waves.mp3
+
+# list voices
+bun run lib/elevenlabs.ts voices
+```
+
+**code:**
+```typescript
+import { textToSpeech, generateMusic, generateSoundEffect } from "./lib/elevenlabs"
+
+// voice
+const audio = await textToSpeech({
+  text: "hello world",
+  voiceId: "rachel",
+  outputPath: "output.mp3"
+})
+
+// music
+const music = await generateMusic({
+  prompt: "epic orchestral music",
+  musicLengthMs: 60000,
+  outputPath: "music.mp3"
+})
+
+// sound effects
+const sfx = await generateSoundEffect({
+  text: "thunder and rain",
+  durationSeconds: 10,
+  outputPath: "sfx.mp3"
+})
+```
