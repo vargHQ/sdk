@@ -173,6 +173,7 @@ export async function render(options: RenderOptions): Promise<string> {
   const bundleLocation = await bundle({
     entryPoint,
     webpackOverride: (config) => config,
+    publicDir: join(process.cwd(), "lib/remotion/public"),
   });
 
   console.log("[remotion] getting composition info...");
