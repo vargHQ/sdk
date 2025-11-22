@@ -11,8 +11,8 @@ import { toFile } from "groq-sdk/uploads";
 import {
   convertFireworksToSRT,
   transcribeWithFireworks as fireworksTranscribe,
-} from "../lib/fireworks";
-import { GROQ_MODELS, transcribeAudio as groqTranscribe } from "../lib/groq";
+} from "../../lib/fireworks";
+import { GROQ_MODELS, transcribeAudio as groqTranscribe } from "../../lib/groq";
 
 // types
 export interface TranscribeOptions {

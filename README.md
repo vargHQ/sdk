@@ -19,12 +19,13 @@ sdk/
 │   └── motion.dev/
 │
 ├── service/
-│   ├── image/
-│   ├── video/
-│   ├── edit/           # video editing
-│   ├── sync/           # lipsync
-│   ├── captions/
-│   └── voice/
+│   ├── image/          # image generation + SKILL.md
+│   ├── video/          # video generation + SKILL.md
+│   ├── voice/          # voice synthesis + SKILL.md
+│   ├── sync/           # lipsync + SKILL.md
+│   ├── captions/       # video captions + SKILL.md
+│   ├── edit/           # video editing + SKILL.md
+│   └── transcribe/     # audio transcription + SKILL.md
 │
 └── pipeline/
     └── cookbooks/
@@ -75,15 +76,15 @@ bun run lib/replicate.ts minimax "person walking on beach"
 bun run lib/elevenlabs.ts tts "hello world" rachel output.mp3
 
 # transcribe audio to text/subtitles
-bun run service/transcribe.ts media/audio.mp3 groq
-bun run service/transcribe.ts media/audio.mp3 fireworks output.srt
+bun run service/transcribe media/audio.mp3 groq
+bun run service/transcribe media/audio.mp3 fireworks output.srt
 bun run lib/fireworks.ts media/audio.mp3 output.srt
 
 # edit video with ffmpeg
 bun run lib/ffmpeg.ts concat output.mp4 video1.mp4 video2.mp4
 
 # lipsync video with audio
-bun run service/sync.ts overlay video.mp4 audio.mp3 synced.mp4
+bun run service/sync overlay video.mp4 audio.mp3 synced.mp4
 
 # upload file to s3
 bun run utilities/s3.ts upload ./video.mp4 videos/output.mp4
@@ -132,15 +133,17 @@ core libraries for video/audio/ai processing:
 - **ffmpeg**: video editing operations (concat, trim, resize, etc.)
 
 ### service
-high-level services combining multiple libs:
+high-level services combining multiple libs. each service includes a SKILL.md for claude code agent skills:
 - **image**: image generation (fal + higgsfield)
 - **video**: video generation from image/text
 - **voice**: voice generation with multiple providers (elevenlabs)
 - **transcribe**: audio transcription with groq whisper or fireworks (srt support)
 - **sync**: lipsync workflows (wav2lip, audio overlay)
+- **captions**: auto-generate and overlay subtitles on videos
+- **edit**: video editing workflows (resize, trim, concat, social media prep)
 
 ### utilities
 - **s3**: cloudflare r2 / s3 storage operations
 
 ### pipeline
-- **cookbooks**: step-by-step recipes for complex workflows
+- **cookbooks**: step-by-step recipes for complex workflows (includes talking-character SKILL.md)

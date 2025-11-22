@@ -19,7 +19,7 @@ import {
   resizeVideo,
   type TrimVideoOptions,
   trimVideo,
-} from "../lib/ffmpeg";
+} from "../../lib/ffmpeg";
 
 // types
 export interface EditPipelineStep {

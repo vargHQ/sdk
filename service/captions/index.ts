@@ -8,7 +8,7 @@
 
 import { existsSync } from "node:fs";
 import ffmpeg from "fluent-ffmpeg";
-import { transcribe } from "./transcribe";
+import { transcribe } from "../transcribe";
 
 // types
 export interface AddCaptionsOptions {

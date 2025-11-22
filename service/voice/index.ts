@@ -5,8 +5,8 @@
  * supports elevenlabs and future providers
  */
 
-import { textToSpeech, VOICES } from "../lib/elevenlabs";
-import { uploadFile } from "../utilities/s3";
+import { textToSpeech, VOICES } from "../../lib/elevenlabs";
+import { uploadFile } from "../../utilities/s3";
 
 // types
 export interface GenerateVoiceOptions {
