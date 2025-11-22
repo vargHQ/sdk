@@ -11,7 +11,8 @@ bun run lib/remotion/index.ts create MyVideo
 #          lib/remotion/compositions/MyVideo.root.tsx (root with registerRoot)
 
 # 2. copy media files to public directory
-cp media/* lib/remotion/public/
+mkdir -p lib/remotion/public
+cp media/video.mp4 media/audio.mp3 lib/remotion/public/
 
 # 3. customize the generated composition files
 # - edit MyVideo.tsx to add your video/image/audio content
@@ -205,6 +206,7 @@ const subtitle = subtitles.find(
 
 3. **copy media to public directory**
    ```bash
+   mkdir -p lib/remotion/public
    cp media/video.mp4 media/audio.mp3 media/*.png lib/remotion/public/
    ```
 
@@ -271,7 +273,7 @@ bun run lib/ffmpeg.ts probe <input.mp4>
 
 ```bash
 # 1. probe video to get metadata
-bun run lib/ffmpeg.ts probe media/kangaroo-scene.mp4
+bun run lib/ffmpeg.ts probe media/video.mp4
 # output: 1920x1080 @ 24fps, 5.041667s
 
 # 2. create composition structure
@@ -279,8 +281,9 @@ bun run lib/remotion/index.ts create MediaMontage
 # creates: lib/remotion/compositions/MediaMontage.tsx
 #          lib/remotion/compositions/MediaMontage.root.tsx
 
-# 3. copy all media to public directory
-cp media/kangaroo-scene.mp4 media/dora.ogg media/*.png lib/remotion/public/
+# 3. copy specific media files to public directory
+mkdir -p lib/remotion/public
+cp media/video.mp4 media/audio.ogg media/image1.png media/image2.png media/image3.png media/image4.png lib/remotion/public/
 
 # 4. create composition file (MediaMontage.tsx)
 cat > lib/remotion/compositions/MediaMontage.tsx << 'EOF'
@@ -295,8 +298,8 @@ export const MediaMontage: React.FC = () => {
   const imageFrames = imageDisplayTime * fps;
   const videoFrames = Math.floor(5.041667 * fps);
   
-  const videoPath = staticFile("kangaroo-scene.mp4");
-  const audioPath = staticFile("dora.ogg");
+  const videoPath = staticFile("video.mp4");
+  const audioPath = staticFile("audio.ogg");
   const images = [
     staticFile("image1.png"),
     staticFile("image2.png"),
@@ -306,13 +309,14 @@ export const MediaMontage: React.FC = () => {
   let content: React.ReactNode = null;
   
   if (frame < videoEnd) {
-    content = <OffthreadVideo src={videoPath} startFrom={frame} />;
+    content = <OffthreadVideo src={videoPath} />;
   } else {
     const imageFrame = frame - videoEnd;
     const imageIndex = Math.floor(imageFrame / imageFrames);
     
     if (imageIndex < images.length) {
-      const scale = interpolate(imageFrame % imageFrames, [0, imageFrames], [1, 1.15], { extrapolateRight: "clamp" });
+      const localFrame = imageFrame % imageFrames;
+      const scale = interpolate(localFrame, [0, imageFrames], [1, 1.15], { extrapolateRight: "clamp" });
       content = (
         <div style={{ width: "100%", height: "100%", transform: `scale(${scale})` }}>
           <Img src={images[imageIndex] as string} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -338,7 +342,7 @@ import { MediaMontage } from "./MediaMontage";
 
 const fps = 30;
 const videoFrames = Math.floor(5.041667 * fps);
-const imageFrames = 2 * 3 * fps; // 2 images, 3 seconds each
+const imageFrames = 4 * 3 * fps; // 4 images, 3 seconds each
 const totalFrames = videoFrames + imageFrames;
 
 registerRoot(() => {
@@ -362,6 +366,7 @@ bun run lib/remotion/index.ts render lib/remotion/compositions/MediaMontage.root
 
 # 7. verify output
 bun run lib/ffmpeg.ts probe media/output.mp4
+# output: 1920x1080 @ 30fps, 17.033s
 ```
 
 ### render specific frame as thumbnail
@@ -505,7 +510,7 @@ const currentSubtitle = subtitles.find(
 
 return (
   <AbsoluteFill>
-    <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video.mp4" />
+    <OffthreadVideo src={staticFile("video.mp4")} />
     {currentSubtitle && (
       <div className="caption">{currentSubtitle.text}</div>
     )}
@@ -521,10 +526,10 @@ const kangarooStart = fitnessEnd;
 return (
   <AbsoluteFill>
     {frame < fitnessEnd ? (
-      <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/fitness.mp4" />
+      <OffthreadVideo src={staticFile("fitness.mp4")} />
     ) : (
       <OffthreadVideo 
-        src="/Users/aleks/Github/SecurityQQ/sdk/media/kangaroo.mp4"
+        src={staticFile("kangaroo.mp4")}
         startFrom={Math.floor((frame - kangarooStart) * (24/30))}
       />
     )}

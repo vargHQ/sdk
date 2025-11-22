@@ -6,15 +6,11 @@
  *
  * usage: bun run lib/remotion/index.ts <command> <args>
  *
- * simplified workflow (no cloning needed!):
- * 1. create composition file in lib/remotion/compositions/MyComp.tsx
- * 2. create root file that registers the composition
- * 3. render() directly from lib/remotion/compositions/
- *
- * media files can be:
- * - absolute paths in the composition
- * - relative to sdk root (media/video.mp4)
- * - no need to copy anywhere!
+ * simplified workflow:
+ * 1. create composition with: bun run lib/remotion/index.ts create <name>
+ * 2. copy media files to lib/remotion/public/
+ * 3. customize composition files (use staticFile() for media paths)
+ * 4. render with: bun run lib/remotion/index.ts render <root.tsx> <id> <output.mp4>
  */
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -150,10 +146,12 @@ registerRoot(() => {
 
   console.log(`[remotion] created composition: ${compositionPath}`);
   console.log(`[remotion] created root: ${rootPath}`);
-  console.log(`[remotion] copy media files to lib/remotion/public/`);
-  console.log(`[remotion] use staticFile("filename.ext") in your composition`);
+  console.log(`\n[remotion] next steps:`);
+  console.log(`  1. mkdir -p lib/remotion/public`);
+  console.log(`  2. cp media/video.mp4 media/audio.mp3 lib/remotion/public/`);
+  console.log(`  3. edit composition to use staticFile("filename.ext")`);
   console.log(
-    `\n[remotion] render with: bun run lib/remotion/index.ts render ${rootPath} ${name} output.mp4`,
+    `  4. bun run lib/remotion/index.ts render ${rootPath} ${name} output.mp4`,
   );
 
   return {
