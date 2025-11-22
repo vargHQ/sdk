@@ -125,6 +125,7 @@ core libraries for video/audio processing:
 high-level services combining multiple libs:
 - **image**: image generation (fal + higgsfield)
 - **video**: video generation from image/text
+- **voice**: voice generation with multiple providers (elevenlabs)
 - **sync**: lipsync workflows (wav2lip, audio overlay)
 
 ### utilities

@@ -26,5 +26,6 @@ export * from "./lib/replicate";
 export * from "./service/image";
 export * from "./service/sync";
 export * from "./service/video";
+export * from "./service/voice";
 // utilities exports
 export * from "./utilities/s3";
