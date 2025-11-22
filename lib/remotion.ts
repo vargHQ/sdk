@@ -5,6 +5,12 @@
  * requires @remotion/cli and remotion packages
  *
  * usage: bun run lib/remotion.ts <command> <args>
+ *
+ * typical workflow:
+ * 1. createProject() - creates new remotion project from template in temp dir
+ * 2. agent edits project files (compositions, components, etc)
+ * 3. render() - bundles and renders the composition to video
+ * 4. optional: cleanup() to remove temp directory
  */
 
 import { existsSync, rmSync } from "node:fs";
@@ -43,6 +49,19 @@ export interface CreateProjectResult {
 
 /**
  * create a new remotion project from template in temp directory
+ *
+ * flow:
+ * 1. clone template repository (default: caffeinum/remotion-template)
+ * 2. install dependencies with bun
+ * 3. return projectDir path for agent to edit
+ * 4. return entryPoint (src/index.ts) for rendering
+ * 5. return cleanup() function to delete temp dir (optional)
+ *
+ * after calling this, agent can:
+ * - edit src/*.tsx files to create/modify compositions
+ * - copy media files to public/ directory
+ * - modify package.json, tsconfig.json, etc
+ * - then call render() to generate video
  */
 export async function createProject(
   options: CreateProjectOptions = {},
@@ -50,6 +69,7 @@ export async function createProject(
   const templateUrl =
     options.templateUrl || "https://github.com/caffeinum/remotion-template.git";
 
+  // generate unique temp directory name with timestamp + random suffix
   const projectDir =
     options.dir ||
     join(
@@ -60,7 +80,7 @@ export async function createProject(
   console.log(`[remotion] creating project from ${templateUrl}...`);
   console.log(`[remotion] directory: ${projectDir}`);
 
-  // clone template
+  // step 1: clone git template repository
   const cloneProc = Bun.spawn(["git", "clone", templateUrl, projectDir], {
     stdout: "pipe",
     stderr: "pipe",
@@ -75,7 +95,7 @@ export async function createProject(
 
   console.log("[remotion] installing dependencies...");
 
-  // install dependencies
+  // step 2: install npm packages with bun
   const installProc = Bun.spawn(["bun", "install"], {
     cwd: projectDir,
     stdout: "pipe",
@@ -94,6 +114,7 @@ export async function createProject(
   console.log("[remotion] project ready!");
   console.log(`[remotion] entry point: ${entryPoint}`);
 
+  // return paths and cleanup function
   return {
     projectDir,
     entryPoint,
@@ -106,6 +127,13 @@ export async function createProject(
 
 /**
  * get list of compositions from entry point
+ *
+ * flow:
+ * 1. bundle the remotion project using webpack
+ * 2. extract composition metadata (id, dimensions, fps, duration)
+ * 3. return array of composition info
+ *
+ * useful for listing available compositions before rendering
  */
 export async function getCompositionsList(
   entryPoint: string,
@@ -116,6 +144,7 @@ export async function getCompositionsList(
 
   console.log("[remotion] bundling compositions...");
 
+  // step 1: bundle project with webpack (creates serve url)
   const bundleLocation = await bundle({
     entryPoint,
     webpackOverride: (config) => config,
@@ -123,10 +152,12 @@ export async function getCompositionsList(
 
   console.log("[remotion] fetching compositions...");
 
+  // step 2: extract composition metadata from bundle
   const compositions = await getCompositions(bundleLocation, {
     inputProps: {},
   });
 
+  // step 3: map to simple info objects
   return compositions.map((comp) => ({
     id: comp.id,
     width: comp.width,
@@ -138,6 +169,16 @@ export async function getCompositionsList(
 
 /**
  * render a composition to video file
+ *
+ * flow:
+ * 1. bundle the remotion project using webpack
+ * 2. get composition metadata (verify it exists)
+ * 3. render each frame using chrome headless
+ * 4. encode frames to video using ffmpeg
+ * 5. save final video to outputPath
+ *
+ * this is the main rendering function that converts
+ * react components into actual video files
  */
 export async function render(options: RenderOptions): Promise<string> {
   const {
@@ -159,6 +200,7 @@ export async function render(options: RenderOptions): Promise<string> {
 
   console.log(`[remotion] bundling ${entryPoint}...`);
 
+  // step 1: bundle project with webpack
   const bundleLocation = await bundle({
     entryPoint,
     webpackOverride: (config) => config,
@@ -166,10 +208,12 @@ export async function render(options: RenderOptions): Promise<string> {
 
   console.log("[remotion] getting composition info...");
 
+  // step 2: extract composition metadata
   const compositions = await getCompositions(bundleLocation, {
     inputProps: props,
   });
 
+  // verify composition exists
   const composition = compositions.find((c) => c.id === compositionId);
   if (!composition) {
     throw new Error(
@@ -181,6 +225,10 @@ export async function render(options: RenderOptions): Promise<string> {
     `[remotion] rendering ${composition.id} (${composition.durationInFrames} frames @ ${composition.fps}fps)...`,
   );
 
+  // step 3-5: render frames and encode to video
+  // - launches chrome headless to render each frame
+  // - uses ffmpeg to encode frames into h264 video
+  // - displays progress as it renders
   await renderMedia({
     composition,
     serveUrl: bundleLocation,
@@ -201,7 +249,15 @@ export async function render(options: RenderOptions): Promise<string> {
 }
 
 /**
- * render a still frame from composition
+ * render a single frame from composition as image
+ *
+ * flow:
+ * 1. bundle the remotion project
+ * 2. get composition metadata
+ * 3. render specified frame number using chrome
+ * 4. save as png/jpeg image
+ *
+ * useful for creating thumbnails or previews
  */
 export async function renderStill(
   entryPoint: string,
@@ -220,6 +276,7 @@ export async function renderStill(
 
   console.log(`[remotion] bundling ${entryPoint}...`);
 
+  // step 1: bundle project
   const bundleLocation = await bundle({
     entryPoint,
     webpackOverride: (config) => config,
@@ -227,6 +284,7 @@ export async function renderStill(
 
   console.log("[remotion] getting composition info...");
 
+  // step 2: get composition metadata
   const compositions = await getCompositions(bundleLocation, {
     inputProps: props || {},
   });
@@ -240,8 +298,10 @@ export async function renderStill(
 
   console.log(`[remotion] rendering frame ${frame}...`);
 
+  // dynamic import to avoid loading unless needed
   const { renderStill: renderStillFrame } = await import("@remotion/renderer");
 
+  // step 3-4: render single frame and save as image
   await renderStillFrame({
     composition,
     serveUrl: bundleLocation,
