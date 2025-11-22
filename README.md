@@ -22,6 +22,7 @@ sdk/
 │   ├── image/          # image generation + SKILL.md
 │   ├── video/          # video generation + SKILL.md
 │   ├── voice/          # voice synthesis + SKILL.md
+│   ├── music/          # music generation + SKILL.md
 │   ├── sync/           # lipsync + SKILL.md
 │   ├── captions/       # video captions + SKILL.md
 │   ├── edit/           # video editing + SKILL.md
@@ -75,6 +76,10 @@ bun run lib/replicate.ts minimax "person walking on beach"
 # generate voice with elevenlabs
 bun run lib/elevenlabs.ts tts "hello world" rachel output.mp3
 
+# generate music with sonauto
+bun run lib/fal.ts text_to_music "A pop song about turtles flying"
+bun run service/music generate "upbeat electronic dance music" mp3 2
+
 # transcribe audio to text/subtitles
 bun run service/transcribe media/audio.mp3 groq
 bun run service/transcribe media/audio.mp3 fireworks output.srt
@@ -124,7 +129,7 @@ console.log(`uploaded: ${url}`)
 core libraries for video/audio/ai processing:
 - **ai-sdk/fal**: fal.ai using vercel ai sdk (recommended for images)
 - **ai-sdk/replicate**: replicate.com using vercel ai sdk
-- **fal**: fal.ai using direct client (for video & advanced features)
+- **fal**: fal.ai using direct client (for video, music & advanced features)
 - **higgsfield**: soul character generation
 - **replicate**: replicate.com api (minimax, kling, luma, flux)
 - **elevenlabs**: text-to-speech and voice generation
@@ -137,6 +142,7 @@ high-level services combining multiple libs. each service includes a SKILL.md fo
 - **image**: image generation (fal + higgsfield)
 - **video**: video generation from image/text
 - **voice**: voice generation with multiple providers (elevenlabs)
+- **music**: music generation with sonauto (full songs, instrumentals, custom styles)
 - **transcribe**: audio transcription with groq whisper or fireworks (srt support)
 - **sync**: lipsync workflows (wav2lip, audio overlay)
 - **captions**: auto-generate and overlay subtitles on videos

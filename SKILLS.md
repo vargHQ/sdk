@@ -20,7 +20,11 @@ located in `service/<name>/SKILL.md`:
    - generate realistic text-to-speech audio using elevenlabs
    - cli: `bun run service/voice generate|elevenlabs <text> [options]`
 
-4. **video-lipsync** (`service/sync/`)
+4. **music-generation** (`service/music/`)
+   - generate full songs and instrumentals using sonauto v2
+   - cli: `bun run service/music generate|tags|instrumental <args>`
+
+5. **video-lipsync** (`service/sync/`)
    - sync video with audio using wav2lip or simple overlay
    - cli: `bun run service/sync sync|wav2lip|overlay <args>`
 
@@ -40,7 +44,7 @@ located in `service/<name>/SKILL.md`:
 
 located in `pipeline/cookbooks/SKILL.md`:
 
-8. **talking-character-pipeline** (`pipeline/cookbooks/`)
+9. **talking-character-pipeline** (`pipeline/cookbooks/`)
    - complete workflow to create talking character videos
    - combines: character generation → voiceover → animation → lipsync → captions → social prep
 
@@ -119,6 +123,7 @@ each skill includes:
 | image-generation | image | create ai images, character headshots |
 | video-generation | video | animate images, generate video clips |
 | voice-synthesis | voice | text-to-speech, voiceovers |
+| music-generation | music | create songs, instrumentals, soundtracks |
 | video-lipsync | sync | sync audio with video, talking characters |
 | video-captions | captions | add subtitles, accessibility |
 | video-editing | edit | resize, trim, social media optimization |

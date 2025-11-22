@@ -30,6 +30,7 @@ export * from "./lib/replicate";
 export * from "./service/captions";
 export * from "./service/edit";
 export * from "./service/image";
+export * from "./service/music";
 export * from "./service/sync";
 export * from "./service/transcribe";
 export * from "./service/video";

@@ -126,6 +126,63 @@ export async function generateImage(args: {
   }
 }
 
+interface FalTextToMusicArgs {
+  prompt?: string;
+  tags?: string[];
+  lyricsPrompt?: string;
+  seed?: number;
+  promptStrength?: number;
+  balanceStrength?: number;
+  numSongs?: 1 | 2;
+  outputFormat?: "flac" | "mp3" | "wav" | "ogg" | "m4a";
+  outputBitRate?: 128 | 192 | 256 | 320;
+  bpm?: number | "auto";
+}
+
+export async function textToMusic(args: FalTextToMusicArgs) {
+  const modelId = "sonauto/v2/text-to-music";
+
+  console.log(`[fal] generating music with ${modelId}`);
+  if (args.prompt) console.log(`[fal] prompt: ${args.prompt}`);
+  if (args.tags) console.log(`[fal] tags: ${args.tags.join(", ")}`);
+
+  try {
+    const input: Record<string, unknown> = {};
+    
+    if (args.prompt) input.prompt = args.prompt;
+    if (args.tags) input.tags = args.tags;
+    if (args.lyricsPrompt !== undefined) input.lyrics_prompt = args.lyricsPrompt;
+    if (args.seed !== undefined) input.seed = args.seed;
+    if (args.promptStrength !== undefined) input.prompt_strength = args.promptStrength;
+    if (args.balanceStrength !== undefined) input.balance_strength = args.balanceStrength;
+    if (args.numSongs !== undefined) input.num_songs = args.numSongs;
+    if (args.outputFormat) input.output_format = args.outputFormat;
+    if (args.outputBitRate !== undefined) input.output_bit_rate = args.outputBitRate;
+    if (args.bpm !== undefined) input.bpm = args.bpm;
+
+    const result = await fal.subscribe(modelId, {
+      input,
+      logs: true,
+      onQueueUpdate: (update: {
+        status: string;
+        logs?: Array<{ message: string }>;
+      }) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  } catch (error) {
+    console.error("[fal] error:", error);
+    throw error;
+  }
+}
+
 // cli runner
 if (import.meta.main) {
   const [command, ...args] = process.argv.slice(2);
@@ -202,6 +259,33 @@ available image sizes:
       break;
     }
 
+    case "text_to_music": {
+      if (!args[0]) {
+        console.log(`
+usage:
+  bun run lib/fal.ts text_to_music <prompt> [format] [numSongs]
+
+examples:
+  bun run lib/fal.ts text_to_music "A pop song about turtles flying"
+  bun run lib/fal.ts text_to_music "upbeat electronic dance music" mp3 2
+  
+available formats:
+  - wav (default), mp3, flac, ogg, m4a
+        `);
+        process.exit(1);
+      }
+      const format = args[1] as "flac" | "mp3" | "wav" | "ogg" | "m4a" | undefined;
+      const numSongs = args[2] ? parseInt(args[2]) as 1 | 2 : undefined;
+      
+      const musicResult = await textToMusic({
+        prompt: args[0],
+        outputFormat: format,
+        numSongs,
+      });
+      console.log(JSON.stringify(musicResult, null, 2));
+      break;
+    }
+
     default:
       console.log(`
 usage:
@@ -211,6 +295,9 @@ usage:
   
   # image generation (fal client with all features)
   bun run lib/fal.ts generate_image <prompt> [model] [imageSize]
+  
+  # music generation
+  bun run lib/fal.ts text_to_music <prompt> [format] [numSongs]
   
 note: for simpler image generation, use lib/ai-sdk/fal.ts instead
       `);
