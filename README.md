@@ -43,6 +43,8 @@ HIGGSFIELD_API_KEY=hf_xxx
 HIGGSFIELD_SECRET=secret_xxx
 REPLICATE_API_TOKEN=r8_xxx
 ELEVENLABS_API_KEY=el_xxx
+GROQ_API_KEY=gsk_xxx
+FIREWORKS_API_KEY=fw_xxx
 CLOUDFLARE_R2_API_URL=https://xxx.r2.cloudflarestorage.com
 CLOUDFLARE_ACCESS_KEY_ID=xxx
 CLOUDFLARE_ACCESS_SECRET=xxx
@@ -71,6 +73,11 @@ bun run lib/replicate.ts minimax "person walking on beach"
 
 # generate voice with elevenlabs
 bun run lib/elevenlabs.ts tts "hello world" rachel output.mp3
+
+# transcribe audio to text/subtitles
+bun run service/transcribe.ts media/audio.mp3 groq
+bun run service/transcribe.ts media/audio.mp3 fireworks output.srt
+bun run lib/fireworks.ts media/audio.mp3 output.srt
 
 # edit video with ffmpeg
 bun run lib/ffmpeg.ts concat output.mp4 video1.mp4 video2.mp4
@@ -113,12 +120,15 @@ console.log(`uploaded: ${url}`)
 ## modules
 
 ### lib
-core libraries for video/audio processing:
+core libraries for video/audio/ai processing:
 - **ai-sdk/fal**: fal.ai using vercel ai sdk (recommended for images)
+- **ai-sdk/replicate**: replicate.com using vercel ai sdk
 - **fal**: fal.ai using direct client (for video & advanced features)
 - **higgsfield**: soul character generation
 - **replicate**: replicate.com api (minimax, kling, luma, flux)
 - **elevenlabs**: text-to-speech and voice generation
+- **groq**: ultra-fast whisper transcription (audio to text)
+- **fireworks**: word-level audio transcription with timestamps (srt/vtt)
 - **ffmpeg**: video editing operations (concat, trim, resize, etc.)
 
 ### service
@@ -126,6 +136,7 @@ high-level services combining multiple libs:
 - **image**: image generation (fal + higgsfield)
 - **video**: video generation from image/text
 - **voice**: voice generation with multiple providers (elevenlabs)
+- **transcribe**: audio transcription with groq whisper or fireworks (srt support)
 - **sync**: lipsync workflows (wav2lip, audio overlay)
 
 ### utilities

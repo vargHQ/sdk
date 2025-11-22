@@ -18,6 +18,10 @@ export * from "./lib/elevenlabs";
 export * from "./lib/fal";
 // lib exports - ffmpeg
 export * from "./lib/ffmpeg";
+// lib exports - fireworks
+export * from "./lib/fireworks";
+// lib exports - groq
+export * from "./lib/groq";
 // lib exports - higgsfield
 export * from "./lib/higgsfield";
 // lib exports - replicate
@@ -25,6 +29,7 @@ export * from "./lib/replicate";
 // service exports
 export * from "./service/image";
 export * from "./service/sync";
+export * from "./service/transcribe";
 export * from "./service/video";
 export * from "./service/voice";
 // utilities exports
