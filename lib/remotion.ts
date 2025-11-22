@@ -7,7 +7,9 @@
  * usage: bun run lib/remotion.ts <command> <args>
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";
 
@@ -26,6 +28,80 @@ export interface CompositionInfo {
   height: number;
   fps: number;
   durationInFrames: number;
+}
+
+export interface CreateProjectOptions {
+  templateUrl?: string;
+  dir?: string;
+}
+
+export interface CreateProjectResult {
+  projectDir: string;
+  entryPoint: string;
+  cleanup: () => void;
+}
+
+/**
+ * create a new remotion project from template in temp directory
+ */
+export async function createProject(
+  options: CreateProjectOptions = {},
+): Promise<CreateProjectResult> {
+  const templateUrl =
+    options.templateUrl || "https://github.com/caffeinum/remotion-template.git";
+
+  const projectDir =
+    options.dir ||
+    join(
+      tmpdir(),
+      `remotion-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    );
+
+  console.log(`[remotion] creating project from ${templateUrl}...`);
+  console.log(`[remotion] directory: ${projectDir}`);
+
+  // clone template
+  const cloneProc = Bun.spawn(["git", "clone", templateUrl, projectDir], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  await cloneProc.exited;
+
+  if (cloneProc.exitCode !== 0) {
+    const error = await new Response(cloneProc.stderr).text();
+    throw new Error(`failed to clone template: ${error}`);
+  }
+
+  console.log("[remotion] installing dependencies...");
+
+  // install dependencies
+  const installProc = Bun.spawn(["bun", "install"], {
+    cwd: projectDir,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  await installProc.exited;
+
+  if (installProc.exitCode !== 0) {
+    const error = await new Response(installProc.stderr).text();
+    throw new Error(`failed to install dependencies: ${error}`);
+  }
+
+  const entryPoint = join(projectDir, "src/index.ts");
+
+  console.log("[remotion] project ready!");
+  console.log(`[remotion] entry point: ${entryPoint}`);
+
+  return {
+    projectDir,
+    entryPoint,
+    cleanup: () => {
+      console.log(`[remotion] cleaning up ${projectDir}...`);
+      rmSync(projectDir, { recursive: true, force: true });
+    },
+  };
 }
 
 /**
@@ -189,12 +265,15 @@ usage:
   bun run lib/remotion.ts <command> [args]
 
 commands:
+  create [template-url]                                create new project from template
   compositions <entry-point.ts>                        list all compositions
   render <entry-point.ts> <comp-id> <output.mp4>      render video
   still <entry-point.ts> <comp-id> <frame> <out.png>  render still frame
   help                                                 show this help
 
 examples:
+  bun run lib/remotion.ts create
+  bun run lib/remotion.ts create https://github.com/user/template.git
   bun run lib/remotion.ts compositions src/index.ts
   bun run lib/remotion.ts render src/index.ts MyVideo output.mp4
   bun run lib/remotion.ts still src/index.ts MyVideo 30 frame.png
@@ -208,6 +287,20 @@ requirements:
 
   try {
     switch (command) {
+      case "create": {
+        const templateUrl = args[1];
+
+        const result = await createProject({
+          templateUrl,
+        });
+
+        console.log("\nproject created successfully!");
+        console.log(`directory: ${result.projectDir}`);
+        console.log(`entry point: ${result.entryPoint}`);
+        console.log("\nnote: cleanup() available but not called automatically");
+        break;
+      }
+
       case "compositions": {
         const entryPoint = args[1];
 
