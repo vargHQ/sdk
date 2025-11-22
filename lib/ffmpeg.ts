@@ -291,7 +291,7 @@ export async function probe(input: string): Promise<ProbeResult> {
         duration: metadata.format.duration || 0,
         width: videoStream.width || 0,
         height: videoStream.height || 0,
-        fps: eval(videoStream.r_frame_rate || "0") || 0,
+        fps: Number(videoStream.r_frame_rate || "0") || 0,
         codec: videoStream.codec_name || "",
         format: metadata.format.format_name || "",
       };
