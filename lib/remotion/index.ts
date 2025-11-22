@@ -17,7 +17,7 @@
  * - no need to copy anywhere!
  */
 
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";
@@ -51,16 +51,13 @@ export interface CreateCompositionResult {
 }
 
 /**
- * create composition directory structure
- *
- * much simpler than cloning templates!
- * just creates lib/remotion/compositions/ folder if needed
- * agent can then create .tsx files directly there
+ * create composition directory structure and template files
  *
  * flow:
  * 1. ensure lib/remotion/compositions/ exists
- * 2. return paths for agent to create files
- * 3. no cleanup needed - files stay in repo
+ * 2. create template composition tsx file
+ * 3. create template root tsx file with registerRoot
+ * 4. files are ready to customize
  */
 export async function createComposition(
   options: CreateCompositionOptions,
@@ -80,11 +77,83 @@ export async function createComposition(
   const compositionPath = join(compositionsDir, `${name}.tsx`);
   const rootPath = join(compositionsDir, `${name}.root.tsx`);
 
-  console.log(`[remotion] composition setup ready`);
-  console.log(`[remotion] create composition at: ${compositionPath}`);
-  console.log(`[remotion] create root at: ${rootPath}`);
+  // create template composition file
+  const compositionTemplate = `import React from "react";
+import {
+  AbsoluteFill,
+  OffthreadVideo,
+  Audio,
+  Img,
+  useCurrentFrame,
+  useVideoConfig,
+  interpolate,
+  staticFile,
+} from "remotion";
+
+export const ${name}: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // TODO: customize your composition
+  // Example: const video = staticFile("video.mp4");
+  // Example: const audio = staticFile("audio.mp3");
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "black" }}>
+      {/* Add your content here */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 60,
+          color: "white",
+        }}
+      >
+        Frame {frame}
+      </div>
+    </AbsoluteFill>
+  );
+};
+`;
+
+  // create template root file
+  const rootTemplate = `import React from "react";
+import { Composition, registerRoot } from "remotion";
+import { ${name} } from "./${name}";
+
+// TODO: configure your composition settings
+const fps = 30;
+const durationInFrames = 150; // 5 seconds at 30fps
+const width = 1920;
+const height = 1080;
+
+registerRoot(() => {
+  return (
+    <>
+      <Composition
+        id="${name}"
+        component={${name}}
+        durationInFrames={durationInFrames}
+        fps={fps}
+        width={width}
+        height={height}
+      />
+    </>
+  );
+});
+`;
+
+  // write files
+  writeFileSync(compositionPath, compositionTemplate);
+  writeFileSync(rootPath, rootTemplate);
+
+  console.log(`[remotion] created composition: ${compositionPath}`);
+  console.log(`[remotion] created root: ${rootPath}`);
+  console.log(`[remotion] copy media files to lib/remotion/public/`);
+  console.log(`[remotion] use staticFile("filename.ext") in your composition`);
   console.log(
-    `[remotion] media files can use absolute paths or relative to sdk root`,
+    `\n[remotion] render with: bun run lib/remotion/index.ts render ${rootPath} ${name} output.mp4`,
   );
 
   return {
@@ -323,15 +392,8 @@ requirements:
           throw new Error("composition name is required");
         }
 
-        const result = await createComposition({ name });
-
+        await createComposition({ name });
         console.log("\ncomposition setup complete!");
-        console.log(`\nnext steps:`);
-        console.log(`1. create ${result.compositionPath}`);
-        console.log(`2. create ${result.rootPath}`);
-        console.log(
-          `3. render using: bun run lib/remotion/index.ts render ${result.rootPath} <comp-id> output.mp4`,
-        );
         break;
       }
 

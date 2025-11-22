@@ -3,6 +3,26 @@
 ## overview
 programmatic video creation with react components using remotion
 
+## quick start
+```bash
+# 1. create composition with template files
+bun run lib/remotion/index.ts create MyVideo
+# creates: lib/remotion/compositions/MyVideo.tsx (composition component)
+#          lib/remotion/compositions/MyVideo.root.tsx (root with registerRoot)
+
+# 2. copy media files to public directory
+cp media/* lib/remotion/public/
+
+# 3. customize the generated composition files
+# - edit MyVideo.tsx to add your video/image/audio content
+# - edit MyVideo.root.tsx to set fps, duration, width, height
+
+# 4. render
+bun run lib/remotion/index.ts render lib/remotion/compositions/MyVideo.root.tsx MyVideo output.mp4
+```
+
+**important**: always use `staticFile("filename.ext")` for media paths, never absolute paths
+
 ## what you can use remotion for
 
 ### 1. video editing
@@ -54,23 +74,32 @@ programmatic video creation with react components using remotion
 
 ## capabilities
 
-### project creation
-- create new remotion project from template
-- clone git repository and install dependencies
-- returns project directory for editing
+### composition creation
+- create composition structure with `bun run lib/remotion/index.ts create <name>`
+- automatically generates template files:
+  - `<name>.tsx` - composition component with all necessary imports
+  - `<name>.root.tsx` - root file with registerRoot() already configured
+- files are ready to customize with your content
+- media files go in `lib/remotion/public/`
 
 ### composition editing
-- edit react components to create video scenes
-- use remotion's `<Video>`, `<Audio>`, `<Img>` components
+- write react components to create video scenes
+- use remotion's `<OffthreadVideo>`, `<Audio>`, `<Img>` components
+- reference media with `staticFile("filename.mp4")` helper
 - add animations with `useCurrentFrame()` and `interpolate()`
 - parse and display subtitles/captions
 - combine multiple videos sequentially or in parallel
 
+### root file setup
+- must use `registerRoot()` function (not export)
+- register compositions with `<Composition>` component
+- specify id, component, durationInFrames, fps, width, height
+
 ### rendering
-- bundle project with webpack
-- render compositions to mp4 video
+- bundle project with webpack automatically
+- render compositions to mp4 video with h264 codec
 - render single frames as images (thumbnails)
-- track rendering progress
+- track rendering progress in real-time
 
 ## common patterns
 
@@ -166,32 +195,51 @@ const subtitle = subtitles.find(
    bun run lib/ffmpeg.ts probe media/video.mp4
    ```
 
-2. **setup composition**
+2. **create composition with templates**
    ```bash
    bun run lib/remotion/index.ts create MyVideo
    ```
+   this automatically creates:
+   - `lib/remotion/compositions/MyVideo.tsx` (composition component)
+   - `lib/remotion/compositions/MyVideo.root.tsx` (root file with registerRoot)
 
-3. **create composition** (lib/remotion/compositions/MyVideo.tsx)
-   - import remotion components
-   - use `useCurrentFrame()` and `useVideoConfig()`
-   - add videos, images, text
-   - implement captions/animations
+3. **copy media to public directory**
+   ```bash
+   cp media/video.mp4 media/audio.mp3 media/*.png lib/remotion/public/
+   ```
 
-5. **register composition** (src/Root.tsx)
+4. **customize composition** (lib/remotion/compositions/MyVideo.tsx)
+   - template already has all imports: `OffthreadVideo`, `Audio`, `Img`, `staticFile`
+   - replace placeholder content with your media
+   - use `staticFile("filename.mp4")` for all media references
+   - add animations with `useCurrentFrame()` and `interpolate()`
+   
    ```tsx
-   <Composition
-     id="MyVideo"
-     component={MyComp}
-     durationInFrames={1500}
-     fps={30}
-     width={1920}
-     height={1080}
-   />
+   // example customization
+   const video = staticFile("video.mp4");
+   const audio = staticFile("audio.mp3");
+   
+   return (
+     <AbsoluteFill>
+       <OffthreadVideo src={video} />
+       <Audio src={audio} />
+     </AbsoluteFill>
+   );
+   ```
+
+5. **configure settings** (lib/remotion/compositions/MyVideo.root.tsx)
+   - template already uses `registerRoot()` correctly
+   - update fps, durationInFrames, width, height as needed
+   ```tsx
+   const fps = 30;
+   const durationInFrames = 150; // 5 seconds
+   const width = 1920;
+   const height = 1080;
    ```
 
 6. **render**
    ```bash
-   bun run lib/remotion.ts render /path/to/project/src/index.ts MyVideo output.mp4
+   bun run lib/remotion/index.ts render lib/remotion/compositions/MyVideo.root.tsx MyVideo output.mp4
    ```
 
 ## tools available
@@ -218,6 +266,103 @@ bun run lib/ffmpeg.ts probe <input.mp4>
 ```
 
 ## examples
+
+### complete workflow: video + images montage with audio
+
+```bash
+# 1. probe video to get metadata
+bun run lib/ffmpeg.ts probe media/kangaroo-scene.mp4
+# output: 1920x1080 @ 24fps, 5.041667s
+
+# 2. create composition structure
+bun run lib/remotion/index.ts create MediaMontage
+# creates: lib/remotion/compositions/MediaMontage.tsx
+#          lib/remotion/compositions/MediaMontage.root.tsx
+
+# 3. copy all media to public directory
+cp media/kangaroo-scene.mp4 media/dora.ogg media/*.png lib/remotion/public/
+
+# 4. create composition file (MediaMontage.tsx)
+cat > lib/remotion/compositions/MediaMontage.tsx << 'EOF'
+import React from "react";
+import { AbsoluteFill, OffthreadVideo, Audio, Img, useCurrentFrame, useVideoConfig, interpolate, staticFile } from "remotion";
+
+export const MediaMontage: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const imageDisplayTime = 3;
+  const imageFrames = imageDisplayTime * fps;
+  const videoFrames = Math.floor(5.041667 * fps);
+  
+  const videoPath = staticFile("kangaroo-scene.mp4");
+  const audioPath = staticFile("dora.ogg");
+  const images = [
+    staticFile("image1.png"),
+    staticFile("image2.png"),
+  ];
+
+  const videoEnd = videoFrames;
+  let content: React.ReactNode = null;
+  
+  if (frame < videoEnd) {
+    content = <OffthreadVideo src={videoPath} startFrom={frame} />;
+  } else {
+    const imageFrame = frame - videoEnd;
+    const imageIndex = Math.floor(imageFrame / imageFrames);
+    
+    if (imageIndex < images.length) {
+      const scale = interpolate(imageFrame % imageFrames, [0, imageFrames], [1, 1.15], { extrapolateRight: "clamp" });
+      content = (
+        <div style={{ width: "100%", height: "100%", transform: `scale(${scale})` }}>
+          <Img src={images[imageIndex] as string} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+      );
+    }
+  }
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "black" }}>
+      {content}
+      <Audio src={audioPath} />
+    </AbsoluteFill>
+  );
+};
+EOF
+
+# 5. create root file (MediaMontage.root.tsx)
+cat > lib/remotion/compositions/MediaMontage.root.tsx << 'EOF'
+import React from "react";
+import { Composition, registerRoot } from "remotion";
+import { MediaMontage } from "./MediaMontage";
+
+const fps = 30;
+const videoFrames = Math.floor(5.041667 * fps);
+const imageFrames = 2 * 3 * fps; // 2 images, 3 seconds each
+const totalFrames = videoFrames + imageFrames;
+
+registerRoot(() => {
+  return (
+    <>
+      <Composition
+        id="MediaMontage"
+        component={MediaMontage}
+        durationInFrames={totalFrames}
+        fps={fps}
+        width={1920}
+        height={1080}
+      />
+    </>
+  );
+});
+EOF
+
+# 6. render composition
+bun run lib/remotion/index.ts render lib/remotion/compositions/MediaMontage.root.tsx MediaMontage media/output.mp4
+
+# 7. verify output
+bun run lib/ffmpeg.ts probe media/output.mp4
+```
 
 ### render specific frame as thumbnail
 ```bash
@@ -457,13 +602,67 @@ const captionOpacity = interpolate(
 
 ## troubleshooting
 
+### "registerRoot" error when rendering
+- **error**: `This file does not contain "registerRoot"`
+- **cause**: root file exports component instead of calling registerRoot()
+- **fix**: use `registerRoot(() => { return (<>...</>) })` instead of `export const RemotionRoot`
+- **example**:
+  ```tsx
+  // ❌ wrong
+  export const RemotionRoot: React.FC = () => { return (<>...</>) };
+  
+  // ✅ correct
+  import { registerRoot } from "remotion";
+  registerRoot(() => { return (<>...</>) });
+  ```
+
 ### video not loading (404 error)
-- ensure video is in `public/` directory
-- use `staticFile("filename.mp4")` not absolute paths
-- check file exists: `ls project/public/filename.mp4`
+- **error**: `Received a status code of 404 while downloading file`
+- **cause**: using absolute file paths instead of staticFile()
+- **fix**: copy media to `lib/remotion/public/` and use `staticFile()`
+- **example**:
+  ```tsx
+  // ❌ wrong
+  const video = "/Users/aleks/project/media/video.mp4";
+  
+  // ✅ correct - copy file first
+  // cp media/video.mp4 lib/remotion/public/
+  import { staticFile } from "remotion";
+  const video = staticFile("video.mp4");
+  ```
+
+### deprecated components warnings
+- **warning**: `Video` and `Audio` are deprecated
+- **fix**: use `OffthreadVideo` instead of `Video`, `Audio` is still usable but may change
+- **example**:
+  ```tsx
+  // ❌ deprecated
+  import { Video } from "remotion";
+  <Video src={staticFile("video.mp4")} />
+  
+  // ✅ recommended
+  import { OffthreadVideo } from "remotion";
+  <OffthreadVideo src={staticFile("video.mp4")} />
+  ```
+
+### type errors with array indexing
+- **error**: `Type 'string | undefined' is not assignable to type 'string'`
+- **cause**: typescript doesn't know array index is valid
+- **fix**: use type assertion `as string` or check bounds
+- **example**:
+  ```tsx
+  // ❌ type error
+  <Img src={images[index]} />
+  
+  // ✅ with type assertion
+  <Img src={images[index] as string} />
+  
+  // ✅ with bounds check
+  {index < images.length && <Img src={images[index]} />}
+  ```
 
 ### composition not found
-- verify composition is registered in `src/Root.tsx`
+- verify composition is registered with registerRoot()
 - check composition id matches exactly
 - run `compositions` command to list available
 
@@ -479,10 +678,12 @@ const captionOpacity = interpolate(
 
 ## best practices
 
-1. **always probe videos first** - get accurate duration/fps
-2. **copy media to public/** - use staticFile() helper
-3. **calculate frames correctly** - duration * fps
-4. **test compositions** - use compositions command before rendering
-5. **handle fps differences** - adjust startFrom when concatenating
-6. **use descriptive ids** - make composition names clear
-7. **cleanup temp dirs** - call cleanup() when done (optional)
+1. **always probe videos first** - get accurate duration/fps using `bun run lib/ffmpeg.ts probe`
+2. **copy media to public/** - copy all media files to `lib/remotion/public/` before rendering
+3. **use staticFile() for all media** - never use absolute paths in compositions
+4. **use registerRoot()** - root files must call `registerRoot()`, not export a component
+5. **use OffthreadVideo** - prefer `OffthreadVideo` over deprecated `Video` component
+6. **calculate frames correctly** - `durationInFrames = duration * fps`
+7. **test compositions** - run `compositions` command to verify before rendering
+8. **handle fps differences** - adjust startFrom when concatenating videos with different fps
+9. **use descriptive ids** - make composition names clear and unique
