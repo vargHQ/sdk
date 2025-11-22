@@ -3,12 +3,52 @@
 ## overview
 create programmatic videos using react components with remotion
 
+## what remotion can do
+
+### video editing & effects
+- **trim & cut**: extract specific frame ranges from videos
+- **zoom & pan**: smooth ken burns effects, dynamic camera movements
+- **speed control**: slow motion, time-lapse, variable playback speed
+- **filters**: apply CSS filters (brightness, contrast, blur, grayscale)
+- **transitions**: crossfades, wipes, custom transitions between clips
+
+### combining content
+- **concatenate videos**: join multiple videos sequentially
+- **multi-track**: side-by-side, grid layouts, picture-in-picture
+- **audio mixing**: combine background music, voiceover, sound effects
+- **volume control**: fade in/out, dynamic volume adjustment
+- **layering**: overlay graphics, text, images on video
+
+### beautiful subtitles
+- **word-by-word captions**: sync text with audio timing
+- **custom styling**: fonts, colors, backgrounds, borders
+- **animations**: fade in/out, slide up, bounce effects
+- **positioning**: center, bottom, top, custom placement
+- **karaoke mode**: highlight current word
+- **rich formatting**: bold, italic, emoji, multi-line
+
+### thumbnail generation
+- **first frame extraction**: get video preview image
+- **specific frame render**: capture any frame as still image
+- **animated thumbnails**: create gif-like previews
+- **batch generation**: multiple frames for scrubbing preview
+
+### advanced capabilities
+- **motion graphics**: animated text, shapes, data visualizations
+- **responsive layouts**: adapt to different aspect ratios
+- **programmatic content**: generate videos from data/templates
+- **frame-perfect timing**: precise control down to single frame
+- **react ecosystem**: use any react library (charts, animations, etc)
+
 ## when to use
 - need precise control over video composition
 - want to add dynamic captions/subtitles
 - combining multiple videos with effects
 - creating videos from templates
 - need frame-perfect synchronization
+- editing videos programmatically
+- generating thumbnails and previews
+- creating social media content at scale
 
 ## prerequisites
 ```bash
@@ -237,6 +277,40 @@ project.cleanup();
 8. render
 ```
 
+### workflow 4: extract thumbnail (first frame)
+```
+1. probe video → verify it exists
+2. create project
+3. copy video to public/
+4. create simple composition with Video component
+5. register composition
+6. render still frame 0 as png/jpg
+```
+
+### workflow 5: zoom & pan effect
+```
+1. probe video or load image
+2. create project
+3. copy media to public/
+4. create composition with transform animations
+5. use interpolate() for scale and translate
+6. set easing for smooth motion
+7. register composition
+8. render
+```
+
+### workflow 6: multi-track audio/video
+```
+1. probe all media files
+2. create project
+3. copy videos + audio files to public/
+4. create composition with multiple Video/Audio components
+5. adjust volume levels with interpolate()
+6. sync timing using frame calculations
+7. register composition
+8. render
+```
+
 ## calculation formulas
 
 ### frames to seconds
@@ -367,8 +441,9 @@ loadFont({
 bun run lib/ffmpeg.ts convert input.mp4 output.mp4
 ```
 
-## example: complete workflow
+## example workflows
 
+### example 1: video with captions and concatenation
 ```bash
 # 1. probe videos
 bun run lib/ffmpeg.ts probe media/fitness-demo.mp4
@@ -401,6 +476,76 @@ bun run lib/remotion.ts render /tmp/remotion-xyz/src/index.ts Demo media/output.
 # 8. verify output
 bun run lib/ffmpeg.ts probe media/output.mp4
 # 360x640 @ 30fps, 52.73s
+```
+
+### example 2: extract first frame as thumbnail
+```bash
+# 1. probe video
+bun run lib/ffmpeg.ts probe media/video.mp4
+# output: 1920x1080 @ 30fps, 60s
+
+# 2. create project
+bun run lib/remotion.ts create
+# directory: /tmp/remotion-abc
+
+# 3. copy video
+cp media/video.mp4 /tmp/remotion-abc/public/
+
+# 4. create simple composition (src/Thumbnail.tsx)
+# import { Video, staticFile } from "remotion";
+# export const Thumbnail = () => <Video src={staticFile("video.mp4")} />;
+
+# 5. register in Root.tsx with durationInFrames: 1
+
+# 6. render first frame
+bun run lib/remotion.ts still /tmp/remotion-abc/src/index.ts Thumbnail 0 thumbnail.png
+# [remotion] saved to thumbnail.png
+```
+
+### example 3: zoom effect with audio
+```bash
+# 1. create project
+bun run lib/remotion.ts create
+
+# 2. copy media
+cp media/image.jpg /tmp/remotion-xyz/public/
+cp media/music.mp3 /tmp/remotion-xyz/public/
+
+# 3. create composition with zoom (src/Zoom.tsx)
+# const scale = interpolate(frame, [0, 150], [1, 1.5]);
+# <div style={{ transform: `scale(${scale})` }}>
+#   <Img src={staticFile("image.jpg")} />
+# </div>
+# <Audio src={staticFile("music.mp3")} />
+
+# 4. register composition
+# durationInFrames: 150 (5 seconds @ 30fps)
+
+# 5. render
+bun run lib/remotion.ts render /tmp/remotion-xyz/src/index.ts Zoom zoomed.mp4
+```
+
+### example 4: side-by-side comparison
+```bash
+# 1. probe videos
+bun run lib/ffmpeg.ts probe media/before.mp4
+bun run lib/ffmpeg.ts probe media/after.mp4
+
+# 2. create project and copy videos
+bun run lib/remotion.ts create
+cp media/before.mp4 /tmp/remotion-xyz/public/
+cp media/after.mp4 /tmp/remotion-xyz/public/
+
+# 3. create side-by-side composition
+# <AbsoluteFill style={{ width: "50%", left: 0 }}>
+#   <Video src={staticFile("before.mp4")} />
+# </AbsoluteFill>
+# <AbsoluteFill style={{ width: "50%", left: "50%" }}>
+#   <Video src={staticFile("after.mp4")} />
+# </AbsoluteFill>
+
+# 4. render
+bun run lib/remotion.ts render /tmp/remotion-xyz/src/index.ts Comparison comparison.mp4
 ```
 
 ## see also

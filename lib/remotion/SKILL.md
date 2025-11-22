@@ -3,6 +3,55 @@
 ## overview
 programmatic video creation with react components using remotion
 
+## what you can use remotion for
+
+### 1. video editing
+- trim videos to specific frame ranges
+- adjust playback speed (slow motion, time-lapse)
+- apply filters and color grading with CSS
+- overlay graphics and text
+- create picture-in-picture effects
+
+### 2. zooming and panning
+- smooth zoom in/out effects with `interpolate()`
+- ken burns effect on static images
+- dynamic camera movements
+- focus on specific areas frame-by-frame
+
+### 3. combining multiple videos
+- concatenate videos sequentially (one after another)
+- play videos side-by-side or in grid layouts
+- layer videos with opacity/blend modes
+- transition between scenes with crossfades
+
+### 4. audio mixing
+- combine multiple audio tracks
+- sync audio with video
+- adjust volume levels with `interpolate()`
+- add background music and sound effects
+- fade in/out audio
+
+### 5. beautiful subtitles
+- word-by-word animated captions
+- styled text with custom fonts and colors
+- background boxes for readability
+- position captions anywhere on screen
+- karaoke-style highlighting
+- emoji support and rich formatting
+
+### 6. thumbnail generation
+- extract first frame as preview image
+- render specific frames as stills
+- create animated thumbnails
+- generate multiple preview frames
+
+### 7. advanced effects
+- motion graphics and animations
+- data visualizations synchronized with narration
+- dynamic text reveals
+- progress bars and timers
+- responsive layouts that adapt to content
+
 ## capabilities
 
 ### project creation
@@ -175,6 +224,116 @@ bun run lib/ffmpeg.ts probe <input.mp4>
 
 ## examples
 
+### extract first frame as thumbnail
+```bash
+# render frame 0 as image
+bun run lib/remotion.ts still /path/to/project/src/index.ts MyVideo 0 thumbnail.png
+```
+
+```typescript
+// or render first frame in composition
+import { staticFile } from "remotion";
+
+// this will capture the first frame
+<Img src={staticFile("video.mp4")} />
+```
+
+### zoom in effect
+```typescript
+import { interpolate } from "remotion";
+
+const frame = useCurrentFrame();
+
+// zoom from 1x to 2x over 60 frames
+const scale = interpolate(frame, [0, 60], [1, 2], {
+  extrapolateRight: "clamp"
+});
+
+return (
+  <AbsoluteFill>
+    <div style={{
+      transform: `scale(${scale})`,
+      transformOrigin: "center center"
+    }}>
+      <Video src={staticFile("video.mp4")} />
+    </div>
+  </AbsoluteFill>
+);
+```
+
+### ken burns effect (pan + zoom)
+```typescript
+const scale = interpolate(frame, [0, 150], [1, 1.3]);
+const translateX = interpolate(frame, [0, 150], [0, -100]);
+const translateY = interpolate(frame, [0, 150], [0, -50]);
+
+return (
+  <div style={{
+    transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
+  }}>
+    <Img src={staticFile("image.jpg")} />
+  </div>
+);
+```
+
+### combine multiple audio tracks
+```typescript
+import { Audio } from "remotion";
+
+return (
+  <AbsoluteFill>
+    <Video src={staticFile("video.mp4")} />
+    {/* background music at 30% volume */}
+    <Audio src={staticFile("music.mp3")} volume={0.3} />
+    {/* voiceover at full volume */}
+    <Audio src={staticFile("narration.mp3")} volume={1} />
+  </AbsoluteFill>
+);
+```
+
+### audio fade in/out
+```typescript
+const audioVolume = interpolate(
+  frame,
+  [0, 30, 270, 300],  // fade in first 30 frames, out last 30
+  [0, 1, 1, 0],
+  { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+);
+
+<Audio src={staticFile("music.mp3")} volume={audioVolume} />
+```
+
+### side-by-side videos
+```typescript
+const { width, height } = useVideoConfig();
+
+return (
+  <AbsoluteFill>
+    {/* left video */}
+    <AbsoluteFill style={{ width: width / 2, left: 0 }}>
+      <Video src={staticFile("video1.mp4")} />
+    </AbsoluteFill>
+    
+    {/* right video */}
+    <AbsoluteFill style={{ width: width / 2, left: width / 2 }}>
+      <Video src={staticFile("video2.mp4")} />
+    </AbsoluteFill>
+  </AbsoluteFill>
+);
+```
+
+### grid layout (4 videos)
+```typescript
+return (
+  <AbsoluteFill style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+    <Video src={staticFile("video1.mp4")} />
+    <Video src={staticFile("video2.mp4")} />
+    <Video src={staticFile("video3.mp4")} />
+    <Video src={staticFile("video4.mp4")} />
+  </AbsoluteFill>
+);
+```
+
 ### video with word-by-word captions
 ```typescript
 // parse SRT
@@ -217,6 +376,74 @@ return (
     )}
   </AbsoluteFill>
 );
+```
+
+### crossfade transition between videos
+```typescript
+const transitionStart = 140;
+const transitionDuration = 20;
+
+const opacity1 = interpolate(
+  frame,
+  [transitionStart, transitionStart + transitionDuration],
+  [1, 0],
+  { extrapolateRight: "clamp" }
+);
+
+const opacity2 = interpolate(
+  frame,
+  [transitionStart, transitionStart + transitionDuration],
+  [0, 1],
+  { extrapolateRight: "clamp" }
+);
+
+return (
+  <AbsoluteFill>
+    <AbsoluteFill style={{ opacity: opacity1 }}>
+      <Video src={staticFile("video1.mp4")} />
+    </AbsoluteFill>
+    <AbsoluteFill style={{ opacity: opacity2 }}>
+      <Video src={staticFile("video2.mp4")} />
+    </AbsoluteFill>
+  </AbsoluteFill>
+);
+```
+
+### beautiful animated captions
+```typescript
+// word appears from bottom with bounce
+const captionY = interpolate(
+  frame - subtitle.startFrame,
+  [0, 10],
+  [50, 0],
+  { extrapolateRight: "clamp", easing: Easing.bounce }
+);
+
+const captionOpacity = interpolate(
+  frame - subtitle.startFrame,
+  [0, 5],
+  [0, 1],
+  { extrapolateRight: "clamp" }
+);
+
+{currentSubtitle && (
+  <div style={{
+    fontFamily: "Inter",
+    fontSize: 60,
+    fontWeight: "900",
+    color: "#FFD700",
+    textAlign: "center",
+    textShadow: "4px 4px 8px rgba(0,0,0,0.8)",
+    background: "linear-gradient(135deg, rgba(0,0,0,0.9), rgba(20,20,50,0.9))",
+    padding: "30px 50px",
+    borderRadius: 20,
+    border: "3px solid #FFD700",
+    transform: `translateY(${captionY}px)`,
+    opacity: captionOpacity,
+  }}>
+    {currentSubtitle.text.toUpperCase()}
+  </div>
+)}
 ```
 
 ## troubleshooting
