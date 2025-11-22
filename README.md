@@ -15,6 +15,7 @@ sdk/
 │   ├── fal/
 │   ├── higgsfield/
 │   ├── ffmpeg/
+│   ├── remotion/
 │   ├── remotion.dev/
 │   └── motion.dev/
 │
@@ -131,6 +132,7 @@ core libraries for video/audio/ai processing:
 - **groq**: ultra-fast whisper transcription (audio to text)
 - **fireworks**: word-level audio transcription with timestamps (srt/vtt)
 - **ffmpeg**: video editing operations (concat, trim, resize, etc.)
+- **remotion**: programmatic video creation with react
 
 ### service
 high-level services combining multiple libs. each service includes a SKILL.md for claude code agent skills:
