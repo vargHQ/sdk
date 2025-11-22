@@ -2,7 +2,12 @@
   "name": "varg.ai-sdk",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.7",
     "@types/bun": "latest"
   },
   "peerDependencies": {
