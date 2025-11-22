@@ -86,29 +86,41 @@ bun run lib/remotion/index.ts create MyVideo
 - compositionsDir: lib/remotion/compositions/
 
 ### step 3: create composition component
-create new file `lib/remotion/compositions/MyVideo.tsx`
+edit generated file `lib/remotion/compositions/MyVideo.tsx`
 
 **media files:**
-- use absolute paths: `/Users/aleks/Github/SecurityQQ/sdk/media/video.mp4`
-- no need to copy files anywhere
-- can reference any file on disk
+- copy media to `lib/remotion/public/` directory
+- use `staticFile("filename.ext")` to reference files
+- never use absolute paths in compositions
 
-if using subtitles, read and parse SRT files:
+```bash
+mkdir -p lib/remotion/public
+cp media/video.mp4 media/audio.mp3 lib/remotion/public/
+```
+
+if using subtitles, copy SRT and read:
+```bash
+cp media/subtitles.srt lib/remotion/public/
+```
+
 ```typescript
-const srtContent = await Bun.file("/Users/aleks/Github/SecurityQQ/sdk/media/subtitles.srt").text();
+import { staticFile } from "remotion";
+const srtContent = await Bun.file(staticFile("subtitles.srt")).text();
 ```
 
 **basic structure:**
 ```typescript
-import { AbsoluteFill, Video, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, OffthreadVideo, useCurrentFrame, useVideoConfig, staticFile } from "remotion";
 
 export const MyComposition: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   
+  const video = staticFile("video1.mp4");
+  
   return (
     <AbsoluteFill>
-      <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video1.mp4" />
+      <OffthreadVideo src={video} />
     </AbsoluteFill>
   );
 };
@@ -149,38 +161,49 @@ const currentSubtitle = subtitles.find(
 
 **for concatenation:**
 ```typescript
+const video1 = staticFile("video1.mp4");
+const video2 = staticFile("video2.mp4");
+
 const video1EndFrame = 1430; // calculated from probe
 const video2StartFrame = video1EndFrame;
 
 {frame < video1EndFrame ? (
-  <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video1.mp4" />
+  <OffthreadVideo src={video1} />
 ) : (
   <OffthreadVideo 
-    src="/Users/aleks/Github/SecurityQQ/sdk/media/video2.mp4"
+    src={video2}
     startFrom={Math.floor((frame - video2StartFrame) * (24/30))}
   />
 )}
 ```
 
 ### step 4: register composition
-create `lib/remotion/compositions/MyVideo.root.tsx`
+edit generated file `lib/remotion/compositions/MyVideo.root.tsx`
 
 ```typescript
-import { Composition } from "remotion";
+import React from "react";
+import { Composition, registerRoot } from "remotion";
 import { MyComposition } from "./MyVideo";
 
-export const RemotionRoot = () => {
+const fps = 30;
+const durationInFrames = 1582;  // total frames
+const width = 1920;
+const height = 1080;
+
+registerRoot(() => {
   return (
-    <Composition
-      id="MyVideo"
-      component={MyComposition}
-      durationInFrames={1582}  // total frames
-      fps={30}
-      width={1920}
-      height={1080}
-    />
+    <>
+      <Composition
+        id="MyVideo"
+        component={MyComposition}
+        durationInFrames={durationInFrames}
+        fps={fps}
+        width={width}
+        height={height}
+      />
+    </>
   );
-};
+});
 ```
 
 **calculate durationInFrames:**
@@ -254,47 +277,50 @@ check:
 ### workflow 3: video with overlay graphics
 ```
 1. probe video
-2. create project
-3. copy video + images to public/
-4. create composition with layers
+2. setup composition
+3. copy video + images to lib/remotion/public/
+4. create composition with layers using staticFile()
 5. use interpolate() for animations
 6. position overlays with AbsoluteFill
-7. register composition
+7. register composition with registerRoot()
 8. render
 ```
 
 ### workflow 4: render custom thumbnail
 ```
-1. create project
-2. copy video to public/
-3. create thumbnail composition with Video + overlays
-4. add text, logos, graphics on top
-5. register composition
-6. render specific frame as png/jpg using renderStill
+1. setup composition
+2. copy video to lib/remotion/public/
+3. create thumbnail composition with OffthreadVideo + overlays
+4. use staticFile() for video path
+5. add text, logos, graphics on top
+6. register composition with registerRoot()
+7. render specific frame as png/jpg using renderStill
 ```
 
 ### workflow 5: zoom & pan effect
 ```
-1. probe video or load image
-2. create project
-3. copy media to public/
+1. probe video or image
+2. setup composition
+3. copy media to lib/remotion/public/
 4. create composition with transform animations
-5. use interpolate() for scale and translate
-6. set easing for smooth motion
-7. register composition
-8. render
+5. use staticFile() for media paths
+6. use interpolate() for scale and translate
+7. set easing for smooth motion
+8. register composition with registerRoot()
+9. render
 ```
 
 ### workflow 6: multi-track audio/video
 ```
 1. probe all media files
-2. create project
-3. copy videos + audio files to public/
-4. create composition with multiple Video/Audio components
-5. adjust volume levels with interpolate()
-6. sync timing using frame calculations
-7. register composition
-8. render
+2. setup composition
+3. copy videos + audio files to lib/remotion/public/
+4. create composition with multiple OffthreadVideo/Audio components
+5. use staticFile() for all media paths
+6. adjust volume levels with interpolate()
+7. sync timing using frame calculations
+8. register composition with registerRoot()
+9. render
 ```
 
 ## calculation formulas
@@ -376,8 +402,9 @@ const scale = Math.min(width / 1920, height / 1080);
 
 ### issue: video not loading
 **solution:**
-- use absolute paths to media files
-- verify file exists with full path
+- copy media files to `lib/remotion/public/`
+- use `staticFile("filename.ext")` not absolute paths
+- verify file exists in public directory
 - check file permissions
 
 ### issue: captions out of sync
@@ -400,9 +427,10 @@ const scale = Math.min(width / 1920, height / 1080);
 
 ### issue: render fails
 **solution:**
-- check all media files exist at absolute paths
-- verify composition is registered in root
+- verify all media files exist in `lib/remotion/public/`
+- check composition is registered with `registerRoot()`
 - ensure durationInFrames is sufficient
+- verify all media paths use `staticFile()`
 - check console for webpack errors
 
 ## performance optimization
@@ -464,28 +492,34 @@ bun run lib/ffmpeg.ts probe media/output.mp4
 # 1. setup composition
 bun run lib/remotion/index.ts create Thumbnail
 
-# 2. create thumbnail composition lib/remotion/compositions/Thumbnail.tsx
-# import { AbsoluteFill, Video } from "remotion";
-# export const Thumbnail = () => (
-#   <AbsoluteFill>
-#     <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/video.mp4" />
-#     <div style={{
-#       position: "absolute",
-#       bottom: 50,
-#       left: 50,
-#       fontSize: 72,
-#       fontWeight: "bold",
-#       color: "white",
-#       textShadow: "4px 4px 8px black"
-#     }}>
-#       MY VIDEO TITLE
-#     </div>
-#   </AbsoluteFill>
-# );
+# 2. copy media
+cp media/video.mp4 lib/remotion/public/
 
-# 3. create root lib/remotion/compositions/Thumbnail.root.tsx
+# 3. edit thumbnail composition lib/remotion/compositions/Thumbnail.tsx
+# import { AbsoluteFill, OffthreadVideo, staticFile } from "remotion";
+# export const Thumbnail = () => {
+#   const video = staticFile("video.mp4");
+#   return (
+#     <AbsoluteFill>
+#       <OffthreadVideo src={video} />
+#       <div style={{
+#         position: "absolute",
+#         bottom: 50,
+#         left: 50,
+#         fontSize: 72,
+#         fontWeight: "bold",
+#         color: "white",
+#         textShadow: "4px 4px 8px black"
+#       }}>
+#         MY VIDEO TITLE
+#       </div>
+#     </AbsoluteFill>
+#   );
+# };
 
-# 4. render frame 90 (3 seconds in @ 30fps)
+# 4. edit root with registerRoot() lib/remotion/compositions/Thumbnail.root.tsx
+
+# 5. render frame 90 (3 seconds in @ 30fps)
 bun run lib/remotion/index.ts still lib/remotion/compositions/Thumbnail.root.tsx Thumbnail 90 media/thumbnail.png
 # [remotion] saved to media/thumbnail.png
 ```
@@ -495,16 +529,23 @@ bun run lib/remotion/index.ts still lib/remotion/compositions/Thumbnail.root.tsx
 # 1. setup composition
 bun run lib/remotion/index.ts create Zoom
 
-# 2. create composition lib/remotion/compositions/Zoom.tsx
+# 2. copy media
+cp media/image.jpg media/music.mp3 lib/remotion/public/
+
+# 3. edit composition lib/remotion/compositions/Zoom.tsx
+# import { Img, Audio, staticFile, interpolate, useCurrentFrame } from "remotion";
+# const frame = useCurrentFrame();
+# const image = staticFile("image.jpg");
+# const audio = staticFile("music.mp3");
 # const scale = interpolate(frame, [0, 150], [1, 1.5]);
 # <div style={{ transform: `scale(${scale})` }}>
-#   <Img src="/Users/aleks/Github/SecurityQQ/sdk/media/image.jpg" />
+#   <Img src={image} />
 # </div>
-# <Audio src="/Users/aleks/Github/SecurityQQ/sdk/media/music.mp3" />
+# <Audio src={audio} />
 
-# 3. create root with durationInFrames: 150 (5 seconds @ 30fps)
+# 4. edit root with registerRoot() and durationInFrames: 150 (5 seconds @ 30fps)
 
-# 4. render
+# 5. render
 bun run lib/remotion/index.ts render lib/remotion/compositions/Zoom.root.tsx Zoom media/zoomed.mp4
 ```
 
@@ -514,18 +555,26 @@ bun run lib/remotion/index.ts render lib/remotion/compositions/Zoom.root.tsx Zoo
 bun run lib/ffmpeg.ts probe media/before.mp4
 bun run lib/ffmpeg.ts probe media/after.mp4
 
-# 2. setup and create composition
+# 2. setup composition
 bun run lib/remotion/index.ts create Comparison
 
-# 3. create side-by-side composition lib/remotion/compositions/Comparison.tsx
+# 3. copy media
+cp media/before.mp4 media/after.mp4 lib/remotion/public/
+
+# 4. edit composition lib/remotion/compositions/Comparison.tsx
+# import { AbsoluteFill, OffthreadVideo, staticFile } from "remotion";
+# const before = staticFile("before.mp4");
+# const after = staticFile("after.mp4");
 # <AbsoluteFill style={{ width: "50%", left: 0 }}>
-#   <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/before.mp4" />
+#   <OffthreadVideo src={before} />
 # </AbsoluteFill>
 # <AbsoluteFill style={{ width: "50%", left: "50%" }}>
-#   <Video src="/Users/aleks/Github/SecurityQQ/sdk/media/after.mp4" />
+#   <OffthreadVideo src={after} />
 # </AbsoluteFill>
 
-# 4. render
+# 5. edit root with registerRoot()
+
+# 6. render
 bun run lib/remotion/index.ts render lib/remotion/compositions/Comparison.root.tsx Comparison media/comparison.mp4
 ```
 
