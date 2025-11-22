@@ -1,5 +1,9 @@
-import { createComposition, render, renderStill } from ".";
-import { getCompositionsList } from "./functions";
+import {
+  createComposition,
+  getCompositionsList,
+  render,
+  renderStill,
+} from "./functions";
 
 // cli
 export async function cli() {
