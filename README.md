@@ -7,6 +7,9 @@ video generation and editing tools sdk
 ```
 sdk/
 │
+├── media/              # working directory for media files (images, videos, audio)
+├── output/             # generated output files
+│
 ├── utilities/
 │
 ├── lib/
@@ -64,7 +67,8 @@ bun run lib/ai-sdk/fal.ts generate_image "a beautiful sunset" "fal-ai/flux/dev" 
 # generate image with fal client (advanced features)
 bun run lib/fal.ts generate_image "a beautiful sunset"
 
-# generate video from image
+# generate video from image (supports local files)
+bun run lib/fal.ts image_to_video "person talking" media/image.jpg 5
 bun run lib/fal.ts image_to_video "person talking" https://example.com/image.jpg 5
 
 # generate soul character
@@ -125,7 +129,7 @@ console.log(`uploaded: ${url}`)
 core libraries for video/audio/ai processing:
 - **ai-sdk/fal**: fal.ai using vercel ai sdk (recommended for images)
 - **ai-sdk/replicate**: replicate.com using vercel ai sdk
-- **fal**: fal.ai using direct client (for video & advanced features)
+- **fal**: fal.ai using direct client (for video & advanced features, supports local file uploads)
 - **higgsfield**: soul character generation
 - **replicate**: replicate.com api (minimax, kling, luma, flux)
 - **elevenlabs**: text-to-speech and voice generation
@@ -133,6 +137,12 @@ core libraries for video/audio/ai processing:
 - **fireworks**: word-level audio transcription with timestamps (srt/vtt)
 - **ffmpeg**: video editing operations (concat, trim, resize, etc.)
 - **remotion**: programmatic video creation with react
+
+### media folder
+- **media/**: working directory for storing input media files (images, videos, audio)
+- **output/**: directory for generated/processed output files
+- use `media/` for source files, `output/` for results
+- fal.ts supports local file paths from `media/` folder
 
 ### service
 high-level services combining multiple libs. each service includes a SKILL.md for claude code agent skills:

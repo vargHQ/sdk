@@ -1,10 +1,17 @@
 ---
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
+description: Use Bun instead of Node.js, npm, pnpm, or vite. Use existing tools via bash commands.
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ---
 
 Default to using Bun instead of Node.js.
+
+## Working with this SDK
+
+- **Use existing tools**: Always use the built-in CLI tools via bash commands (e.g., `bun run lib/fal.ts`, `bun run lib/elevenlabs.ts`)
+- **Don't write custom scripts**: Avoid creating new TypeScript/JavaScript scripts. Use the existing lib/ tools directly
+- **Media folders**: Store input files in `media/` folder, outputs go to `output/` folder
+- **Local file support**: Tools like `lib/fal.ts` support local file paths (e.g., `media/image.png`) in addition to URLs
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
 - Use `bun test` instead of `jest` or `vitest`
