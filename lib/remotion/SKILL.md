@@ -169,6 +169,21 @@ const subtitle = subtitles.find(
 
 ## important notes
 
+### audio/voiceover duration
+- always probe audio files before setting composition duration
+- voiceovers are often much longer than you think (can be 30s, 60s, or more)
+- never assume voiceover duration - always check with ffmpeg probe
+- common mistake: setting durationInFrames too short, cutting off audio
+- workflow: 
+  1. probe voiceover: `bun run lib/ffmpeg.ts probe media/voiceover.mp3`
+  2. note the duration (e.g., 45.2 seconds)
+  3. calculate frames: `45.2 * 30fps = 1356 frames`
+  4. set composition `durationInFrames` to match or exceed this
+- if video is shorter than audio, you need to either:
+  - extend video with images/broll to match audio length
+  - trim the audio to match video length
+- verify before rendering: check that composition duration >= audio duration
+
 ### media file paths
 - copy media to `public/` directory in project
 - use `staticFile("filename.mp4")` to reference
@@ -191,9 +206,14 @@ const subtitle = subtitles.find(
 
 ## typical workflow
 
-1. **probe videos** (get duration, fps, resolution)
+1. **probe all media files** (especially audio/voiceover - they're often very long)
    ```bash
+   # probe video to get duration, fps, resolution
    bun run lib/ffmpeg.ts probe media/video.mp4
+   
+   # probe voiceover/audio to get true duration
+   bun run lib/ffmpeg.ts probe media/voiceover.mp3
+   # voiceovers can be 30s, 60s, or more - never assume
    ```
 
 2. **create composition with templates**
@@ -671,6 +691,25 @@ const captionOpacity = interpolate(
 - check composition id matches exactly
 - run `compositions` command to list available
 
+### audio/voiceover gets cut off
+- error: rendered video ends before audio finishes
+- cause: composition `durationInFrames` is shorter than audio duration
+- fix: probe audio first, calculate correct frame count
+- example:
+  ```bash
+  # probe the voiceover
+  bun run lib/ffmpeg.ts probe media/voiceover.mp3
+  # output: duration: 47.2s
+  
+  # calculate frames for 30fps
+  # 47.2 * 30 = 1416 frames
+  
+  # in root file, set durationInFrames to at least 1416
+  const durationInFrames = 1416; // or higher if adding more content
+  ```
+- prevention: always probe audio files before setting composition duration
+- common mistake: assuming voiceover is only 5-10 seconds when it's actually 30-60+ seconds
+
 ### wrong video duration
 - probe video to get exact duration and fps
 - calculate frames: `durationInFrames = duration * fps`
@@ -684,11 +723,13 @@ const captionOpacity = interpolate(
 ## best practices
 
 1. **always probe videos first** - get accurate duration/fps using `bun run lib/ffmpeg.ts probe`
-2. **copy media to public/** - copy all media files to `lib/remotion/public/` before rendering
-3. **use staticFile() for all media** - never use absolute paths in compositions
-4. **use registerRoot()** - root files must call `registerRoot()`, not export a component
-5. **use OffthreadVideo** - prefer `OffthreadVideo` over deprecated `Video` component
-6. **calculate frames correctly** - `durationInFrames = duration * fps`
-7. **test compositions** - run `compositions` command to verify before rendering
-8. **handle fps differences** - adjust startFrom when concatenating videos with different fps
-9. **use descriptive ids** - make composition names clear and unique
+2. **probe audio files too** - voiceovers/narration are often 30s, 60s, or longer - never guess duration
+3. **verify composition duration vs audio** - make sure `durationInFrames` is >= audio duration, or audio will be cut off
+4. **copy media to public/** - copy all media files to `lib/remotion/public/` before rendering
+5. **use staticFile() for all media** - never use absolute paths in compositions
+6. **use registerRoot()** - root files must call `registerRoot()`, not export a component
+7. **use OffthreadVideo** - prefer `OffthreadVideo` over deprecated `Video` component
+8. **calculate frames correctly** - `durationInFrames = duration * fps`
+9. **test compositions** - run `compositions` command to verify before rendering
+10. **handle fps differences** - adjust startFrom when concatenating videos with different fps
+11. **use descriptive ids** - make composition names clear and unique
