@@ -39,27 +39,32 @@ uses `@fal-ai/client` directly with the raw fal api
 - streaming/queue updates
 - full control over api parameters
 - required for video generation (no ai-sdk support yet)
+- **supports local images** - automatically uploads local files to fal storage
 
-**example:**
+**examples:**
 ```bash
+# image generation
 bun run lib/fal.ts generate_image "aurora borealis" "fal-ai/flux-pro/v1.1"
+
+# video from url
 bun run lib/fal.ts image_to_video "person talking" "https://image.url" 5
+
+# video from local file (auto-uploads)
+bun run lib/fal.ts image_to_video "ocean waves" "./media/beach.jpg" 10
 ```
 
 **code:**
 ```typescript
-import { fal } from "@fal-ai/client"
+import { imageToVideo } from "./lib/fal"
 
-const result = await fal.subscribe("fal-ai/flux-pro/v1.1", {
-  input: {
-    prompt: "mountain landscape",
-    image_size: "landscape_4_3",
-  },
-  logs: true,
-  onQueueUpdate: (update) => {
-    console.log(update.status)
-  },
+// works with both urls and local files
+const result = await imageToVideo({
+  prompt: "person talking",
+  imageUrl: "./local/image.jpg", // or "https://..."
+  duration: 5,
 })
+
+// local files are automatically uploaded to fal storage
 ```
 
 ## when to use which?

@@ -7,12 +7,44 @@
  */
 
 import { fal } from "@fal-ai/client";
+import { existsSync } from "node:fs";
 
 interface FalImageToVideoArgs {
   prompt: string;
-  imageUrl: string;
+  imageUrl: string; // can be url or local file path
   modelVersion?: string;
   duration?: 5 | 10;
+}
+
+/**
+ * upload local file to fal storage if needed
+ * returns the url (either original or uploaded)
+ */
+async function ensureImageUrl(imagePathOrUrl: string): Promise<string> {
+  // if it's already a url, return it
+  if (
+    imagePathOrUrl.startsWith("http://") ||
+    imagePathOrUrl.startsWith("https://")
+  ) {
+    return imagePathOrUrl;
+  }
+
+  // check if local file exists
+  if (!existsSync(imagePathOrUrl)) {
+    throw new Error(`local file not found: ${imagePathOrUrl}`);
+  }
+
+  console.log(`[fal] uploading local file: ${imagePathOrUrl}`);
+
+  // read file and upload to fal
+  const file = await Bun.file(imagePathOrUrl).arrayBuffer();
+
+  const uploadedUrl = await fal.storage.upload(
+    new Blob([file], { type: "image/jpeg" }),
+  );
+
+  console.log(`[fal] uploaded to: ${uploadedUrl}`);
+  return uploadedUrl;
 }
 
 interface FalTextToVideoArgs {
@@ -28,11 +60,14 @@ export async function imageToVideo(args: FalImageToVideoArgs) {
   console.log(`[fal] prompt: ${args.prompt}`);
   console.log(`[fal] image: ${args.imageUrl}`);
 
+  // upload local file if needed
+  const imageUrl = await ensureImageUrl(args.imageUrl);
+
   try {
     const result = await fal.subscribe(modelId, {
       input: {
         prompt: args.prompt,
-        image_url: args.imageUrl,
+        image_url: imageUrl,
         duration: args.duration || 5,
       },
       logs: true,
@@ -134,9 +169,11 @@ if (import.meta.main) {
     case "image_to_video": {
       if (!args[0] || !args[1]) {
         console.log(`
-Usage: bun run lib/fal.ts image_to_video <prompt> <image_url> [duration]
-Example:
+usage: bun run lib/fal.ts image_to_video <prompt> <image_path_or_url> [duration]
+
+examples:
   bun run lib/fal.ts image_to_video "person talking" "https://image.url" 5
+  bun run lib/fal.ts image_to_video "ocean waves" "./media/beach.jpg" 10
         `);
         process.exit(1);
       }
@@ -205,8 +242,8 @@ available image sizes:
     default:
       console.log(`
 usage:
-  # video generation (requires fal client)
-  bun run lib/fal.ts image_to_video <prompt> <imageUrl> [duration]
+  # video generation (supports local files and urls)
+  bun run lib/fal.ts image_to_video <prompt> <image_path_or_url> [duration]
   bun run lib/fal.ts text_to_video <prompt> [duration]
   
   # image generation (fal client with all features)

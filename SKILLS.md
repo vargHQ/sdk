@@ -13,7 +13,8 @@ located in `service/<name>/SKILL.md`:
    - cli: `bun run service/image fal|soul <prompt> [options]`
 
 2. **video-generation** (`service/video/`)
-   - generate videos from images or text prompts using fal.ai
+   - generate videos from images (local or url) or text prompts using fal.ai
+   - supports local image files - automatically uploads to fal storage
    - cli: `bun run service/video from_image|from_text <args>`
 
 3. **voice-synthesis** (`service/voice/`)
