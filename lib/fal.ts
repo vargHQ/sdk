@@ -1,0 +1,141 @@
+#!/usr/bin/env bun
+/**
+ * fal.ai client wrapper for video and image generation
+ * usage: bun run lib/fal.ts <command> <args>
+ */
+
+import { fal } from "@ai-sdk/fal"
+
+interface FalImageToVideoArgs {
+  prompt: string
+  imageUrl: string
+  modelVersion?: string
+  duration?: 5 | 10
+}
+
+interface FalTextToVideoArgs {
+  prompt: string
+  modelVersion?: string
+  duration?: 5 | 10
+}
+
+export async function imageToVideo(args: FalImageToVideoArgs) {
+  const modelId = `fal-ai/kling-video/${args.modelVersion || "v2.5-turbo/pro"}/image-to-video`
+  
+  console.log(`[fal] starting image-to-video: ${modelId}`)
+  console.log(`[fal] prompt: ${args.prompt}`)
+  console.log(`[fal] image: ${args.imageUrl}`)
+  
+  try {
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        image_url: args.imageUrl,
+        duration: args.duration || 5,
+      },
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(`[fal] ${update.logs?.map((l: any) => l.message).join(" ") || "processing..."}`)
+        }
+      },
+    })
+    
+    console.log(`[fal] completed!`)
+    return result
+  } catch (error) {
+    console.error(`[fal] error:`, error)
+    throw error
+  }
+}
+
+export async function textToVideo(args: FalTextToVideoArgs) {
+  const modelId = `fal-ai/kling-video/${args.modelVersion || "v2.5-turbo/pro"}/text-to-video`
+  
+  console.log(`[fal] starting text-to-video: ${modelId}`)
+  console.log(`[fal] prompt: ${args.prompt}`)
+  
+  try {
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        duration: args.duration || 5,
+      },
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(`[fal] ${update.logs?.map((l: any) => l.message).join(" ") || "processing..."}`)
+        }
+      },
+    })
+    
+    console.log(`[fal] completed!`)
+    return result
+  } catch (error) {
+    console.error(`[fal] error:`, error)
+    throw error
+  }
+}
+
+export async function generateImage(args: { prompt: string; model?: string }) {
+  const modelId = args.model || "fal-ai/flux-pro/v1.1"
+  
+  console.log(`[fal] generating image with ${modelId}`)
+  console.log(`[fal] prompt: ${args.prompt}`)
+  
+  try {
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+      },
+      logs: true,
+    })
+    
+    console.log(`[fal] completed!`)
+    return result
+  } catch (error) {
+    console.error(`[fal] error:`, error)
+    throw error
+  }
+}
+
+// cli runner
+if (import.meta.main) {
+  const [command, ...args] = process.argv.slice(2)
+  
+  switch (command) {
+    case "image_to_video":
+      const i2vResult = await imageToVideo({
+        prompt: args[0],
+        imageUrl: args[1],
+        duration: args[2] ? parseInt(args[2]) as 5 | 10 : 5,
+      })
+      console.log(JSON.stringify(i2vResult, null, 2))
+      break
+      
+    case "text_to_video":
+      const t2vResult = await textToVideo({
+        prompt: args[0],
+        duration: args[1] ? parseInt(args[1]) as 5 | 10 : 5,
+      })
+      console.log(JSON.stringify(t2vResult, null, 2))
+      break
+      
+    case "generate_image":
+      const imgResult = await generateImage({
+        prompt: args[0],
+        model: args[1],
+      })
+      console.log(JSON.stringify(imgResult, null, 2))
+      break
+      
+    default:
+      console.log(`
+usage:
+  bun run lib/fal.ts image_to_video <prompt> <imageUrl> [duration]
+  bun run lib/fal.ts text_to_video <prompt> [duration]
+  bun run lib/fal.ts generate_image <prompt> [model]
+      `)
+      process.exit(1)
+  }
+}

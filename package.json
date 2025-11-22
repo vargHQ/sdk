@@ -11,6 +11,8 @@
   "dependencies": {
     "@ai-sdk/fal": "^1.0.23",
     "@ai-sdk/replicate": "^1.0.18",
+    "@aws-sdk/client-s3": "^3.937.0",
+    "@aws-sdk/s3-request-presigner": "^3.937.0",
     "@higgsfield/client": "^0.1.2",
     "ai": "^5.0.98"
   }
