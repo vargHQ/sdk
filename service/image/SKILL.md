@@ -93,6 +93,39 @@ use this skill when:
 - need high quality photorealistic images (use fal)
 - preparing images for video generation pipeline
 
+## nsfw filtering and content moderation
+
+fal.ai has content safety filters that may flag images as nsfw:
+
+**common triggers:**
+- prompts mentioning "athletic wear", "fitted sportswear", "gym clothes"
+- certain body descriptions even when clothed
+- prompts that could be interpreted as revealing clothing
+
+**symptoms:**
+- image generation returns but file is empty (often 7.6KB)
+- no error message, just an unusable file
+- happens inconsistently across similar prompts
+
+**solutions:**
+- specify modest, full-coverage clothing explicitly:
+  - ✅ "long sleeve athletic top and full length leggings"
+  - ✅ "fully covered in modest workout attire"
+  - ❌ "athletic wear" (too vague, may trigger filter)
+  - ❌ "fitted sportswear" (may trigger filter)
+- add "professional", "modest", "appropriate" to descriptions
+- if multiple images in batch get flagged, adjust prompts to be more explicit about coverage
+- always check output file sizes - empty files (< 10KB) indicate nsfw filtering
+
+**example:**
+```bash
+# ❌ may get flagged as nsfw
+bun run service/image.ts fal "woman in athletic wear"
+
+# ✅ less likely to trigger filter
+bun run service/image.ts fal "woman wearing long sleeve athletic top and full length leggings"
+```
+
 ## environment variables
 
 required:

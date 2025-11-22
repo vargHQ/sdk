@@ -200,6 +200,10 @@ const subtitle = subtitles.find(
 - copy media to `public/` directory in project
 - use `staticFile("filename.mp4")` to reference
 - absolute paths won't work in remotion
+- **CRITICAL**: staticFile() caches based on filename
+  - if you overwrite files (e.g., `before.jpg`, `after.jpg`) between renders, Remotion will cache the LAST version for ALL renders
+  - solution: use unique filenames for each variation (e.g., `woman-01-before.jpg`, `woman-02-before.jpg`)
+  - for variations: pass unique identifiers as props and use template strings: `staticFile(\`image-${id}.jpg\`)`
 
 ### frame-based timing
 - everything in remotion is frame-based
@@ -215,6 +219,10 @@ const subtitle = subtitles.find(
 - register compositions in `src/Root.tsx`
 - specify id, width, height, fps, durationInFrames
 - use unique composition ids
+- for multiple variations: use `Array.from()` to generate compositions programmatically
+  - example: `Array.from({ length: 15 }, (_, i) => { ... })`
+  - pass unique props via `defaultProps: { variationId: "01" }`
+  - each composition can render different content based on props
 
 ## typical workflow
 
@@ -773,6 +781,31 @@ const captionOpacity = interpolate(
 - convert to frame-based timing: `frame / fps`
 - check start/end time comparisons
 
+### all renders showing same content (caching issue)
+- **error**: batch rendering multiple variations but all videos show the same content
+- **cause**: overwriting files in `public/` folder between renders causes staticFile() to cache the last version
+- **symptoms**:
+  - renders complete successfully
+  - all videos have correct file size/duration
+  - but all videos show identical content (usually the last variation)
+- **fix**: use unique filenames for each variation instead of overwriting
+  - pass variation ID as prop: `defaultProps: { variationId: "01" }`
+  - use template strings in staticFile: `staticFile(\`woman-${variationId}-before.jpg\`)`
+  - ensure all unique files exist in `public/` before rendering
+- **example**:
+  ```tsx
+  // ❌ wrong - overwrites same file
+  // render loop: copy woman1 → before.jpg, render, copy woman2 → before.jpg, render...
+  const beforeImg = staticFile("before.jpg"); // caches last file!
+
+  // ✅ correct - unique filenames
+  interface Props { variationId?: string }
+  const MyComp: React.FC<Props> = ({ variationId = "01" }) => {
+    const beforeImg = staticFile(\`woman-${variationId}-before.jpg\`);
+    // each render uses different file, no caching issues
+  }
+  ```
+
 ## best practices
 
 1. **always probe videos first** - get accurate duration/fps using `bun run lib/ffmpeg.ts probe`
@@ -780,9 +813,11 @@ const captionOpacity = interpolate(
 3. **verify composition duration vs audio** - make sure `durationInFrames` is >= audio duration, or audio will be cut off
 4. **copy media to public/** - copy all media files to `lib/remotion/public/` before rendering
 5. **use staticFile() for all media** - never use absolute paths in compositions
-6. **use registerRoot()** - root files must call `registerRoot()`, not export a component
-7. **use OffthreadVideo** - prefer `OffthreadVideo` over deprecated `Video` component
-8. **calculate frames correctly** - `durationInFrames = duration * fps`
-9. **test compositions** - run `compositions` command to verify before rendering
-10. **handle fps differences** - adjust startFrom when concatenating videos with different fps
-11. **use descriptive ids** - make composition names clear and unique
+6. **use unique filenames for variations** - never overwrite files in `public/` between renders (staticFile caches by filename)
+7. **use registerRoot()** - root files must call `registerRoot()`, not export a component
+8. **use OffthreadVideo** - prefer `OffthreadVideo` over deprecated `Video` component
+9. **calculate frames correctly** - `durationInFrames = duration * fps`
+10. **test compositions** - run `compositions` command to verify before rendering
+11. **handle fps differences** - adjust startFrom when concatenating videos with different fps
+12. **use descriptive ids** - make composition names clear and unique
+13. **batch render with props** - for multiple variations, register multiple compositions with unique defaultProps instead of file overwriting

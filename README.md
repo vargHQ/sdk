@@ -159,3 +159,73 @@ high-level services combining multiple libs. each service includes a SKILL.md fo
 
 ### pipeline
 - **cookbooks**: step-by-step recipes for complex workflows (includes talking-character SKILL.md)
+
+## key learnings
+
+### remotion batch rendering with variations
+when creating multiple video variations (e.g., 15 videos with different images):
+
+**❌ don't do this:**
+```bash
+# overwriting files causes caching issues
+for i in 1..15; do
+  cp woman-$i-before.jpg lib/remotion/public/before.jpg  # overwrites!
+  cp woman-$i-after.jpg lib/remotion/public/after.jpg    # overwrites!
+  render video
+done
+# result: all videos show the same woman (the last one)
+```
+
+**✅ do this instead:**
+```typescript
+// 1. use unique filenames for each variation
+// lib/remotion/public/woman-01-before.jpg, woman-02-before.jpg, etc.
+
+// 2. pass variation id as prop
+interface Props { variationId?: string }
+const MyComp: React.FC<Props> = ({ variationId = "01" }) => {
+  const beforeImg = staticFile(`woman-${variationId}-before.jpg`);
+  const afterImg = staticFile(`woman-${variationId}-after.jpg`);
+}
+
+// 3. register multiple compositions with unique props
+registerRoot(() => (
+  <>
+    {Array.from({ length: 15 }, (_, i) => {
+      const variationId = String(i + 1).padStart(2, "0");
+      return (
+        <Composition
+          id={`MyVideo-${variationId}`}
+          component={MyComp}
+          defaultProps={{ variationId }}
+          {...otherProps}
+        />
+      );
+    })}
+  </>
+));
+
+// 4. render each composition
+bun run lib/remotion/index.ts render root.tsx MyVideo-01 output-01.mp4
+bun run lib/remotion/index.ts render root.tsx MyVideo-02 output-02.mp4
+```
+
+**why this matters:**
+- remotion's `staticFile()` caches based on filename
+- overwriting files between renders causes all videos to use the last cached version
+- unique filenames + props ensure each render uses correct assets
+
+### fal.ai nsfw content filtering
+fal.ai automatically filters content that may be nsfw:
+
+**symptoms:**
+- image generation succeeds but returns empty file (~7.6KB)
+- no error message
+- happens with certain clothing/body descriptions
+
+**solution:**
+- be explicit about modest, full-coverage clothing:
+  - ✅ "long sleeve athletic top and full length leggings"
+  - ❌ "athletic wear" (vague, may trigger filter)
+- add "professional", "modest", "appropriate" to prompts
+- always check file sizes after batch generation (< 10KB = filtered)
