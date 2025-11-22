@@ -41,6 +41,8 @@ set environment variables in `.env`:
 FAL_API_KEY=fal_xxx
 HIGGSFIELD_API_KEY=hf_xxx
 HIGGSFIELD_SECRET=secret_xxx
+REPLICATE_API_TOKEN=r8_xxx
+ELEVENLABS_API_KEY=el_xxx
 CLOUDFLARE_R2_API_URL=https://xxx.r2.cloudflarestorage.com
 CLOUDFLARE_ACCESS_KEY_ID=xxx
 CLOUDFLARE_ACCESS_SECRET=xxx
@@ -63,6 +65,18 @@ bun run lib/fal.ts image_to_video "person talking" https://example.com/image.jpg
 
 # generate soul character
 bun run lib/higgsfield.ts generate_soul "professional headshot"
+
+# generate video with replicate
+bun run lib/replicate.ts minimax "person walking on beach"
+
+# generate voice with elevenlabs
+bun run lib/elevenlabs.ts tts "hello world" rachel output.mp3
+
+# edit video with ffmpeg
+bun run lib/ffmpeg.ts concat output.mp4 video1.mp4 video2.mp4
+
+# lipsync video with audio
+bun run service/sync.ts overlay video.mp4 audio.mp3 synced.mp4
 
 # upload file to s3
 bun run utilities/s3.ts upload ./video.mp4 videos/output.mp4
@@ -103,11 +117,15 @@ core libraries for video/audio processing:
 - **ai-sdk/fal**: fal.ai using vercel ai sdk (recommended for images)
 - **fal**: fal.ai using direct client (for video & advanced features)
 - **higgsfield**: soul character generation
+- **replicate**: replicate.com api (minimax, kling, luma, flux)
+- **elevenlabs**: text-to-speech and voice generation
+- **ffmpeg**: video editing operations (concat, trim, resize, etc.)
 
 ### service
 high-level services combining multiple libs:
 - **image**: image generation (fal + higgsfield)
 - **video**: video generation from image/text
+- **sync**: lipsync workflows (wav2lip, audio overlay)
 
 ### utilities
 - **s3**: cloudflare r2 / s3 storage operations
