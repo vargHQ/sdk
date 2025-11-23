@@ -81,6 +81,7 @@ now you have:
 ```bash
 # run wan 2.5 with the image and audio urls
 # prompt should describe the video style and setting
+# duration MUST be 5 or 10 seconds only (not 15, 20, etc)
 bun run lib/replicate.ts wan \
   https://v3b.fal.media/files/.../first-frame.jpg \
   https://v3b.fal.media/files/.../audio.mpeg \
@@ -195,7 +196,8 @@ curl -o media/friend/katia-talking.mp4 "https://replicate.delivery/.../video.mp4
 
 ## tips
 
-- **script length**: keep under 15 seconds for best results
+- **duration constraint**: wan 2.5 only accepts 5 or 10 second videos - keep scripts short!
+- **script length**: keep under 10 seconds for best results (matches wan 2.5 max duration)
 - **image-to-image strength**: use 0.3-0.4 to preserve person's face! higher values change appearance
 - **handheld camera**: always include "handheld iphone selfie" + "shaky camera" in wan 2.5 prompt for authentic look
 - **first frame quality**: this is the base - make it look natural!
