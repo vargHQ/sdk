@@ -50,6 +50,13 @@ located in `pipeline/cookbooks/SKILL.md`:
    - complete workflow to create talking character videos
    - combines: character generation → voiceover → animation → lipsync → captions → social prep
 
+9. **wan-talking-character** (`pipeline/cookbooks/wan-talking-character.md`)
+   - create realistic talking character videos using elevenlabs + replicate wan 2.5
+   - workflow: generate first frame (person in setting) → voiceover → wan 2.5 video
+   - uses: `bun run lib/replicate.ts`, `bun run lib/elevenlabs.ts`
+   - input: text script + profile photo
+   - output: person in setting speaking with lipsync
+
 ## structure
 
 each skill follows this pattern:
@@ -131,9 +138,11 @@ each skill includes:
 | video-editing | edit | resize, trim, social media optimization |
 | audio-transcription | transcribe | speech-to-text, subtitle generation |
 | talking-character-pipeline | pipeline | end-to-end talking character videos |
+| wan-talking-character | pipeline | elevenlabs + wan 2.5 talking videos |
 
 ## see also
 
 - [README.md](README.md) - sdk overview and installation
 - [STRUCTURE.md](STRUCTURE.md) - detailed module organization
 - [pipeline/cookbooks/talking-character.md](pipeline/cookbooks/talking-character.md) - talking character workflow
+- [pipeline/cookbooks/wan-talking-character.md](pipeline/cookbooks/wan-talking-character.md) - wan 2.5 talking character cookbook

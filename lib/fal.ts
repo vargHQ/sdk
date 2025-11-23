@@ -161,6 +161,52 @@ export async function generateImage(args: {
   }
 }
 
+interface FalImageToImageArgs {
+  prompt: string;
+  imageUrl: string; // can be url or local file path
+  strength?: number;
+  numInferenceSteps?: number;
+}
+
+export async function imageToImage(args: FalImageToImageArgs) {
+  const modelId = "fal-ai/flux/dev/image-to-image";
+
+  console.log(`[fal] starting image-to-image: ${modelId}`);
+  console.log(`[fal] prompt: ${args.prompt}`);
+  console.log(`[fal] source image: ${args.imageUrl}`);
+
+  // upload local file if needed
+  const imageUrl = await ensureImageUrl(args.imageUrl);
+
+  try {
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        image_url: imageUrl,
+        strength: args.strength || 0.95,
+        num_inference_steps: args.numInferenceSteps || 40,
+      },
+      logs: true,
+      onQueueUpdate: (update: {
+        status: string;
+        logs?: Array<{ message: string }>;
+      }) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  } catch (error) {
+    console.error("[fal] error:", error);
+    throw error;
+  }
+}
+
 // cli runner
 if (import.meta.main) {
   const [command, ...args] = process.argv.slice(2);
@@ -215,6 +261,30 @@ examples:
       break;
     }
 
+    case "image_to_image": {
+      if (!args[0] || !args[1]) {
+        console.log(`
+usage: bun run lib/fal.ts image_to_image <prompt> <image_path_or_url> [strength]
+
+examples:
+  bun run lib/fal.ts image_to_image "woman at busy conference hall" media/friend/katia.jpg
+  bun run lib/fal.ts image_to_image "person in underground station" https://image.url 0.9
+  
+parameters:
+  strength: 0.0-1.0, higher = more transformation (default: 0.95)
+        `);
+        process.exit(1);
+      }
+      const strength = args[2] ? parseFloat(args[2]) : undefined;
+      const i2iResult = await imageToImage({
+        prompt: args[0],
+        imageUrl: args[1],
+        strength,
+      });
+      console.log(JSON.stringify(i2iResult, null, 2));
+      break;
+    }
+
     case "generate_image": {
       if (!args[0]) {
         console.log(`
@@ -248,6 +318,7 @@ usage:
   
   # image generation (fal client with all features)
   bun run lib/fal.ts generate_image <prompt> [model] [imageSize]
+  bun run lib/fal.ts image_to_image <prompt> <image_path_or_url> [strength]
   
 note: for simpler image generation, use lib/ai-sdk/fal.ts instead
       `);
