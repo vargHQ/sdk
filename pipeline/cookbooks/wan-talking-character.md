@@ -18,18 +18,18 @@ create realistic talking character videos: person in a setting speaking with nat
 
 ### step 1: generate first frame (person in setting)
 
-use flux image-to-image to place the person into the desired setting while preserving their face:
+use nano banana pro image-to-image to place the person into the desired setting while preserving their face and aspect ratio:
 
 ```bash
-# generate first frame using image-to-image with LOW strength to keep the person's face
-# strength 0.3-0.4 works best to preserve identity while changing background
+# generate first frame using nano banana pro image-to-image
+# aspect_ratio "auto" preserves the original photo's aspect ratio (portrait/landscape)
 bun run lib/fal.ts image_to_image \
   "woman at busy conference hall with people walking in background, professional casual setting, natural lighting" \
   media/friend/katia.jpg \
-  0.3
+  auto
 ```
 
-**important**: use strength 0.3-0.4 to preserve the person's face. higher values (0.8+) will change their appearance!
+**important**: aspect ratio "auto" preserves the original photo dimensions - critical for avoiding squashed/stretched video output!
 
 the output will include a URL like: `https://v3b.fal.media/files/.../image.jpg`
 
@@ -151,12 +151,12 @@ choose setting based on script context. always include handheld camera descripti
 # script: "hey everyone! i'm so excited to share this amazing update with you from the conference today"
 # photo: media/friend/katia.jpg
 
-# step 1: generate first frame with image-to-image
+# step 1: generate first frame with nano banana pro
 bun run lib/fal.ts image_to_image \
   "woman at busy conference hall with people walking in background, professional casual setting, natural lighting" \
   media/friend/katia.jpg \
-  0.3
-# output: https://v3b.fal.media/files/.../first-frame.jpg
+  auto
+# output: https://v3b.fal.media/files/.../first-frame.png
 
 # step 2: generate voice
 bun run lib/elevenlabs.ts tts \
@@ -198,7 +198,8 @@ curl -o media/friend/katia-talking.mp4 "https://replicate.delivery/.../video.mp4
 
 - **duration constraint**: wan 2.5 only accepts 5 or 10 second videos - keep scripts short!
 - **script length**: keep under 10 seconds for best results (matches wan 2.5 max duration)
-- **image-to-image strength**: use 0.3-0.4 to preserve person's face! higher values change appearance
+- **aspect ratio preservation**: CRITICAL - always use "auto" aspect ratio in image-to-image to avoid squashed/stretched videos!
+- **nano banana pro**: uses aspect_ratio="auto" to preserve original photo dimensions (portrait/landscape)
 - **handheld camera**: always include "handheld iphone selfie" + "shaky camera" in wan 2.5 prompt for authentic look
 - **first frame quality**: this is the base - make it look natural!
 - **scene matching**: extract location from script when mentioned
@@ -229,21 +230,10 @@ export ELEVENLABS_API_KEY="your_key"
 export REPLICATE_API_TOKEN="your_token"
 ```
 
-## limitations & workarounds
+## changelog
 
-**current limitations:**
-- `lib/replicate.ts` doesn't have wan 2.5 command yet
-- flux image-to-image not exposed via cli (only text-to-image)
-- need manual file upload for audio url
-
-**workarounds:**
-- use flux text-to-image with person description for first frame
-- manually upload audio or create s3 upload helper
-- call wan 2.5 via direct replicate api or create helper script
-
-## future improvements
-
-- add `bun run lib/replicate.ts wan` command for wan 2.5
-- add flux image-to-image to preserve person's face better
-- auto-upload files to get urls
-- extract scene location from script automatically
+**2024-11-22:**
+- switched from flux to nano banana pro for image-to-image (better aspect ratio preservation)
+- fixed squashed video issue by using aspect_ratio="auto"
+- wan 2.5 command now available in lib/replicate.ts
+- clarified duration constraints (5 or 10 seconds only)

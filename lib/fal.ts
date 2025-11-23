@@ -166,10 +166,11 @@ interface FalImageToImageArgs {
   imageUrl: string; // can be url or local file path
   strength?: number;
   numInferenceSteps?: number;
+  aspectRatio?: string; // auto, 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
 }
 
 export async function imageToImage(args: FalImageToImageArgs) {
-  const modelId = "fal-ai/flux/dev/image-to-image";
+  const modelId = "fal-ai/nano-banana-pro/edit";
 
   console.log(`[fal] starting image-to-image: ${modelId}`);
   console.log(`[fal] prompt: ${args.prompt}`);
@@ -182,9 +183,9 @@ export async function imageToImage(args: FalImageToImageArgs) {
     const result = await fal.subscribe(modelId, {
       input: {
         prompt: args.prompt,
-        image_url: imageUrl,
-        strength: args.strength || 0.95,
-        num_inference_steps: args.numInferenceSteps || 40,
+        image_urls: [imageUrl],
+        aspect_ratio: args.aspectRatio || "auto",
+        resolution: "2K",
       },
       logs: true,
       onQueueUpdate: (update: {
@@ -264,22 +265,24 @@ examples:
     case "image_to_image": {
       if (!args[0] || !args[1]) {
         console.log(`
-usage: bun run lib/fal.ts image_to_image <prompt> <image_path_or_url> [strength]
+usage: bun run lib/fal.ts image_to_image <prompt> <image_path_or_url> [aspect_ratio]
 
 examples:
   bun run lib/fal.ts image_to_image "woman at busy conference hall" media/friend/katia.jpg
-  bun run lib/fal.ts image_to_image "person in underground station" https://image.url 0.9
+  bun run lib/fal.ts image_to_image "person in underground station" https://image.url 9:16
   
 parameters:
-  strength: 0.0-1.0, higher = more transformation (default: 0.95)
+  aspect_ratio: auto (preserves input), 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16 (default: auto)
+
+note: now uses nano banana pro for better quality and aspect ratio preservation
         `);
         process.exit(1);
       }
-      const strength = args[2] ? parseFloat(args[2]) : undefined;
+      const aspectRatio = args[2] || "auto";
       const i2iResult = await imageToImage({
         prompt: args[0],
         imageUrl: args[1],
-        strength,
+        aspectRatio,
       });
       console.log(JSON.stringify(i2iResult, null, 2));
       break;
