@@ -85,20 +85,41 @@ now you have:
 
 ```bash
 # run wan 2.5 with the image and audio urls
-# prompt should describe the video style and setting
+# prompt should describe the video style and setting with maximum detail
 # duration MUST be 5 or 10 seconds only (not 15, 20, etc)
 bun run lib/replicate.ts wan \
   https://v3b.fal.media/files/.../first-frame.jpg \
   https://v3b.fal.media/files/.../audio.mpeg \
-  "handheld iphone selfie video, woman talking to camera in busy conference hall, natural shaky camera movement" \
+  "extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, dramatic low-light scene with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion indicating public location" \
   10 \
   480p
 ```
 
-**prompt tips for natural look:**
-- include "handheld iphone selfie video" for realistic camera shake
-- add "shaky camera" or "natural camera movement" for authenticity
-- mention the setting to match step 1 (conference hall, metro station, etc)
+**detailed prompt structure for realistic selfie videos:**
+
+the prompt should include ALL these elements for maximum authenticity:
+
+**camera technique:**
+- "extreme close-up selfie POV video"
+- "handheld phone directly in front of face"
+- "continuous slight wobble and shake"
+
+**focus & composition:**
+- "subject in sharp focus"
+- "softly blurred background shallow depth of field"
+
+**lighting:**
+- "dramatic low-light scene"
+- "intense magenta hot pink light illuminating face" (or specify your lighting color)
+- "blue ambient lights in blurred background" (optional, for busy settings)
+
+**setting:**
+- "dark indoor busy setting with abstract out-of-focus lights" (adjust based on location)
+
+**audio characteristics:**
+- "conversational audio with muffled background crowd chatter and commotion indicating public location"
+
+this comprehensive prompting creates videos that look like authentic, quickly-recorded selfie messages with realistic imperfections
 
 this takes 3-5 minutes. the command will wait for completion.
 
@@ -136,13 +157,13 @@ curl -o media/friend/talking-character.mp4 "https://replicate.delivery/.../video
 
 choose setting based on script context. always include handheld camera description for authentic look:
 
-| script mentions | step 1: first frame prompt | wan 2.5 prompt |
-|----------------|---------------------------|----------------|
-| "at the conference" | selfie photo, woman holding phone facing herself at busy conference hall with people walking in background, front-facing camera view | handheld iphone selfie, woman talking to camera in busy conference hall, natural shaky camera |
-| "subway" / "metro" | selfie photo, woman holding phone facing herself at underground metro station with commuters, front-facing camera view | handheld iphone selfie, woman talking to camera at underground metro station, shaky camera movement |
-| "office" | selfie photo, woman holding phone facing herself in modern office workspace, front-facing camera view | handheld selfie video, woman talking to camera in modern office, natural camera shake |
-| "street" | selfie photo, woman holding phone facing herself on city street with pedestrians, front-facing camera view | handheld iphone video, woman talking to camera on city street, shaky handheld movement |
-| no location | selfie photo, woman holding phone facing herself in casual setting, front-facing camera view | handheld iphone selfie, woman talking to camera in casual setting, natural shaky camera (default) |
+| script mentions | step 1: first frame prompt | wan 2.5 prompt (detailed style) |
+|----------------|---------------------------|--------------------------------|
+| "at the conference" / "hackathon" | selfie photo, woman holding phone facing herself at busy conference hall with people walking in background, front-facing camera view | extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble, subject in sharp focus with softly blurred background, dramatic low-light with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter |
+| "subway" / "metro" | selfie photo, woman holding phone facing herself at underground metro station with commuters, front-facing camera view | extreme close-up selfie POV video, handheld phone with slight shake, sharp focus on subject with blurred metro background, harsh fluorescent lighting with cool tones, dark underground station with out-of-focus commuters and lights, audio with echoing background noise and distant train sounds |
+| "office" | selfie photo, woman holding phone facing herself in modern office workspace, front-facing camera view | extreme close-up selfie POV video, handheld phone wobble, sharp subject focus with blurred office background, soft indoor office lighting, modern workspace with blurred monitors and colleagues in background, conversational audio with quiet office ambient noise |
+| "street" | selfie photo, woman holding phone facing herself on city street with pedestrians, front-facing camera view | extreme close-up selfie POV video, handheld shake, sharp focus with blurred street background, natural daylight or street lighting, urban setting with out-of-focus pedestrians and traffic, audio with street noise and distant traffic sounds |
+| no location | selfie photo, woman holding phone facing herself in casual setting, front-facing camera view | extreme close-up selfie POV video, handheld phone with slight wobble, sharp subject with softly blurred background, natural indoor lighting, casual indoor setting, conversational audio (default) |
 
 **key phrases for authentic selfie look:**
 
@@ -151,10 +172,31 @@ choose setting based on script context. always include handheld camera descripti
 - "holding phone camera facing herself/himself" - person is taking the selfie
 - "front-facing camera view" - reinforces selfie angle
 
-**step 4 (wan 2.5):**
-- "handheld iphone selfie video" - adds realistic camera shake
-- "natural shaky camera movement" - mimics real selfie recording
-- "shaky handheld" - creates authentic mobile video feel
+**step 4 (wan 2.5) - comprehensive style elements:**
+
+*camera technique:*
+- "extreme close-up selfie POV video"
+- "handheld phone directly in front of face"
+- "continuous slight wobble and shake"
+
+*focus & depth:*
+- "subject in sharp focus"
+- "softly blurred background"
+- "shallow depth of field"
+
+*lighting:*
+- "dramatic low-light scene"
+- "intense magenta hot pink light illuminating face" (adjust color per setting)
+- "blue ambient lights in blurred background" (optional)
+
+*setting:*
+- "dark indoor busy setting"
+- "abstract out-of-focus lights"
+- adjust per location (conference/metro/office/street)
+
+*audio:*
+- "conversational audio with muffled background crowd chatter and commotion"
+- adjust per setting (metro=echoing/train sounds, office=quiet ambient, street=traffic)
 
 ## example: full workflow
 
@@ -187,11 +229,11 @@ EOF
 bun /tmp/upload.ts
 # output: https://v3b.fal.media/files/.../audio.mpeg
 
-# step 4: run wan 2.5
+# step 4: run wan 2.5 with detailed style prompt
 bun run lib/replicate.ts wan \
   https://v3b.fal.media/files/.../first-frame.jpg \
   https://v3b.fal.media/files/.../audio.mpeg \
-  "handheld iphone selfie video, woman talking to camera in busy conference hall, natural shaky camera movement" \
+  "extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, dramatic low-light scene with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion" \
   10 \
   480p
 # takes 3-5 minutes...
