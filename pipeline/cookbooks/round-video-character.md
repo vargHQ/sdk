@@ -91,7 +91,7 @@ now you have:
 bun run lib/replicate.ts wan \
   https://v3b.fal.media/files/.../first-frame.jpg \
   https://v3b.fal.media/files/.../audio.mpeg \
-  "extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, dramatic low-light scene with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion indicating public location" \
+  "extreme close-up selfie POV video, handheld POV with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, blurred background, dark indoor busy setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion indicating public location" \
   10 \
   480p
 ```
@@ -102,7 +102,7 @@ the prompt should include ALL these elements for maximum authenticity:
 
 **camera technique:**
 - "extreme close-up selfie POV video"
-- "handheld phone directly in front of face"
+- "handheld POV directly in front of face"
 - "continuous slight wobble and shake"
 
 **focus & composition:**
