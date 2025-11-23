@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * fal.ai wrapper using @fal-ai/client directly
  * for video generation and advanced features
@@ -6,8 +7,8 @@
  * usage: bun run lib/fal.ts <command> <args>
  */
 
-import { fal } from "@fal-ai/client";
 import { existsSync } from "node:fs";
+import { fal } from "@fal-ai/client";
 
 interface FalImageToVideoArgs {
   prompt: string;
