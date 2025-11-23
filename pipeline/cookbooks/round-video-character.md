@@ -22,18 +22,18 @@ use nano banana pro image-to-image to place the person into the desired setting 
 
 ```bash
 # generate SELFIE-STYLE first frame using nano banana pro
-# CRITICAL: always include "selfie photo" and "front-facing camera view" in prompt
+# CRITICAL: always include "selfie photo taken with front-facing phone camera" in prompt
 # aspect_ratio "auto" preserves the original photo's aspect ratio (portrait/landscape)
 bun run lib/fal.ts image_to_image \
-  "selfie photo, woman holding phone camera facing herself at busy conference hall with people walking in background, professional casual setting, natural lighting, front-facing camera view" \
+  "selfie photo taken with front-facing phone camera, person at busy conference hall with people walking in background, professional casual setting, natural lighting, shot from phone held at arm's length" \
   media/friend/katia.jpg \
   auto
 ```
 
 **important prompting for selfie style:**
-- always start with "selfie photo"
-- include "holding phone camera facing herself/himself" 
-- end with "front-facing camera view"
+- always start with "selfie photo taken with front-facing phone camera"
+- include "shot from phone held at arm's length" to clarify POV
+- avoid "holding phone" (confusing - sounds like showing the phone to camera)
 - aspect ratio "auto" preserves original dimensions - critical for avoiding squashed/stretched video!
 
 the output will include a URL like: `https://v3b.fal.media/files/.../image.jpg`
@@ -160,18 +160,18 @@ choose setting based on script context. always include handheld camera descripti
 
 | script mentions | step 1: first frame prompt | wan 2.5 prompt (detailed style) |
 |----------------|---------------------------|--------------------------------|
-| "at the conference" / "hackathon" | selfie photo, woman holding phone facing herself at busy conference hall with people walking in background, front-facing camera view | extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble, subject in sharp focus with softly blurred background, dramatic low-light with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter |
-| "subway" / "metro" | selfie photo, woman holding phone facing herself at underground metro station with commuters, front-facing camera view | extreme close-up selfie POV video, handheld phone with slight shake, sharp focus on subject with blurred metro background, harsh fluorescent lighting with cool tones, dark underground station with out-of-focus commuters and lights, audio with echoing background noise and distant train sounds |
-| "office" | selfie photo, woman holding phone facing herself in modern office workspace, front-facing camera view | extreme close-up selfie POV video, handheld phone wobble, sharp subject focus with blurred office background, soft indoor office lighting, modern workspace with blurred monitors and colleagues in background, conversational audio with quiet office ambient noise |
-| "street" | selfie photo, woman holding phone facing herself on city street with pedestrians, front-facing camera view | extreme close-up selfie POV video, handheld shake, sharp focus with blurred street background, natural daylight or street lighting, urban setting with out-of-focus pedestrians and traffic, audio with street noise and distant traffic sounds |
-| no location | selfie photo, woman holding phone facing herself in casual setting, front-facing camera view | extreme close-up selfie POV video, handheld phone with slight wobble, sharp subject with softly blurred background, natural indoor lighting, casual indoor setting, conversational audio (default) |
+| "at the conference" / "hackathon" | selfie photo taken with front-facing phone camera, person at busy conference hall with people walking in background, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble, subject in sharp focus with softly blurred background, dramatic low-light with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter |
+| "subway" / "metro" | selfie photo taken with front-facing phone camera, person at underground metro station with commuters, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone with slight shake, sharp focus on subject with blurred metro background, harsh fluorescent lighting with cool tones, dark underground station with out-of-focus commuters and lights, audio with echoing background noise and distant train sounds |
+| "office" | selfie photo taken with front-facing phone camera, person in modern office workspace, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone wobble, sharp subject focus with blurred office background, soft indoor office lighting, modern workspace with blurred monitors and colleagues in background, conversational audio with quiet office ambient noise |
+| "street" | selfie photo taken with front-facing phone camera, person on city street with pedestrians, shot from phone held at arm's length | extreme close-up selfie POV video, handheld shake, sharp focus with blurred street background, natural daylight or street lighting, urban setting with out-of-focus pedestrians and traffic, audio with street noise and distant traffic sounds |
+| no location | selfie photo taken with front-facing phone camera, person in casual setting, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone with slight wobble, sharp subject with softly blurred background, natural indoor lighting, casual indoor setting, conversational audio (default) |
 
 **key phrases for authentic selfie look:**
 
 **step 1 (first frame):**
-- "selfie photo" - establishes selfie perspective
-- "holding phone camera facing herself/himself" - person is taking the selfie
-- "front-facing camera view" - reinforces selfie angle
+- "selfie photo taken with front-facing phone camera" - establishes selfie perspective
+- "shot from phone held at arm's length" - clarifies camera POV
+- avoid "holding phone" - confusing (sounds like showing phone to camera)
 
 **step 4 (wan 2.5) - comprehensive style elements:**
 
@@ -208,7 +208,7 @@ choose setting based on script context. always include handheld camera descripti
 
 # step 1: generate SELFIE first frame with nano banana pro
 bun run lib/fal.ts image_to_image \
-  "selfie photo, woman holding phone camera facing herself at busy conference hall with people walking in background, professional casual setting, natural lighting, front-facing camera view" \
+  "selfie photo taken with front-facing phone camera, person at busy conference hall with people walking in background, professional casual setting, natural lighting, shot from phone held at arm's length" \
   media/friend/katia.jpg \
   auto
 # output: https://v3b.fal.media/files/.../first-frame.png
@@ -251,7 +251,7 @@ curl -o media/friend/katia-talking.mp4 "https://replicate.delivery/.../video.mp4
 
 ## tips
 
-- **selfie perspective**: CRITICAL - always include "selfie photo, holding phone facing herself/himself, front-facing camera view" in step 1!
+- **selfie perspective**: CRITICAL - always use "selfie photo taken with front-facing phone camera, shot from phone held at arm's length" in step 1!
 - **duration constraint**: wan 2.5 only accepts 5 or 10 second videos - keep scripts short!
 - **script length**: keep under 10 seconds for best results (matches wan 2.5 max duration)
 - **aspect ratio preservation**: CRITICAL - always use "auto" aspect ratio in image-to-image to avoid squashed/stretched videos!
