@@ -4,9 +4,10 @@ create realistic round selfie videos for telegram: front-facing camera POV video
 
 ## what this does
 
-1. generates first frame: person in specified setting (conference, station, etc)
-2. generates voiceover from text script
-3. creates talking video using wan 2.5 with audio sync
+1. generates 3 first frame options: person in specified setting (conference, station, etc)
+2. ai picks the best first frame from the 3 options
+3. generates voiceover from text script
+4. creates talking video using wan 2.5 with audio sync
 
 ## inputs
 
@@ -16,14 +17,28 @@ create realistic round selfie videos for telegram: front-facing camera POV video
 
 ## steps
 
-### step 1: generate first frame (person in setting)
+### step 1: generate first frame options (person in setting)
 
-use nano banana pro image-to-image to place the person into the desired setting while preserving their face and aspect ratio:
+generate 3 variations and let ai pick the best one:
 
 ```bash
-# generate SELFIE-STYLE first frame using nano banana pro
+# generate 3 SELFIE-STYLE first frame options using nano banana pro
 # CRITICAL: use the proven prompt structure below
 # aspect_ratio "auto" preserves the original photo's aspect ratio (portrait/landscape)
+
+# option 1
+bun run lib/fal.ts image_to_image \
+  "selfie POV, camera with subtle natural wobble and shake throughout, focus on subject with shallow depth of field, dramatic low-light environment with intense magenta and hot pink lighting creating strong color cast, ambient blue lights scattered in background, dark indoor busy setting, abstract out-of-focus colorful lights creating busy background, location: hackathon space, wear black hoodie without any text on it" \
+  media/friend/katia.jpg \
+  auto
+
+# option 2
+bun run lib/fal.ts image_to_image \
+  "selfie POV, camera with subtle natural wobble and shake throughout, focus on subject with shallow depth of field, dramatic low-light environment with intense magenta and hot pink lighting creating strong color cast, ambient blue lights scattered in background, dark indoor busy setting, abstract out-of-focus colorful lights creating busy background, location: hackathon space, wear black hoodie without any text on it" \
+  media/friend/katia.jpg \
+  auto
+
+# option 3
 bun run lib/fal.ts image_to_image \
   "selfie POV, camera with subtle natural wobble and shake throughout, focus on subject with shallow depth of field, dramatic low-light environment with intense magenta and hot pink lighting creating strong color cast, ambient blue lights scattered in background, dark indoor busy setting, abstract out-of-focus colorful lights creating busy background, location: hackathon space, wear black hoodie without any text on it" \
   media/friend/katia.jpg \
@@ -40,12 +55,23 @@ bun run lib/fal.ts image_to_image \
 - location: flexible - adjust based on script (hackathon space, metro station, office, etc.)
 - aspect ratio "auto" preserves original dimensions - critical for avoiding squashed/stretched video!
 
-the output will include a URL like: `https://v3b.fal.media/files/.../image.jpg`
+each command outputs a URL like: `https://v3b.fal.media/files/.../image.jpg`
 
-optionally download to save locally:
+download all 3 options:
 ```bash
-curl -o media/friend/first-frame.jpg "https://fal-output-url.jpg"
+curl -o media/friend/option1.jpg "https://url-from-option-1.jpg"
+curl -o media/friend/option2.jpg "https://url-from-option-2.jpg"
+curl -o media/friend/option3.jpg "https://url-from-option-3.jpg"
 ```
+
+**ai should review the 3 options and pick the best one based on:**
+- face quality and recognition
+- natural selfie look
+- lighting and color balance
+- background blur and composition
+- overall authenticity
+
+use the selected image url for step 4 (wan 2.5)
 
 ### step 2: generate voiceover
 
@@ -146,17 +172,19 @@ curl -o media/friend/talking-character.mp4 "https://replicate.delivery/.../video
 
 ## output
 
-- first frame: person in setting (jpg)
+- first frame options: 3 variations (jpg) - `media/friend/[name]/option1.jpg`, `option2.jpg`, `option3.jpg`
+- selected first frame: best option chosen by ai
 - voiceover: `media/friend/[name]/voice.mp3`
 - final video: `media/friend/[name]/talking-character.mp4`
 
 ## timing
 
-- first frame generation: 5-10s
+- first frame generation: 15-30s (3 options)
+- ai selection: instant
 - voiceover: 5-10s
 - wan 2.5 processing: 3-5min
 
-**total: ~5 minutes**
+**total: ~5-6 minutes**
 
 ## scene context examples
 
@@ -219,12 +247,37 @@ selfie POV, camera with subtle natural wobble and shake throughout, focus on sub
 # script: "hey everyone! i'm so excited to share this amazing update with you from the conference today"
 # photo: media/friend/katia.jpg
 
-# step 1: generate SELFIE first frame with nano banana pro
+# step 1: generate 3 SELFIE first frame options with nano banana pro
 bun run lib/fal.ts image_to_image \
   "selfie POV, camera with subtle natural wobble and shake throughout, focus on subject with shallow depth of field, dramatic low-light environment with intense magenta and hot pink lighting creating strong color cast, ambient blue lights scattered in background, dark indoor busy setting, abstract out-of-focus colorful lights creating busy background, location: hackathon space, wear black hoodie without any text on it" \
   media/friend/katia.jpg \
   auto
-# output: https://v3b.fal.media/files/.../first-frame.png
+# output 1: https://v3b.fal.media/files/.../option1.png
+
+bun run lib/fal.ts image_to_image \
+  "selfie POV, camera with subtle natural wobble and shake throughout, focus on subject with shallow depth of field, dramatic low-light environment with intense magenta and hot pink lighting creating strong color cast, ambient blue lights scattered in background, dark indoor busy setting, abstract out-of-focus colorful lights creating busy background, location: hackathon space, wear black hoodie without any text on it" \
+  media/friend/katia.jpg \
+  auto
+# output 2: https://v3b.fal.media/files/.../option2.png
+
+bun run lib/fal.ts image_to_image \
+  "selfie POV, camera with subtle natural wobble and shake throughout, focus on subject with shallow depth of field, dramatic low-light environment with intense magenta and hot pink lighting creating strong color cast, ambient blue lights scattered in background, dark indoor busy setting, abstract out-of-focus colorful lights creating busy background, location: hackathon space, wear black hoodie without any text on it" \
+  media/friend/katia.jpg \
+  auto
+# output 3: https://v3b.fal.media/files/.../option3.png
+
+# download all 3 options
+curl -o media/friend/katia/option1.jpg "https://v3b.fal.media/files/.../option1.png"
+curl -o media/friend/katia/option2.jpg "https://v3b.fal.media/files/.../option2.png"
+curl -o media/friend/katia/option3.jpg "https://v3b.fal.media/files/.../option3.png"
+
+# ai reviews the 3 options and picks the best one based on:
+# - face quality and recognition
+# - natural selfie look
+# - lighting and color balance
+# - background blur and composition
+# - overall authenticity
+# selected: option2 (example)
 
 # step 2: generate voice
 bun run lib/elevenlabs.ts tts \
@@ -243,9 +296,9 @@ EOF
 bun /tmp/upload.ts
 # output: https://v3b.fal.media/files/.../audio.mpeg
 
-# step 4: run wan 2.5 with detailed style prompt
+# step 4: run wan 2.5 with detailed style prompt (using selected first frame)
 bun run lib/replicate.ts wan \
-  https://v3b.fal.media/files/.../first-frame.jpg \
+  https://v3b.fal.media/files/.../option2.png \
   https://v3b.fal.media/files/.../audio.mpeg \
   "front-facing camera selfie POV video, handheld phone directly in front of face with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, dramatic low-light scene with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion" \
   10 \
