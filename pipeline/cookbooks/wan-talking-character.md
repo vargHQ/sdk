@@ -21,15 +21,20 @@ create realistic talking character videos: person in a setting speaking with nat
 use nano banana pro image-to-image to place the person into the desired setting while preserving their face and aspect ratio:
 
 ```bash
-# generate first frame using nano banana pro image-to-image
+# generate SELFIE-STYLE first frame using nano banana pro
+# CRITICAL: always include "selfie photo" and "front-facing camera view" in prompt
 # aspect_ratio "auto" preserves the original photo's aspect ratio (portrait/landscape)
 bun run lib/fal.ts image_to_image \
-  "woman at busy conference hall with people walking in background, professional casual setting, natural lighting" \
+  "selfie photo, woman holding phone camera facing herself at busy conference hall with people walking in background, professional casual setting, natural lighting, front-facing camera view" \
   media/friend/katia.jpg \
   auto
 ```
 
-**important**: aspect ratio "auto" preserves the original photo dimensions - critical for avoiding squashed/stretched video output!
+**important prompting for selfie style:**
+- always start with "selfie photo"
+- include "holding phone camera facing herself/himself" 
+- end with "front-facing camera view"
+- aspect ratio "auto" preserves original dimensions - critical for avoiding squashed/stretched video!
 
 the output will include a URL like: `https://v3b.fal.media/files/.../image.jpg`
 
@@ -131,15 +136,22 @@ curl -o media/friend/talking-character.mp4 "https://replicate.delivery/.../video
 
 choose setting based on script context. always include handheld camera description for authentic look:
 
-| script mentions | wan 2.5 prompt example |
-|----------------|------------------------|
-| "at the conference" | handheld iphone selfie, woman talking to camera in busy conference hall, natural shaky camera |
-| "subway" / "metro" | handheld iphone selfie, woman talking to camera at underground metro station, shaky camera movement |
-| "office" | handheld selfie video, woman talking to camera in modern office, natural camera shake |
-| "street" | handheld iphone video, woman talking to camera on city street, shaky handheld movement |
-| no location | handheld iphone selfie, woman talking to camera in casual setting, natural shaky camera (default) |
+| script mentions | step 1: first frame prompt | wan 2.5 prompt |
+|----------------|---------------------------|----------------|
+| "at the conference" | selfie photo, woman holding phone facing herself at busy conference hall with people walking in background, front-facing camera view | handheld iphone selfie, woman talking to camera in busy conference hall, natural shaky camera |
+| "subway" / "metro" | selfie photo, woman holding phone facing herself at underground metro station with commuters, front-facing camera view | handheld iphone selfie, woman talking to camera at underground metro station, shaky camera movement |
+| "office" | selfie photo, woman holding phone facing herself in modern office workspace, front-facing camera view | handheld selfie video, woman talking to camera in modern office, natural camera shake |
+| "street" | selfie photo, woman holding phone facing herself on city street with pedestrians, front-facing camera view | handheld iphone video, woman talking to camera on city street, shaky handheld movement |
+| no location | selfie photo, woman holding phone facing herself in casual setting, front-facing camera view | handheld iphone selfie, woman talking to camera in casual setting, natural shaky camera (default) |
 
 **key phrases for authentic selfie look:**
+
+**step 1 (first frame):**
+- "selfie photo" - establishes selfie perspective
+- "holding phone camera facing herself/himself" - person is taking the selfie
+- "front-facing camera view" - reinforces selfie angle
+
+**step 4 (wan 2.5):**
 - "handheld iphone selfie video" - adds realistic camera shake
 - "natural shaky camera movement" - mimics real selfie recording
 - "shaky handheld" - creates authentic mobile video feel
@@ -151,9 +163,9 @@ choose setting based on script context. always include handheld camera descripti
 # script: "hey everyone! i'm so excited to share this amazing update with you from the conference today"
 # photo: media/friend/katia.jpg
 
-# step 1: generate first frame with nano banana pro
+# step 1: generate SELFIE first frame with nano banana pro
 bun run lib/fal.ts image_to_image \
-  "woman at busy conference hall with people walking in background, professional casual setting, natural lighting" \
+  "selfie photo, woman holding phone camera facing herself at busy conference hall with people walking in background, professional casual setting, natural lighting, front-facing camera view" \
   media/friend/katia.jpg \
   auto
 # output: https://v3b.fal.media/files/.../first-frame.png
@@ -196,12 +208,13 @@ curl -o media/friend/katia-talking.mp4 "https://replicate.delivery/.../video.mp4
 
 ## tips
 
+- **selfie perspective**: CRITICAL - always include "selfie photo, holding phone facing herself/himself, front-facing camera view" in step 1!
 - **duration constraint**: wan 2.5 only accepts 5 or 10 second videos - keep scripts short!
 - **script length**: keep under 10 seconds for best results (matches wan 2.5 max duration)
 - **aspect ratio preservation**: CRITICAL - always use "auto" aspect ratio in image-to-image to avoid squashed/stretched videos!
 - **nano banana pro**: uses aspect_ratio="auto" to preserve original photo dimensions (portrait/landscape)
 - **handheld camera**: always include "handheld iphone selfie" + "shaky camera" in wan 2.5 prompt for authentic look
-- **first frame quality**: this is the base - make it look natural!
+- **first frame quality**: this is the base - make it look natural and selfie-like!
 - **scene matching**: extract location from script when mentioned
 - **voice selection**: rachel (default) is clear and professional
 - **resolution**: 480p is faster (3-4min), 720p/1080p takes longer (5-6min)
