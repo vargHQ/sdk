@@ -170,6 +170,17 @@ interface FalImageToImageArgs {
   aspectRatio?: string; // auto, 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
 }
 
+interface FalWan25Args {
+  prompt: string;
+  imageUrl: string; // can be url or local file path
+  audioUrl: string; // can be url or local file path
+  resolution?: "480p" | "720p" | "1080p";
+  duration?: "5" | "10";
+  negativePrompt?: string;
+  enablePromptExpansion?: boolean;
+  enableSafetyChecker?: boolean;
+}
+
 export async function imageToImage(args: FalImageToImageArgs) {
   const modelId = "fal-ai/nano-banana-pro/edit";
 
@@ -205,6 +216,99 @@ export async function imageToImage(args: FalImageToImageArgs) {
     return result;
   } catch (error) {
     console.error("[fal] error:", error);
+    throw error;
+  }
+}
+
+interface FalWan25Args {
+  prompt: string;
+  imageUrl: string; // can be url or local file path
+  audioUrl: string; // can be url or local file path
+  resolution?: "480p" | "720p" | "1080p";
+  duration?: "5" | "10";
+  negativePrompt?: string;
+  enablePromptExpansion?: boolean;
+  enableSafetyChecker?: boolean;
+}
+
+/**
+ * helper to upload audio file to fal storage if needed
+ */
+async function ensureAudioUrl(audioPathOrUrl: string): Promise<string> {
+  // if it's already a url, return it
+  if (
+    audioPathOrUrl.startsWith("http://") ||
+    audioPathOrUrl.startsWith("https://")
+  ) {
+    return audioPathOrUrl;
+  }
+
+  // check if local file exists
+  if (!existsSync(audioPathOrUrl)) {
+    throw new Error(`local audio file not found: ${audioPathOrUrl}`);
+  }
+
+  console.log(`[fal] uploading local audio: ${audioPathOrUrl}`);
+
+  // read file and upload to fal
+  const file = await Bun.file(audioPathOrUrl).arrayBuffer();
+
+  const uploadedUrl = await fal.storage.upload(
+    new Blob([file], { type: "audio/mpeg" }),
+  );
+
+  console.log(`[fal] uploaded audio to: ${uploadedUrl}`);
+  return uploadedUrl;
+}
+
+export async function wan25(args: FalWan25Args) {
+  const modelId = "fal-ai/wan-25-preview/image-to-video";
+
+  console.log(`[fal] starting wan-25: ${modelId}`);
+  console.log(`[fal] prompt: ${args.prompt}`);
+  console.log(`[fal] image: ${args.imageUrl}`);
+  console.log(`[fal] audio: ${args.audioUrl}`);
+
+  // upload local files if needed
+  const imageUrl = await ensureImageUrl(args.imageUrl);
+  const audioUrl = await ensureAudioUrl(args.audioUrl);
+
+  try {
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        image_url: imageUrl,
+        audio_url: audioUrl,
+        resolution: args.resolution || "480p",
+        duration: args.duration || "5",
+        negative_prompt:
+          args.negativePrompt ||
+          "low resolution, error, worst quality, low quality, defects",
+        enable_prompt_expansion: args.enablePromptExpansion ?? true,
+      },
+      logs: true,
+      onQueueUpdate: (update: {
+        status: string;
+        logs?: Array<{ message: string }>;
+      }) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  } catch (error) {
+    console.error("[fal] error:", error);
+    if (error && typeof error === "object" && "body" in error) {
+      console.error(
+        "[fal] validation details:",
+        JSON.stringify(error.body, null, 2),
+      );
+    }
     throw error;
   }
 }
@@ -313,12 +417,55 @@ available image sizes:
       break;
     }
 
+    case "wan": {
+      if (!args[0] || !args[1] || !args[2]) {
+        console.log(`
+usage: bun run lib/fal.ts wan <image_path_or_url> <audio_path_or_url> <prompt> [duration] [resolution]
+
+examples:
+  bun run lib/fal.ts wan media/friend/aleks/option2.jpg media/friend/aleks/voice.mp3 "selfie POV video, handheld camera" 5 480p
+  bun run lib/fal.ts wan https://image.url https://audio.url "talking video" 10 720p
+
+parameters:
+  duration: 5 or 10 (default: 5)
+  resolution: 480p, 720p, or 1080p (default: 480p)
+        `);
+        process.exit(1);
+      }
+      const wanDuration = args[3];
+      if (wanDuration && wanDuration !== "5" && wanDuration !== "10") {
+        console.error("duration must be 5 or 10");
+        process.exit(1);
+      }
+      const wanResolution = args[4];
+      if (
+        wanResolution &&
+        wanResolution !== "480p" &&
+        wanResolution !== "720p" &&
+        wanResolution !== "1080p"
+      ) {
+        console.error("resolution must be 480p, 720p, or 1080p");
+        process.exit(1);
+      }
+      const wanResult = await wan25({
+        imageUrl: args[0],
+        audioUrl: args[1],
+        prompt: args[2],
+        duration: (wanDuration as "5" | "10") || "5",
+        resolution:
+          (wanResolution as "480p" | "720p" | "1080p" | undefined) || "480p",
+      });
+      console.log(JSON.stringify(wanResult, null, 2));
+      break;
+    }
+
     default:
       console.log(`
 usage:
   # video generation (supports local files and urls)
   bun run lib/fal.ts image_to_video <prompt> <image_path_or_url> [duration]
   bun run lib/fal.ts text_to_video <prompt> [duration]
+  bun run lib/fal.ts wan <image_path_or_url> <audio_path_or_url> <prompt> [duration] [resolution]
   
   # image generation (fal client with all features)
   bun run lib/fal.ts generate_image <prompt> [model] [imageSize]
