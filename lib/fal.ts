@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * fal.ai wrapper using @fal-ai/client directly
  * for video generation and advanced features
@@ -6,8 +7,8 @@
  * usage: bun run lib/fal.ts <command> <args>
  */
 
-import { fal } from "@fal-ai/client";
 import { existsSync } from "node:fs";
+import { fal } from "@fal-ai/client";
 
 interface FalImageToVideoArgs {
   prompt: string;
@@ -161,6 +162,53 @@ export async function generateImage(args: {
   }
 }
 
+interface FalImageToImageArgs {
+  prompt: string;
+  imageUrl: string; // can be url or local file path
+  strength?: number;
+  numInferenceSteps?: number;
+  aspectRatio?: string; // auto, 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
+}
+
+export async function imageToImage(args: FalImageToImageArgs) {
+  const modelId = "fal-ai/nano-banana-pro/edit";
+
+  console.log(`[fal] starting image-to-image: ${modelId}`);
+  console.log(`[fal] prompt: ${args.prompt}`);
+  console.log(`[fal] source image: ${args.imageUrl}`);
+
+  // upload local file if needed
+  const imageUrl = await ensureImageUrl(args.imageUrl);
+
+  try {
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        image_urls: [imageUrl],
+        aspect_ratio: args.aspectRatio || "auto",
+        resolution: "2K",
+      },
+      logs: true,
+      onQueueUpdate: (update: {
+        status: string;
+        logs?: Array<{ message: string }>;
+      }) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  } catch (error) {
+    console.error("[fal] error:", error);
+    throw error;
+  }
+}
+
 // cli runner
 if (import.meta.main) {
   const [command, ...args] = process.argv.slice(2);
@@ -215,6 +263,32 @@ examples:
       break;
     }
 
+    case "image_to_image": {
+      if (!args[0] || !args[1]) {
+        console.log(`
+usage: bun run lib/fal.ts image_to_image <prompt> <image_path_or_url> [aspect_ratio]
+
+examples:
+  bun run lib/fal.ts image_to_image "woman at busy conference hall" media/friend/katia.jpg
+  bun run lib/fal.ts image_to_image "person in underground station" https://image.url 9:16
+  
+parameters:
+  aspect_ratio: auto (preserves input), 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16 (default: auto)
+
+note: now uses nano banana pro for better quality and aspect ratio preservation
+        `);
+        process.exit(1);
+      }
+      const aspectRatio = args[2] || "auto";
+      const i2iResult = await imageToImage({
+        prompt: args[0],
+        imageUrl: args[1],
+        aspectRatio,
+      });
+      console.log(JSON.stringify(i2iResult, null, 2));
+      break;
+    }
+
     case "generate_image": {
       if (!args[0]) {
         console.log(`
@@ -248,6 +322,7 @@ usage:
   
   # image generation (fal client with all features)
   bun run lib/fal.ts generate_image <prompt> [model] [imageSize]
+  bun run lib/fal.ts image_to_image <prompt> <image_path_or_url> [strength]
   
 note: for simpler image generation, use lib/ai-sdk/fal.ts instead
       `);

@@ -42,13 +42,28 @@ located in `service/<name>/SKILL.md`:
    - transcribe audio to text or subtitles using groq/fireworks
    - cli: `bun run service/transcribe <audioUrl> <provider> [outputPath]`
 
+### utility skills
+
+8. **telegram-send** (external: `/Users/aleks/Github/Badaboom1995/rumble-b2c`)
+   - send videos to telegram users/channels as round videos
+   - automatically converts to 512x512 square format for telegram
+   - cli: `cd /Users/aleks/Github/Badaboom1995/rumble-b2c && bun run scripts/telegram-send-video.ts <videoPath> <@username>`
+   - example: `cd /Users/aleks/Github/Badaboom1995/rumble-b2c && bun run scripts/telegram-send-video.ts /path/to/video.mp4 @caffeinum`
+
 ### pipeline skills
 
 located in `pipeline/cookbooks/SKILL.md`:
 
-8. **talking-character-pipeline** (`pipeline/cookbooks/`)
+9. **talking-character-pipeline** (`pipeline/cookbooks/`)
    - complete workflow to create talking character videos
    - combines: character generation → voiceover → animation → lipsync → captions → social prep
+
+10. **round-video-character** (`pipeline/cookbooks/round-video-character.md`)
+   - create realistic round selfie videos for telegram using nano banana pro + wan 2.5
+   - workflow: generate selfie first frame (person in setting) → voiceover → wan 2.5 video
+   - uses: `bun run lib/fal.ts`, `bun run lib/replicate.ts`, `bun run lib/elevenlabs.ts`
+   - input: text script + profile photo
+   - output: extreme close-up selfie video with authentic camera shake, lighting, and audio
 
 ## structure
 
@@ -130,10 +145,13 @@ each skill includes:
 | video-captions | captions | add subtitles, accessibility |
 | video-editing | edit | resize, trim, social media optimization |
 | audio-transcription | transcribe | speech-to-text, subtitle generation |
+| telegram-send | external | send videos to telegram as round videos |
 | talking-character-pipeline | pipeline | end-to-end talking character videos |
+| round-video-character | pipeline | telegram round selfie videos with wan 2.5 |
 
 ## see also
 
 - [README.md](README.md) - sdk overview and installation
 - [STRUCTURE.md](STRUCTURE.md) - detailed module organization
 - [pipeline/cookbooks/talking-character.md](pipeline/cookbooks/talking-character.md) - talking character workflow
+- [pipeline/cookbooks/round-video-character.md](pipeline/cookbooks/round-video-character.md) - telegram round selfie video cookbook
