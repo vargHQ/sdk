@@ -1,6 +1,6 @@
-# wan 2.5 talking character cookbook
+# round video character cookbook
 
-create realistic talking character videos: person in a setting speaking with natural voice and lipsync
+create realistic round selfie videos for telegram: extreme close-up POV videos with authentic camera shake, lighting, and audio
 
 ## what this does
 
