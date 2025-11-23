@@ -1,6 +1,6 @@
 # round video character cookbook
 
-create realistic round selfie videos for telegram: extreme close-up POV videos with authentic camera shake, lighting, and audio
+create realistic round selfie videos for telegram: front-facing camera POV videos with authentic camera shake, lighting, and audio
 
 ## what this does
 
@@ -91,7 +91,7 @@ now you have:
 bun run lib/replicate.ts wan \
   https://v3b.fal.media/files/.../first-frame.jpg \
   https://v3b.fal.media/files/.../audio.mpeg \
-  "extreme close-up selfie POV video, handheld POV with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, blurred background, dark indoor busy setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion indicating public location" \
+  "front-facing camera selfie POV video, handheld POV with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, blurred background, dark indoor busy setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion indicating public location" \
   10 \
   480p
 ```
@@ -101,7 +101,7 @@ bun run lib/replicate.ts wan \
 the prompt should include ALL these elements for maximum authenticity:
 
 **camera technique:**
-- "extreme close-up selfie POV video"
+- "front-facing camera selfie POV video"
 - "handheld POV directly in front of face"
 - "continuous slight wobble and shake"
 
@@ -160,11 +160,11 @@ choose setting based on script context. always include handheld camera descripti
 
 | script mentions | step 1: first frame prompt | wan 2.5 prompt (detailed style) |
 |----------------|---------------------------|--------------------------------|
-| "at the conference" / "hackathon" | selfie photo taken with front-facing phone camera, person at busy conference hall with people walking in background, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble, subject in sharp focus with softly blurred background, dramatic low-light with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter |
-| "subway" / "metro" | selfie photo taken with front-facing phone camera, person at underground metro station with commuters, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone with slight shake, sharp focus on subject with blurred metro background, harsh fluorescent lighting with cool tones, dark underground station with out-of-focus commuters and lights, audio with echoing background noise and distant train sounds |
-| "office" | selfie photo taken with front-facing phone camera, person in modern office workspace, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone wobble, sharp subject focus with blurred office background, soft indoor office lighting, modern workspace with blurred monitors and colleagues in background, conversational audio with quiet office ambient noise |
-| "street" | selfie photo taken with front-facing phone camera, person on city street with pedestrians, shot from phone held at arm's length | extreme close-up selfie POV video, handheld shake, sharp focus with blurred street background, natural daylight or street lighting, urban setting with out-of-focus pedestrians and traffic, audio with street noise and distant traffic sounds |
-| no location | selfie photo taken with front-facing phone camera, person in casual setting, shot from phone held at arm's length | extreme close-up selfie POV video, handheld phone with slight wobble, sharp subject with softly blurred background, natural indoor lighting, casual indoor setting, conversational audio (default) |
+| "at the conference" / "hackathon" | selfie photo taken with front-facing phone camera, person at busy conference hall with people walking in background, shot from phone held at arm's length | front-facing camera selfie POV video, handheld phone directly in front of face with continuous slight wobble, subject in sharp focus with softly blurred background, dramatic low-light with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter |
+| "subway" / "metro" | selfie photo taken with front-facing phone camera, person at underground metro station with commuters, shot from phone held at arm's length | front-facing camera selfie POV video, handheld phone with slight shake, sharp focus on subject with blurred metro background, harsh fluorescent lighting with cool tones, dark underground station with out-of-focus commuters and lights, audio with echoing background noise and distant train sounds |
+| "office" | selfie photo taken with front-facing phone camera, person in modern office workspace, shot from phone held at arm's length | front-facing camera selfie POV video, handheld phone wobble, sharp subject focus with blurred office background, soft indoor office lighting, modern workspace with blurred monitors and colleagues in background, conversational audio with quiet office ambient noise |
+| "street" | selfie photo taken with front-facing phone camera, person on city street with pedestrians, shot from phone held at arm's length | front-facing camera selfie POV video, handheld shake, sharp focus with blurred street background, natural daylight or street lighting, urban setting with out-of-focus pedestrians and traffic, audio with street noise and distant traffic sounds |
+| no location | selfie photo taken with front-facing phone camera, person in casual setting, shot from phone held at arm's length | front-facing camera selfie POV video, handheld phone with slight wobble, sharp subject with softly blurred background, natural indoor lighting, casual indoor setting, conversational audio (default) |
 
 **key phrases for authentic selfie look:**
 
@@ -176,7 +176,7 @@ choose setting based on script context. always include handheld camera descripti
 **step 4 (wan 2.5) - comprehensive style elements:**
 
 *camera technique:*
-- "extreme close-up selfie POV video"
+- "front-facing camera selfie POV video"
 - "handheld phone directly in front of face"
 - "continuous slight wobble and shake"
 
@@ -234,7 +234,7 @@ bun /tmp/upload.ts
 bun run lib/replicate.ts wan \
   https://v3b.fal.media/files/.../first-frame.jpg \
   https://v3b.fal.media/files/.../audio.mpeg \
-  "extreme close-up selfie POV video, handheld phone directly in front of face with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, dramatic low-light scene with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion" \
+  "front-facing camera selfie POV video, handheld phone directly in front of face with continuous slight wobble and shake, subject in sharp focus with softly blurred background shallow depth of field, dramatic low-light scene with intense magenta hot pink light illuminating face and blue ambient lights in blurred background, dark indoor busy conference setting with abstract out-of-focus lights, conversational audio with muffled background crowd chatter and commotion" \
   10 \
   480p
 # takes 3-5 minutes...
