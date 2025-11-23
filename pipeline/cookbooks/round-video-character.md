@@ -47,13 +47,14 @@ curl -o media/friend/first-frame.jpg "https://fal-output-url.jpg"
 
 ```bash
 # generate voice from script
+# save to media/friend/[name]/voice.mp3 for organization
 bun run lib/elevenlabs.ts tts \
   "hey everyone! excited to share this update from the conference" \
   rachel \
-  output/voice.mp3
+  media/friend/katia/voice.mp3
 ```
 
-the audio is saved to `output/voice.mp3`. you'll need to upload this to get a url for wan 2.5.
+the audio is saved to `media/friend/[name]/voice.mp3`. you'll need to upload this to get a url for wan 2.5.
 
 ### step 3: upload audio to get url
 
@@ -64,7 +65,7 @@ wan 2.5 needs the audio as a url. use fal storage:
 cat > /tmp/upload-audio.ts << 'EOF'
 import { fal } from "@fal-ai/client";
 
-const file = await Bun.file("output/voice.mp3").arrayBuffer();
+const file = await Bun.file("media/friend/katia/voice.mp3").arrayBuffer();
 const uploadedUrl = await fal.storage.upload(
   new Blob([file], { type: "audio/mpeg" })
 );
@@ -142,8 +143,8 @@ curl -o media/friend/talking-character.mp4 "https://replicate.delivery/.../video
 ## output
 
 - first frame: person in setting (jpg)
-- voiceover: `output/voice.mp3`
-- final video: `output/talking-character.mp4`
+- voiceover: `media/friend/[name]/voice.mp3`
+- final video: `media/friend/[name]/talking-character.mp4`
 
 ## timing
 
@@ -216,13 +217,13 @@ bun run lib/fal.ts image_to_image \
 bun run lib/elevenlabs.ts tts \
   "hey everyone! i'm so excited to share this amazing update with you from the conference today" \
   rachel \
-  output/voice.mp3
-# output: output/voice.mp3
+  media/friend/katia/voice.mp3
+# output: media/friend/katia/voice.mp3
 
 # step 3: upload audio
 cat > /tmp/upload.ts << 'EOF'
 import { fal } from "@fal-ai/client";
-const file = await Bun.file("output/voice.mp3").arrayBuffer();
+const file = await Bun.file("media/friend/katia/voice.mp3").arrayBuffer();
 const url = await fal.storage.upload(new Blob([file], { type: "audio/mpeg" }));
 console.log(url);
 EOF
@@ -260,19 +261,19 @@ curl -o media/friend/katia-talking.mp4 "https://replicate.delivery/.../video.mp4
 - **scene matching**: extract location from script when mentioned
 - **voice selection**: rachel (default) is clear and professional
 - **resolution**: 480p is faster (3-4min), 720p/1080p takes longer (5-6min)
-- **save intermediates**: store outputs in media/friend/ for reuse
+- **save intermediates**: store outputs in media/friend/[name]/ for organization and reuse
 
 ## voice options
 
 ```bash
 # female voices (american english)
-bun run lib/elevenlabs.ts tts "script" rachel output/voice.mp3
-bun run lib/elevenlabs.ts tts "script" bella output/voice.mp3  
-bun run lib/elevenlabs.ts tts "script" elli output/voice.mp3
+bun run lib/elevenlabs.ts tts "script" rachel media/friend/[name]/voice.mp3
+bun run lib/elevenlabs.ts tts "script" bella media/friend/[name]/voice.mp3  
+bun run lib/elevenlabs.ts tts "script" elli media/friend/[name]/voice.mp3
 
 # male voices (american english)
-bun run lib/elevenlabs.ts tts "script" antoni output/voice.mp3
-bun run lib/elevenlabs.ts tts "script" josh output/voice.mp3
+bun run lib/elevenlabs.ts tts "script" antoni media/friend/[name]/voice.mp3
+bun run lib/elevenlabs.ts tts "script" josh media/friend/[name]/voice.mp3
 ```
 
 see all voices: `bun run lib/elevenlabs.ts voices`
