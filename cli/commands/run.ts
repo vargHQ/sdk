@@ -4,13 +4,14 @@
  */
 
 import { existsSync } from "node:fs";
+import { defineCommand } from "citty";
 import { resolve } from "../discover";
 import type { Meta } from "../types";
 import { box, c, runningBox } from "../ui";
 
 interface RunOptions {
   [key: string]: string | boolean | undefined;
-  help?: boolean;
+  info?: boolean;
   schema?: boolean;
   json?: boolean;
   quiet?: boolean;
@@ -27,7 +28,7 @@ function parseArgs(args: string[]): { target: string; options: RunOptions } {
     if (arg.startsWith("--")) {
       const key = arg.slice(2);
       if (
-        key === "help" ||
+        key === "info" ||
         key === "schema" ||
         key === "json" ||
         key === "quiet"
@@ -85,6 +86,7 @@ function showHelp(item: Meta) {
   content.push("");
   content.push(`    --json          output result as json`);
   content.push(`    --quiet         minimal output`);
+  content.push(`    --info          show this help`);
   content.push("");
 
   console.log(box(`action: ${item.name}`, content));
@@ -102,104 +104,134 @@ function showSchema(item: Meta) {
   console.log(JSON.stringify(schema, null, 2));
 }
 
-export async function runCommand(args: string[]) {
-  const { target, options } = parseArgs(args);
+export const runCmd = defineCommand({
+  meta: {
+    name: "run",
+    description: "run a model or action",
+  },
+  args: {
+    target: {
+      type: "positional",
+      description: "action to run",
+      required: false,
+    },
+    info: {
+      type: "boolean",
+      description: "show action info",
+    },
+    schema: {
+      type: "boolean",
+      description: "show action schema as json",
+    },
+    json: {
+      type: "boolean",
+      description: "output result as json",
+    },
+    quiet: {
+      type: "boolean",
+      description: "minimal output",
+    },
+  },
+  async run({ rawArgs }) {
+    // use rawArgs for dynamic action options
+    const { target, options } = parseArgs(rawArgs);
 
-  if (!target) {
-    console.error(`${c.red("error:")} target required`);
-    console.log(`\nusage: ${c.cyan("varg run <action> [options]")}`);
-    console.log(`\nrun ${c.cyan("varg list")} to see available actions`);
-    process.exit(1);
-  }
-
-  const item = await resolve(target);
-
-  if (!item) {
-    console.error(`${c.red("error:")} '${target}' not found`);
-    console.log(`\nrun ${c.cyan("varg list")} to see available actions`);
-    process.exit(1);
-  }
-
-  if (options.help) {
-    showHelp(item);
-    return;
-  }
-
-  if (options.schema) {
-    showSchema(item);
-    return;
-  }
-
-  // validate required args
-  for (const req of item.schema.input.required) {
-    if (!options[req]) {
-      console.error(`${c.red("error:")} --${req} is required`);
-      console.log(`\nrun ${c.cyan(`varg run ${target} --help`)} for usage`);
+    if (!target) {
+      console.error(`${c.red("error:")} target required`);
+      console.log(`\nusage: ${c.cyan("varg run <action> [options]")}`);
+      console.log(`\nrun ${c.cyan("varg list")} to see available actions`);
       process.exit(1);
     }
-  }
 
-  // build params for display
-  const params: Record<string, string> = {};
-  for (const key of Object.keys(item.schema.input.properties)) {
-    if (options[key] && typeof options[key] === "string") {
-      params[key] = options[key] as string;
+    const item = await resolve(target);
+
+    if (!item) {
+      console.error(`${c.red("error:")} '${target}' not found`);
+      console.log(`\nrun ${c.cyan("varg list")} to see available actions`);
+      process.exit(1);
     }
-  }
 
-  if (!options.quiet && !options.json) {
-    console.log(runningBox(target, params, "running"));
-  }
+    if (options.info) {
+      showHelp(item);
+      return;
+    }
 
-  const startTime = Date.now();
+    if (options.schema) {
+      showSchema(item);
+      return;
+    }
 
-  try {
-    const result = await item.run(options);
-    const elapsed = Date.now() - startTime;
-
-    if (options.json) {
-      console.log(JSON.stringify({ success: true, result, time: elapsed }));
-    } else if (options.quiet) {
-      console.log(JSON.stringify(result));
-    } else {
-      // extract url from result if present
-      const resultObj = result as Record<string, unknown> | null;
-      const url =
-        resultObj?.imageUrl || resultObj?.videoUrl || resultObj?.url || null;
-
-      console.log("\x1b[2J\x1b[H");
-      console.log(
-        runningBox(target, params, "done", {
-          output: url ? "saved" : "done",
-          time: elapsed,
-        }),
-      );
-
-      // print url outside box so it's clickable
-      if (url) {
-        console.log(`\n  ${c.cyan("url")}  ${url}\n`);
+    // validate required args
+    for (const req of item.schema.input.required) {
+      if (!options[req]) {
+        console.error(`${c.red("error:")} --${req} is required`);
+        console.log(`\nrun ${c.cyan(`varg run ${target} --info`)} for usage`);
+        process.exit(1);
       }
     }
-  } catch (err) {
-    const elapsed = Date.now() - startTime;
-    const errorMsg = err instanceof Error ? err.message : String(err);
 
-    if (options.json) {
-      console.log(
-        JSON.stringify({ success: false, error: errorMsg, time: elapsed }),
-      );
-    } else if (options.quiet) {
-      console.error(errorMsg);
-    } else {
-      console.log("\x1b[2J\x1b[H");
-      console.log(
-        runningBox(target, params, "error", {
-          error: errorMsg,
-          time: elapsed,
-        }),
-      );
+    // build params for display
+    const params: Record<string, string> = {};
+    for (const key of Object.keys(item.schema.input.properties)) {
+      if (options[key] && typeof options[key] === "string") {
+        params[key] = options[key] as string;
+      }
     }
 
-    process.exit(1);
-  }
-}
+    if (!options.quiet && !options.json) {
+      console.log(runningBox(target, params, "running"));
+    }
+
+    const startTime = Date.now();
+
+    try {
+      const result = await item.run(options);
+      const elapsed = Date.now() - startTime;
+
+      if (options.json) {
+        console.log(JSON.stringify({ success: true, result, time: elapsed }));
+      } else if (options.quiet) {
+        console.log(JSON.stringify(result));
+      } else {
+        // extract url from result if present
+        const resultObj = result as Record<string, unknown> | null;
+        const url =
+          resultObj?.imageUrl || resultObj?.videoUrl || resultObj?.url || null;
+
+        console.log("\x1b[2J\x1b[H");
+        console.log(
+          runningBox(target, params, "done", {
+            output: url ? "saved" : "done",
+            time: elapsed,
+          }),
+        );
+
+        // print url outside box so it's clickable
+        if (url) {
+          console.log(`\n  ${c.cyan("url")}  ${url}\n`);
+        }
+      }
+    } catch (err) {
+      const elapsed = Date.now() - startTime;
+      const errorMsg = err instanceof Error ? err.message : String(err);
+
+      if (options.json) {
+        console.log(
+          JSON.stringify({ success: false, error: errorMsg, time: elapsed }),
+        );
+      } else if (options.quiet) {
+        console.error(errorMsg);
+      } else {
+        console.log("\x1b[2J\x1b[H");
+        console.log(
+          runningBox(target, params, "error", {
+            error: errorMsg,
+            time: elapsed,
+          }),
+        );
+      }
+
+      process.exit(1);
+    }
+  },
+});
