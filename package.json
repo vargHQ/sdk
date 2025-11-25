@@ -2,6 +2,9 @@
   "name": "varg.ai-sdk",
   "module": "index.ts",
   "type": "module",
+  "bin": {
+    "varg": "./index.ts"
+  },
   "scripts": {
     "lint": "biome check .",
     "format": "biome format --write ."
@@ -31,5 +34,8 @@
     "remotion": "^4.0.377",
     "replicate": "^1.4.0"
   },
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "exports": {
+    ".": "./index.ts"
+  }
 }
