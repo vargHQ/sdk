@@ -6,7 +6,6 @@
  */
 
 import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { toFile } from "groq-sdk/uploads";
 import type { ActionMeta } from "../../cli/types";
 import {
@@ -205,65 +204,7 @@ export async function transcribe(
 }
 
 // cli
-async function cli() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-
-  if (!command || command === "help") {
-    console.log(`
-usage:
-  bun run service/transcribe.ts <audioPath> [provider] [outputPath]
-
-arguments:
-  audioPath      - url or local path to audio file
-  provider       - groq (default) | fireworks
-  outputPath     - optional path to save transcription
-
-examples:
-  bun run service/transcribe.ts https://example.com/audio.mp3
-  bun run service/transcribe.ts media/dora.ogg groq
-  bun run service/transcribe.ts https://example.com/audio.mp3 fireworks output.srt
-  bun run service/transcribe.ts media/audio.mp3 groq output.txt
-
-providers:
-  groq        - ultra-fast whisper (text only, free tier available)
-  fireworks   - slower but includes srt timestamps (uses reels-srt api)
-
-environment:
-  GROQ_API_KEY - your groq api key (for groq provider)
-    `);
-    process.exit(0);
-  }
-
-  try {
-    const audioUrl = args[0];
-    const provider = (args[1] || "groq") as "groq" | "fireworks";
-    const outputPath = args[2];
-
-    if (!audioUrl) {
-      throw new Error("audioUrl is required");
-    }
-
-    const result = await transcribe({
-      audioUrl,
-      provider,
-      outputFormat: provider === "fireworks" ? "srt" : "text",
-      outputPath: outputPath || join(process.cwd(), "output.txt"),
-    });
-
-    if (result.success) {
-      console.log("\ntranscription:");
-      console.log(result.srt || result.text);
-    } else {
-      console.error(`\nerror: ${result.error}`);
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error("[transcribe] error:", error);
-    process.exit(1);
-  }
-}
-
 if (import.meta.main) {
-  cli();
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }

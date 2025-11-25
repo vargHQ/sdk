@@ -98,49 +98,8 @@ export async function generateWithSoul(
   return { imageUrl, uploaded };
 }
 
-// cli runner
+// cli
 if (import.meta.main) {
-  const [command, ...args] = process.argv.slice(2);
-
-  switch (command) {
-    case "fal": {
-      if (!args[0]) {
-        console.log(`
-usage:
-  bun run service/image.ts fal <prompt> [model] [upload]
-        `);
-        process.exit(1);
-      }
-      const falResult = await generateWithFal(args[0], {
-        model: args[1],
-        upload: args[2] === "true",
-      });
-      console.log(JSON.stringify(falResult, null, 2));
-      break;
-    }
-
-    case "soul": {
-      if (!args[0]) {
-        console.log(`
-usage:
-  bun run service/image.ts soul <prompt> [styleId] [upload]
-        `);
-        process.exit(1);
-      }
-      const soulResult = await generateWithSoul(args[0], {
-        styleId: args[1],
-        upload: args[2] === "true",
-      });
-      console.log(JSON.stringify(soulResult, null, 2));
-      break;
-    }
-
-    default:
-      console.log(`
-usage:
-  bun run service/image.ts fal <prompt> [model] [upload]
-  bun run service/image.ts soul <prompt> [styleId] [upload]
-      `);
-      process.exit(1);
-  }
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }

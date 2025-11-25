@@ -118,59 +118,8 @@ export async function generateVideoFromText(
   };
 }
 
-// cli runner
+// cli
 if (import.meta.main) {
-  const [command, ...args] = process.argv.slice(2);
-
-  switch (command) {
-    case "from_image": {
-      if (!args[0] || !args[1]) {
-        console.log(`
-usage:
-  bun run service/video.ts from_image <prompt> <imageUrl> [duration] [upload]
-        `);
-        process.exit(1);
-      }
-      const duration = args[2];
-      if (duration && duration !== "5" && duration !== "10") {
-        console.error("duration must be 5 or 10");
-        process.exit(1);
-      }
-      const imgResult = await generateVideoFromImage(args[0], args[1], {
-        duration: duration === "10" ? 10 : 5,
-        upload: args[3] === "true",
-      });
-      console.log(JSON.stringify(imgResult, null, 2));
-      break;
-    }
-
-    case "from_text": {
-      if (!args[0]) {
-        console.log(`
-usage:
-  bun run service/video.ts from_text <prompt> [duration] [upload]
-        `);
-        process.exit(1);
-      }
-      const duration = args[1];
-      if (duration && duration !== "5" && duration !== "10") {
-        console.error("duration must be 5 or 10");
-        process.exit(1);
-      }
-      const txtResult = await generateVideoFromText(args[0], {
-        duration: duration === "10" ? 10 : 5,
-        upload: args[2] === "true",
-      });
-      console.log(JSON.stringify(txtResult, null, 2));
-      break;
-    }
-
-    default:
-      console.log(`
-usage:
-  bun run service/video.ts from_image <prompt> <imageUrl> [duration] [upload]
-  bun run service/video.ts from_text <prompt> [duration] [upload]
-      `);
-      process.exit(1);
-  }
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }
