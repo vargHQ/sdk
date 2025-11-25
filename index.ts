@@ -27,12 +27,12 @@ export * from "./lib/higgsfield";
 // lib exports - replicate
 export * from "./lib/replicate";
 // service exports
-export * from "./service/captions";
-export * from "./service/edit";
-export * from "./service/image";
-export * from "./service/sync";
-export * from "./service/transcribe";
-export * from "./service/video";
-export * from "./service/voice";
+export * from "./action/captions";
+export * from "./action/edit";
+export * from "./action/image";
+export * from "./action/sync";
+export * from "./action/transcribe";
+export * from "./action/video";
+export * from "./action/voice";
 // utilities exports
 export * from "./utilities/s3";
