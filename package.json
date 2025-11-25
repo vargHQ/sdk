@@ -3,7 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "bin": {
-    "varg": "./index.ts"
+    "varg": "./cli/index.ts"
   },
   "scripts": {
     "lint": "biome check .",

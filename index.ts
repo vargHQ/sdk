@@ -8,6 +8,14 @@ export { fal } from "@ai-sdk/fal";
 export { replicate } from "@ai-sdk/replicate";
 export { fal as falClient } from "@fal-ai/client";
 export { HiggsfieldClient } from "@higgsfield/client";
+// service exports
+export * from "./action/captions";
+export * from "./action/edit";
+export * from "./action/image";
+export * from "./action/sync";
+export * from "./action/transcribe";
+export * from "./action/video";
+export * from "./action/voice";
 // lib exports - ai-sdk/fal (provider)
 export * as aiSdkFal from "./lib/ai-sdk/fal";
 // lib exports - ai-sdk/replicate (provider)
@@ -26,13 +34,5 @@ export * from "./lib/groq";
 export * from "./lib/higgsfield";
 // lib exports - replicate
 export * from "./lib/replicate";
-// service exports
-export * from "./action/captions";
-export * from "./action/edit";
-export * from "./action/image";
-export * from "./action/sync";
-export * from "./action/transcribe";
-export * from "./action/video";
-export * from "./action/voice";
 // utilities exports
 export * from "./utilities/s3";
