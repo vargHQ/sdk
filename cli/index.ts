@@ -35,17 +35,17 @@ async function main() {
 
     case "list":
     case "ls":
-      listCommand(args[1]);
+      await listCommand(args[1]);
       break;
 
     case "find":
     case "search":
-      findCommand(args.slice(1).join(" "));
+      await findCommand(args.slice(1).join(" "));
       break;
 
     case "which":
     case "inspect":
-      whichCommand(args[1] || "");
+      await whichCommand(args[1] || "");
       break;
 
     case "help":

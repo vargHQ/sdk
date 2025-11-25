@@ -4,9 +4,43 @@
  * usage: bun run service/image.ts <command> <args>
  */
 
+import type { ActionMeta } from "../../cli/types";
 import { generateImage } from "../../lib/fal";
 import { generateSoul } from "../../lib/higgsfield";
 import { uploadFromUrl } from "../../utilities/s3";
+
+export const meta: ActionMeta = {
+  name: "image",
+  type: "action",
+  description: "generate image from text",
+  inputType: "text",
+  outputType: "image",
+  schema: {
+    input: {
+      type: "object",
+      required: ["prompt"],
+      properties: {
+        prompt: { type: "string", description: "what to generate" },
+        size: {
+          type: "string",
+          enum: [
+            "square_hd",
+            "landscape_4_3",
+            "portrait_4_3",
+            "landscape_16_9",
+          ],
+          default: "landscape_4_3",
+          description: "image size/aspect",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "image path" },
+  },
+  async run(options) {
+    const { prompt, size } = options as { prompt: string; size?: string };
+    return generateWithFal(prompt, { model: size });
+  },
+};
 
 export interface ImageGenerationResult {
   imageUrl: string;

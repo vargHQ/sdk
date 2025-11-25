@@ -4,8 +4,49 @@
  * usage: bun run service/video.ts <command> <args>
  */
 
+import type { ActionMeta } from "../../cli/types";
 import { imageToVideo, textToVideo } from "../../lib/fal";
 import { uploadFromUrl } from "../../utilities/s3";
+
+export const meta: ActionMeta = {
+  name: "video",
+  type: "action",
+  description: "generate video from text or image",
+  inputType: "text/image",
+  outputType: "video",
+  schema: {
+    input: {
+      type: "object",
+      required: ["prompt"],
+      properties: {
+        prompt: { type: "string", description: "what to generate" },
+        image: {
+          type: "string",
+          format: "file-path",
+          description: "input image (enables image-to-video)",
+        },
+        duration: {
+          type: "integer",
+          enum: [5, 10],
+          default: 5,
+          description: "video duration in seconds",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "video path" },
+  },
+  async run(options) {
+    const { prompt, image, duration } = options as {
+      prompt: string;
+      image?: string;
+      duration?: 5 | 10;
+    };
+    if (image) {
+      return generateVideoFromImage(prompt, image, { duration });
+    }
+    return generateVideoFromText(prompt, { duration });
+  },
+};
 
 export interface VideoGenerationResult {
   videoUrl: string;

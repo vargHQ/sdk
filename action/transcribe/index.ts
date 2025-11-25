@@ -8,11 +8,53 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { toFile } from "groq-sdk/uploads";
+import type { ActionMeta } from "../../cli/types";
 import {
   convertFireworksToSRT,
   transcribeWithFireworks as fireworksTranscribe,
 } from "../../lib/fireworks";
 import { GROQ_MODELS, transcribeAudio as groqTranscribe } from "../../lib/groq";
+
+export const meta: ActionMeta = {
+  name: "transcribe",
+  type: "action",
+  description: "speech to text transcription",
+  inputType: "audio",
+  outputType: "text",
+  schema: {
+    input: {
+      type: "object",
+      required: ["audio"],
+      properties: {
+        audio: {
+          type: "string",
+          format: "file-path",
+          description: "audio/video file to transcribe",
+        },
+        provider: {
+          type: "string",
+          enum: ["groq", "fireworks"],
+          default: "groq",
+          description: "transcription provider",
+        },
+        output: {
+          type: "string",
+          format: "file-path",
+          description: "output file path",
+        },
+      },
+    },
+    output: { type: "string", description: "transcribed text" },
+  },
+  async run(options) {
+    const { audio, provider, output } = options as {
+      audio: string;
+      provider?: "groq" | "fireworks";
+      output?: string;
+    };
+    return transcribe({ audioUrl: audio, provider, outputPath: output });
+  },
+};
 
 // types
 export interface TranscribeOptions {

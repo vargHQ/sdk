@@ -1,48 +1,35 @@
 /**
  * varg find command
- * fuzzy search for models and actions
+ * fuzzy search by scanning filesystem
  */
 
-import { search } from "../registry";
+import { search } from "../discover";
 import { box, c, header, separator } from "../ui";
 
-export function findCommand(query: string) {
+export async function findCommand(query: string) {
   if (!query) {
     console.error(`${c.red("error:")} search query required`);
     console.log(`\nusage: ${c.cyan("varg find <query>")}`);
     process.exit(1);
   }
 
-  const results = search(query);
+  const results = await search(query);
 
   if (results.length === 0) {
     console.log(`\nno matches for "${query}"`);
-    console.log(`\ntry ${c.cyan("varg list")} to see all available options`);
+    console.log(`\ntry ${c.cyan("varg list")} to see all available actions`);
     return;
   }
 
   const content: string[] = [];
   content.push("");
-  content.push(header("BEST MATCHES"));
+  content.push(header("MATCHES"));
   content.push("");
 
-  const models = results.filter((r) => r.type === "model");
-  const actions = results.filter((r) => r.type === "action");
-
-  if (actions.length > 0) {
-    for (const action of actions) {
-      content.push(
-        `  ${c.cyan(`action/${action.name}`.padEnd(24))}${action.description}`,
-      );
-    }
-  }
-
-  if (models.length > 0) {
-    for (const model of models) {
-      content.push(
-        `  ${c.cyan(`model/${model.name}`.padEnd(24))}${model.inputType} → ${model.outputType}`,
-      );
-    }
+  for (const action of results) {
+    content.push(
+      `  ${c.cyan(action.name.padEnd(16))}${action.inputType} → ${action.outputType}`,
+    );
   }
 
   content.push("");

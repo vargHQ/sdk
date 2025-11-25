@@ -5,8 +5,46 @@
  * supports elevenlabs and future providers
  */
 
+import type { ActionMeta } from "../../cli/types";
 import { textToSpeech, VOICES } from "../../lib/elevenlabs";
 import { uploadFile } from "../../utilities/s3";
+
+export const meta: ActionMeta = {
+  name: "voice",
+  type: "action",
+  description: "text to speech generation",
+  inputType: "text",
+  outputType: "audio",
+  schema: {
+    input: {
+      type: "object",
+      required: ["text"],
+      properties: {
+        text: { type: "string", description: "text to convert to speech" },
+        voice: {
+          type: "string",
+          enum: ["rachel", "domi", "bella", "antoni", "josh", "adam", "sam"],
+          default: "rachel",
+          description: "voice to use",
+        },
+        output: {
+          type: "string",
+          format: "file-path",
+          description: "output file path",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "audio path" },
+  },
+  async run(options) {
+    const { text, voice, output } = options as {
+      text: string;
+      voice?: string;
+      output?: string;
+    };
+    return generateVoice({ text, voice, outputPath: output });
+  },
+};
 
 // types
 export interface GenerateVoiceOptions {
