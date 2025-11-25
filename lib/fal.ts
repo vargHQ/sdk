@@ -170,17 +170,6 @@ interface FalImageToImageArgs {
   aspectRatio?: string; // auto, 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
 }
 
-interface FalWan25Args {
-  prompt: string;
-  imageUrl: string; // can be url or local file path
-  audioUrl: string; // can be url or local file path
-  resolution?: "480p" | "720p" | "1080p";
-  duration?: "5" | "10";
-  negativePrompt?: string;
-  enablePromptExpansion?: boolean;
-  enableSafetyChecker?: boolean;
-}
-
 export async function imageToImage(args: FalImageToImageArgs) {
   const modelId = "fal-ai/nano-banana-pro/edit";
 
