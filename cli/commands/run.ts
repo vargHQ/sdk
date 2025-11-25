@@ -162,13 +162,23 @@ export async function runCommand(args: string[]) {
     } else if (options.quiet) {
       console.log(JSON.stringify(result));
     } else {
+      // extract url from result if present
+      const resultObj = result as Record<string, unknown> | null;
+      const url =
+        resultObj?.imageUrl || resultObj?.videoUrl || resultObj?.url || null;
+
       console.log("\x1b[2J\x1b[H");
       console.log(
         runningBox(target, params, "done", {
-          output: JSON.stringify(result),
+          output: url ? "saved" : "done",
           time: elapsed,
         }),
       );
+
+      // print url outside box so it's clickable
+      if (url) {
+        console.log(`\n  ${c.cyan("url")}  ${url}\n`);
+      }
     }
   } catch (err) {
     const elapsed = Date.now() - startTime;
