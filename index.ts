@@ -9,14 +9,35 @@ export { replicate } from "@ai-sdk/replicate";
 export { fal as falClient } from "@fal-ai/client";
 export { HiggsfieldClient } from "@higgsfield/client";
 // action exports (excluding meta to avoid conflicts)
-export * from "./action/captions";
-export * from "./action/edit";
+export {
+  type AddCaptionsOptions,
+  addCaptions,
+  type SubtitleStyle,
+} from "./action/captions";
+export {
+  type CreateMontageOptions,
+  createMontage,
+  type EditPipelineOptions,
+  type EditPipelineStep,
+  editPipeline,
+  mergeWithAudio,
+  type PrepareForSocialOptions,
+  prepareForSocial,
+  quickResize,
+  quickTrim,
+} from "./action/edit";
 export {
   generateWithFal,
   generateWithSoul,
   type ImageGenerationResult,
 } from "./action/image";
-export * from "./action/sync";
+export {
+  type LipsyncOptions,
+  lipsync,
+  lipsyncOverlay,
+  lipsyncWav2Lip,
+  type Wav2LipOptions,
+} from "./action/sync";
 export {
   type TranscribeOptions,
   type TranscribeResult,
