@@ -45,10 +45,15 @@ export async function generateWithSoul(
 
   const result = await generateSoul({
     prompt,
-    styleId: options.styleId,
+    style_id: options.styleId,
   });
 
-  const imageUrl = result.jobs?.[0]?.results?.raw?.url;
+  // Check if generation was successful
+  if (result.status !== "completed") {
+    throw new Error(`Generation ${result.status}: ${result.error || "unknown error"}`);
+  }
+
+  const imageUrl = result.images?.[0]?.url;
   if (!imageUrl) {
     throw new Error("no image url in result");
   }

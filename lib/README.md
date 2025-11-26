@@ -77,20 +77,80 @@ const result = await imageToVideo({
 | multi-provider app | ai-sdk provider ✓ |
 | custom queue handling | fal client direct ✓ |
 
-## higgsfield.ts
+## higgsfield/ - HTTP-based API
 
-uses `@higgsfield/client` for soul character generation
+**NEW:** Now uses direct HTTP requests instead of `@higgsfield/client`
 
 **features:**
 - generate soul images with custom styles
-- create and manage character references
+- async queue pattern with polling
+- webhook support for production
+- manual queue management
+- cancel pending requests
 - list available soul styles
-- poll for job completion
 
-**example:**
+**benefits:**
+- no external client library dependency
+- full control over HTTP requests
+- supports webhooks for async workflows
+- compatible with the official API docs
+- modular structure for different models
+
+**examples:**
 ```bash
-HF_API_KEY=xxx HF_API_SECRET=xxx bun run lib/higgsfield.ts generate_soul "professional headshot"
+# simple generation
+bun run lib/higgsfield/soul.ts generate "professional headshot"
+
+# with style
+bun run lib/higgsfield/soul.ts generate "portrait" "style-id"
+
+# list styles
+bun run lib/higgsfield/soul.ts list_styles
+
+# check status
+bun run lib/higgsfield/soul.ts status "request-id"
+
+# cancel request
+bun run lib/higgsfield/soul.ts cancel "request-id"
+
+# backward compatible
+bun run lib/higgsfield.ts generate_soul "professional headshot"
 ```
+
+**code:**
+```typescript
+import { generateSoul, SoulSize, SoulQuality } from "./lib/higgsfield/soul"
+
+// simple generation
+const result = await generateSoul({
+  prompt: "beautiful landscape",
+  width_and_height: SoulSize.LANDSCAPE_1536x2048,
+  quality: SoulQuality.HD,
+})
+
+console.log(result.images[0].url)
+
+// with webhook (for production)
+const request = await generateSoul(
+  { prompt: "portrait" },
+  { webhook: "https://your-webhook.url" }
+)
+```
+
+**structure:**
+```
+lib/higgsfield/
+├── index.ts      # Base HiggsfieldClient class
+├── soul.ts       # Soul-specific API
+├── example.ts    # Usage examples
+└── README.md     # Detailed documentation
+```
+
+**migration from old client:**
+- Response structure changed from `result.jobs[0].results.raw.url` to `result.images[0].url`
+- Parameters use snake_case (e.g., `style_id` instead of `styleId`)
+- Returns `GenerationResponse` with status tracking
+- See `lib/higgsfield/README.md` for full migration guide
 
 ## elevenlabs.ts
 

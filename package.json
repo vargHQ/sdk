@@ -20,7 +20,6 @@
     "@aws-sdk/s3-request-presigner": "^3.937.0",
     "@elevenlabs/elevenlabs-js": "^2.25.0",
     "@fal-ai/client": "^1.7.2",
-    "@higgsfield/client": "^0.1.2",
     "@remotion/cli": "^4.0.377",
     "@types/fluent-ffmpeg": "^2.1.28",
     "ai": "^5.0.98",
