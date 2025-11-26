@@ -1,5 +1,5 @@
 {
-  "name": "varg.ai-sdk",
+  "name": "@vargai/sdk",
   "module": "index.ts",
   "type": "module",
   "bin": {
