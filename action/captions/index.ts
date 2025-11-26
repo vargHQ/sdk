@@ -8,7 +8,55 @@
 
 import { existsSync } from "node:fs";
 import ffmpeg from "fluent-ffmpeg";
+import type { ActionMeta } from "../../cli/types";
 import { transcribe } from "../transcribe";
+
+export const meta: ActionMeta = {
+  name: "captions",
+  type: "action",
+  description: "add subtitles to video",
+  inputType: "video",
+  outputType: "video",
+  schema: {
+    input: {
+      type: "object",
+      required: ["video", "output"],
+      properties: {
+        video: {
+          type: "string",
+          format: "file-path",
+          description: "input video file",
+        },
+        output: {
+          type: "string",
+          format: "file-path",
+          description: "output video path",
+        },
+        srt: {
+          type: "string",
+          format: "file-path",
+          description: "existing srt file (auto-generates if not provided)",
+        },
+        provider: {
+          type: "string",
+          enum: ["groq", "fireworks"],
+          default: "fireworks",
+          description: "transcription provider for auto-generation",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "video path" },
+  },
+  async run(options) {
+    const { video, output, srt, provider } = options as {
+      video: string;
+      output: string;
+      srt?: string;
+      provider?: "groq" | "fireworks";
+    };
+    return addCaptions({ videoPath: video, output, srtPath: srt, provider });
+  },
+};
 
 // types
 export interface AddCaptionsOptions {
@@ -115,113 +163,7 @@ export async function addCaptions(
 }
 
 // cli
-async function cli() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-
-  if (!command || command === "help") {
-    console.log(`
-usage:
-  bun run service/captions.ts <videoPath> [outputPath] [options]
-
-arguments:
-  videoPath      - path to input video file
-  outputPath     - path to output video (default: video-captioned.mp4)
-
-options:
-  --srt <path>       - use existing srt file instead of auto-generating
-  --provider <name>  - groq | fireworks (default: fireworks)
-  --font <name>      - font name (default: Arial)
-  --size <number>    - font size (default: 24)
-  --color <hex>      - primary color in ASS format (default: &HFFFFFF)
-  --outline <hex>    - outline color in ASS format (default: &H000000)
-
-examples:
-  # auto-generate captions with fireworks
-  bun run service/captions.ts media/fitness-demo.mp4
-
-  # auto-generate with groq (faster, plain text)
-  bun run service/captions.ts media/fitness-demo.mp4 output.mp4 --provider groq
-
-  # use existing srt file
-  bun run service/captions.ts media/fitness-demo.mp4 output.mp4 --srt media/fitness-demo.srt
-
-  # customize style
-  bun run service/captions.ts media/video.mp4 output.mp4 --font "Helvetica" --size 28
-
-requirements:
-  ffmpeg must be installed on your system
-  brew install ffmpeg (macos)
-  apt-get install ffmpeg (linux)
-    `);
-    process.exit(0);
-  }
-
-  try {
-    const videoPath = args[0];
-    let outputPath = args[1];
-
-    if (!videoPath) {
-      throw new Error("videoPath is required");
-    }
-
-    // parse options
-    let srtPath: string | undefined;
-    let provider: "groq" | "fireworks" = "fireworks";
-    const style: SubtitleStyle = {};
-
-    for (let i = 1; i < args.length; i++) {
-      const arg = args[i];
-
-      if (arg === "--srt") {
-        srtPath = args[++i];
-      } else if (arg === "--provider") {
-        provider = args[++i] as "groq" | "fireworks";
-      } else if (arg === "--font") {
-        style.fontName = args[++i];
-      } else if (arg === "--size") {
-        const size = args[++i];
-        if (!size) {
-          throw new Error("--size requires a number");
-        }
-        style.fontSize = Number.parseInt(size, 10);
-      } else if (arg === "--color") {
-        const color = args[++i];
-        if (!color) {
-          throw new Error("--color requires a hex color");
-        }
-        style.primaryColor = color;
-      } else if (arg === "--outline") {
-        const outline = args[++i];
-        if (!outline) {
-          throw new Error("--outline requires a hex color");
-        }
-        style.outlineColor = outline;
-      } else if (!arg?.startsWith("--") && !outputPath) {
-        outputPath = arg;
-      }
-    }
-
-    // default output path
-    if (!outputPath) {
-      outputPath = videoPath.replace(/\.[^.]+$/, "-captioned.mp4");
-    }
-
-    await addCaptions({
-      videoPath,
-      srtPath,
-      output: outputPath,
-      provider,
-      style,
-    });
-
-    console.log("\ndone! video with captions saved to:", outputPath);
-  } catch (error) {
-    console.error("[captions] error:", error);
-    process.exit(1);
-  }
-}
-
 if (import.meta.main) {
-  cli();
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }

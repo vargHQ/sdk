@@ -7,6 +7,7 @@
 
 import { existsSync } from "node:fs";
 import { extname } from "node:path";
+import type { ActionMeta } from "../../cli/types";
 import {
   type AddAudioOptions,
   addAudio,
@@ -20,6 +21,67 @@ import {
   type TrimVideoOptions,
   trimVideo,
 } from "../../lib/ffmpeg";
+
+export const meta: ActionMeta = {
+  name: "edit",
+  type: "action",
+  description: "trim/resize video",
+  inputType: "video",
+  outputType: "video",
+  schema: {
+    input: {
+      type: "object",
+      required: ["input", "output"],
+      properties: {
+        input: {
+          type: "string",
+          format: "file-path",
+          description: "input video file",
+        },
+        output: {
+          type: "string",
+          format: "file-path",
+          description: "output video path",
+        },
+        start: {
+          type: "number",
+          description: "start time in seconds (for trim)",
+        },
+        duration: {
+          type: "number",
+          description: "duration in seconds (for trim)",
+        },
+        preset: {
+          type: "string",
+          enum: ["vertical", "square", "landscape", "4k"],
+          description: "resize preset",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "video path" },
+  },
+  async run(options) {
+    const { input, output, start, duration, preset } = options as {
+      input: string;
+      output: string;
+      start?: number;
+      duration?: number;
+      preset?: "vertical" | "square" | "landscape" | "4k";
+    };
+    if (preset) {
+      return quickResize(input, output, preset);
+    }
+    if (start !== undefined) {
+      return quickTrim(
+        input,
+        output,
+        start,
+        duration ? start + duration : undefined,
+      );
+    }
+    throw new Error("specify --start for trim or --preset for resize");
+  },
+};
 
 // types
 export interface EditPipelineStep {
@@ -369,125 +431,7 @@ export async function mergeWithAudio(
 }
 
 // cli
-async function cli() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-
-  if (!command || command === "help") {
-    console.log(`
-usage:
-  bun run service/edit.ts <command> [args]
-
-commands:
-  social <input> <output> <platform> [audioPath]   prepare for social media
-  montage <output> <clip1> <clip2> [clip3...]      create montage from clips
-  trim <input> <output> <start> [end]              quick trim
-  resize <input> <output> <preset>                 quick resize
-  merge_audio <audio> <output> <video1> [video2...]  merge videos with audio
-
-platforms:
-  tiktok, instagram, youtube-shorts, youtube, twitter
-
-resize presets:
-  vertical (9:16), square (1:1), landscape (16:9), 4k
-
-examples:
-  bun run service/edit.ts social raw.mp4 tiktok.mp4 tiktok
-  bun run service/edit.ts social raw.mp4 ig.mp4 instagram audio.mp3
-  bun run service/edit.ts montage output.mp4 clip1.mp4 clip2.mp4 clip3.mp4
-  bun run service/edit.ts trim long.mp4 short.mp4 10 30
-  bun run service/edit.ts resize raw.mp4 vertical.mp4 vertical
-  bun run service/edit.ts merge_audio song.mp3 final.mp4 clip1.mp4 clip2.mp4
-    `);
-    process.exit(0);
-  }
-
-  try {
-    switch (command) {
-      case "social": {
-        const input = args[1];
-        const output = args[2];
-        const platform = args[3] as PrepareForSocialOptions["platform"];
-        const withAudio = args[4];
-
-        if (!input || !output || !platform) {
-          throw new Error("input, output, and platform are required");
-        }
-
-        await prepareForSocial({ input, output, platform, withAudio });
-        break;
-      }
-
-      case "montage": {
-        const output = args[1];
-        const clips = args.slice(2);
-
-        if (!output || clips.length === 0) {
-          throw new Error("output and at least one clip are required");
-        }
-
-        await createMontage({ clips, output });
-        break;
-      }
-
-      case "trim": {
-        const input = args[1];
-        const output = args[2];
-        const startArg = args[3];
-        const endArg = args[4];
-
-        if (!input || !output || !startArg) {
-          throw new Error("input, output, and start are required");
-        }
-
-        const start = Number.parseFloat(startArg);
-        const end = endArg ? Number.parseFloat(endArg) : undefined;
-
-        if (Number.isNaN(start) || (endArg && Number.isNaN(end))) {
-          throw new Error("start and end must be valid numbers");
-        }
-
-        await quickTrim(input, output, start, end);
-        break;
-      }
-
-      case "resize": {
-        const input = args[1];
-        const output = args[2];
-        const preset = args[3] as "vertical" | "square" | "landscape" | "4k";
-
-        if (!input || !output || !preset) {
-          throw new Error("input, output, and preset are required");
-        }
-
-        await quickResize(input, output, preset);
-        break;
-      }
-
-      case "merge_audio": {
-        const audio = args[1];
-        const output = args[2];
-        const videos = args.slice(3);
-
-        if (!audio || !output || videos.length === 0) {
-          throw new Error("audio, output, and at least one video are required");
-        }
-
-        await mergeWithAudio(videos, audio, output);
-        break;
-      }
-
-      default:
-        console.error(`unknown command: ${command}`);
-        console.log("run 'bun run service/edit.ts help' for usage");
-        process.exit(1);
-    }
-  } catch (error) {
-    console.error("[edit] error:", error);
-    process.exit(1);
-  }
-}
-
 if (import.meta.main) {
-  cli();
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }

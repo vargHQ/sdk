@@ -5,8 +5,46 @@
  * supports elevenlabs and future providers
  */
 
+import type { ActionMeta } from "../../cli/types";
 import { textToSpeech, VOICES } from "../../lib/elevenlabs";
 import { uploadFile } from "../../utilities/s3";
+
+export const meta: ActionMeta = {
+  name: "voice",
+  type: "action",
+  description: "text to speech generation",
+  inputType: "text",
+  outputType: "audio",
+  schema: {
+    input: {
+      type: "object",
+      required: ["text"],
+      properties: {
+        text: { type: "string", description: "text to convert to speech" },
+        voice: {
+          type: "string",
+          enum: ["rachel", "domi", "bella", "antoni", "josh", "adam", "sam"],
+          default: "rachel",
+          description: "voice to use",
+        },
+        output: {
+          type: "string",
+          format: "file-path",
+          description: "output file path",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "audio path" },
+  },
+  async run(options) {
+    const { text, voice, output } = options as {
+      text: string;
+      voice?: string;
+      output?: string;
+    };
+    return generateVoice({ text, voice, outputPath: output });
+  },
+};
 
 // types
 export interface GenerateVoiceOptions {
@@ -92,110 +130,7 @@ export async function generateVoice(
 }
 
 // cli
-async function cli() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-
-  if (!command || command === "help") {
-    console.log(`
-usage:
-  bun run service/voice.ts <command> [args]
-
-commands:
-  generate <text> [voice] [provider] [upload]    generate voice from text
-  elevenlabs <text> [voice] [upload]             generate with elevenlabs
-  help                                           show this help
-
-examples:
-  bun run service/voice.ts generate "hello world" rachel elevenlabs false
-  bun run service/voice.ts elevenlabs "hello world" josh true
-  bun run service/voice.ts generate "welcome to ai" bella
-
-available voices:
-  rachel, domi, bella, antoni, elli, josh, arnold, adam, sam
-
-providers:
-  elevenlabs (default)
-
-environment:
-  ELEVENLABS_API_KEY - required for elevenlabs
-  CLOUDFLARE_* - required for upload
-    `);
-    process.exit(0);
-  }
-
-  try {
-    switch (command) {
-      case "generate": {
-        const text = args[1];
-        const voice = args[2];
-        const provider = (args[3] || "elevenlabs") as "elevenlabs";
-        const upload = args[4] === "true";
-
-        if (!text) {
-          throw new Error("text is required");
-        }
-
-        const outputPath = `media/voice-${Date.now()}.mp3`;
-
-        const result = await generateVoice({
-          text,
-          voice,
-          provider,
-          upload,
-          outputPath,
-        });
-
-        console.log(`[voice] result:`, {
-          provider: result.provider,
-          voiceId: result.voiceId,
-          audioSize: result.audio.length,
-          outputPath,
-          uploadUrl: result.uploadUrl,
-        });
-        break;
-      }
-
-      case "elevenlabs": {
-        const text = args[1];
-        const voice = args[2];
-        const upload = args[3] === "true";
-
-        if (!text) {
-          throw new Error("text is required");
-        }
-
-        const outputPath = `media/voice-${Date.now()}.mp3`;
-
-        const result = await generateVoice({
-          text,
-          voice,
-          provider: "elevenlabs",
-          upload,
-          outputPath,
-        });
-
-        console.log(`[voice] result:`, {
-          provider: result.provider,
-          voiceId: result.voiceId,
-          audioSize: result.audio.length,
-          outputPath,
-          uploadUrl: result.uploadUrl,
-        });
-        break;
-      }
-
-      default:
-        console.error(`unknown command: ${command}`);
-        console.log(`run 'bun run service/voice.ts help' for usage`);
-        process.exit(1);
-    }
-  } catch (error) {
-    console.error(`[voice] error:`, error);
-    process.exit(1);
-  }
-}
-
 if (import.meta.main) {
-  cli();
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }

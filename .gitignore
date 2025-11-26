@@ -38,3 +38,4 @@ __pycache__
 reference/
 media/
 
+/scripts/*

@@ -4,8 +4,49 @@
  * usage: bun run service/video.ts <command> <args>
  */
 
+import type { ActionMeta } from "../../cli/types";
 import { imageToVideo, textToVideo } from "../../lib/fal";
 import { uploadFromUrl } from "../../utilities/s3";
+
+export const meta: ActionMeta = {
+  name: "video",
+  type: "action",
+  description: "generate video from text or image",
+  inputType: "text/image",
+  outputType: "video",
+  schema: {
+    input: {
+      type: "object",
+      required: ["prompt"],
+      properties: {
+        prompt: { type: "string", description: "what to generate" },
+        image: {
+          type: "string",
+          format: "file-path",
+          description: "input image (enables image-to-video)",
+        },
+        duration: {
+          type: "integer",
+          enum: [5, 10],
+          default: 5,
+          description: "video duration in seconds",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "video path" },
+  },
+  async run(options) {
+    const { prompt, image, duration } = options as {
+      prompt: string;
+      image?: string;
+      duration?: 5 | 10;
+    };
+    if (image) {
+      return generateVideoFromImage(prompt, image, { duration });
+    }
+    return generateVideoFromText(prompt, { duration });
+  },
+};
 
 export interface VideoGenerationResult {
   videoUrl: string;
@@ -77,59 +118,8 @@ export async function generateVideoFromText(
   };
 }
 
-// cli runner
+// cli
 if (import.meta.main) {
-  const [command, ...args] = process.argv.slice(2);
-
-  switch (command) {
-    case "from_image": {
-      if (!args[0] || !args[1]) {
-        console.log(`
-usage:
-  bun run service/video.ts from_image <prompt> <imageUrl> [duration] [upload]
-        `);
-        process.exit(1);
-      }
-      const duration = args[2];
-      if (duration && duration !== "5" && duration !== "10") {
-        console.error("duration must be 5 or 10");
-        process.exit(1);
-      }
-      const imgResult = await generateVideoFromImage(args[0], args[1], {
-        duration: duration === "10" ? 10 : 5,
-        upload: args[3] === "true",
-      });
-      console.log(JSON.stringify(imgResult, null, 2));
-      break;
-    }
-
-    case "from_text": {
-      if (!args[0]) {
-        console.log(`
-usage:
-  bun run service/video.ts from_text <prompt> [duration] [upload]
-        `);
-        process.exit(1);
-      }
-      const duration = args[1];
-      if (duration && duration !== "5" && duration !== "10") {
-        console.error("duration must be 5 or 10");
-        process.exit(1);
-      }
-      const txtResult = await generateVideoFromText(args[0], {
-        duration: duration === "10" ? 10 : 5,
-        upload: args[2] === "true",
-      });
-      console.log(JSON.stringify(txtResult, null, 2));
-      break;
-    }
-
-    default:
-      console.log(`
-usage:
-  bun run service/video.ts from_image <prompt> <imageUrl> [duration] [upload]
-  bun run service/video.ts from_text <prompt> [duration] [upload]
-      `);
-      process.exit(1);
-  }
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }

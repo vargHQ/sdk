@@ -8,6 +8,51 @@ export { fal } from "@ai-sdk/fal";
 export { replicate } from "@ai-sdk/replicate";
 export { fal as falClient } from "@fal-ai/client";
 export { HiggsfieldClient } from "@higgsfield/client";
+// action exports (excluding meta to avoid conflicts)
+export {
+  type AddCaptionsOptions,
+  addCaptions,
+  type SubtitleStyle,
+} from "./action/captions";
+export {
+  type CreateMontageOptions,
+  createMontage,
+  type EditPipelineOptions,
+  type EditPipelineStep,
+  editPipeline,
+  mergeWithAudio,
+  type PrepareForSocialOptions,
+  prepareForSocial,
+  quickResize,
+  quickTrim,
+} from "./action/edit";
+export {
+  generateWithFal,
+  generateWithSoul,
+  type ImageGenerationResult,
+} from "./action/image";
+export {
+  type LipsyncOptions,
+  lipsync,
+  lipsyncOverlay,
+  lipsyncWav2Lip,
+  type Wav2LipOptions,
+} from "./action/sync";
+export {
+  type TranscribeOptions,
+  type TranscribeResult,
+  transcribe,
+} from "./action/transcribe";
+export {
+  generateVideoFromImage,
+  generateVideoFromText,
+  type VideoGenerationResult,
+} from "./action/video";
+export {
+  type GenerateVoiceOptions,
+  generateVoice,
+  type VoiceResult,
+} from "./action/voice";
 // lib exports - ai-sdk/fal (provider)
 export * as aiSdkFal from "./lib/ai-sdk/fal";
 // lib exports - ai-sdk/replicate (provider)
@@ -26,13 +71,5 @@ export * from "./lib/groq";
 export * from "./lib/higgsfield";
 // lib exports - replicate
 export * from "./lib/replicate";
-// service exports
-export * from "./action/captions";
-export * from "./action/edit";
-export * from "./action/image";
-export * from "./action/sync";
-export * from "./action/transcribe";
-export * from "./action/video";
-export * from "./action/voice";
 // utilities exports
 export * from "./utilities/s3";

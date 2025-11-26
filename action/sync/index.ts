@@ -5,8 +5,56 @@
  * supports wav2lip, synclabs, and simple audio overlay
  */
 
+import type { ActionMeta } from "../../cli/types";
 import { addAudio } from "../../lib/ffmpeg";
 import { runModel } from "../../lib/replicate";
+
+export const meta: ActionMeta = {
+  name: "sync",
+  type: "action",
+  description: "sync audio to video (lipsync)",
+  inputType: "video+audio",
+  outputType: "video",
+  schema: {
+    input: {
+      type: "object",
+      required: ["video", "audio"],
+      properties: {
+        video: {
+          type: "string",
+          format: "file-path",
+          description: "input video file or url",
+        },
+        audio: {
+          type: "string",
+          format: "file-path",
+          description: "audio file or url to sync",
+        },
+        method: {
+          type: "string",
+          enum: ["wav2lip", "overlay"],
+          default: "overlay",
+          description: "sync method (wav2lip requires urls)",
+        },
+        output: {
+          type: "string",
+          format: "file-path",
+          description: "output video path",
+        },
+      },
+    },
+    output: { type: "string", format: "file-path", description: "video path" },
+  },
+  async run(options) {
+    const { video, audio, method, output } = options as {
+      video: string;
+      audio: string;
+      method?: "wav2lip" | "overlay";
+      output?: string;
+    };
+    return lipsync({ videoUrl: video, audioUrl: audio, method, output });
+  },
+};
 
 // types
 export interface LipsyncOptions {
@@ -91,97 +139,7 @@ export async function lipsyncOverlay(
 }
 
 // cli
-async function cli() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-
-  if (!command || command === "help") {
-    console.log(`
-usage:
-  bun run service/sync.ts <command> [args]
-
-commands:
-  sync <videoUrl> <audioUrl> [method] [output]     sync video with audio
-  wav2lip <videoUrl> <audioUrl>                    use wav2lip model
-  overlay <videoPath> <audioPath> [output]         simple audio overlay
-  help                                             show this help
-
-methods:
-  wav2lip    - ai-powered lipsync using replicate (url inputs)
-  overlay    - simple audio overlay using ffmpeg (local files)
-
-examples:
-  bun run service/sync.ts sync video.mp4 audio.mp3 overlay output.mp4
-  bun run service/sync.ts wav2lip https://example.com/video.mp4 https://example.com/audio.mp3
-  bun run service/sync.ts overlay video.mp4 audio.mp3 synced.mp4
-
-environment:
-  REPLICATE_API_TOKEN - required for wav2lip method
-    `);
-    process.exit(0);
-  }
-
-  try {
-    switch (command) {
-      case "sync": {
-        const videoUrl = args[1];
-        const audioUrl = args[2];
-        const method = (args[3] || "overlay") as "wav2lip" | "overlay";
-        const output = args[4];
-
-        if (!videoUrl || !audioUrl) {
-          throw new Error("videoUrl and audioUrl are required");
-        }
-
-        const result = await lipsync({
-          videoUrl,
-          audioUrl,
-          method,
-          output,
-        });
-
-        console.log(`[sync] result:`, result);
-        break;
-      }
-
-      case "wav2lip": {
-        const videoUrl = args[1];
-        const audioUrl = args[2];
-
-        if (!videoUrl || !audioUrl) {
-          throw new Error("videoUrl and audioUrl are required");
-        }
-
-        const result = await lipsyncWav2Lip({ videoUrl, audioUrl });
-        console.log(`[sync] result:`, result);
-        break;
-      }
-
-      case "overlay": {
-        const videoPath = args[1];
-        const audioPath = args[2];
-        const output = args[3];
-
-        if (!videoPath || !audioPath) {
-          throw new Error("videoPath and audioPath are required");
-        }
-
-        const result = await lipsyncOverlay(videoPath, audioPath, output);
-        console.log(`[sync] result:`, result);
-        break;
-      }
-
-      default:
-        console.error(`unknown command: ${command}`);
-        console.log(`run 'bun run service/sync.ts help' for usage`);
-        process.exit(1);
-    }
-  } catch (error) {
-    console.error(`[sync] error:`, error);
-    process.exit(1);
-  }
-}
-
 if (import.meta.main) {
-  cli();
+  const { runCli } = await import("../../cli/runner");
+  runCli(meta);
 }
