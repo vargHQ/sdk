@@ -301,6 +301,30 @@ bun run lib/remotion/index.ts render <root-file.tsx> <comp-id> <output.mp4>
 bun run lib/remotion/index.ts still <root-file.tsx> <comp-id> <frame> <out.png>
 ```
 
+### remotion studio (visual preview & debugging)
+```bash
+# launch studio to preview compositions visually
+npx remotion studio lib/remotion/compositions/MyVideo.root.tsx --public-dir=lib/remotion/public
+
+# studio features:
+# - scrub through timeline
+# - see all sequences visually with names
+# - debug timing issues
+# - preview renders before committing
+```
+
+### direct render with npx (alternative)
+```bash
+# render full video
+npx remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo output.mp4 --public-dir=lib/remotion/public
+
+# render at lower resolution for preview (faster)
+npx remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo preview.mp4 --public-dir=lib/remotion/public --scale=0.5
+
+# render specific frame range for testing
+npx remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo test.mp4 --public-dir=lib/remotion/public --frames=0-60
+```
+
 ### lib/ffmpeg.ts
 ```bash
 # get video metadata
@@ -575,28 +599,91 @@ return (
 );
 ```
 
-### video with word-by-word captions
+### video with word-by-word captions (tiktok style)
 ```typescript
-// parse SRT
-const subtitles = parseSRT(srtContent);
+// parse SRT content to captions array
+interface Caption {
+  id: number;
+  startMs: number;
+  endMs: number;
+  text: string;
+}
 
-// in component
-const frame = useCurrentFrame();
-const { fps } = useVideoConfig();
-const currentTime = frame / fps;
+const parseTimestamp = (ts: string): number => {
+  const [time, ms] = ts.split(",");
+  const [h, m, s] = (time ?? "0:0:0").split(":").map(Number);
+  return (h ?? 0) * 3600000 + (m ?? 0) * 60000 + (s ?? 0) * 1000 + Number(ms ?? 0);
+};
 
-const currentSubtitle = subtitles.find(
-  sub => currentTime >= sub.startTime && currentTime <= sub.endTime
-);
+const parseSRT = (content: string): Caption[] => {
+  const blocks = content.trim().split(/\n\n+/);
+  return blocks.map((block) => {
+    const lines = block.split("\n");
+    const id = Number(lines[0]);
+    const timeLine = lines[1] ?? "00:00:00,000 --> 00:00:00,000";
+    const [startTs, endTs] = timeLine.split(" --> ");
+    const text = lines.slice(2).join(" ");
+    return {
+      id,
+      startMs: parseTimestamp(startTs ?? "00:00:00,000"),
+      endMs: parseTimestamp(endTs ?? "00:00:00,000"),
+      text,
+    };
+  });
+};
 
-return (
-  <AbsoluteFill>
-    <OffthreadVideo src={staticFile("video.mp4")} />
-    {currentSubtitle && (
-      <div className="caption">{currentSubtitle.text}</div>
-    )}
-  </AbsoluteFill>
-);
+// group words into chunks for display (4 words at a time)
+const WORDS_PER_CHUNK = 4;
+const groupCaptions = (captions: Caption[]) => {
+  const groups: { words: Caption[]; startMs: number; endMs: number }[] = [];
+  for (let i = 0; i < captions.length; i += WORDS_PER_CHUNK) {
+    const chunk = captions.slice(i, i + WORDS_PER_CHUNK);
+    const first = chunk[0];
+    const last = chunk[chunk.length - 1];
+    if (first && last) {
+      groups.push({ words: chunk, startMs: first.startMs, endMs: last.endMs });
+    }
+  }
+  return groups;
+};
+
+// TikTok-style captions component with word highlighting
+const Captions: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const currentTimeMs = (frame / fps) * 1000;
+
+  const currentGroup = CAPTION_GROUPS.find(
+    (group) => currentTimeMs >= group.startMs && currentTimeMs <= group.endMs
+  );
+
+  if (!currentGroup) return null;
+
+  return (
+    <div style={{ position: "absolute", bottom: "15%", left: "50%", transform: "translateX(-50%)", width: "90%", textAlign: "center" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "24px" }}>
+        {currentGroup.words.map((word) => {
+          const isActive = currentTimeMs >= word.startMs && currentTimeMs <= word.endMs;
+          const isPast = currentTimeMs > word.endMs;
+          return (
+            <span key={word.id} style={{
+              fontFamily: "Arial Black, sans-serif",
+              fontSize: "64px",
+              fontWeight: 900,
+              letterSpacing: "0.05em",
+              color: isActive ? "#FFD700" : isPast ? "#FFFFFF" : "#AAAAAA",
+              textShadow: isActive ? "0 0 20px #FFD700, 0 4px 8px rgba(0,0,0,0.8)" : "0 4px 8px rgba(0,0,0,0.8)",
+              transform: isActive ? "scale(1.1)" : "scale(1)",
+              textTransform: "uppercase",
+            }}>
+              {word.text}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 ```
 
 ### sequential video concatenation
@@ -616,6 +703,72 @@ return (
     )}
   </AbsoluteFill>
 );
+```
+
+### scene-based timeline with named sequences
+```typescript
+// define scenes with timing (separate id from video file for reuse)
+const SCENES = [
+  // Scene 1: Title/Hook - protagonist sitting alone on bench at night
+  { id: 1, video: 1, name: "1. Title/Hook", start: 0, duration: 3.5 },
+  
+  // Scene 2: Young Love - protagonist and first girl walking in park
+  { id: 2, video: 2, name: "2. Young Love", start: 3.5, duration: 6.5 },
+  
+  // Scene 3: Flashback - reuse scene 5 video with B&W effect
+  { id: 3, video: 5, name: "3. Flashback", start: 54.5, duration: 6.5, flashback: true },
+  
+  // Scene 4: Same video used again (video 13 appears twice)
+  { id: 4, video: 13, name: "4. Years Pass", start: 120, duration: 15 },
+];
+
+// render with names visible in Remotion Studio
+{SCENES.map((scene) => {
+  const startFrame = Math.round(scene.start * fps);
+  const durationFrames = Math.round(scene.duration * fps);
+
+  return (
+    <Sequence
+      key={scene.id}
+      name={scene.name}  // <-- shows in Studio timeline!
+      from={startFrame}
+      durationInFrames={durationFrames}
+    >
+      <LoopingVideo
+        src={staticFile(`scene${scene.video}_video.mp4`)}
+        flashback={scene.flashback}
+      />
+    </Sequence>
+  );
+})}
+```
+
+### flashback effect (B&W jittery style)
+```typescript
+// video component with optional flashback effect
+const LoopingVideo: React.FC<{ src: string; flashback?: boolean }> = ({ src, flashback }) => {
+  const frame = useCurrentFrame();
+  
+  // Flashback effect: B&W with jittery/glitchy feel
+  const flashbackStyle = flashback ? {
+    filter: "grayscale(100%) contrast(1.2) brightness(0.9)",
+    // Subtle jitter using frame-based transform
+    transform: `translate(${Math.sin(frame * 0.5) * 2}px, ${Math.cos(frame * 0.7) * 1.5}px)`,
+  } : {};
+
+  return (
+    <OffthreadVideo
+      src={src}
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        ...flashbackStyle,
+      }}
+      muted
+    />
+  );
+};
 ```
 
 ### crossfade transition between videos
@@ -821,3 +974,8 @@ const captionOpacity = interpolate(
 11. **handle fps differences** - adjust startFrom when concatenating videos with different fps
 12. **use descriptive ids** - make composition names clear and unique
 13. **batch render with props** - for multiple variations, register multiple compositions with unique defaultProps instead of file overwriting
+14. **name your sequences** - add `name` prop to `<Sequence>` components for visibility in Studio timeline
+15. **separate video id from scene id** - allows reusing same video in multiple scenes (e.g., flashbacks)
+16. **use studio for debugging** - `npx remotion studio` lets you scrub through timeline and see named sequences
+17. **add scene comments** - document what each scene contains in code for easy reference
+18. **embed SRT content directly** - avoids file loading issues in compositions (parse once, use everywhere)
