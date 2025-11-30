@@ -236,3 +236,155 @@ ffmpeg -stream_loop -1 -i media/backgrounds/minecraft_parkour.mp4 \
 ```
 
 note: yt-dlp currently broken for youtube downloads. use cobalt.tools or screen record instead.
+
+---
+
+# advanced: character-based storytelling videos
+
+for narrative content with consistent characters (like animated story videos)
+
+## character generation
+
+### generate consistent characters with nano banana pro
+
+```bash
+# protagonist (male)
+bun run lib/fal.ts generate_image "3D cartoon anthropomorphic male cat character, cute stylized, standing pose, young adult male energy, slightly guarded but hopeful expression, big expressive eyes, wearing hoodie and jeans, muted earth tones, pixar dreamworks style, full body shot, white background, character reference sheet" "fal-ai/nano-banana-pro" "portrait_16_9"
+
+# love interest (female)  
+bun run lib/fal.ts generate_image "3D cartoon anthropomorphic female cat character, cute stylized, standing pose, mature confident woman energy, warm loving expression, big expressive eyes, wearing elegant but casual dress, warm colors, pixar dreamworks style, full body shot, white background, character reference sheet" "fal-ai/nano-banana-pro" "portrait_16_9"
+```
+
+save as `cat_protagonist.png`, `cat_love_interest.png`, etc.
+
+## video generation models comparison
+
+### for character consistency (multiple characters in one scene)
+
+| model | reference support | best for |
+|-------|------------------|----------|
+| **veo3.1/reference-to-video** | multiple `image_urls` | best character consistency across multiple refs |
+| **vidu/q2/reference-to-video** | up to 7 `reference_image_urls` | good consistency (had api issues) |
+| **bytedance/lynx** | subject reference | designed for subject consistency |
+
+### for single character animation
+
+| model | notes |
+|-------|-------|
+| **kling-video/v2.5-turbo/pro** | reliable, good motion, supports `tail_image_url` for loops |
+| **sora-2/image-to-video** | up to 12 sec, great quality, no reference support |
+| **veo3.1/image-to-video** | good quality, uses image as literal first frame |
+
+## workflow: scene-by-scene generation
+
+### step 1: create scene script with timestamps
+
+use the SRT file to understand timing:
+```bash
+head -50 media/your-project/captions.srt
+```
+
+create a scene breakdown:
+- scene 1: 0:00-0:08 - hook/title
+- scene 2: 0:08-0:20 - setup
+- etc.
+
+### step 2: generate scene frames with flux kontext
+
+**important:** veo3.1 image-to-video uses the reference as the literal first frame. generate proper scene frames first!
+
+```typescript
+import { fal } from "@fal-ai/client";
+
+// upload character reference
+const protagonist = await fal.storage.upload(Bun.file("media/your-project/cat_protagonist.png"));
+
+// use flux kontext to place character in scene
+const result = await fal.subscribe("fal-ai/flux-pro/kontext", {
+  input: {
+    prompt: "Place this 3D cartoon cat character sitting alone on a park bench at night, city lights bokeh in background, looking down sadly, melancholy mood, cinematic lighting, pixar style, 9:16 portrait vertical composition",
+    image_url: protagonist,
+    aspect_ratio: "9:16"
+  }
+});
+```
+
+### step 3: animate frames with kling
+
+```typescript
+const result = await fal.subscribe("fal-ai/kling-video/v2.5-turbo/pro/image-to-video", {
+  input: {
+    prompt: "3D pixar animation, the cat character sits still on bench looking down sadly, subtle breathing movement, city lights twinkle softly in background, slow gentle camera push in, melancholy cinematic mood, no talking",
+    image_url: sceneFrameUrl,
+    duration: "5",
+    aspect_ratio: "9:16"
+  }
+});
+```
+
+### step 4: for scenes with multiple characters
+
+use veo3.1 reference-to-video:
+
+```typescript
+const result = await fal.subscribe("fal-ai/veo3.1/reference-to-video", {
+  input: {
+    prompt: "3D pixar style animation, two anthropomorphic cats walking together in a sunny park - male cat looks at female cat with love, she looks distracted, sunny golden hour lighting, no talking",
+    image_urls: [protagonistUrl, loveInterestUrl],
+    duration: "8s",
+    resolution: "720p",
+    generate_audio: false
+  }
+});
+```
+
+## tips for character videos
+
+### no talking/lip sync
+- prompt with "no talking", "no lip movement", "silent"
+- characters express emotion through body language
+- voiceover is added in post
+
+### portrait format (9:16)
+- flux kontext supports `aspect_ratio: "9:16"`
+- kling supports `aspect_ratio: "9:16"`
+- veo3.1 reference-to-video outputs landscape by default (16:9)
+
+### scene continuity
+- keep same character references across all scenes
+- use similar lighting descriptions ("cinematic", "golden hour", "moody blue")
+- match camera style ("slow push in", "static shot")
+
+### stitching scenes
+```bash
+# create file list
+echo "file 'scene1.mp4'" > scenes.txt
+echo "file 'scene2.mp4'" >> scenes.txt
+echo "file 'scene3.mp4'" >> scenes.txt
+
+# concatenate
+ffmpeg -f concat -safe 0 -i scenes.txt -c copy combined_scenes.mp4
+```
+
+## project structure for character videos
+
+```
+media/your-project/
+├── post.md                    # script/text
+├── scene_script.md            # scene breakdown with timestamps
+├── characters/
+│   ├── cat_protagonist.png    # character reference
+│   ├── cat_first_girl.png
+│   └── cat_second_girl.png
+├── frames/
+│   ├── scene1_frame.jpg       # generated scene frames
+│   ├── scene2_frame.jpg
+│   └── ...
+├── scenes/
+│   ├── scene1.mp4             # animated scenes
+│   ├── scene2.mp4
+│   └── ...
+├── voiceover.mp3
+├── captions.srt
+└── final.mp4
+```
