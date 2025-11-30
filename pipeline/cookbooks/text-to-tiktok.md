@@ -239,6 +239,27 @@ note: yt-dlp currently broken for youtube downloads. use cobalt.tools or screen 
 
 ---
 
+# helper scripts
+
+scripts in `pipeline/cookbooks/scripts/` to speed up common tasks:
+
+| script | description | usage |
+|--------|-------------|-------|
+| `generate-frames-parallel.ts` | generate multiple scene frames in parallel using flux kontext | `bun run pipeline/cookbooks/scripts/generate-frames-parallel.ts` |
+| `animate-frames-parallel.ts` | animate multiple frames in parallel using kling | `bun run pipeline/cookbooks/scripts/animate-frames-parallel.ts` |
+| `combine-scenes.sh` | combine scene videos with audio clips using ffmpeg | `./pipeline/cookbooks/scripts/combine-scenes.sh media/your-project` |
+| `still-to-video.sh` | convert still image to video with ken burns effect | `./pipeline/cookbooks/scripts/still-to-video.sh input.jpg output.mp4 5 in` |
+
+**generate-frames-parallel.ts** - edit the `configs` array to define your scenes, supports single character (kontext) and multi-character (kontext/multi) frames.
+
+**animate-frames-parallel.ts** - edit the `configs` array with frame paths and prompts. all kling requests run in parallel.
+
+**combine-scenes.sh** - edit the `SCENES` array to define scene timing. handles audio extraction, video looping, and concatenation.
+
+**still-to-video.sh** - useful when kling fails or for simple scenes. creates slow zoom (ken burns) effect from a still frame.
+
+---
+
 # advanced: character-based storytelling videos
 
 for narrative content with consistent characters (like animated story videos)
@@ -324,6 +345,13 @@ key tips:
 
 **important:** veo3.1 image-to-video uses the reference as the literal first frame. generate proper scene frames first!
 
+**use the helper script for parallel generation:**
+```bash
+# edit the configs in the script first, then run:
+bun run pipeline/cookbooks/scripts/generate-frames-parallel.ts
+```
+
+or manually:
 ```typescript
 import { fal } from "@fal-ai/client";
 
@@ -342,6 +370,13 @@ const result = await fal.subscribe("fal-ai/flux-pro/kontext", {
 
 ### step 3: animate frames with kling
 
+**use the helper script for parallel animation:**
+```bash
+# edit the configs in the script first, then run:
+bun run pipeline/cookbooks/scripts/animate-frames-parallel.ts
+```
+
+or manually:
 ```typescript
 const result = await fal.subscribe("fal-ai/kling-video/v2.5-turbo/pro/image-to-video", {
   input: {
@@ -351,6 +386,12 @@ const result = await fal.subscribe("fal-ai/kling-video/v2.5-turbo/pro/image-to-v
     aspect_ratio: "9:16"
   }
 });
+```
+
+**for static frames (ken burns effect):**
+```bash
+# convert still image to video with slow zoom
+./pipeline/cookbooks/scripts/still-to-video.sh media/your-project/scene1_frame.jpg media/your-project/scene1_video.mp4 5 in
 ```
 
 ### step 4: for scenes with multiple characters
@@ -383,10 +424,16 @@ bun run lib/remotion/index.ts create YourProject
 
 # edit composition with scene timeline (see remotion workflow section)
 # preview in studio
-npx remotion studio lib/remotion/compositions/YourProject.root.tsx --public-dir=lib/remotion/public
+bun remotion studio lib/remotion/compositions/YourProject.root.tsx --public-dir=lib/remotion/public
 
 # render
-npx remotion render lib/remotion/compositions/YourProject.root.tsx YourProject final.mp4 --public-dir=lib/remotion/public
+bun remotion render lib/remotion/compositions/YourProject.root.tsx YourProject final.mp4 --public-dir=lib/remotion/public
+```
+
+**alternative: simple ffmpeg assembly (no captions styling):**
+```bash
+# use the combine-scenes script
+./pipeline/cookbooks/scripts/combine-scenes.sh media/your-project
 ```
 
 ## tips for character videos
@@ -567,7 +614,7 @@ const SCENES = [
 ### step 4: preview with remotion studio
 
 ```bash
-npx remotion studio lib/remotion/compositions/YourProject.root.tsx --public-dir=lib/remotion/public
+bun remotion studio lib/remotion/compositions/YourProject.root.tsx --public-dir=lib/remotion/public
 ```
 
 studio features:
@@ -580,10 +627,10 @@ studio features:
 
 ```bash
 # quick preview (480p)
-npx remotion render lib/remotion/compositions/YourProject.root.tsx YourProject preview.mp4 --public-dir=lib/remotion/public --scale=0.5
+bun remotion render lib/remotion/compositions/YourProject.root.tsx YourProject preview.mp4 --public-dir=lib/remotion/public --scale=0.5
 
 # full quality
-npx remotion render lib/remotion/compositions/YourProject.root.tsx YourProject final.mp4 --public-dir=lib/remotion/public
+bun remotion render lib/remotion/compositions/YourProject.root.tsx YourProject final.mp4 --public-dir=lib/remotion/public
 ```
 
 ### remotion vs ffmpeg

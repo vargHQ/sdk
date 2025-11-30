@@ -304,7 +304,7 @@ bun run lib/remotion/index.ts still <root-file.tsx> <comp-id> <frame> <out.png>
 ### remotion studio (visual preview & debugging)
 ```bash
 # launch studio to preview compositions visually
-npx remotion studio lib/remotion/compositions/MyVideo.root.tsx --public-dir=lib/remotion/public
+bun remotion studio lib/remotion/compositions/MyVideo.root.tsx --public-dir=lib/remotion/public
 
 # studio features:
 # - scrub through timeline
@@ -313,16 +313,16 @@ npx remotion studio lib/remotion/compositions/MyVideo.root.tsx --public-dir=lib/
 # - preview renders before committing
 ```
 
-### direct render with npx (alternative)
+### direct render with bun (alternative)
 ```bash
 # render full video
-npx remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo output.mp4 --public-dir=lib/remotion/public
+bun remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo output.mp4 --public-dir=lib/remotion/public
 
 # render at lower resolution for preview (faster)
-npx remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo preview.mp4 --public-dir=lib/remotion/public --scale=0.5
+bun remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo preview.mp4 --public-dir=lib/remotion/public --scale=0.5
 
 # render specific frame range for testing
-npx remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo test.mp4 --public-dir=lib/remotion/public --frames=0-60
+bun remotion render lib/remotion/compositions/MyVideo.root.tsx MyVideo test.mp4 --public-dir=lib/remotion/public --frames=0-60
 ```
 
 ### lib/ffmpeg.ts
@@ -1037,6 +1037,6 @@ const captionOpacity = interpolate(
 13. **batch render with props** - for multiple variations, register multiple compositions with unique defaultProps instead of file overwriting
 14. **name your sequences** - add `name` prop to `<Sequence>` components for visibility in Studio timeline
 15. **separate video id from scene id** - allows reusing same video in multiple scenes (e.g., flashbacks)
-16. **use studio for debugging** - `npx remotion studio` lets you scrub through timeline and see named sequences
+16. **use studio for debugging** - `bun remotion studio` lets you scrub through timeline and see named sequences
 17. **add scene comments** - document what each scene contains in code for easy reference
 18. **embed SRT content directly** - avoids file loading issues in compositions (parse once, use everywhere)
