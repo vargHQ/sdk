@@ -443,6 +443,61 @@ const flashbackStyle = flashback ? {
 } : {};
 ```
 
+### video looping (critical!)
+when scene duration > video duration, video freezes on last frame. fix with `<Loop>`:
+
+```typescript
+import { Loop } from "remotion";
+
+// define actual video file durations (from ffprobe)
+const VIDEO_DURATIONS_SECONDS: Record<number, number> = {
+  1: 5.041667,
+  2: 10.041667,
+  3: 5.041667,
+  // ... etc
+};
+
+// looping video component
+const LoopingVideo: React.FC<{
+  src: string;
+  flashback?: boolean;
+  loopDurationInFrames: number;
+}> = ({ src, flashback, loopDurationInFrames }) => {
+  const frame = useCurrentFrame();
+  
+  const flashbackStyle = flashback ? {
+    filter: "grayscale(100%) contrast(1.2) brightness(0.9)",
+    transform: `translate(${Math.sin(frame * 0.5) * 2}px, ${Math.cos(frame * 0.7) * 1.5}px)`,
+  } : {};
+
+  return (
+    <Loop durationInFrames={loopDurationInFrames}>
+      <OffthreadVideo src={src} style={{ ...flashbackStyle }} muted />
+    </Loop>
+  );
+};
+
+// usage: pass video's actual duration, not scene duration
+const loopDuration = VIDEO_DURATIONS_SECONDS[scene.video];
+const loopDurationInFrames = Math.round(loopDuration * fps);
+
+<LoopingVideo
+  src={staticFile(`scene${scene.video}_video.mp4`)}
+  loopDurationInFrames={loopDurationInFrames}
+/>
+```
+
+**key insight**: `<Loop durationInFrames>` needs the VIDEO's duration, not the scene's duration. the video loops within the scene's timeframe.
+
+### get video durations
+```bash
+# probe all scene videos
+for f in lib/remotion/public/your-project/scene*_video.mp4; do
+  echo -n "$(basename $f): "
+  ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$f"
+done
+```
+
 ## project structure for character videos
 
 ```

@@ -599,6 +599,45 @@ return (
 );
 ```
 
+### looping videos (when scene > video duration)
+when scene duration exceeds video file duration, video freezes on last frame. use `<Loop>`:
+
+```typescript
+import { Loop, OffthreadVideo } from "remotion";
+
+// define actual video durations (from ffprobe)
+const VIDEO_DURATIONS_SECONDS: Record<number, number> = {
+  1: 5.041667,
+  2: 10.041667,
+  // ...
+};
+
+// looping video component
+const LoopingVideo: React.FC<{
+  src: string;
+  loopDurationInFrames: number;
+}> = ({ src, loopDurationInFrames }) => {
+  return (
+    <Loop durationInFrames={loopDurationInFrames}>
+      <OffthreadVideo src={src} muted />
+    </Loop>
+  );
+};
+
+// usage in render
+const loopDuration = VIDEO_DURATIONS_SECONDS[scene.video];
+const loopDurationInFrames = Math.round(loopDuration * fps);
+
+<Sequence from={startFrame} durationInFrames={sceneDurationFrames}>
+  <LoopingVideo
+    src={staticFile(`scene${scene.video}_video.mp4`)}
+    loopDurationInFrames={loopDurationInFrames}
+  />
+</Sequence>
+```
+
+**critical**: `<Loop durationInFrames>` takes the VIDEO's duration (how long before it loops), not the scene's duration. the Sequence controls how long the scene plays.
+
 ### video with word-by-word captions (tiktok style)
 ```typescript
 // parse SRT content to captions array
@@ -872,16 +911,38 @@ const captionOpacity = interpolate(
 
 ### deprecated components warnings
 - **warning**: `Video` and `Audio` are deprecated
-- **fix**: use `OffthreadVideo` instead of `Video`, `Audio` is still usable but may change
+- **fix**: use `OffthreadVideo` instead of `Video`, use `Html5Audio` instead of `Audio`
 - **example**:
   ```tsx
   // ❌ deprecated
-  import { Video } from "remotion";
+  import { Video, Audio } from "remotion";
   <Video src={staticFile("video.mp4")} />
+  <Audio src={staticFile("audio.mp3")} />
   
   // ✅ recommended
-  import { OffthreadVideo } from "remotion";
+  import { OffthreadVideo, Html5Audio } from "remotion";
   <OffthreadVideo src={staticFile("video.mp4")} />
+  <Html5Audio src={staticFile("audio.mp3")} />
+  ```
+
+### video freezes on last frame
+- **error**: when scene duration > video file duration, video freezes on last frame
+- **cause**: `OffthreadVideo` naturally stops at end of video
+- **fix**: wrap in `<Loop>` with the VIDEO's duration (not scene duration)
+- **example**:
+  ```tsx
+  import { Loop, OffthreadVideo } from "remotion";
+  
+  // ❌ wrong - scene duration
+  <Loop durationInFrames={sceneDurationFrames}>
+    <OffthreadVideo src={video} />
+  </Loop>
+  
+  // ✅ correct - video file's actual duration
+  const videoDurationFrames = Math.round(5.04 * fps); // from ffprobe
+  <Loop durationInFrames={videoDurationFrames}>
+    <OffthreadVideo src={video} />
+  </Loop>
   ```
 
 ### type errors with array indexing
