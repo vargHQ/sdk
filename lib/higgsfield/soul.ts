@@ -55,10 +55,6 @@ export interface SoulStyle {
 export class SoulClient extends HiggsfieldClient {
   private static readonly MODEL_ID = "soul";
 
-  constructor(config?: HiggsfieldConfig) {
-    super(config);
-  }
-
   /**
    * Generate Soul images
    */
@@ -259,4 +255,3 @@ examples:
       process.exit(1);
   }
 }
-

@@ -5,9 +5,9 @@
  * supports text-to-music with customizable styles, lyrics, and parameters
  */
 
+import { writeFile } from "node:fs/promises";
 import { textToMusic } from "../../lib/fal";
 import { uploadFromUrl } from "../../utilities/s3";
-import { writeFile } from "node:fs/promises";
 
 // types
 export interface GenerateMusicOptions {
@@ -84,12 +84,19 @@ export async function generateMusic(
     tags: result.data.tags,
     lyrics: result.data.lyrics,
     audio: Array.isArray(result.data.audio)
-      ? result.data.audio.map((a: any) => ({
-          url: a.url,
-          fileName: a.file_name,
-          contentType: a.content_type,
-          fileSize: a.file_size,
-        }))
+      ? result.data.audio.map(
+          (a: {
+            url: string;
+            file_name: string;
+            content_type: string;
+            file_size: number;
+          }) => ({
+            url: a.url,
+            fileName: a.file_name,
+            contentType: a.content_type,
+            fileSize: a.file_size,
+          }),
+        )
       : [
           {
             url: result.data.audio.url,
@@ -170,8 +177,13 @@ environment:
     switch (command) {
       case "generate": {
         const prompt = args[1];
-        const format = (args[2] || "mp3") as "flac" | "mp3" | "wav" | "ogg" | "m4a";
-        const numSongs = (parseInt(args[3]) || 1) as 1 | 2;
+        const format = (args[2] || "mp3") as
+          | "flac"
+          | "mp3"
+          | "wav"
+          | "ogg"
+          | "m4a";
+        const numSongs = (parseInt(args[3], 10) || 1) as 1 | 2;
         const upload = args[4] === "true";
 
         if (!prompt) {
@@ -293,4 +305,3 @@ environment:
 if (import.meta.main) {
   cli();
 }
-
