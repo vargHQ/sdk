@@ -6,8 +6,8 @@
     "varg": "./cli/index.ts"
   },
   "scripts": {
-    "lint": "biome check .",
-    "format": "biome format --write ."
+    "check": "biome check . && biome format .",
+    "format": "biome check --write . && biome format --write ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
