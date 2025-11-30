@@ -15,6 +15,7 @@ interface FalImageToVideoArgs {
   imageUrl: string; // can be url or local file path
   modelVersion?: string;
   duration?: 5 | 10;
+  tailImageUrl?: string; // end frame for looping
 }
 
 /**
@@ -52,6 +53,7 @@ interface FalTextToVideoArgs {
   prompt: string;
   modelVersion?: string;
   duration?: 5 | 10;
+  aspectRatio?: "16:9" | "9:16" | "1:1";
 }
 
 export async function imageToVideo(args: FalImageToVideoArgs) {
@@ -60,9 +62,15 @@ export async function imageToVideo(args: FalImageToVideoArgs) {
   console.log(`[fal] starting image-to-video: ${modelId}`);
   console.log(`[fal] prompt: ${args.prompt}`);
   console.log(`[fal] image: ${args.imageUrl}`);
+  if (args.tailImageUrl) {
+    console.log(`[fal] tail image (loop): ${args.tailImageUrl}`);
+  }
 
   // upload local file if needed
   const imageUrl = await ensureImageUrl(args.imageUrl);
+  const tailImageUrl = args.tailImageUrl
+    ? await ensureImageUrl(args.tailImageUrl)
+    : undefined;
 
   try {
     const result = await fal.subscribe(modelId, {
@@ -70,6 +78,7 @@ export async function imageToVideo(args: FalImageToVideoArgs) {
         prompt: args.prompt,
         image_url: imageUrl,
         duration: args.duration || 5,
+        ...(tailImageUrl && { tail_image_url: tailImageUrl }),
       },
       logs: true,
       onQueueUpdate: (update: {
@@ -103,6 +112,7 @@ export async function textToVideo(args: FalTextToVideoArgs) {
       input: {
         prompt: args.prompt,
         duration: args.duration || 5,
+        aspect_ratio: args.aspectRatio || "16:9",
       },
       logs: true,
       onQueueUpdate: (update: {
@@ -336,10 +346,13 @@ examples:
       if (!args[0]) {
         console.log(`
 usage:
-  bun run lib/fal.ts text_to_video <prompt> [duration]
+  bun run lib/fal.ts text_to_video <prompt> [duration] [aspect_ratio]
 
 examples:
   bun run lib/fal.ts text_to_video "ocean waves crashing" 5
+  bun run lib/fal.ts text_to_video "man walking in rain" 10 9:16
+  
+aspect_ratio: 16:9 (landscape), 9:16 (portrait/tiktok), 1:1 (square)
         `);
         process.exit(1);
       }
@@ -348,9 +361,15 @@ examples:
         console.error("duration must be 5 or 10");
         process.exit(1);
       }
+      const aspectRatio = args[2] as "16:9" | "9:16" | "1:1" | undefined;
+      if (aspectRatio && !["16:9", "9:16", "1:1"].includes(aspectRatio)) {
+        console.error("aspect_ratio must be 16:9, 9:16, or 1:1");
+        process.exit(1);
+      }
       const t2vResult = await textToVideo({
         prompt: args[0],
         duration: duration === "10" ? 10 : 5,
+        aspectRatio: aspectRatio || "16:9",
       });
       console.log(JSON.stringify(t2vResult, null, 2));
       break;
