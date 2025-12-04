@@ -12,6 +12,18 @@ const client = new ApifyClient({
   token: process.env.APIFY_TOKEN,
 });
 
+const OUTPUT_DIR = "output";
+
+/**
+ * save results to a json file in output directory
+ */
+function saveResults(filename: string, data: unknown): string {
+  const outputPath = `${OUTPUT_DIR}/${filename}`;
+  Bun.write(outputPath, JSON.stringify(data, null, 2));
+  console.log(`[apify] saved results to: ${outputPath}`);
+  return outputPath;
+}
+
 interface RunActorArgs {
   actorId: string;
   input?: Record<string, unknown>;
@@ -82,6 +94,43 @@ export async function getKeyValueStoreValue(storeId: string, key: string) {
   return value;
 }
 
+/**
+ * download videos from a saved json file using yt-dlp
+ */
+async function downloadVideosFromJson(jsonPath: string, outputDir?: string) {
+  const fullJsonPath = jsonPath.startsWith(OUTPUT_DIR)
+    ? jsonPath
+    : `${OUTPUT_DIR}/${jsonPath}`;
+
+  console.log(`[apify] reading videos from: ${fullJsonPath}`);
+
+  const file = Bun.file(fullJsonPath);
+  const data = (await file.json()) as Array<{ webVideoUrl?: string }>;
+
+  const urls = data
+    .map((item) => item.webVideoUrl)
+    .filter((url): url is string => !!url);
+
+  console.log(`[apify] found ${urls.length} video urls`);
+
+  const downloadDir = outputDir || `${OUTPUT_DIR}/videos`;
+
+  // create download dir if needed
+  await Bun.$`mkdir -p ${downloadDir}`;
+
+  for (const url of urls) {
+    console.log(`[apify] downloading: ${url}`);
+    try {
+      await Bun.$`yt-dlp -o "${downloadDir}/%(id)s.%(ext)s" ${url}`;
+      console.log(`[apify] downloaded successfully`);
+    } catch (err) {
+      console.error(`[apify] failed to download ${url}:`, err);
+    }
+  }
+
+  console.log(`[apify] all downloads complete. saved to: ${downloadDir}`);
+}
+
 // cli runner
 if (import.meta.main) {
   const [command, ...args] = process.argv.slice(2);
@@ -90,20 +139,25 @@ if (import.meta.main) {
     case "run": {
       if (!args[0]) {
         console.log(`
-usage: bun run lib/apify.ts run <actor_id> [input_json]
+usage: bun run lib/apify.ts run <actor_id> [input_json] [output_file]
 
 examples:
   bun run lib/apify.ts run apify/web-scraper '{"startUrls":[{"url":"https://example.com"}]}'
-  bun run lib/apify.ts run apify/google-search-scraper '{"queries":"openai"}'
+  bun run lib/apify.ts run clockworks/tiktok-scraper '{"hashtags":["viral"],"resultsPerPage":5}' tiktok-viral.json
         `);
         process.exit(1);
       }
       const input = args[1] ? JSON.parse(args[1]) : undefined;
+      const outputFile = args[2];
       const result = await runActor({
         actorId: args[0],
         input,
       });
-      console.log(JSON.stringify(result, null, 2));
+      if (outputFile) {
+        saveResults(outputFile, result.items);
+      } else {
+        console.log(JSON.stringify(result, null, 2));
+      }
       break;
     }
 
@@ -152,13 +206,35 @@ examples:
       break;
     }
 
+    case "download": {
+      if (!args[0]) {
+        console.log(`
+usage: bun run lib/apify.ts download <json_file> [output_dir]
+
+downloads videos from a saved json file using yt-dlp
+
+examples:
+  bun run lib/apify.ts download tiktok-viral.json
+  bun run lib/apify.ts download output/tiktok-viral.json output/my-videos
+        `);
+        process.exit(1);
+      }
+      await downloadVideosFromJson(args[0], args[1]);
+      break;
+    }
+
     default:
       console.log(`
 usage:
-  bun run lib/apify.ts run <actor_id> [input_json]    - run an actor and get results
-  bun run lib/apify.ts dataset <dataset_id>          - get items from a dataset
-  bun run lib/apify.ts status <run_id>               - get run status
-  bun run lib/apify.ts wait <run_id>                 - wait for run to finish
+  bun run lib/apify.ts run <actor_id> [input_json] [output_file]  - run actor, save to file
+  bun run lib/apify.ts download <json_file> [output_dir]          - download videos from json
+  bun run lib/apify.ts dataset <dataset_id>                       - get items from a dataset
+  bun run lib/apify.ts status <run_id>                            - get run status
+  bun run lib/apify.ts wait <run_id>                              - wait for run to finish
+
+examples:
+  bun run lib/apify.ts run clockworks/tiktok-scraper '{"hashtags":["viral"],"resultsPerPage":5}' tiktok-viral.json
+  bun run lib/apify.ts download tiktok-viral.json
 
 environment:
   APIFY_TOKEN - your apify api token (required)
