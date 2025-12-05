@@ -8,10 +8,11 @@ Default to using Bun instead of Node.js.
 
 ## Working with this SDK
 
-- **Use existing tools**: Always use the built-in CLI tools via bash commands (e.g., `bun run lib/fal.ts`, `bun run lib/elevenlabs.ts`)
+- **Use existing tools**: Always use the built-in CLI tools via bash commands (e.g., `bun run lib/fal.ts`, `bun run lib/elevenlabs.ts`, `bun run lib/apify.ts`)
 - **Don't write custom scripts**: Avoid creating new TypeScript/JavaScript scripts. Use the existing lib/ tools directly
 - **Media folders**: Store input files in `media/` folder, outputs go to `output/` folder
 - **Local file support**: Tools like `lib/fal.ts` support local file paths (e.g., `media/image.png`) in addition to URLs
+- **Web scraping**: Use `bun run lib/apify.ts run <actor_id> [input_json]` to scrape tiktok, social media, etc.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
 - Use `bun test` instead of `jest` or `vitest`

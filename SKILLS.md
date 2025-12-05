@@ -42,9 +42,16 @@ located in `service/<name>/SKILL.md`:
    - transcribe audio to text or subtitles using groq/fireworks
    - cli: `bun run service/transcribe <audioUrl> <provider> [outputPath]`
 
+### library skills
+
+8. **apify-scraping** (`lib/apify.ts`)
+   - run apify actors for web scraping (tiktok, google maps, social media, etc.)
+   - cli: `bun run lib/apify.ts run <actor_id> [input_json]`
+   - example: `bun run lib/apify.ts run clockworks/tiktok-scraper '{"hashtags":["viral"],"resultsPerPage":10}'`
+
 ### utility skills
 
-8. **telegram-send** (external: `/Users/aleks/Github/Badaboom1995/rumble-b2c`)
+9. **telegram-send** (external: `/Users/aleks/Github/Badaboom1995/rumble-b2c`)
    - send videos to telegram users/channels as round videos
    - automatically converts to 512x512 square format for telegram
    - cli: `cd /Users/aleks/Github/Badaboom1995/rumble-b2c && bun run scripts/telegram-send-video.ts <videoPath> <@username>`
@@ -54,16 +61,22 @@ located in `service/<name>/SKILL.md`:
 
 located in `pipeline/cookbooks/SKILL.md`:
 
-9. **talking-character-pipeline** (`pipeline/cookbooks/`)
-   - complete workflow to create talking character videos
-   - combines: character generation → voiceover → animation → lipsync → captions → social prep
+10. **talking-character-pipeline** (`pipeline/cookbooks/`)
+    - complete workflow to create talking character videos
+    - combines: character generation → voiceover → animation → lipsync → captions → social prep
 
-10. **round-video-character** (`pipeline/cookbooks/round-video-character.md`)
-   - create realistic round selfie videos for telegram using nano banana pro + wan 2.5
-   - workflow: generate selfie first frame (person in setting) → voiceover → wan 2.5 video
-   - uses: `bun run lib/fal.ts`, `bun run lib/replicate.ts`, `bun run lib/elevenlabs.ts`
-   - input: text script + profile photo
-   - output: extreme close-up selfie video with authentic camera shake, lighting, and audio
+11. **round-video-character** (`pipeline/cookbooks/round-video-character.md`)
+    - create realistic round selfie videos for telegram using nano banana pro + wan 2.5
+    - workflow: generate selfie first frame (person in setting) → voiceover → wan 2.5 video
+    - uses: `bun run lib/fal.ts`, `bun run lib/replicate.ts`, `bun run lib/elevenlabs.ts`
+    - input: text script + profile photo
+    - output: extreme close-up selfie video with authentic camera shake, lighting, and audio
+
+12. **trendwatching** (`pipeline/cookbooks/trendwatching.md`)
+    - discover viral tiktok content for any topic/hashtag
+    - uses apify tiktok scraper to find trending videos
+    - get engagement metrics: plays, likes, shares, comments
+    - cli: `bun run lib/apify.ts run clockworks/tiktok-scraper '{"hashtags":["topic"],"resultsPerPage":10}'`
 
 ## structure
 
@@ -145,9 +158,11 @@ each skill includes:
 | video-captions | captions | add subtitles, accessibility |
 | video-editing | edit | resize, trim, social media optimization |
 | audio-transcription | transcribe | speech-to-text, subtitle generation |
+| apify-scraping | lib/apify | web scraping via apify actors (tiktok, etc.) |
 | telegram-send | external | send videos to telegram as round videos |
 | talking-character-pipeline | pipeline | end-to-end talking character videos |
 | round-video-character | pipeline | telegram round selfie videos with wan 2.5 |
+| trendwatching | pipeline | discover viral tiktok content by hashtag |
 
 ## see also
 
@@ -155,3 +170,4 @@ each skill includes:
 - [STRUCTURE.md](STRUCTURE.md) - detailed module organization
 - [pipeline/cookbooks/talking-character.md](pipeline/cookbooks/talking-character.md) - talking character workflow
 - [pipeline/cookbooks/round-video-character.md](pipeline/cookbooks/round-video-character.md) - telegram round selfie video cookbook
+- [pipeline/cookbooks/trendwatching.md](pipeline/cookbooks/trendwatching.md) - discover viral tiktok content
