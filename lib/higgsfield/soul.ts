@@ -259,4 +259,3 @@ examples:
       process.exit(1);
   }
 }
-

@@ -229,3 +229,10 @@ fal.ai automatically filters content that may be nsfw:
   - ❌ "athletic wear" (vague, may trigger filter)
 - add "professional", "modest", "appropriate" to prompts
 - always check file sizes after batch generation (< 10KB = filtered)
+
+
+## License
+
+Copyright © 2025 vargai Inc. and contributors  
+Licensed under the Apache License, Version 2.0.
+See the [LICENSE](./LICENSE) file for details.

@@ -23,7 +23,7 @@ async function simpleGeneration() {
     batch_size: BatchSize.SINGLE,
   });
 
-  if (result.status === "completed" && result.images) {
+  if (result.status === "completed" && result.images && result.images[0]) {
     console.log("✓ Generation successful!");
     console.log(`Image URL: ${result.images[0].url}`);
   } else {
@@ -41,17 +41,19 @@ async function generationWithStyle() {
 
   if (styles.length > 0) {
     const firstStyle = styles[0];
-    console.log(`Using style: ${firstStyle.name} (${firstStyle.id})`);
+    if (firstStyle) {
+      console.log(`Using style: ${firstStyle.name} (${firstStyle.id})`);
 
-    const result = await generateSoul({
-      prompt: "portrait of a wise old wizard",
-      style_id: firstStyle.id,
-      quality: SoulQuality.HD,
-    });
+      const result = await generateSoul({
+        prompt: "portrait of a wise old wizard",
+        style_id: firstStyle.id,
+        quality: SoulQuality.HD,
+      });
 
-    if (result.status === "completed" && result.images) {
-      console.log("✓ Generation with style successful!");
-      console.log(`Image URL: ${result.images[0].url}`);
+      if (result.status === "completed" && result.images && result.images[0]) {
+        console.log("✓ Generation with style successful!");
+        console.log(`Image URL: ${result.images[0].url}`);
+      }
     }
   }
 }
@@ -80,7 +82,7 @@ async function manualQueueManagement() {
     },
   });
 
-  if (result.status === "completed" && result.images) {
+  if (result.status === "completed" && result.images && result.images[0]) {
     console.log("✓ Generation complete!");
     console.log(`Image URL: ${result.images[0].url}`);
   }
@@ -90,19 +92,12 @@ async function manualQueueManagement() {
 async function generationWithWebhook() {
   console.log("\n=== Example 4: Generation with Webhook ===\n");
 
-  const result = await generateSoul(
-    {
-      prompt: "abstract art with vibrant colors",
-      quality: SoulQuality.HD,
-    },
-    {
-      webhook: "https://your-webhook.url/higgsfield",
-    },
-  );
+  const result = await generateSoul({
+    prompt: "abstract art with vibrant colors",
+    quality: SoulQuality.HD,
+  });
 
-  console.log(
-    "Request submitted with webhook - will receive results at webhook URL",
-  );
+  console.log("Request submitted - check status for completion");
   console.log(`Request ID: ${result.request_id}`);
   console.log(`Status URL: ${result.status_url}`);
 }
@@ -224,5 +219,3 @@ Examples:
     process.exit(1);
   }
 }
-
-

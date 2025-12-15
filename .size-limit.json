@@ -1,0 +1,8 @@
+[
+  {
+    "name": "SDK Main Export",
+    "path": "index.ts",
+    "limit": "50 KB",
+    "ignore": ["node_modules"]
+  }
+]

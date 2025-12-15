@@ -155,7 +155,9 @@ export class HiggsfieldClient {
     }
 
     if (response.status === 400) {
-      console.log(`[higgsfield] request cannot be canceled (already processing)`);
+      console.log(
+        `[higgsfield] request cannot be canceled (already processing)`,
+      );
       return false;
     }
 
@@ -238,4 +240,3 @@ export class HiggsfieldClient {
 }
 
 export default HiggsfieldClient;
-
