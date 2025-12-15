@@ -187,7 +187,7 @@ environment:
           | "wav"
           | "ogg"
           | "m4a";
-        const numSongs = (parseInt(args[3], 10) || 1) as 1 | 2;
+        const numSongs = (Number.parseInt(args[3] || "1", 10) || 1) as 1 | 2;
         const upload = args[4] === "true";
 
         if (!prompt) {

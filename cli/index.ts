@@ -15,7 +15,7 @@ import { whichCmd } from "./commands/which";
 const main = defineCommand({
   meta: {
     name: "varg",
-    version: "0.1.0",
+    version: "0.1.1",
     description: "ai video infrastructure from your terminal",
   },
   subCommands: {
