@@ -52,7 +52,7 @@
     "remotion": "^4.0.377",
     "replicate": "^1.4.0"
   },
-  "version": "0.1.1",
+  "version": "1.0.0",
   "exports": {
     ".": "./index.ts"
   }
