@@ -260,6 +260,34 @@ export interface ProbeResult {
   format: string;
 }
 
+export interface FadeVideoOptions {
+  input: string;
+  output: string;
+  type: "in" | "out" | "both";
+  duration: number;
+}
+
+export interface XfadeOptions {
+  input1: string;
+  input2: string;
+  output: string;
+  transition:
+    | "crossfade"
+    | "dissolve"
+    | "wipeleft"
+    | "wiperight"
+    | "slideup"
+    | "slidedown";
+  duration: number;
+  fit?: "pad" | "crop" | "blur" | "stretch";
+}
+
+export interface SplitAtTimestampsOptions {
+  input: string;
+  timestamps: number[];
+  outputPrefix: string;
+}
+
 export async function probe(input: string): Promise<ProbeResult> {
   if (!input) {
     throw new Error("input is required");
@@ -301,6 +329,378 @@ export async function probe(input: string): Promise<ProbeResult> {
       );
       resolve(result);
     });
+  });
+}
+
+/**
+ * get video duration in seconds
+ */
+export async function getVideoDuration(input: string): Promise<number> {
+  const result = await probe(input);
+  return result.duration;
+}
+
+/**
+ * apply fade in/out effects to video
+ */
+export async function fadeVideo(options: FadeVideoOptions): Promise<string> {
+  const { input, output, type, duration } = options;
+
+  if (!input || !output) {
+    throw new Error("input and output are required");
+  }
+
+  if (!existsSync(input)) {
+    throw new Error(`input file not found: ${input}`);
+  }
+
+  console.log(`[ffmpeg] applying fade ${type} effect...`);
+
+  const videoDuration = await getVideoDuration(input);
+  const filters: string[] = [];
+
+  if (type === "in" || type === "both") {
+    filters.push(`fade=t=in:st=0:d=${duration}`);
+  }
+
+  if (type === "out" || type === "both") {
+    const fadeOutStart = videoDuration - duration;
+    filters.push(`fade=t=out:st=${fadeOutStart}:d=${duration}`);
+  }
+
+  // Also fade audio
+  const audioFilters: string[] = [];
+  if (type === "in" || type === "both") {
+    audioFilters.push(`afade=t=in:st=0:d=${duration}`);
+  }
+  if (type === "out" || type === "both") {
+    const fadeOutStart = videoDuration - duration;
+    audioFilters.push(`afade=t=out:st=${fadeOutStart}:d=${duration}`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const command = ffmpeg(input);
+
+    if (filters.length > 0) {
+      command.videoFilters(filters);
+    }
+    if (audioFilters.length > 0) {
+      command.audioFilters(audioFilters);
+    }
+
+    command
+      .output(output)
+      .on("end", () => {
+        console.log(`[ffmpeg] saved to ${output}`);
+        resolve(output);
+      })
+      .on("error", (err) => {
+        console.error(`[ffmpeg] error:`, err);
+        reject(err);
+      })
+      .run();
+  });
+}
+
+/**
+ * check if video has audio track
+ */
+async function hasAudioTrack(input: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    ffmpeg.ffprobe(input, (err, metadata) => {
+      if (err) {
+        resolve(false);
+        return;
+      }
+      const audioStream = metadata.streams.find(
+        (s) => s.codec_type === "audio",
+      );
+      resolve(!!audioStream);
+    });
+  });
+}
+
+/**
+ * Build scale filter for fitting video to target resolution
+ * @param fit - how to handle aspect ratio differences
+ * @param targetW - target width
+ * @param targetH - target height
+ * @param inputLabel - input stream label (e.g., "1:v")
+ * @param outputLabel - output stream label (e.g., "v1scaled")
+ */
+function buildScaleFilter(
+  fit: "pad" | "crop" | "blur" | "stretch",
+  targetW: number,
+  targetH: number,
+  inputLabel: string,
+  outputLabel: string,
+): string {
+  switch (fit) {
+    case "crop":
+      // Scale up to cover, then crop center
+      return `[${inputLabel}]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}[${outputLabel}]`;
+
+    case "stretch":
+      // Simple stretch (distorts aspect ratio)
+      return `[${inputLabel}]scale=${targetW}:${targetH}[${outputLabel}]`;
+
+    case "blur":
+      // Blur background fill (like TikTok/Instagram)
+      // 1. Create blurred scaled background
+      // 2. Overlay scaled video on top
+      return `[${inputLabel}]split[bg][fg];[bg]scale=${targetW}:${targetH},boxblur=20:20[bgblur];[fg]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fgscaled];[bgblur][fgscaled]overlay=(W-w)/2:(H-h)/2[${outputLabel}]`;
+
+    case "pad":
+    default:
+      // Add black bars (letterbox/pillarbox)
+      return `[${inputLabel}]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2[${outputLabel}]`;
+  }
+}
+
+/**
+ * crossfade transition between two videos using xfade filter
+ * automatically scales second video to match first if resolutions differ
+ * @param fit - how to handle resolution differences: pad (black bars), crop, blur (TikTok style), stretch
+ */
+export async function xfadeVideos(options: XfadeOptions): Promise<string> {
+  const { input1, input2, output, transition, duration, fit = "pad" } = options;
+
+  if (!input1 || !input2 || !output) {
+    throw new Error("input1, input2, and output are required");
+  }
+
+  if (!existsSync(input1)) {
+    throw new Error(`input file not found: ${input1}`);
+  }
+  if (!existsSync(input2)) {
+    throw new Error(`input file not found: ${input2}`);
+  }
+
+  console.log(`[ffmpeg] applying ${transition} transition...`);
+
+  // Get info for both videos
+  const [info1, info2] = await Promise.all([probe(input1), probe(input2)]);
+
+  const video1Duration = info1.duration;
+  const offset = video1Duration - duration;
+
+  // Check if videos have audio
+  const [hasAudio1, hasAudio2] = await Promise.all([
+    hasAudioTrack(input1),
+    hasAudioTrack(input2),
+  ]);
+  const hasAudio = hasAudio1 && hasAudio2;
+
+  // Check if resolutions differ
+  const needsScale =
+    info1.width !== info2.width || info1.height !== info2.height;
+
+  if (needsScale) {
+    console.log(
+      `[ffmpeg] fitting video2 (${info2.width}x${info2.height}) to (${info1.width}x${info1.height}) using "${fit}" mode`,
+    );
+  }
+
+  // Map transition names to ffmpeg xfade transition names
+  const transitionMap: Record<string, string> = {
+    crossfade: "fade",
+    dissolve: "dissolve",
+    wipeleft: "wipeleft",
+    wiperight: "wiperight",
+    slideup: "slideup",
+    slidedown: "slidedown",
+  };
+
+  const xfadeTransition = transitionMap[transition] || "fade";
+
+  return new Promise((resolve, reject) => {
+    const command = ffmpeg().input(input1).input(input2);
+
+    // Build filter complex based on audio and scale requirements
+    const filters: string[] = [];
+
+    if (needsScale) {
+      // Scale second video to match first using specified fit mode
+      filters.push(
+        buildScaleFilter(fit, info1.width, info1.height, "1:v", "v1scaled"),
+      );
+      filters.push(
+        `[0:v][v1scaled]xfade=transition=${xfadeTransition}:duration=${duration}:offset=${offset}[vout]`,
+      );
+    } else {
+      filters.push(
+        `[0:v][1:v]xfade=transition=${xfadeTransition}:duration=${duration}:offset=${offset}[vout]`,
+      );
+    }
+
+    // Common output options for proper codec compatibility
+    const codecOptions = [
+      "-c:v",
+      "libx264",
+      "-preset",
+      "fast",
+      "-crf",
+      "22",
+      "-pix_fmt",
+      "yuv420p", // Ensures compatibility with most players
+    ];
+
+    if (hasAudio) {
+      filters.push(`[0:a][1:a]acrossfade=d=${duration}[aout]`);
+      command
+        .complexFilter(filters)
+        .outputOptions([
+          "-map",
+          "[vout]",
+          "-map",
+          "[aout]",
+          ...codecOptions,
+          "-c:a",
+          "aac",
+          "-b:a",
+          "192k",
+        ]);
+    } else {
+      command
+        .complexFilter(filters)
+        .outputOptions(["-map", "[vout]", ...codecOptions]);
+    }
+
+    command
+      .output(output)
+      .on("end", () => {
+        console.log(`[ffmpeg] saved to ${output}`);
+        resolve(output);
+      })
+      .on("error", (err) => {
+        console.error(`[ffmpeg] error:`, err);
+        reject(err);
+      })
+      .run();
+  });
+}
+
+/**
+ * split video at specific timestamps into multiple files
+ */
+export async function splitAtTimestamps(
+  options: SplitAtTimestampsOptions,
+): Promise<string[]> {
+  const { input, timestamps, outputPrefix } = options;
+
+  if (!input || !outputPrefix) {
+    throw new Error("input and outputPrefix are required");
+  }
+
+  if (!existsSync(input)) {
+    throw new Error(`input file not found: ${input}`);
+  }
+
+  if (!timestamps || timestamps.length === 0) {
+    throw new Error("at least one timestamp is required");
+  }
+
+  console.log(`[ffmpeg] splitting video at ${timestamps.length} timestamps...`);
+
+  const videoDuration = await getVideoDuration(input);
+  const sortedTimestamps = [0, ...timestamps.sort((a, b) => a - b)];
+
+  // Add video duration as the last point if not already included
+  const lastTimestamp = sortedTimestamps[sortedTimestamps.length - 1];
+  if (lastTimestamp !== undefined && lastTimestamp < videoDuration) {
+    sortedTimestamps.push(videoDuration);
+  }
+
+  const outputs: string[] = [];
+
+  for (let i = 0; i < sortedTimestamps.length - 1; i++) {
+    const start = sortedTimestamps[i];
+    const end = sortedTimestamps[i + 1];
+    if (start === undefined || end === undefined) continue;
+
+    const duration = end - start;
+    const partNumber = String(i + 1).padStart(3, "0");
+    const outputPath = `${outputPrefix}_${partNumber}.mp4`;
+
+    console.log(
+      `[ffmpeg] extracting part ${i + 1}: ${start}s - ${end}s (${duration}s)`,
+    );
+
+    await trimVideo({
+      input,
+      output: outputPath,
+      start,
+      duration,
+    });
+
+    outputs.push(outputPath);
+  }
+
+  console.log(`[ffmpeg] created ${outputs.length} parts`);
+  return outputs;
+}
+
+/**
+ * concatenate videos using a file list (safer for many files)
+ */
+export async function concatWithFileList(
+  inputs: string[],
+  output: string,
+): Promise<string> {
+  if (!inputs || inputs.length === 0) {
+    throw new Error("at least one input is required");
+  }
+  if (!output) {
+    throw new Error("output is required");
+  }
+
+  // validate all inputs exist
+  for (const input of inputs) {
+    if (!existsSync(input)) {
+      throw new Error(`input file not found: ${input}`);
+    }
+  }
+
+  console.log(
+    `[ffmpeg] concatenating ${inputs.length} videos with file list...`,
+  );
+
+  // Create a temporary file list
+  const { writeFileSync, unlinkSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+
+  const listPath = join(tmpdir(), `concat-list-${Date.now()}.txt`);
+  const listContent = inputs.map((f) => `file '${f}'`).join("\n");
+  writeFileSync(listPath, listContent);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(listPath)
+      .inputOptions(["-f", "concat", "-safe", "0"])
+      .outputOptions(["-c", "copy"])
+      .output(output)
+      .on("end", () => {
+        // Cleanup temp file
+        try {
+          unlinkSync(listPath);
+        } catch {
+          // ignore cleanup errors
+        }
+        console.log(`[ffmpeg] saved to ${output}`);
+        resolve(output);
+      })
+      .on("error", (err) => {
+        // Cleanup temp file
+        try {
+          unlinkSync(listPath);
+        } catch {
+          // ignore cleanup errors
+        }
+        console.error(`[ffmpeg] error:`, err);
+        reject(err);
+      })
+      .run();
   });
 }
 
