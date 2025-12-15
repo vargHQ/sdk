@@ -10,12 +10,13 @@ import { findCmd } from "./commands/find";
 import { helpCmd } from "./commands/help";
 import { listCmd } from "./commands/list";
 import { runCmd } from "./commands/run";
+import { uploadCmd } from "./commands/upload";
 import { whichCmd } from "./commands/which";
 
 const main = defineCommand({
   meta: {
     name: "varg",
-    version: "0.1.1",
+    version: "0.2.0",
     description: "ai video infrastructure from your terminal",
   },
   subCommands: {
@@ -26,6 +27,7 @@ const main = defineCommand({
     search: findCmd,
     which: whichCmd,
     inspect: whichCmd,
+    upload: uploadCmd,
     help: helpCmd,
   },
 });
