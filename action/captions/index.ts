@@ -313,32 +313,40 @@ function groupWordsIntoPhrases(
     const endsWithPunctuation = /[.!?]$/.test(word.word);
 
     if (currentPhrase.length >= maxWordsPerPhrase || endsWithPunctuation) {
-      phrases.push({
-        text: currentPhrase.map((w) => w.word).join(" "),
-        start: currentPhrase[0].start,
-        end: currentPhrase[currentPhrase.length - 1].end,
-        words: currentPhrase.map((w) => ({
-          word: w.word,
-          start: w.start,
-          end: w.end,
-        })),
-      });
+      const first = currentPhrase[0];
+      const last = currentPhrase[currentPhrase.length - 1];
+      if (first && last) {
+        phrases.push({
+          text: currentPhrase.map((w) => w.word).join(" "),
+          start: first.start,
+          end: last.end,
+          words: currentPhrase.map((w) => ({
+            word: w.word,
+            start: w.start,
+            end: w.end,
+          })),
+        });
+      }
       currentPhrase = [];
     }
   }
 
   // Add remaining words
   if (currentPhrase.length > 0) {
-    phrases.push({
-      text: currentPhrase.map((w) => w.word).join(" "),
-      start: currentPhrase[0].start,
-      end: currentPhrase[currentPhrase.length - 1].end,
-      words: currentPhrase.map((w) => ({
-        word: w.word,
-        start: w.start,
-        end: w.end,
-      })),
-    });
+    const first = currentPhrase[0];
+    const last = currentPhrase[currentPhrase.length - 1];
+    if (first && last) {
+      phrases.push({
+        text: currentPhrase.map((w) => w.word).join(" "),
+        start: first.start,
+        end: last.end,
+        words: currentPhrase.map((w) => ({
+          word: w.word,
+          start: w.start,
+          end: w.end,
+        })),
+      });
+    }
   }
 
   return phrases;

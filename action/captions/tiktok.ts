@@ -241,12 +241,12 @@ function generateTikTokEvents(
 
   let prevSegmentEnd = 0;
 
-  for (let captionIdx = 0; captionIdx < captions.length; captionIdx++) {
-    const caption = captions[captionIdx];
-    let { start, end, text } = caption;
+  for (const caption of captions) {
+    const { end, text } = caption;
+    let start = caption.start;
 
     // Add pause after previous segment
-    if (captionIdx > 0 && start < prevSegmentEnd + style.pauseBetweenSegments) {
+    if (start < prevSegmentEnd + style.pauseBetweenSegments) {
       start = prevSegmentEnd + style.pauseBetweenSegments;
     }
 
@@ -259,12 +259,17 @@ function generateTikTokEvents(
 
     // Process each line
     for (const lineWords of lines) {
-      const lineStart = lineWords[0].start;
-      const lineEnd = lineWords[lineWords.length - 1].end;
+      const firstWord = lineWords[0];
+      const lastWord = lineWords[lineWords.length - 1];
+      if (!firstWord || !lastWord) continue;
+
+      const lineEnd = lastWord.end;
 
       // Create event for each word (progressive appearance)
       for (let wordIdx = 0; wordIdx < lineWords.length; wordIdx++) {
         const wordData = lineWords[wordIdx];
+        if (!wordData) continue;
+
         const wordStart = wordData.start;
         const wordEnd = wordData.end;
         const wordDurationMs = Math.round((wordEnd - wordStart) * 1000);
@@ -274,6 +279,8 @@ function generateTikTokEvents(
 
         for (let i = 0; i <= wordIdx; i++) {
           const wd = lineWords[i];
+          if (!wd) continue;
+
           const isActive = i === wordIdx;
           const wdDurationMs = Math.round((wd.end - wd.start) * 1000);
 
@@ -480,8 +487,8 @@ Example:
     process.exit(0);
   }
 
-  const videoPath = args[0];
-  const outputPath = args[1];
+  const videoPath = args[0] as string;
+  const outputPath = args[1] || videoPath.replace(/(\.[^.]+)$/, "_tiktok$1");
 
   // Parse options
   let text = "";
@@ -494,15 +501,15 @@ Example:
   for (let i = 2; i < args.length; i++) {
     const arg = args[i];
     if (arg === "--text" && args[i + 1]) {
-      text = args[++i];
+      text = args[++i] as string;
     } else if (arg === "--start" && args[i + 1]) {
-      start = Number.parseFloat(args[++i]);
+      start = Number.parseFloat(args[++i] as string);
     } else if (arg === "--end" && args[i + 1]) {
-      end = Number.parseFloat(args[++i]);
+      end = Number.parseFloat(args[++i] as string);
     } else if (arg === "--position" && args[i + 1]) {
       position = args[++i] as TikTokPosition;
     } else if (arg === "--bounce" && args[i + 1]) {
-      bounceScale = Number.parseFloat(args[++i]);
+      bounceScale = Number.parseFloat(args[++i] as string);
     } else if (arg === "--no-bounce") {
       useBounce = false;
     }
