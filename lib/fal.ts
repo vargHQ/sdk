@@ -312,6 +312,61 @@ export async function wan25(args: FalWan25Args) {
   }
 }
 
+interface FalTextToMusicArgs {
+  prompt?: string;
+  tags?: string[];
+  lyricsPrompt?: string;
+  seed?: number;
+  promptStrength?: number;
+  balanceStrength?: number;
+  numSongs?: 1 | 2;
+  outputFormat?: "flac" | "mp3" | "wav" | "ogg" | "m4a";
+  outputBitRate?: 128 | 192 | 256 | 320;
+  bpm?: number | "auto";
+}
+
+export async function textToMusic(args: FalTextToMusicArgs) {
+  const modelId = "fal-ai/sonauto/bark";
+
+  console.log(`[fal] starting text-to-music: ${modelId}`);
+  if (args.prompt) console.log(`[fal] prompt: ${args.prompt}`);
+  if (args.tags) console.log(`[fal] tags: ${args.tags.join(", ")}`);
+
+  try {
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        tags: args.tags,
+        lyrics_prompt: args.lyricsPrompt,
+        seed: args.seed,
+        prompt_strength: args.promptStrength,
+        balance_strength: args.balanceStrength,
+        num_songs: args.numSongs,
+        output_format: args.outputFormat,
+        output_bit_rate: args.outputBitRate,
+        bpm: args.bpm,
+      },
+      logs: true,
+      onQueueUpdate: (update: {
+        status: string;
+        logs?: Array<{ message: string }>;
+      }) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  } catch (error) {
+    console.error("[fal] error:", error);
+    throw error;
+  }
+}
+
 // cli runner
 if (import.meta.main) {
   const [command, ...args] = process.argv.slice(2);

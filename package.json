@@ -6,12 +6,28 @@
     "varg": "./cli/index.ts"
   },
   "scripts": {
-    "check": "biome check . && biome format .",
-    "format": "biome check --write . && biome format --write ."
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "type-check": "tsc --noEmit",
+    "prepare": "husky install",
+    "size": "size-limit"
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "*.{json,md}": [
+      "biome format --write"
+    ]
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
-    "@types/bun": "latest"
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@size-limit/preset-small-lib": "^11.2.0",
+    "@types/bun": "latest",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -26,6 +42,7 @@
     "@higgsfield/client": "^0.1.2",
     "@remotion/cli": "^4.0.377",
     "@types/fluent-ffmpeg": "^2.1.28",
+    "@vargai/sdk": "^0.1.1",
     "ai": "^5.0.98",
     "citty": "^0.1.6",
     "fluent-ffmpeg": "^2.1.3",

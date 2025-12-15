@@ -111,6 +111,8 @@ export async function generateMusic(
   if (outputPath) {
     for (let i = 0; i < musicResult.audio.length; i++) {
       const audio = musicResult.audio[i];
+      if (!audio) continue;
+
       const ext = format || "wav";
       const filePath =
         musicResult.audio.length === 1
@@ -130,6 +132,8 @@ export async function generateMusic(
     const uploadUrls: string[] = [];
     for (let i = 0; i < musicResult.audio.length; i++) {
       const audio = musicResult.audio[i];
+      if (!audio) continue;
+
       const objectKey = `music/${Date.now()}-${i + 1}.${format || "wav"}`;
       const uploadUrl = await uploadFromUrl(audio.url, objectKey);
       uploadUrls.push(uploadUrl);
@@ -218,11 +222,11 @@ environment:
 
         for (let i = 1; i < args.length; i++) {
           const arg = args[i];
-          if (["mp3", "wav", "flac", "ogg", "m4a"].includes(arg)) {
+          if (arg && ["mp3", "wav", "flac", "ogg", "m4a"].includes(arg)) {
             format = arg as "flac" | "mp3" | "wav" | "ogg" | "m4a";
           } else if (arg === "true") {
             upload = true;
-          } else {
+          } else if (arg) {
             tags.push(arg);
           }
         }
@@ -258,11 +262,11 @@ environment:
 
         for (let i = 1; i < args.length; i++) {
           const arg = args[i];
-          if (["mp3", "wav", "flac", "ogg", "m4a"].includes(arg)) {
+          if (arg && ["mp3", "wav", "flac", "ogg", "m4a"].includes(arg)) {
             format = arg as "flac" | "mp3" | "wav" | "ogg" | "m4a";
           } else if (arg === "true") {
             upload = true;
-          } else {
+          } else if (arg) {
             tags.push(arg);
           }
         }

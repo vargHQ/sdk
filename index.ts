@@ -14,6 +14,7 @@ export {
   addCaptions,
   type SubtitleStyle,
 } from "./action/captions";
+export { type CutOptions, type CutResult, cut } from "./action/cut";
 export {
   type CreateMontageOptions,
   createMontage,
@@ -26,11 +27,15 @@ export {
   quickResize,
   quickTrim,
 } from "./action/edit";
+export { type FadeOptions, type FadeResult, fade } from "./action/fade";
 export {
   generateWithFal,
   generateWithSoul,
   type ImageGenerationResult,
 } from "./action/image";
+export { type MergeOptions, type MergeResult, merge } from "./action/merge";
+export { type RemoveOptions, type RemoveResult, remove } from "./action/remove";
+export { type SplitOptions, type SplitResult, split } from "./action/split";
 export {
   type LipsyncOptions,
   lipsync,
@@ -43,6 +48,13 @@ export {
   type TranscribeResult,
   transcribe,
 } from "./action/transcribe";
+export {
+  type TransitionOptions,
+  type TransitionResult,
+  transition,
+} from "./action/transition";
+// new action exports - video editing
+export { type TrimOptions, type TrimResult, trim } from "./action/trim";
 export {
   generateVideoFromImage,
   generateVideoFromText,

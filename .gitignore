@@ -1,6 +1,8 @@
 # dependencies (bun install)
 node_modules
 
+sdk-py-reference
+
 # output
 out
 dist
@@ -38,5 +40,6 @@ __pycache__
 reference/
 media/
 
-/scripts/*
+scripts/*
+!scripts/.gitkeep
 output

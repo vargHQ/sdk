@@ -1,7 +1,0 @@
-import { generateImage, imageToVideo, uploadFromUrl } from "./index";
-
-console.log("✓ imports successful");
-console.log("available functions:");
-console.log("- generateImage:", typeof generateImage);
-console.log("- imageToVideo:", typeof imageToVideo);
-console.log("- uploadFromUrl:", typeof uploadFromUrl);
