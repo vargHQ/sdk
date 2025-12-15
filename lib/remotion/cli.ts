@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   createComposition,
   getCompositionsList,
@@ -17,6 +18,7 @@ usage:
 
 commands:
   create <name>                                        setup composition directory
+  studio <root-file.tsx>                               open remotion studio
   compositions <root-file.tsx>                         list all compositions
   render <root-file.tsx> <comp-id> <output.mp4>       render video
   still <root-file.tsx> <comp-id> <frame> <out.png>   render still frame
@@ -24,6 +26,7 @@ commands:
 
 examples:
   bun run lib/remotion/index.ts create MyVideo
+  bun run lib/remotion/index.ts studio lib/remotion/compositions/MyVideo.root.tsx
   bun run lib/remotion/index.ts compositions lib/remotion/compositions/MyVideo.root.tsx
   bun run lib/remotion/index.ts render lib/remotion/compositions/MyVideo.root.tsx Demo output.mp4
   bun run lib/remotion/index.ts still lib/remotion/compositions/MyVideo.root.tsx Demo 30 frame.png
@@ -46,6 +49,37 @@ requirements:
 
         await createComposition({ name });
         console.log("\ncomposition setup complete!");
+        break;
+      }
+
+      case "studio": {
+        const entryPoint = args[1];
+
+        if (!entryPoint) {
+          throw new Error("entry point is required");
+        }
+
+        const publicDir = join(process.cwd(), "lib/remotion/public");
+        const { spawn } = await import("node:child_process");
+
+        console.log(`[remotion] starting studio with public dir: ${publicDir}`);
+
+        const studio = spawn(
+          "bun",
+          ["remotion", "studio", entryPoint, "--public-dir", publicDir],
+          {
+            stdio: "inherit",
+            cwd: process.cwd(),
+          },
+        );
+
+        studio.on("error", (err) => {
+          console.error("[remotion] studio error:", err);
+          process.exit(1);
+        });
+
+        // keep process alive
+        await new Promise(() => {});
         break;
       }
 

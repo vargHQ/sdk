@@ -4,12 +4,12 @@
  */
 
 import {
+  BatchSize,
   generateSoul,
   listSoulStyles,
   SoulClient,
-  SoulSize,
   SoulQuality,
-  BatchSize,
+  SoulSize,
 } from "./soul";
 
 // Example 1: Simple generation
