@@ -4,17 +4,26 @@
  * video captioning service
  * generates and overlays subtitles on videos using ffmpeg
  * supports auto-generation via groq/fireworks or custom srt files
+ *
+ * modes:
+ * - basic: standard SRT subtitles with customizable style
+ * - tiktok: word-by-word animated captions with bounce effects
  */
 
 import { existsSync } from "node:fs";
 import ffmpeg from "fluent-ffmpeg";
 import type { ActionMeta } from "../../cli/types";
 import { transcribe } from "../transcribe";
+import {
+  addTikTokCaptions,
+  type TikTokCaptionItem,
+  type TikTokWordStyle,
+} from "./tiktok";
 
 export const meta: ActionMeta = {
   name: "captions",
   type: "action",
-  description: "add subtitles to video",
+  description: "add subtitles to video (basic or tiktok-style)",
   inputType: "video",
   outputType: "video",
   schema: {
@@ -32,10 +41,18 @@ export const meta: ActionMeta = {
           format: "file-path",
           description: "output video path",
         },
+        mode: {
+          type: "string",
+          enum: ["basic", "tiktok"],
+          default: "basic",
+          description:
+            "caption mode: basic (SRT) or tiktok (word-by-word animated)",
+        },
         srt: {
           type: "string",
           format: "file-path",
-          description: "existing srt file (auto-generates if not provided)",
+          description:
+            "existing srt file (basic mode, auto-generates if not provided)",
         },
         provider: {
           type: "string",
@@ -43,28 +60,88 @@ export const meta: ActionMeta = {
           default: "fireworks",
           description: "transcription provider for auto-generation",
         },
+        // TikTok mode options
+        position: {
+          type: "string",
+          enum: ["upper-middle", "middle", "lower-middle", "top", "bottom"],
+          default: "upper-middle",
+          description: "tiktok: caption position on screen",
+        },
+        bounce: {
+          type: "number",
+          default: 1.12,
+          description: "tiktok: bounce scale for active word (1.0-1.5)",
+        },
+        noBounce: {
+          type: "boolean",
+          default: false,
+          description: "tiktok: disable bounce animation",
+        },
       },
     },
     output: { type: "string", format: "file-path", description: "video path" },
   },
   async run(options) {
-    const { video, output, srt, provider } = options as {
-      video: string;
-      output: string;
-      srt?: string;
-      provider?: "groq" | "fireworks";
-    };
-    return addCaptions({ videoPath: video, output, srtPath: srt, provider });
+    const { video, output, srt, provider, mode, position, bounce, noBounce } =
+      options as {
+        video: string;
+        output: string;
+        srt?: string;
+        provider?: "groq" | "fireworks";
+        mode?: "basic" | "tiktok";
+        position?:
+          | "upper-middle"
+          | "middle"
+          | "lower-middle"
+          | "top"
+          | "bottom";
+        bounce?: number;
+        noBounce?: boolean;
+      };
+
+    const tiktokStyle: TikTokWordStyle | undefined =
+      mode === "tiktok"
+        ? {
+            position: position || "upper-middle",
+            bounceScale: bounce || 1.12,
+            useBounce: !noBounce,
+          }
+        : undefined;
+
+    return addCaptions({
+      videoPath: video,
+      output,
+      srtPath: srt,
+      provider,
+      mode,
+      tiktokStyle,
+    });
   },
 };
+
+// re-export tiktok types for convenience
+export {
+  addTikTokCaptions,
+  type TikTokCaptionItem,
+  type TikTokWordStyle,
+} from "./tiktok";
 
 // types
 export interface AddCaptionsOptions {
   videoPath: string;
-  srtPath?: string; // optional existing srt file
   output: string;
-  provider?: "groq" | "fireworks"; // only used if srtPath not provided
+  /** Caption mode: basic (SRT) or tiktok (word-by-word animated) */
+  mode?: "basic" | "tiktok";
+  /** Existing srt file (auto-generates if not provided) - basic mode only */
+  srtPath?: string;
+  /** Transcription provider for auto-generation */
+  provider?: "groq" | "fireworks";
+  /** Style for basic mode */
   style?: SubtitleStyle;
+  /** Captions with word timings for tiktok mode (auto-generates from transcription if not provided) */
+  tiktokCaptions?: TikTokCaptionItem[];
+  /** Style for tiktok mode */
+  tiktokStyle?: TikTokWordStyle;
 }
 
 export interface SubtitleStyle {
@@ -92,7 +169,16 @@ const DEFAULT_STYLE: Required<SubtitleStyle> = {
 export async function addCaptions(
   options: AddCaptionsOptions,
 ): Promise<string> {
-  const { videoPath, srtPath, output, provider = "fireworks", style } = options;
+  const {
+    videoPath,
+    srtPath,
+    output,
+    provider = "fireworks",
+    style,
+    mode = "basic",
+    tiktokCaptions,
+    tiktokStyle,
+  } = options;
 
   if (!videoPath) {
     throw new Error("videoPath is required");
@@ -104,6 +190,54 @@ export async function addCaptions(
     throw new Error(`video file not found: ${videoPath}`);
   }
 
+  // TikTok mode: use word-by-word animated captions
+  if (mode === "tiktok") {
+    console.log("[captions] using TikTok mode (word-by-word animated)...");
+
+    // If captions provided, use them directly
+    if (tiktokCaptions && tiktokCaptions.length > 0) {
+      return addTikTokCaptions({
+        videoPath,
+        output,
+        captions: tiktokCaptions,
+        style: tiktokStyle,
+      });
+    }
+
+    // Otherwise, auto-generate from transcription
+    console.log(`[captions] auto-generating word timings with ${provider}...`);
+
+    // Fireworks provides word-level timestamps, groq doesn't
+    if (provider === "groq") {
+      console.warn(
+        "[captions] warning: groq doesn't provide word-level timestamps, using fireworks instead",
+      );
+    }
+
+    // Import fireworks directly for word-level data
+    const { transcribeWithFireworks } = await import("../../lib/fireworks");
+
+    const data = await transcribeWithFireworks({ audioPath: videoPath });
+
+    if (!data.words || data.words.length === 0) {
+      throw new Error("transcription returned no word data");
+    }
+
+    // Convert fireworks words to tiktok captions
+    // Group words into phrases (max ~5-7 words per phrase)
+    const phrases = groupWordsIntoPhrases(data.words, 6);
+
+    console.log(`[captions] generated ${phrases.length} caption phrases`);
+
+    return addTikTokCaptions({
+      videoPath,
+      output,
+      captions: phrases,
+      style: tiktokStyle,
+    });
+  }
+
+  // Basic mode: use SRT subtitles
   console.log("[captions] adding captions to video...");
 
   // determine srt file path
@@ -160,6 +294,54 @@ export async function addCaptions(
       })
       .run();
   });
+}
+
+/**
+ * Group words into phrases for TikTok captions
+ */
+function groupWordsIntoPhrases(
+  words: Array<{ word: string; start: number; end: number }>,
+  maxWordsPerPhrase: number,
+): TikTokCaptionItem[] {
+  const phrases: TikTokCaptionItem[] = [];
+  let currentPhrase: Array<{ word: string; start: number; end: number }> = [];
+
+  for (const word of words) {
+    currentPhrase.push(word);
+
+    // Start new phrase after reaching max words or at sentence boundaries
+    const endsWithPunctuation = /[.!?]$/.test(word.word);
+
+    if (currentPhrase.length >= maxWordsPerPhrase || endsWithPunctuation) {
+      phrases.push({
+        text: currentPhrase.map((w) => w.word).join(" "),
+        start: currentPhrase[0].start,
+        end: currentPhrase[currentPhrase.length - 1].end,
+        words: currentPhrase.map((w) => ({
+          word: w.word,
+          start: w.start,
+          end: w.end,
+        })),
+      });
+      currentPhrase = [];
+    }
+  }
+
+  // Add remaining words
+  if (currentPhrase.length > 0) {
+    phrases.push({
+      text: currentPhrase.map((w) => w.word).join(" "),
+      start: currentPhrase[0].start,
+      end: currentPhrase[currentPhrase.length - 1].end,
+      words: currentPhrase.map((w) => ({
+        word: w.word,
+        start: w.start,
+        end: w.end,
+      })),
+    });
+  }
+
+  return phrases;
 }
 
 // cli
