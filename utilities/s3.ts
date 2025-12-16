@@ -80,10 +80,10 @@ export function getPublicUrl(objectKey: string): string {
   const endpoint = process.env.CLOUDFLARE_R2_API_URL || "";
 
   if (endpoint.includes("localhost")) {
-    return `${endpoint}/${BUCKET}/${objectKey}`;
+    return `${endpoint}/${objectKey}`;
   }
 
-  return `http://s3.varg.ai/${BUCKET}/${objectKey}`;
+  return `https://s3.varg.ai/${objectKey}`;
 }
 
 // cli runner
