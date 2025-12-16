@@ -46,12 +46,8 @@ export async function uploadFromUrl(
   url: string,
   objectKey: string,
 ): Promise<string> {
-  console.log(`[s3] downloading from ${url}`);
-
   const response = await fetch(url);
   const buffer = await response.arrayBuffer();
-
-  console.log(`[s3] uploading to ${objectKey}`);
 
   await client.send(
     new PutObjectCommand({

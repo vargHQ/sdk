@@ -38,7 +38,9 @@ sdk/
 ## installation
 
 ```bash
-bun install
+npm i @vargai/sdk
+# or
+pnpm add @vargai/sdk
 ```
 
 set environment variables in `.env`:
@@ -58,41 +60,22 @@ CLOUDFLARE_R2_BUCKET=m
 
 ## usage
 
-### as cli
+### cli
+
+| Command | Description |
+|---------|-------------|
+| `varg run <action>` | Run a model or action |
+| `varg list` | Discover available actions |
+| `varg find <query>` | Search actions |
+| `varg which <action>` | Inspect action details |
+| `varg upload <file>` | Upload to S3 |
+| `varg help` | Show help |
 
 ```bash
-# generate image with ai-sdk (recommended)
-bun run lib/ai-sdk/fal.ts generate_image "a beautiful sunset" "fal-ai/flux/dev" "16:9"
-
-# generate image with fal client (advanced features)
-bun run lib/fal.ts generate_image "a beautiful sunset"
-
-# generate video from image (supports local files)
-bun run lib/fal.ts image_to_video "person talking" media/image.jpg 5
-bun run lib/fal.ts image_to_video "person talking" https://example.com/image.jpg 5
-
-# generate soul character
-bun run lib/higgsfield.ts generate_soul "professional headshot"
-
-# generate video with replicate
-bun run lib/replicate.ts minimax "person walking on beach"
-
-# generate voice with elevenlabs
-bun run lib/elevenlabs.ts tts "hello world" rachel output.mp3
-
-# transcribe audio to text/subtitles
-bun run service/transcribe media/audio.mp3 groq
-bun run service/transcribe media/audio.mp3 fireworks output.srt
-bun run lib/fireworks.ts media/audio.mp3 output.srt
-
-# edit video with ffmpeg
-bun run lib/ffmpeg.ts concat output.mp4 video1.mp4 video2.mp4
-
-# lipsync video with audio
-bun run service/sync overlay video.mp4 audio.mp3 synced.mp4
-
-# upload file to s3
-bun run utilities/s3.ts upload ./video.mp4 videos/output.mp4
+varg list                           # see all actions
+varg run image --prompt "sunset"    # generate image
+varg run video --image ./photo.jpg  # animate image
+varg run <action> --info            # show action options
 ```
 
 ### as library
@@ -230,6 +213,10 @@ fal.ai automatically filters content that may be nsfw:
 - add "professional", "modest", "appropriate" to prompts
 - always check file sizes after batch generation (< 10KB = filtered)
 
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and guidelines.
 
 ## License
 
