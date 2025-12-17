@@ -5,7 +5,6 @@
  * Run with: bun run src/tests/unit.test.ts
  */
 
-import { executor } from "../core/executor";
 import { registry } from "../core/registry";
 import { findSimilar, resolve, suggest } from "../core/registry/resolver";
 import {
@@ -22,7 +21,6 @@ import { providers } from "../providers";
 // Colors for output
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
-const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
@@ -57,9 +55,9 @@ for (const definition of allDefinitions) {
   registry.register(definition);
 }
 
-console.log("\n" + cyan("═".repeat(60)));
+console.log(`\n${cyan("═".repeat(60))}`);
 console.log(cyan(" VARG SDK UNIT TESTS"));
-console.log(cyan("═".repeat(60)) + "\n");
+console.log(`${cyan("═".repeat(60))}\n`);
 
 // ============================================================================
 // Definition Count Tests
@@ -101,7 +99,7 @@ test("allDefinitions contains all definitions", () => {
 // Registry Tests
 // ============================================================================
 
-console.log("\n" + dim("─ Registry ─\n"));
+console.log(`\n${dim("─ Registry ─\n")}`);
 
 test("registry.list() returns all definitions", () => {
   const all = registry.list();
@@ -194,7 +192,7 @@ test("registry.stats returns correct counts", () => {
 // Resolver Tests
 // ============================================================================
 
-console.log("\n" + dim("─ Resolver ─\n"));
+console.log(`\n${dim("─ Resolver ─\n")}`);
 
 test("resolve() returns exact matches", () => {
   const result = resolve("video");
@@ -235,7 +233,7 @@ test("suggest() returns prefix matches", () => {
 // Schema Validation Tests
 // ============================================================================
 
-console.log("\n" + dim("─ Schema Validation ─\n"));
+console.log(`\n${dim("─ Schema Validation ─\n")}`);
 
 const testSchema = {
   input: {
@@ -296,7 +294,7 @@ test("validateAndPrepare combines validation and defaults", () => {
 // Model Definition Tests
 // ============================================================================
 
-console.log("\n" + dim("─ Model Definitions ─\n"));
+console.log(`\n${dim("─ Model Definitions ─\n")}`);
 
 for (const model of allModels) {
   test(`model '${model.name}' has required fields`, () => {
@@ -321,7 +319,7 @@ for (const model of allModels) {
 // Action Definition Tests
 // ============================================================================
 
-console.log("\n" + dim("─ Action Definitions ─\n"));
+console.log(`\n${dim("─ Action Definitions ─\n")}`);
 
 for (const action of allActions) {
   test(`action '${action.name}' has required fields`, () => {
@@ -340,7 +338,7 @@ for (const action of allActions) {
 // Skill Definition Tests
 // ============================================================================
 
-console.log("\n" + dim("─ Skill Definitions ─\n"));
+console.log(`\n${dim("─ Skill Definitions ─\n")}`);
 
 for (const skill of allSkills) {
   test(`skill '${skill.name}' has required fields`, () => {
@@ -364,7 +362,7 @@ for (const skill of allSkills) {
 // Provider Registration Tests
 // ============================================================================
 
-console.log("\n" + dim("─ Provider Registration ─\n"));
+console.log(`\n${dim("─ Provider Registration ─\n")}`);
 
 const expectedProviders = [
   "fal",
@@ -397,9 +395,9 @@ test(`providers.all() returns all providers`, () => {
 // Summary
 // ============================================================================
 
-console.log("\n" + cyan("═".repeat(60)));
+console.log(`\n${cyan("═".repeat(60))}`);
 console.log(cyan(" SUMMARY"));
-console.log(cyan("═".repeat(60)) + "\n");
+console.log(`${cyan("═".repeat(60))}\n`);
 
 const total = passed + failed;
 console.log(`Total:  ${total}`);

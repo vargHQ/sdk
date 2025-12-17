@@ -17,7 +17,7 @@ export function table(rows: TableRow[]): string[] {
   const lines: string[] = [];
 
   for (const row of rows) {
-    const typeTag = row.type ? c.dim(`[${row.type}]`) + " " : "";
+    const typeTag = row.type ? `${c.dim(`[${row.type}]`)} ` : "";
     lines.push(
       `    ${c.cyan(row.name.padEnd(16))} ${typeTag}${row.description}`,
     );

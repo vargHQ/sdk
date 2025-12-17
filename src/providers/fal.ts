@@ -13,7 +13,7 @@ export class FalProvider extends BaseProvider {
   async submit(
     model: string,
     inputs: Record<string, unknown>,
-    config?: ProviderConfig,
+    _config?: ProviderConfig,
   ): Promise<string> {
     console.log(`[fal] submitting job for model: ${model}`);
 
@@ -54,7 +54,7 @@ export class FalProvider extends BaseProvider {
 
   override async uploadFile(
     file: File | Blob | ArrayBuffer,
-    filename?: string,
+    _filename?: string,
   ): Promise<string> {
     console.log(`[fal] uploading file...`);
 

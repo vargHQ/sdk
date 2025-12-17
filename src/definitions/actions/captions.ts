@@ -148,8 +148,18 @@ export async function addCaptions(
     console.log(`[captions] saved srt to ${srtFile}`);
   }
 
-  // Get style preset
-  const styleConfig = STYLE_PRESETS[style] ?? STYLE_PRESETS.default!;
+  // Get style preset (default is always defined)
+  const styleConfig = STYLE_PRESETS[style] ??
+    STYLE_PRESETS.default ?? {
+      fontName: "Arial",
+      fontSize: 24,
+      primaryColor: "&HFFFFFF",
+      outlineColor: "&H000000",
+      outline: 2,
+      shadow: 1,
+      marginV: 30,
+      alignment: 2,
+    };
 
   // Convert SRT to ASS for styling (simplified - in production use a proper ASS library)
   const assFile = srtFile.replace(".srt", ".ass");
@@ -229,18 +239,11 @@ function parseSrt(content: string): SrtEntry[] {
 
     if (!timeMatch) continue;
 
-    const start = parseTime(
-      timeMatch[1]!,
-      timeMatch[2]!,
-      timeMatch[3]!,
-      timeMatch[4]!,
-    );
-    const end = parseTime(
-      timeMatch[5]!,
-      timeMatch[6]!,
-      timeMatch[7]!,
-      timeMatch[8]!,
-    );
+    const [, h1, m1, s1, ms1, h2, m2, s2, ms2] = timeMatch;
+    if (!h1 || !m1 || !s1 || !ms1 || !h2 || !m2 || !s2 || !ms2) continue;
+
+    const start = parseTime(h1, m1, s1, ms1);
+    const end = parseTime(h2, m2, s2, ms2);
     const text = lines.slice(2).join("\n");
 
     entries.push({ index, start, end, text });

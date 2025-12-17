@@ -57,9 +57,7 @@ export function box(title: string, content: string[]): string {
   for (const line of content) {
     const stripped = stripAnsi(line);
     const pad = Math.max(0, innerWidth - stripped.length);
-    lines.push(
-      c.dim(chars.v) + " " + line + " ".repeat(pad) + " " + c.dim(chars.v),
-    );
+    lines.push(`${c.dim(chars.v)} ${line}${" ".repeat(pad)} ${c.dim(chars.v)}`);
   }
 
   // Bottom border
@@ -79,7 +77,7 @@ export function header(text: string): string {
  * Separator line
  */
 export function separator(): string {
-  return c.dim("  " + "─".repeat(54));
+  return c.dim(`  ${"─".repeat(54)}`);
 }
 
 /**

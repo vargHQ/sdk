@@ -6,7 +6,6 @@
 import { existsSync } from "node:fs";
 import { defineCommand } from "citty";
 import { executor } from "../../core/executor";
-import { registry } from "../../core/registry";
 import { resolve } from "../../core/registry/resolver";
 import type { Definition } from "../../core/schema/types";
 import { box, c, runningBox } from "../output";

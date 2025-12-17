@@ -12,20 +12,20 @@ export class FFmpegProvider extends BaseProvider {
   readonly name = "ffmpeg";
 
   async submit(
-    model: string,
-    inputs: Record<string, unknown>,
-    config?: ProviderConfig,
+    _model: string,
+    _inputs: Record<string, unknown>,
+    _config?: ProviderConfig,
   ): Promise<string> {
     const jobId = `ffmpeg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     console.log(`[ffmpeg] starting local job: ${jobId}`);
     return jobId;
   }
 
-  async getStatus(jobId: string): Promise<JobStatusUpdate> {
+  async getStatus(_jobId: string): Promise<JobStatusUpdate> {
     return { status: "completed" };
   }
 
-  async getResult(jobId: string): Promise<unknown> {
+  async getResult(_jobId: string): Promise<unknown> {
     return null;
   }
 
@@ -505,7 +505,6 @@ function buildScaleFilter(
       return `[${inputLabel}]scale=${targetW}:${targetH}[${outputLabel}]`;
     case "blur":
       return `[${inputLabel}]split[bg][fg];[bg]scale=${targetW}:${targetH},boxblur=20:20[bgblur];[fg]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fgscaled];[bgblur][fgscaled]overlay=(W-w)/2:(H-h)/2[${outputLabel}]`;
-    case "pad":
     default:
       return `[${inputLabel}]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2[${outputLabel}]`;
   }

@@ -28,7 +28,10 @@ export class Executor {
   ): Promise<ExecutionResult> {
     // Resolve name to definition
     const result = resolve(name, { required: true });
-    const definition = result.definition!;
+    const definition = result.definition;
+    if (!definition) {
+      throw new Error(`Definition not found: ${name}`);
+    }
 
     // Validate and prepare inputs
     const validation = validateAndPrepare(inputs, definition.schema);
@@ -155,7 +158,7 @@ export class Executor {
   private selectRoute(
     action: ActionDefinition,
     inputs: Record<string, unknown>,
-    options?: RunOptions,
+    _options?: RunOptions,
   ) {
     // Filter routes by conditions
     const validRoutes = action.routes.filter((route) => {

@@ -31,20 +31,20 @@ export class FireworksProvider extends BaseProvider {
   readonly name = "fireworks";
 
   async submit(
-    model: string,
-    inputs: Record<string, unknown>,
-    config?: ProviderConfig,
+    _model: string,
+    _inputs: Record<string, unknown>,
+    _config?: ProviderConfig,
   ): Promise<string> {
     const jobId = `fw_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     console.log(`[fireworks] starting transcription: ${jobId}`);
     return jobId;
   }
 
-  async getStatus(jobId: string): Promise<JobStatusUpdate> {
+  async getStatus(_jobId: string): Promise<JobStatusUpdate> {
     return { status: "completed" };
   }
 
-  async getResult(jobId: string): Promise<unknown> {
+  async getResult(_jobId: string): Promise<unknown> {
     return null;
   }
 

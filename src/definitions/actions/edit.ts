@@ -360,6 +360,6 @@ export const split = (opts: SplitOptions) =>
 export const fade = (opts: FadeOptions) => ffmpegProvider.fadeVideo(opts);
 export const transition = (opts: TransitionOptions) =>
   ffmpegProvider.xfadeVideos(opts);
-export const remove = removeDefinition.execute!;
+export const remove = removeDefinition.execute;
 
 export default trimDefinition;

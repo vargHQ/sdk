@@ -16,10 +16,6 @@ export class HiggsfieldProvider extends BaseProvider {
   readonly name = "higgsfield";
   private _client: HiggsfieldClient | null = null;
 
-  constructor(config?: ProviderConfig) {
-    super(config);
-  }
-
   /**
    * Lazy initialization of the client to avoid errors when API keys aren't set
    */
@@ -46,7 +42,7 @@ export class HiggsfieldProvider extends BaseProvider {
   async submit(
     model: string,
     inputs: Record<string, unknown>,
-    config?: ProviderConfig,
+    _config?: ProviderConfig,
   ): Promise<string> {
     console.log(`[higgsfield] submitting job for model: ${model}`);
 
@@ -69,12 +65,12 @@ export class HiggsfieldProvider extends BaseProvider {
     return jobSet.id;
   }
 
-  async getStatus(jobId: string): Promise<JobStatusUpdate> {
+  async getStatus(_jobId: string): Promise<JobStatusUpdate> {
     // Higgsfield jobs complete synchronously via submit
     return { status: "completed" };
   }
 
-  async getResult(jobId: string): Promise<unknown> {
+  async getResult(_jobId: string): Promise<unknown> {
     return null;
   }
 

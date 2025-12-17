@@ -477,9 +477,9 @@ await test(
 // Summary
 // ============================================================================
 
-console.log("\n" + "=".repeat(60));
+console.log(`\n${"=".repeat(60)}`);
 console.log("TEST SUMMARY");
-console.log("=".repeat(60) + "\n");
+console.log(`${"=".repeat(60)}\n`);
 
 const passed = results.filter((r) => r.passed && !r.skipped).length;
 const failed = results.filter((r) => !r.passed).length;

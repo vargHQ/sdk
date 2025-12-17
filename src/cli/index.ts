@@ -8,7 +8,6 @@
 import { defineCommand, runMain } from "citty";
 import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
-import { providers } from "../providers";
 import { findCmd, helpCmd, listCmd, runCmd, whichCmd } from "./commands";
 
 // Register all providers

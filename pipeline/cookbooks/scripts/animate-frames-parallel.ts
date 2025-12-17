@@ -25,8 +25,8 @@ async function animateFrames(configs: VideoConfig[], outputDir: string) {
   const promises = configs.map((config, i) => {
     return fal.subscribe("fal-ai/kling-video/v2.5-turbo/pro/image-to-video", {
       input: {
-        prompt: config.prompt + ", NO talking NO lip movement",
-        image_url: frameUrls[i]!,
+        prompt: `${config.prompt}, NO talking NO lip movement`,
+        image_url: frameUrls[i],
         duration: config.duration || "5",
         // note: aspect_ratio is determined by input image dimensions
       },
@@ -38,13 +38,14 @@ async function animateFrames(configs: VideoConfig[], outputDir: string) {
   for (let i = 0; i < results.length; i++) {
     const result = results[i] as { data?: { video?: { url?: string } } };
     const url = result.data?.video?.url;
-    if (url) {
+    const config = configs[i];
+    if (url && config) {
       const response = await fetch(url);
       const buffer = await response.arrayBuffer();
-      await Bun.write(`${outputDir}/${configs[i]!.name}_video.mp4`, buffer);
-      console.log(`${configs[i]!.name}_video.mp4 saved`);
+      await Bun.write(`${outputDir}/${config.name}_video.mp4`, buffer);
+      console.log(`${config.name}_video.mp4 saved`);
     } else {
-      console.error(`No URL for ${configs[i]!.name}`);
+      console.error(`No URL for ${config?.name ?? "unknown"}`);
     }
   }
 

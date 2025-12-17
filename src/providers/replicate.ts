@@ -21,7 +21,7 @@ export class ReplicateProvider extends BaseProvider {
   async submit(
     model: string,
     inputs: Record<string, unknown>,
-    config?: ProviderConfig,
+    _config?: ProviderConfig,
   ): Promise<string> {
     console.log(`[replicate] submitting job for model: ${model}`);
 

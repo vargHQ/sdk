@@ -106,7 +106,7 @@ export async function lipsyncOverlay(options: {
   lipsyncedVideo: string;
   outputPath: string;
 }): Promise<string> {
-  const { originalVideo, lipsyncedVideo, outputPath } = options;
+  const { lipsyncedVideo, outputPath } = options;
 
   console.log("[sync] overlaying lip-synced video...");
 
