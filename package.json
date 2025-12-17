@@ -6,6 +6,7 @@
     "varg": "./src/cli/index.ts"
   },
   "scripts": {
+    "check": "biome check . && tsc --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
     "type-check": "tsc --noEmit",
