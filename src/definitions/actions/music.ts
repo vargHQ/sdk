@@ -1,0 +1,198 @@
+/**
+ * Music generation action
+ * Text-to-music via Fal/Sonauto
+ */
+
+import { writeFile } from "node:fs/promises";
+import type { ActionDefinition } from "../../core/schema/types";
+import { falProvider } from "../../providers/fal";
+import { storageProvider } from "../../providers/storage";
+
+export const definition: ActionDefinition = {
+  type: "action",
+  name: "music",
+  description: "Generate music from text prompt or tags",
+  schema: {
+    input: {
+      type: "object",
+      required: [],
+      properties: {
+        prompt: {
+          type: "string",
+          description: "Description of music to generate",
+        },
+        tags: {
+          type: "array",
+          items: { type: "string", description: "Tag name" },
+          description: "Style tags like 'rock', 'energetic'",
+        },
+        lyrics: { type: "string", description: "Optional lyrics prompt" },
+        format: {
+          type: "string",
+          enum: ["mp3", "wav", "flac", "ogg", "m4a"],
+          default: "mp3",
+          description: "Output format",
+        },
+        numSongs: {
+          type: "integer",
+          enum: [1, 2],
+          default: 1,
+          description: "Number of songs to generate",
+        },
+        output: {
+          type: "string",
+          format: "file-path",
+          description: "Output file path",
+        },
+      },
+    },
+    output: {
+      type: "object",
+      format: "json",
+      description: "Generated music result",
+    },
+  },
+  routes: [],
+  execute: async (inputs) => {
+    const options = inputs as GenerateMusicOptions;
+    return generateMusic(options);
+  },
+};
+
+// Types
+export interface GenerateMusicOptions {
+  prompt?: string;
+  tags?: string[];
+  lyrics?: string;
+  seed?: number;
+  promptStrength?: number;
+  balanceStrength?: number;
+  numSongs?: 1 | 2;
+  format?: "flac" | "mp3" | "wav" | "ogg" | "m4a";
+  bitRate?: 128 | 192 | 256 | 320;
+  bpm?: number | "auto";
+  upload?: boolean;
+  outputPath?: string;
+}
+
+export interface MusicResult {
+  seed: number;
+  tags?: string[];
+  lyrics?: string;
+  audio: Array<{
+    url: string;
+    fileName: string;
+    contentType: string;
+    fileSize: number;
+  }>;
+  uploadUrls?: string[];
+}
+
+export async function generateMusic(
+  options: GenerateMusicOptions,
+): Promise<MusicResult> {
+  const {
+    prompt,
+    tags,
+    lyrics,
+    seed,
+    promptStrength = 2,
+    balanceStrength = 0.7,
+    numSongs = 1,
+    format = "mp3",
+    bitRate,
+    bpm = "auto",
+    upload = false,
+    outputPath,
+  } = options;
+
+  if (!prompt && !tags) {
+    throw new Error("Either prompt or tags is required");
+  }
+
+  console.log(`[music] generating ${numSongs} song(s)...`);
+  if (prompt) console.log(`[music] prompt: ${prompt}`);
+  if (tags) console.log(`[music] tags: ${tags.join(", ")}`);
+
+  const result = await falProvider.textToMusic({
+    prompt,
+    tags,
+    lyricsPrompt: lyrics,
+    seed,
+    promptStrength,
+    balanceStrength,
+    numSongs,
+    outputFormat: format,
+    outputBitRate: bitRate,
+    bpm,
+  });
+
+  const musicResult: MusicResult = {
+    seed: result.data.seed,
+    tags: result.data.tags,
+    lyrics: result.data.lyrics,
+    audio: Array.isArray(result.data.audio)
+      ? result.data.audio.map(
+          (a: {
+            url: string;
+            file_name: string;
+            content_type: string;
+            file_size: number;
+          }) => ({
+            url: a.url,
+            fileName: a.file_name,
+            contentType: a.content_type,
+            fileSize: a.file_size,
+          }),
+        )
+      : [
+          {
+            url: result.data.audio.url,
+            fileName: result.data.audio.file_name,
+            contentType: result.data.audio.content_type,
+            fileSize: result.data.audio.file_size,
+          },
+        ],
+  };
+
+  // Save files locally if requested
+  if (outputPath) {
+    for (let i = 0; i < musicResult.audio.length; i++) {
+      const audio = musicResult.audio[i];
+      if (!audio) continue;
+
+      const ext = format || "wav";
+      const filePath =
+        musicResult.audio.length === 1
+          ? outputPath
+          : outputPath.replace(/\.[^.]+$/, `-${i + 1}.${ext}`);
+
+      const response = await fetch(audio.url);
+      const buffer = await response.arrayBuffer();
+      await writeFile(filePath, Buffer.from(buffer));
+      console.log(`[music] saved to ${filePath}`);
+    }
+  }
+
+  // Upload to storage if requested
+  if (upload) {
+    const uploadUrls: string[] = [];
+    for (let i = 0; i < musicResult.audio.length; i++) {
+      const audio = musicResult.audio[i];
+      if (!audio) continue;
+
+      const objectKey = `music/${Date.now()}-${i + 1}.${format || "wav"}`;
+      const uploadUrl = await storageProvider.uploadFromUrl(
+        audio.url,
+        objectKey,
+      );
+      uploadUrls.push(uploadUrl);
+      console.log(`[music] uploaded to ${uploadUrl}`);
+    }
+    musicResult.uploadUrls = uploadUrls;
+  }
+
+  return musicResult;
+}
+
+export default definition;
