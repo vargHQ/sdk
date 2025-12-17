@@ -48,7 +48,8 @@ export const definition: ActionDefinition = {
   },
   routes: [],
   execute: async (inputs) => {
-    const { video, output, srt, style } = inputs as AddCaptionsOptions;
+    const { video, output, srt, style } =
+      inputs as unknown as AddCaptionsOptions;
     return addCaptions({ video, output, srt, style });
   },
 };
@@ -148,7 +149,7 @@ export async function addCaptions(
   }
 
   // Get style preset
-  const styleConfig = STYLE_PRESETS[style] || STYLE_PRESETS.default;
+  const styleConfig = STYLE_PRESETS[style] ?? STYLE_PRESETS.default!;
 
   // Convert SRT to ASS for styling (simplified - in production use a proper ASS library)
   const assFile = srtFile.replace(".srt", ".ass");

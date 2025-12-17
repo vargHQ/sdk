@@ -180,6 +180,10 @@ export class PipelineRunner {
     const source = path[0];
     const rest = path.slice(1);
 
+    if (!source) {
+      return value;
+    }
+
     let current: unknown;
 
     switch (source) {
@@ -191,7 +195,7 @@ export class PipelineRunner {
         break;
       default:
         // Check if it's a direct step result reference
-        if (context.results[source] !== undefined) {
+        if (source in context.results) {
           current = context.results[source];
         } else {
           return value; // Return as-is if not a valid reference

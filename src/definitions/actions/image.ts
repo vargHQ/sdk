@@ -43,12 +43,12 @@ export const definition: ActionDefinition = {
     {
       target: "flux",
       when: { provider: "fal" },
-      priority: 10,
+      priority: 5,
     },
     {
       target: "soul",
       when: { provider: "higgsfield" },
-      priority: 5,
+      priority: 10,
     },
   ],
   execute: async (inputs) => {

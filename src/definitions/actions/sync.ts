@@ -50,7 +50,7 @@ export const definition: ActionDefinition = {
   routes: [],
   execute: async (inputs) => {
     const { image, audio, prompt, duration, resolution } =
-      inputs as LipsyncOptions;
+      inputs as unknown as LipsyncOptions;
     return lipsync({ image, audio, prompt, duration, resolution });
   },
 };

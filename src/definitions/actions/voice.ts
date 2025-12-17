@@ -106,7 +106,10 @@ export async function generateVoice(
   // Upload to storage if requested
   if (upload && outputPath) {
     const objectKey = `voice/${Date.now()}-${voice}.mp3`;
-    const uploadUrl = await storageProvider.uploadFile(outputPath, objectKey);
+    const uploadUrl = await storageProvider.uploadLocalFile(
+      outputPath,
+      objectKey,
+    );
     result.uploadUrl = uploadUrl;
     console.log(`[voice] uploaded to ${uploadUrl}`);
   }

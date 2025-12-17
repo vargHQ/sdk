@@ -69,7 +69,7 @@ export const mergeDefinition: ActionDefinition = {
       properties: {
         inputs: {
           type: "array",
-          items: { type: "string" },
+          items: { type: "string", description: "Video path" },
           description: "Input video paths",
         },
         output: {
@@ -112,16 +112,15 @@ export const splitDefinition: ActionDefinition = {
         },
         timestamps: {
           type: "array",
-          items: { type: "number" },
+          items: { type: "number", description: "Timestamp in seconds" },
           description: "Split points in seconds",
         },
         outputPrefix: { type: "string", description: "Output filename prefix" },
       },
     },
     output: {
-      type: "array",
-      items: { type: "string" },
-      description: "Output paths",
+      type: "object",
+      description: "Output paths array",
     },
   },
   routes: [],

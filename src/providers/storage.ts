@@ -67,7 +67,7 @@ export class StorageProvider extends BaseProvider {
   /**
    * Upload a file from local path to storage
    */
-  async uploadFile(filePath: string, objectKey: string): Promise<string> {
+  async uploadLocalFile(filePath: string, objectKey: string): Promise<string> {
     console.log(`[storage] uploading ${filePath} to ${objectKey}`);
 
     const file = Bun.file(filePath);
@@ -192,7 +192,7 @@ export const storageProvider = new StorageProvider();
 
 // Re-export convenience functions for backward compatibility
 export const uploadFile = (filePath: string, objectKey: string) =>
-  storageProvider.uploadFile(filePath, objectKey);
+  storageProvider.uploadLocalFile(filePath, objectKey);
 export const uploadFromUrl = (url: string, objectKey: string) =>
   storageProvider.uploadFromUrl(url, objectKey);
 export const uploadBuffer = (

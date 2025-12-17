@@ -38,9 +38,12 @@ export class FalProvider extends BaseProvider {
       FAILED: "failed",
     };
 
+    // @ts-expect-error - logs may exist on some status types
+    const logs = status.logs?.map((l: { message: string }) => l.message);
+
     return {
       status: statusMap[status.status] ?? "processing",
-      logs: status.logs?.map((l: { message: string }) => l.message),
+      logs,
     };
   }
 
@@ -49,7 +52,7 @@ export class FalProvider extends BaseProvider {
     return result.data;
   }
 
-  async uploadFile(
+  override async uploadFile(
     file: File | Blob | ArrayBuffer,
     filename?: string,
   ): Promise<string> {

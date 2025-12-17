@@ -48,7 +48,8 @@ export class ReplicateProvider extends BaseProvider {
     return {
       status: statusMap[prediction.status] ?? "processing",
       output: prediction.output,
-      error: prediction.error ?? undefined,
+      error:
+        typeof prediction.error === "string" ? prediction.error : undefined,
     };
   }
 
@@ -57,7 +58,7 @@ export class ReplicateProvider extends BaseProvider {
     return prediction.output;
   }
 
-  async cancel(jobId: string): Promise<void> {
+  override async cancel(jobId: string): Promise<void> {
     await this.client.predictions.cancel(jobId);
   }
 

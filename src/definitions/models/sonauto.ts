@@ -22,7 +22,7 @@ export const definition: ModelDefinition = {
         prompt: { type: "string", description: "Music description" },
         tags: {
           type: "array",
-          items: { type: "string" },
+          items: { type: "string", description: "Tag" },
           description: "Style tags",
         },
         lyrics_prompt: {
