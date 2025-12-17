@@ -42,4 +42,3 @@ media/
 
 scripts/*
 !scripts/.gitkeep
-output

@@ -28,7 +28,7 @@ async function generateFrames(configs: FrameConfig[], outputDir: string) {
       return fal.subscribe("fal-ai/flux-pro/kontext", {
         input: {
           prompt: config.prompt,
-          image_url: config.imageUrls[0]!,
+          image_url: config.imageUrls[0] ?? "",
           aspect_ratio: "9:16" as const,
         },
       });
@@ -42,13 +42,14 @@ async function generateFrames(configs: FrameConfig[], outputDir: string) {
       data?: { images?: Array<{ url?: string }> };
     };
     const url = result.data?.images?.[0]?.url;
-    if (url) {
+    const config = configs[i];
+    if (url && config) {
       const response = await fetch(url);
       const buffer = await response.arrayBuffer();
-      await Bun.write(`${outputDir}/${configs[i]!.name}_frame.jpg`, buffer);
-      console.log(`${configs[i]!.name}_frame.jpg saved`);
+      await Bun.write(`${outputDir}/${config.name}_frame.jpg`, buffer);
+      console.log(`${config.name}_frame.jpg saved`);
     } else {
-      console.error(`No URL for ${configs[i]!.name}`);
+      console.error(`No URL for ${config?.name ?? "unknown"}`);
     }
   }
 
