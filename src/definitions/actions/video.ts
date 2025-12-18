@@ -3,41 +3,47 @@
  * Routes to appropriate video generation models based on input
  */
 
-import type { ActionDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import {
+  aspectRatioSchema,
+  filePathSchema,
+  videoDurationSchema,
+} from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { storageProvider } from "../../providers/storage";
 
-export const definition: ActionDefinition = {
+// Input schema with Zod
+const videoInputSchema = z.object({
+  prompt: z.string().describe("What to generate"),
+  image: filePathSchema
+    .optional()
+    .describe("Input image (enables image-to-video)"),
+  duration: videoDurationSchema
+    .default(5)
+    .describe("Video duration in seconds"),
+  aspectRatio: aspectRatioSchema
+    .default("16:9")
+    .describe("Aspect ratio for text-to-video"),
+});
+
+// Output schema with Zod
+const videoOutputSchema = z.object({
+  videoUrl: z.string(),
+  duration: z.number().optional(),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<typeof videoInputSchema, typeof videoOutputSchema> = {
+  input: videoInputSchema,
+  output: videoOutputSchema,
+};
+
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "video",
   description: "Generate video from text or image",
-  schema: {
-    input: {
-      type: "object",
-      required: ["prompt"],
-      properties: {
-        prompt: { type: "string", description: "What to generate" },
-        image: {
-          type: "string",
-          format: "file-path",
-          description: "Input image (enables image-to-video)",
-        },
-        duration: {
-          type: "integer",
-          enum: [5, 10],
-          default: 5,
-          description: "Video duration in seconds",
-        },
-        aspectRatio: {
-          type: "string",
-          enum: ["16:9", "9:16", "1:1"],
-          default: "16:9",
-          description: "Aspect ratio for text-to-video",
-        },
-      },
-    },
-    output: { type: "string", format: "file-path", description: "Video URL" },
-  },
+  schema,
   routes: [
     {
       target: "kling",
@@ -45,12 +51,8 @@ export const definition: ActionDefinition = {
     },
   ],
   execute: async (inputs) => {
-    const { prompt, image, duration, aspectRatio } = inputs as {
-      prompt: string;
-      image?: string;
-      duration?: 5 | 10;
-      aspectRatio?: "16:9" | "9:16" | "1:1";
-    };
+    // inputs is now fully typed as VideoInput - no more `as` cast!
+    const { prompt, image, duration, aspectRatio } = inputs;
 
     let result: { data?: { video?: { url?: string }; duration?: number } };
 

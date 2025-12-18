@@ -5,8 +5,10 @@
  * Run with: bun run src/tests/unit.test.ts
  */
 
+import { z } from "zod";
 import { registry } from "../core/registry";
 import { findSimilar, resolve, suggest } from "../core/registry/resolver";
+import { getCliSchemaInfo } from "../core/schema/helpers";
 import {
   applyDefaults,
   validateAndPrepare,
@@ -230,28 +232,17 @@ test("suggest() returns prefix matches", () => {
 });
 
 // ============================================================================
-// Schema Validation Tests
+// Schema Validation Tests (Zod-based)
 // ============================================================================
 
-console.log(`\n${dim("─ Schema Validation ─\n")}`);
+console.log(`\n${dim("─ Schema Validation (Zod) ─\n")}`);
 
-const testSchema = {
-  input: {
-    type: "object" as const,
-    required: ["prompt"],
-    properties: {
-      prompt: { type: "string" as const, description: "Test prompt" },
-      count: { type: "integer" as const, description: "Count", default: 1 },
-      mode: {
-        type: "string" as const,
-        description: "Mode",
-        enum: ["fast", "slow"],
-        default: "fast",
-      },
-    },
-  },
-  output: { type: "string", description: "Output" },
-};
+// Create a test Zod schema
+const testSchema = z.object({
+  prompt: z.string().describe("Test prompt"),
+  count: z.number().int().default(1).describe("Count"),
+  mode: z.enum(["fast", "slow"]).default("fast").describe("Mode"),
+});
 
 test("validateInputs accepts valid inputs", () => {
   const result = validateInputs({ prompt: "test" }, testSchema);
@@ -287,7 +278,7 @@ test("applyDefaults adds default values", () => {
 test("validateAndPrepare combines validation and defaults", () => {
   const result = validateAndPrepare({ prompt: "test" }, testSchema);
   assert(result.valid, "Should be valid");
-  assertEqual(result.inputs.count, 1, "Should have default count");
+  assertEqual(result.data?.count, 1, "Should have default count");
 });
 
 // ============================================================================
@@ -308,10 +299,9 @@ for (const model of allModels) {
       "Default provider should be in providers",
     );
     assert(model.schema !== undefined, "Should have schema");
-    assert(
-      model.schema.input.properties !== undefined,
-      "Should have input properties",
-    );
+    // Use getCliSchemaInfo to check properties
+    const { properties } = getCliSchemaInfo(model.schema.input);
+    assert(Object.keys(properties).length > 0, "Should have input properties");
   });
 }
 

@@ -14,16 +14,19 @@ export type {
   ActionDefinition,
   Definition,
   ExecutionResult,
+  InferInput,
+  InferOutput,
   Job,
   JobStatus,
+  JsonSchema,
   ModelDefinition,
   Provider,
   ProviderConfig,
   RunOptions,
-  Schema,
   SchemaProperty,
   SkillDefinition,
   VargConfig,
+  ZodSchema,
 } from "./core/schema/types";
 // Definition exports
 export * from "./definitions";

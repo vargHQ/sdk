@@ -3,46 +3,48 @@
  * Turn text into a TikTok with AI-generated looping background and voiceover
  */
 
-import type { SkillDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import {
+  captionStyleSchema,
+  simpleVoiceSchema,
+} from "../../core/schema/shared";
+import type { SkillDefinition, ZodSchema } from "../../core/schema/types";
 
-export const definition: SkillDefinition = {
+// Input schema with Zod
+const textToTiktokInputSchema = z.object({
+  text: z.string().describe("Text content to convert to video"),
+  voice: simpleVoiceSchema.default("sam").describe("Voice for narration"),
+  backgroundPrompt: z
+    .string()
+    .default(
+      "POV from inside moving car driving through rainy city at night, motion blur on streetlights, cinematic",
+    )
+    .describe("Prompt for background video"),
+  captionStyle: captionStyleSchema.default("tiktok").describe("Caption style"),
+});
+
+// Output schema with Zod
+const textToTiktokOutputSchema = z.object({
+  videoUrl: z.string(),
+  voiceoverPath: z.string().optional(),
+  captionsPath: z.string().optional(),
+  backgroundVideoUrl: z.string().optional(),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<
+  typeof textToTiktokInputSchema,
+  typeof textToTiktokOutputSchema
+> = {
+  input: textToTiktokInputSchema,
+  output: textToTiktokOutputSchema,
+};
+
+export const definition: SkillDefinition<typeof schema> = {
   type: "skill",
   name: "text-to-tiktok",
   description: "Turn text into a TikTok with looping background and voiceover",
-  schema: {
-    input: {
-      type: "object",
-      required: ["text"],
-      properties: {
-        text: {
-          type: "string",
-          description: "Text content to convert to video",
-        },
-        voice: {
-          type: "string",
-          enum: ["sam", "adam", "josh", "rachel"],
-          default: "sam",
-          description: "Voice for narration",
-        },
-        backgroundPrompt: {
-          type: "string",
-          default:
-            "POV from inside moving car driving through rainy city at night, motion blur on streetlights, cinematic",
-          description: "Prompt for background video",
-        },
-        captionStyle: {
-          type: "string",
-          enum: ["default", "tiktok", "youtube"],
-          default: "tiktok",
-          description: "Caption style",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      description: "Final TikTok video",
-    },
-  },
+  schema,
   steps: [
     {
       name: "generate-voiceover",

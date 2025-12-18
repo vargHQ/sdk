@@ -3,42 +3,42 @@
  * Routes to Fal or Higgsfield based on options
  */
 
-import type { ActionDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { imageSizeSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { higgsfieldProvider } from "../../providers/higgsfield";
 import { storageProvider } from "../../providers/storage";
 
-export const definition: ActionDefinition = {
+// Input schema with Zod
+const imageInputSchema = z.object({
+  prompt: z.string().describe("What to generate"),
+  size: imageSizeSchema
+    .default("landscape_4_3")
+    .describe("Image size/aspect ratio"),
+  provider: z
+    .enum(["fal", "higgsfield"])
+    .default("fal")
+    .describe("Generation provider"),
+});
+
+// Output schema with Zod
+const imageOutputSchema = z.object({
+  imageUrl: z.string(),
+  uploaded: z.string().optional(),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<typeof imageInputSchema, typeof imageOutputSchema> = {
+  input: imageInputSchema,
+  output: imageOutputSchema,
+};
+
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "image",
   description: "Generate image from text",
-  schema: {
-    input: {
-      type: "object",
-      required: ["prompt"],
-      properties: {
-        prompt: { type: "string", description: "What to generate" },
-        size: {
-          type: "string",
-          enum: [
-            "square_hd",
-            "landscape_4_3",
-            "portrait_4_3",
-            "landscape_16_9",
-          ],
-          default: "landscape_4_3",
-          description: "Image size/aspect ratio",
-        },
-        provider: {
-          type: "string",
-          enum: ["fal", "higgsfield"],
-          default: "fal",
-          description: "Generation provider",
-        },
-      },
-    },
-    output: { type: "string", format: "url", description: "Image URL" },
-  },
+  schema,
   routes: [
     {
       target: "flux",
@@ -52,15 +52,7 @@ export const definition: ActionDefinition = {
     },
   ],
   execute: async (inputs) => {
-    const {
-      prompt,
-      size,
-      provider = "fal",
-    } = inputs as {
-      prompt: string;
-      size?: string;
-      provider?: "fal" | "higgsfield";
-    };
+    const { prompt, size, provider } = inputs;
 
     if (provider === "higgsfield") {
       return generateWithSoul(prompt);

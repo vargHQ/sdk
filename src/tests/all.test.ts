@@ -16,6 +16,8 @@
 
 import { executor } from "../core/executor";
 import { registry } from "../core/registry";
+import { getCliSchemaInfo } from "../core/schema/helpers";
+import { applyDefaults, validateInputs } from "../core/schema/validator";
 import { allDefinitions } from "../definitions";
 import { providers } from "../providers";
 
@@ -164,13 +166,12 @@ await test("storage provider is registered", async () => {
 
 console.log("\n📝 SCHEMA VALIDATION TESTS\n");
 
-import { applyDefaults, validateInputs } from "../core/schema/validator";
-
 await test("validator accepts valid inputs", async () => {
-  const schema = registry.resolve("video")?.schema;
-  if (!schema) throw new Error("No schema");
+  const def = registry.resolve("video");
+  if (!def) throw new Error("No definition");
 
-  const result = validateInputs({ prompt: "test video" }, schema);
+  // Use the input schema directly
+  const result = validateInputs({ prompt: "test video" }, def.schema.input);
   if (!result.valid)
     throw new Error(
       `Validation failed: ${result.errors.map((e) => e.message).join(", ")}`,
@@ -178,10 +179,10 @@ await test("validator accepts valid inputs", async () => {
 });
 
 await test("validator rejects missing required fields", async () => {
-  const schema = registry.resolve("video")?.schema;
-  if (!schema) throw new Error("No schema");
+  const def = registry.resolve("video");
+  if (!def) throw new Error("No definition");
 
-  const result = validateInputs({}, schema);
+  const result = validateInputs({}, def.schema.input);
   if (result.valid) throw new Error("Should have failed validation");
   if (!result.errors.some((e) => e.path === "prompt")) {
     throw new Error("Should report missing 'prompt' field");
@@ -189,15 +190,13 @@ await test("validator rejects missing required fields", async () => {
 });
 
 await test("validator applies defaults", async () => {
-  const schema = registry.resolve("video")?.schema;
-  if (!schema) throw new Error("No schema");
+  const def = registry.resolve("video");
+  if (!def) throw new Error("No definition");
 
-  const inputs = applyDefaults({ prompt: "test" }, schema);
-  if (
-    inputs.duration === undefined &&
-    schema.input.properties.duration?.default !== undefined
-  ) {
-    // Check if default was applied
+  const inputs = applyDefaults({ prompt: "test" }, def.schema.input);
+  // Check that duration and aspectRatio have defaults applied
+  const { properties } = getCliSchemaInfo(def.schema.input);
+  if (properties.duration?.default !== undefined) {
     console.log(`   Defaults applied: duration=${inputs.duration}`);
   }
 });

@@ -3,9 +3,38 @@
  * Text-to-speech generation
  */
 
-import type { ModelDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { elevenLabsModelSchema, percentSchema } from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const definition: ModelDefinition = {
+// Input schema with Zod
+const elevenlabsInputSchema = z.object({
+  text: z.string().describe("Text to convert to speech"),
+  voice_id: z.string().optional().describe("Voice ID to use"),
+  model_id: elevenLabsModelSchema
+    .default("eleven_multilingual_v2")
+    .describe("TTS model to use"),
+  stability: percentSchema.default(0.5).describe("Voice stability (0-1)"),
+  similarity_boost: percentSchema
+    .default(0.75)
+    .describe("Voice similarity boost (0-1)"),
+});
+
+// Output schema with Zod
+const elevenlabsOutputSchema = z.object({
+  audio: z.instanceof(Buffer),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<
+  typeof elevenlabsInputSchema,
+  typeof elevenlabsOutputSchema
+> = {
+  input: elevenlabsInputSchema,
+  output: elevenlabsOutputSchema,
+};
+
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "elevenlabs-tts",
   description:
@@ -15,44 +44,7 @@ export const definition: ModelDefinition = {
   providerModels: {
     elevenlabs: "eleven_multilingual_v2",
   },
-  schema: {
-    input: {
-      type: "object",
-      required: ["text"],
-      properties: {
-        text: { type: "string", description: "Text to convert to speech" },
-        voice_id: {
-          type: "string",
-          description: "Voice ID to use",
-        },
-        model_id: {
-          type: "string",
-          enum: [
-            "eleven_multilingual_v2",
-            "eleven_monolingual_v1",
-            "eleven_turbo_v2",
-          ],
-          default: "eleven_multilingual_v2",
-          description: "TTS model to use",
-        },
-        stability: {
-          type: "number",
-          default: 0.5,
-          description: "Voice stability (0-1)",
-        },
-        similarity_boost: {
-          type: "number",
-          default: 0.75,
-          description: "Voice similarity boost (0-1)",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      format: "audio",
-      description: "Generated audio buffer",
-    },
-  },
+  schema,
 };
 
 export default definition;

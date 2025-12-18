@@ -3,52 +3,47 @@
  * Create a talking character video with lipsync and captions
  */
 
-import type { SkillDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import {
+  captionStyleSchema,
+  simpleVoiceSchema,
+  videoDurationSchema,
+} from "../../core/schema/shared";
+import type { SkillDefinition, ZodSchema } from "../../core/schema/types";
 
-export const definition: SkillDefinition = {
+// Input schema with Zod
+const talkingCharacterInputSchema = z.object({
+  text: z.string().describe("Script/text for the character to say"),
+  characterPrompt: z
+    .string()
+    .default("professional headshot of a friendly person, studio lighting")
+    .describe("Prompt to generate the character"),
+  voice: simpleVoiceSchema.default("sam").describe("Voice to use for speech"),
+  duration: videoDurationSchema.default(5).describe("Video duration"),
+  style: captionStyleSchema.default("tiktok").describe("Caption style"),
+});
+
+// Output schema with Zod
+const talkingCharacterOutputSchema = z.object({
+  videoUrl: z.string(),
+  characterImageUrl: z.string().optional(),
+  audioPath: z.string().optional(),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<
+  typeof talkingCharacterInputSchema,
+  typeof talkingCharacterOutputSchema
+> = {
+  input: talkingCharacterInputSchema,
+  output: talkingCharacterOutputSchema,
+};
+
+export const definition: SkillDefinition<typeof schema> = {
   type: "skill",
   name: "talking-character",
   description: "Create a talking character video with lipsync and captions",
-  schema: {
-    input: {
-      type: "object",
-      required: ["text"],
-      properties: {
-        text: {
-          type: "string",
-          description: "Script/text for the character to say",
-        },
-        characterPrompt: {
-          type: "string",
-          default:
-            "professional headshot of a friendly person, studio lighting",
-          description: "Prompt to generate the character",
-        },
-        voice: {
-          type: "string",
-          enum: ["rachel", "sam", "adam", "josh"],
-          default: "sam",
-          description: "Voice to use for speech",
-        },
-        duration: {
-          type: "integer",
-          enum: [5, 10],
-          default: 5,
-          description: "Video duration",
-        },
-        style: {
-          type: "string",
-          enum: ["default", "tiktok", "youtube"],
-          default: "tiktok",
-          description: "Caption style",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      description: "Final video with character, voice, and captions",
-    },
-  },
+  schema,
   steps: [
     {
       name: "generate-character",

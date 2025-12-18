@@ -8,6 +8,7 @@ import { defineCommand } from "citty";
 import { Box, Text } from "ink";
 import { executor } from "../../core/executor/index.ts";
 import { resolve } from "../../core/registry/resolver.ts";
+import { getCliSchemaInfo, toJsonSchema } from "../../core/schema/helpers.ts";
 import type { Definition } from "../../core/schema/types.ts";
 import { Header, StatusBox, VargBox } from "../ui/index.ts";
 import { renderLive, renderStatic } from "../ui/render.ts";
@@ -60,7 +61,7 @@ interface HelpViewProps {
 }
 
 function HelpView({ item }: HelpViewProps) {
-  const required = item.schema.input.required;
+  const { properties, required } = getCliSchemaInfo(item.schema.input);
   const reqArgs = required.map((r) => `--${r} <${r}>`).join(" ");
 
   return (
@@ -78,8 +79,8 @@ function HelpView({ item }: HelpViewProps) {
 
       <Header>OPTIONS</Header>
       <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        {Object.entries(item.schema.input.properties).map(([key, prop]) => {
-          const isRequired = item.schema.input.required.includes(key);
+        {Object.entries(properties).map(([key, prop]) => {
+          const isRequired = required.includes(key);
           const defaultVal =
             prop.default !== undefined ? ` default: ${prop.default}` : "";
           const enumVals = prop.enum ? ` [${prop.enum.join(", ")}]` : "";
@@ -188,15 +189,18 @@ export const runCmd = defineCommand({
         name: item.name,
         type: item.type,
         description: item.description,
-        input: item.schema.input,
-        output: item.schema.output,
+        input: toJsonSchema(item.schema.input),
+        output: toJsonSchema(item.schema.output),
       };
       console.log(JSON.stringify(schema, null, 2));
       return;
     }
 
+    // Get schema info for validation
+    const { properties, required } = getCliSchemaInfo(item.schema.input);
+
     // Validate required args
-    for (const req of item.schema.input.required) {
+    for (const req of required) {
       if (!options[req]) {
         renderStatic(
           <ErrorView
@@ -210,7 +214,7 @@ export const runCmd = defineCommand({
 
     // Build params for display
     const params: Record<string, string> = {};
-    for (const key of Object.keys(item.schema.input.properties)) {
+    for (const key of Object.keys(properties)) {
       if (options[key] && typeof options[key] === "string") {
         params[key] = options[key] as string;
       }
@@ -222,7 +226,7 @@ export const runCmd = defineCommand({
     if (options.quiet || options.json) {
       try {
         const inputs: Record<string, unknown> = {};
-        for (const key of Object.keys(item.schema.input.properties)) {
+        for (const key of Object.keys(properties)) {
           if (options[key] !== undefined) {
             inputs[key] = options[key];
           }
@@ -268,7 +272,7 @@ export const runCmd = defineCommand({
 
     try {
       const inputs: Record<string, unknown> = {};
-      for (const key of Object.keys(item.schema.input.properties)) {
+      for (const key of Object.keys(properties)) {
         if (options[key] !== undefined) {
           inputs[key] = options[key];
         }

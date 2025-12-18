@@ -4,58 +4,65 @@
  */
 
 import { writeFile } from "node:fs/promises";
-import type { ActionDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { audioFormatSchema, filePathSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { storageProvider } from "../../providers/storage";
 
-export const definition: ActionDefinition = {
+// Input schema with Zod
+const musicInputSchema = z.object({
+  prompt: z.string().optional().describe("Description of music to generate"),
+  tags: z
+    .array(z.string())
+    .optional()
+    .describe("Style tags like 'rock', 'energetic'"),
+  lyrics: z.string().optional().describe("Optional lyrics prompt"),
+  format: audioFormatSchema.default("mp3").describe("Output format"),
+  numSongs: z
+    .union([z.literal(1), z.literal(2)])
+    .default(1)
+    .describe("Number of songs to generate"),
+  output: filePathSchema.optional().describe("Output file path"),
+});
+
+// Output schema with Zod
+const musicOutputSchema = z.object({
+  seed: z.number(),
+  tags: z.array(z.string()).optional(),
+  lyrics: z.string().optional(),
+  audio: z.array(
+    z.object({
+      url: z.string(),
+      fileName: z.string(),
+      contentType: z.string(),
+      fileSize: z.number(),
+    }),
+  ),
+  uploadUrls: z.array(z.string()).optional(),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<typeof musicInputSchema, typeof musicOutputSchema> = {
+  input: musicInputSchema,
+  output: musicOutputSchema,
+};
+
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "music",
   description: "Generate music from text prompt or tags",
-  schema: {
-    input: {
-      type: "object",
-      required: [],
-      properties: {
-        prompt: {
-          type: "string",
-          description: "Description of music to generate",
-        },
-        tags: {
-          type: "array",
-          items: { type: "string", description: "Tag name" },
-          description: "Style tags like 'rock', 'energetic'",
-        },
-        lyrics: { type: "string", description: "Optional lyrics prompt" },
-        format: {
-          type: "string",
-          enum: ["mp3", "wav", "flac", "ogg", "m4a"],
-          default: "mp3",
-          description: "Output format",
-        },
-        numSongs: {
-          type: "integer",
-          enum: [1, 2],
-          default: 1,
-          description: "Number of songs to generate",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output file path",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      format: "json",
-      description: "Generated music result",
-    },
-  },
+  schema,
   routes: [],
   execute: async (inputs) => {
-    const options = inputs as GenerateMusicOptions;
-    return generateMusic(options);
+    return generateMusic({
+      prompt: inputs.prompt,
+      tags: inputs.tags,
+      lyrics: inputs.lyrics,
+      format: inputs.format,
+      numSongs: inputs.numSongs,
+      outputPath: inputs.output,
+    });
   },
 };
 

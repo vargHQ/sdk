@@ -3,133 +3,113 @@
  * FFmpeg-based local video processing
  */
 
-import type { ActionDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { filePathSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { ffmpegProvider } from "../../providers/ffmpeg";
 
+// ============================================================================
 // Trim action
-export const trimDefinition: ActionDefinition = {
+// ============================================================================
+
+const trimInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
+  output: filePathSchema.describe("Output path"),
+  start: z.number().describe("Start time in seconds"),
+  duration: z.number().optional().describe("Duration in seconds"),
+});
+
+const trimOutputSchema = z.string().describe("Trimmed video path");
+
+const trimSchema: ZodSchema<typeof trimInputSchema, typeof trimOutputSchema> = {
+  input: trimInputSchema,
+  output: trimOutputSchema,
+};
+
+export const trimDefinition: ActionDefinition<typeof trimSchema> = {
   type: "action",
   name: "trim",
   description: "Trim video to specific time range",
-  schema: {
-    input: {
-      type: "object",
-      required: ["input", "output", "start"],
-      properties: {
-        input: {
-          type: "string",
-          format: "file-path",
-          description: "Input video",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output path",
-        },
-        start: { type: "number", description: "Start time in seconds" },
-        duration: { type: "number", description: "Duration in seconds" },
-      },
-    },
-    output: {
-      type: "string",
-      format: "file-path",
-      description: "Trimmed video path",
-    },
-  },
+  schema: trimSchema,
   routes: [],
   execute: async (inputs) => {
-    const { input, output, start, duration } = inputs as {
-      input: string;
-      output: string;
-      start: number;
-      duration?: number;
-    };
+    const { input, output, start, duration } = inputs;
     return ffmpegProvider.trimVideo({ input, output, start, duration });
   },
 };
 
+// ============================================================================
 // Cut action (alias for trim)
-export const cutDefinition: ActionDefinition = {
+// ============================================================================
+
+export const cutDefinition: ActionDefinition<typeof trimSchema> = {
   type: "action",
   name: "cut",
   description: "Cut video at specific point",
-  schema: trimDefinition.schema,
+  schema: trimSchema,
   routes: [{ target: "trim" }],
 };
 
+// ============================================================================
 // Merge action
-export const mergeDefinition: ActionDefinition = {
+// ============================================================================
+
+const mergeInputSchema = z.object({
+  inputs: z.array(z.string()).describe("Input video paths"),
+  output: filePathSchema.describe("Output path"),
+});
+
+const mergeOutputSchema = z.string().describe("Merged video path");
+
+const mergeSchema: ZodSchema<
+  typeof mergeInputSchema,
+  typeof mergeOutputSchema
+> = {
+  input: mergeInputSchema,
+  output: mergeOutputSchema,
+};
+
+export const mergeDefinition: ActionDefinition<typeof mergeSchema> = {
   type: "action",
   name: "merge",
   description: "Merge multiple videos together",
-  schema: {
-    input: {
-      type: "object",
-      required: ["inputs", "output"],
-      properties: {
-        inputs: {
-          type: "array",
-          items: { type: "string", description: "Video path" },
-          description: "Input video paths",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output path",
-        },
-      },
-    },
-    output: {
-      type: "string",
-      format: "file-path",
-      description: "Merged video path",
-    },
-  },
+  schema: mergeSchema,
   routes: [],
   execute: async (inputs) => {
-    const { inputs: videoInputs, output } = inputs as {
-      inputs: string[];
-      output: string;
-    };
+    const { inputs: videoInputs, output } = inputs;
     return ffmpegProvider.concatVideos({ inputs: videoInputs, output });
   },
 };
 
+// ============================================================================
 // Split action
-export const splitDefinition: ActionDefinition = {
+// ============================================================================
+
+const splitInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
+  timestamps: z.array(z.number()).describe("Split points in seconds"),
+  outputPrefix: z.string().describe("Output filename prefix"),
+});
+
+// Output is an array of output paths
+const splitOutputSchema = z.array(z.string());
+
+const splitSchema: ZodSchema<
+  typeof splitInputSchema,
+  typeof splitOutputSchema
+> = {
+  input: splitInputSchema,
+  output: splitOutputSchema,
+};
+
+export const splitDefinition: ActionDefinition<typeof splitSchema> = {
   type: "action",
   name: "split",
   description: "Split video at timestamps",
-  schema: {
-    input: {
-      type: "object",
-      required: ["input", "timestamps", "outputPrefix"],
-      properties: {
-        input: {
-          type: "string",
-          format: "file-path",
-          description: "Input video",
-        },
-        timestamps: {
-          type: "array",
-          items: { type: "number", description: "Timestamp in seconds" },
-          description: "Split points in seconds",
-        },
-        outputPrefix: { type: "string", description: "Output filename prefix" },
-      },
-    },
-    output: {
-      type: "object",
-      description: "Output paths array",
-    },
-  },
+  schema: splitSchema,
   routes: [],
   execute: async (inputs) => {
-    const { input, timestamps, outputPrefix } = inputs as {
-      input: string;
-      timestamps: number[];
-      outputPrefix: string;
-    };
+    const { input, timestamps, outputPrefix } = inputs;
     return ffmpegProvider.splitAtTimestamps({
       input,
       timestamps,
@@ -138,116 +118,79 @@ export const splitDefinition: ActionDefinition = {
   },
 };
 
+// ============================================================================
 // Fade action
-export const fadeDefinition: ActionDefinition = {
+// ============================================================================
+
+const fadeInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
+  output: filePathSchema.describe("Output path"),
+  type: z.enum(["in", "out", "both"]).describe("Fade type"),
+  duration: z.number().describe("Fade duration in seconds"),
+});
+
+const fadeOutputSchema = z.string().describe("Faded video path");
+
+const fadeSchema: ZodSchema<typeof fadeInputSchema, typeof fadeOutputSchema> = {
+  input: fadeInputSchema,
+  output: fadeOutputSchema,
+};
+
+export const fadeDefinition: ActionDefinition<typeof fadeSchema> = {
   type: "action",
   name: "fade",
   description: "Apply fade in/out effects",
-  schema: {
-    input: {
-      type: "object",
-      required: ["input", "output", "type", "duration"],
-      properties: {
-        input: {
-          type: "string",
-          format: "file-path",
-          description: "Input video",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output path",
-        },
-        type: {
-          type: "string",
-          enum: ["in", "out", "both"],
-          description: "Fade type",
-        },
-        duration: { type: "number", description: "Fade duration in seconds" },
-      },
-    },
-    output: {
-      type: "string",
-      format: "file-path",
-      description: "Faded video path",
-    },
-  },
+  schema: fadeSchema,
   routes: [],
   execute: async (inputs) => {
-    const { input, output, type, duration } = inputs as {
-      input: string;
-      output: string;
-      type: "in" | "out" | "both";
-      duration: number;
-    };
+    const { input, output, type, duration } = inputs;
     return ffmpegProvider.fadeVideo({ input, output, type, duration });
   },
 };
 
+// ============================================================================
 // Transition action
-export const transitionDefinition: ActionDefinition = {
+// ============================================================================
+
+const transitionInputSchema = z.object({
+  input1: filePathSchema.describe("First video"),
+  input2: filePathSchema.describe("Second video"),
+  output: filePathSchema.describe("Output path"),
+  transition: z
+    .enum([
+      "crossfade",
+      "dissolve",
+      "wipeleft",
+      "wiperight",
+      "slideup",
+      "slidedown",
+    ])
+    .describe("Transition type"),
+  duration: z.number().describe("Transition duration"),
+  fit: z
+    .enum(["pad", "crop", "blur", "stretch"])
+    .default("pad")
+    .describe("How to handle different resolutions"),
+});
+
+const transitionOutputSchema = z.string().describe("Output path");
+
+const transitionSchema: ZodSchema<
+  typeof transitionInputSchema,
+  typeof transitionOutputSchema
+> = {
+  input: transitionInputSchema,
+  output: transitionOutputSchema,
+};
+
+export const transitionDefinition: ActionDefinition<typeof transitionSchema> = {
   type: "action",
   name: "transition",
   description: "Apply transition between two videos",
-  schema: {
-    input: {
-      type: "object",
-      required: ["input1", "input2", "output", "transition", "duration"],
-      properties: {
-        input1: {
-          type: "string",
-          format: "file-path",
-          description: "First video",
-        },
-        input2: {
-          type: "string",
-          format: "file-path",
-          description: "Second video",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output path",
-        },
-        transition: {
-          type: "string",
-          enum: [
-            "crossfade",
-            "dissolve",
-            "wipeleft",
-            "wiperight",
-            "slideup",
-            "slidedown",
-          ],
-          description: "Transition type",
-        },
-        duration: { type: "number", description: "Transition duration" },
-        fit: {
-          type: "string",
-          enum: ["pad", "crop", "blur", "stretch"],
-          default: "pad",
-          description: "How to handle different resolutions",
-        },
-      },
-    },
-    output: { type: "string", format: "file-path", description: "Output path" },
-  },
+  schema: transitionSchema,
   routes: [],
   execute: async (inputs) => {
-    const { input1, input2, output, transition, duration, fit } = inputs as {
-      input1: string;
-      input2: string;
-      output: string;
-      transition:
-        | "crossfade"
-        | "dissolve"
-        | "wipeleft"
-        | "wiperight"
-        | "slideup"
-        | "slidedown";
-      duration: number;
-      fit?: "pad" | "crop" | "blur" | "stretch";
-    };
+    const { input1, input2, output, transition, duration, fit } = inputs;
     return ffmpegProvider.xfadeVideos({
       input1,
       input2,
@@ -259,47 +202,37 @@ export const transitionDefinition: ActionDefinition = {
   },
 };
 
+// ============================================================================
 // Remove (audio) action
-export const removeDefinition: ActionDefinition = {
+// ============================================================================
+
+const removeInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
+  output: filePathSchema.describe("Output path"),
+  what: z
+    .enum(["audio", "video"])
+    .default("audio")
+    .describe("What to extract/remove"),
+});
+
+const removeOutputSchema = z.string().describe("Output path");
+
+const removeSchema: ZodSchema<
+  typeof removeInputSchema,
+  typeof removeOutputSchema
+> = {
+  input: removeInputSchema,
+  output: removeOutputSchema,
+};
+
+export const removeDefinition: ActionDefinition<typeof removeSchema> = {
   type: "action",
   name: "remove",
   description: "Remove audio from video or extract audio",
-  schema: {
-    input: {
-      type: "object",
-      required: ["input", "output"],
-      properties: {
-        input: {
-          type: "string",
-          format: "file-path",
-          description: "Input video",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output path",
-        },
-        what: {
-          type: "string",
-          enum: ["audio", "video"],
-          default: "audio",
-          description: "What to extract/remove",
-        },
-      },
-    },
-    output: { type: "string", format: "file-path", description: "Output path" },
-  },
+  schema: removeSchema,
   routes: [],
   execute: async (inputs) => {
-    const {
-      input,
-      output,
-      what = "audio",
-    } = inputs as {
-      input: string;
-      output: string;
-      what?: "audio" | "video";
-    };
+    const { input, output, what } = inputs;
 
     if (what === "audio") {
       return ffmpegProvider.extractAudio(input, output);

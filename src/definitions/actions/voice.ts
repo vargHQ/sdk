@@ -3,42 +3,41 @@
  * Text-to-speech via ElevenLabs
  */
 
-import type { ActionDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { filePathSchema, voiceNameSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { elevenlabsProvider, VOICES } from "../../providers/elevenlabs";
 import { storageProvider } from "../../providers/storage";
 
-export const definition: ActionDefinition = {
+// Input schema with Zod
+const voiceInputSchema = z.object({
+  text: z.string().describe("Text to convert to speech"),
+  voice: voiceNameSchema.default("rachel").describe("Voice to use"),
+  output: filePathSchema.optional().describe("Output file path"),
+});
+
+// Output schema with Zod
+const voiceOutputSchema = z.object({
+  audio: z.instanceof(Buffer),
+  provider: z.string(),
+  voiceId: z.string(),
+  uploadUrl: z.string().optional(),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<typeof voiceInputSchema, typeof voiceOutputSchema> = {
+  input: voiceInputSchema,
+  output: voiceOutputSchema,
+};
+
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "voice",
   description: "Text to speech generation",
-  schema: {
-    input: {
-      type: "object",
-      required: ["text"],
-      properties: {
-        text: { type: "string", description: "Text to convert to speech" },
-        voice: {
-          type: "string",
-          enum: ["rachel", "domi", "bella", "antoni", "josh", "adam", "sam"],
-          default: "rachel",
-          description: "Voice to use",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output file path",
-        },
-      },
-    },
-    output: { type: "string", format: "file-path", description: "Audio path" },
-  },
+  schema,
   routes: [],
   execute: async (inputs) => {
-    const { text, voice, output } = inputs as {
-      text: string;
-      voice?: string;
-      output?: string;
-    };
+    const { text, voice, output } = inputs;
     return generateVoice({ text, voice, outputPath: output });
   },
 };

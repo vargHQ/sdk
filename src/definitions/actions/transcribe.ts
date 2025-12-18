@@ -5,49 +5,52 @@
 
 import { writeFileSync } from "node:fs";
 import { toFile } from "groq-sdk/uploads";
-import type { ActionDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import {
+  filePathSchema,
+  transcriptionProviderSchema,
+} from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import {
   convertFireworksToSRT,
   fireworksProvider,
 } from "../../providers/fireworks";
 import { GROQ_MODELS, groqProvider } from "../../providers/groq";
 
-export const definition: ActionDefinition = {
+// Input schema with Zod
+const transcribeInputSchema = z.object({
+  audio: filePathSchema.describe("Audio/video file to transcribe"),
+  provider: transcriptionProviderSchema
+    .default("groq")
+    .describe("Transcription provider"),
+  output: filePathSchema.optional().describe("Output file path"),
+});
+
+// Output schema with Zod
+const transcribeOutputSchema = z.object({
+  success: z.boolean(),
+  text: z.string().optional(),
+  srt: z.string().optional(),
+  error: z.string().optional(),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<
+  typeof transcribeInputSchema,
+  typeof transcribeOutputSchema
+> = {
+  input: transcribeInputSchema,
+  output: transcribeOutputSchema,
+};
+
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "transcribe",
   description: "Speech to text transcription",
-  schema: {
-    input: {
-      type: "object",
-      required: ["audio"],
-      properties: {
-        audio: {
-          type: "string",
-          format: "file-path",
-          description: "Audio/video file to transcribe",
-        },
-        provider: {
-          type: "string",
-          enum: ["groq", "fireworks"],
-          default: "groq",
-          description: "Transcription provider",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output file path",
-        },
-      },
-    },
-    output: { type: "string", description: "Transcribed text" },
-  },
+  schema,
   routes: [],
   execute: async (inputs) => {
-    const { audio, provider, output } = inputs as {
-      audio: string;
-      provider?: "groq" | "fireworks";
-      output?: string;
-    };
+    const { audio, provider, output } = inputs;
     return transcribe({ audioUrl: audio, provider, outputPath: output });
   },
 };

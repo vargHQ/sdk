@@ -6,6 +6,7 @@
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";
 import { resolve } from "../../core/registry/resolver.ts";
+import { getCliSchemaInfo, toJsonSchema } from "../../core/schema/helpers.ts";
 import type {
   ActionDefinition,
   Definition,
@@ -18,6 +19,48 @@ import { theme } from "../ui/theme.ts";
 
 interface WhichViewProps {
   item: Definition;
+}
+
+function InputSchemaView({ schema }: { schema: unknown }) {
+  // biome-ignore lint/suspicious/noExplicitAny: Zod v4 type compatibility
+  const { properties, required } = getCliSchemaInfo(schema as any);
+  return (
+    <>
+      <Header>INPUT SCHEMA</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        {Object.entries(properties).map(([key, prop]) => {
+          const isRequired = required.includes(key);
+          return (
+            <Box key={key}>
+              <Text color={isRequired ? theme.colors.warning : undefined}>
+                {isRequired ? "*" : " "}
+              </Text>
+              <Text> {key.padEnd(15)}</Text>
+              <Text dimColor>
+                {"<"}
+                {prop.type || "any"}
+                {">"}
+              </Text>
+              <Text> {prop.description || ""}</Text>
+            </Box>
+          );
+        })}
+      </Box>
+    </>
+  );
+}
+
+function OutputSchemaView({ schema }: { schema: unknown }) {
+  // biome-ignore lint/suspicious/noExplicitAny: Zod v4 type compatibility
+  const jsonSchema = toJsonSchema(schema as any);
+  return (
+    <>
+      <Header>OUTPUT</Header>
+      <Box paddingLeft={2} marginBottom={1}>
+        <Text>{jsonSchema.description || "Output result"}</Text>
+      </Box>
+    </>
+  );
 }
 
 function WhichView({ item }: WhichViewProps) {
@@ -82,32 +125,10 @@ function WhichView({ item }: WhichViewProps) {
       )}
 
       {/* Input schema */}
-      <Header>INPUT SCHEMA</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        {Object.entries(item.schema.input.properties).map(([key, prop]) => {
-          const isRequired = item.schema.input.required.includes(key);
-          return (
-            <Box key={key}>
-              <Text color={isRequired ? theme.colors.warning : undefined}>
-                {isRequired ? "*" : " "}
-              </Text>
-              <Text> {key.padEnd(15)}</Text>
-              <Text dimColor>
-                {"<"}
-                {prop.type}
-                {">"}
-              </Text>
-              <Text> {prop.description}</Text>
-            </Box>
-          );
-        })}
-      </Box>
+      <InputSchemaView schema={item.schema.input} />
 
       {/* Output */}
-      <Header>OUTPUT</Header>
-      <Box paddingLeft={2} marginBottom={1}>
-        <Text>{item.schema.output.description}</Text>
-      </Box>
+      <OutputSchemaView schema={item.schema.output} />
 
       <Separator />
       <Box marginTop={1}>

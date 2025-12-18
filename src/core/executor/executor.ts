@@ -33,22 +33,25 @@ export class Executor {
       throw new Error(`Definition not found: ${name}`);
     }
 
-    // Validate and prepare inputs
-    const validation = validateAndPrepare(inputs, definition.schema);
+    // Validate and prepare inputs using Zod schema
+    const validation = validateAndPrepare(inputs, definition.schema.input);
     if (!validation.valid) {
       throw new Error(
         `Validation failed: ${validation.errors.map((e) => e.message).join(", ")}`,
       );
     }
 
+    // Use validated and transformed data (Zod applies defaults)
+    const validatedInputs = validation.data as Record<string, unknown>;
+
     // Route to appropriate handler
     switch (definition.type) {
       case "model":
-        return this.runModel(definition, validation.inputs, options);
+        return this.runModel(definition, validatedInputs, options);
       case "action":
-        return this.runAction(definition, validation.inputs, options);
+        return this.runAction(definition, validatedInputs, options);
       case "skill":
-        return this.runSkill(definition, validation.inputs, options);
+        return this.runSkill(definition, validatedInputs, options);
       default:
         throw new Error(
           `Unknown definition type: ${(definition as Definition).type}`,

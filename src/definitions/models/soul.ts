@@ -3,9 +3,54 @@
  * Character-focused image generation
  */
 
-import type { ModelDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { soulQualitySchema } from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const definition: ModelDefinition = {
+// Soul-specific dimension schema
+const soulDimensionSchema = z.enum([
+  "SQUARE_1024x1024",
+  "PORTRAIT_1152x2048",
+  "LANDSCAPE_2048x1152",
+]);
+
+// Soul-specific batch size schema
+const soulBatchSizeSchema = z.union([z.literal(1), z.literal(2), z.literal(4)]);
+
+// Input schema with Zod
+const soulInputSchema = z.object({
+  prompt: z.string().describe("Character description"),
+  width_and_height: soulDimensionSchema
+    .default("PORTRAIT_1152x2048")
+    .describe("Output dimensions"),
+  quality: soulQualitySchema.default("HD").describe("Output quality"),
+  style_id: z.string().optional().describe("Style preset ID"),
+  batch_size: soulBatchSizeSchema
+    .default(1)
+    .describe("Number of images to generate"),
+  enhance_prompt: z.boolean().default(false).describe("Enhance prompt with AI"),
+});
+
+// Output schema with Zod
+const soulOutputSchema = z.object({
+  jobs: z.array(
+    z.object({
+      results: z.object({
+        raw: z.object({
+          url: z.string(),
+        }),
+      }),
+    }),
+  ),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<typeof soulInputSchema, typeof soulOutputSchema> = {
+  input: soulInputSchema,
+  output: soulOutputSchema,
+};
+
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "soul",
   description: "Higgsfield Soul model for character-focused image generation",
@@ -14,50 +59,7 @@ export const definition: ModelDefinition = {
   providerModels: {
     higgsfield: "/v1/text2image/soul",
   },
-  schema: {
-    input: {
-      type: "object",
-      required: ["prompt"],
-      properties: {
-        prompt: { type: "string", description: "Character description" },
-        width_and_height: {
-          type: "string",
-          enum: [
-            "SQUARE_1024x1024",
-            "PORTRAIT_1152x2048",
-            "LANDSCAPE_2048x1152",
-          ],
-          default: "PORTRAIT_1152x2048",
-          description: "Output dimensions",
-        },
-        quality: {
-          type: "string",
-          enum: ["SD", "HD", "UHD"],
-          default: "HD",
-          description: "Output quality",
-        },
-        style_id: {
-          type: "string",
-          description: "Style preset ID",
-        },
-        batch_size: {
-          type: "integer",
-          enum: [1, 2, 4],
-          default: 1,
-          description: "Number of images to generate",
-        },
-        enhance_prompt: {
-          type: "boolean",
-          default: false,
-          description: "Enhance prompt with AI",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      description: "Image generation result",
-    },
-  },
+  schema,
 };
 
 export default definition;

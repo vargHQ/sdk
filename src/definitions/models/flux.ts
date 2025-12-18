@@ -3,9 +3,43 @@
  * High-quality image generation from text
  */
 
-import type { ModelDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { imageSizeSchema } from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const definition: ModelDefinition = {
+// Input schema with Zod
+const fluxInputSchema = z.object({
+  prompt: z.string().describe("Text description of the image"),
+  image_size: imageSizeSchema
+    .default("landscape_4_3")
+    .describe("Output image size/aspect"),
+  num_inference_steps: z
+    .number()
+    .int()
+    .default(28)
+    .describe("Number of inference steps"),
+  guidance_scale: z
+    .number()
+    .default(3.5)
+    .describe("Guidance scale for generation"),
+});
+
+// Output schema with Zod
+const fluxOutputSchema = z.object({
+  images: z.array(
+    z.object({
+      url: z.string(),
+    }),
+  ),
+});
+
+// Schema object for the definition
+const schema: ZodSchema<typeof fluxInputSchema, typeof fluxOutputSchema> = {
+  input: fluxInputSchema,
+  output: fluxOutputSchema,
+};
+
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "flux",
   description:
@@ -16,45 +50,7 @@ export const definition: ModelDefinition = {
     fal: "fal-ai/flux-pro/v1.1",
     replicate: "black-forest-labs/flux-1.1-pro",
   },
-  schema: {
-    input: {
-      type: "object",
-      required: ["prompt"],
-      properties: {
-        prompt: {
-          type: "string",
-          description: "Text description of the image",
-        },
-        image_size: {
-          type: "string",
-          enum: [
-            "square_hd",
-            "square",
-            "portrait_4_3",
-            "portrait_16_9",
-            "landscape_4_3",
-            "landscape_16_9",
-          ],
-          default: "landscape_4_3",
-          description: "Output image size/aspect",
-        },
-        num_inference_steps: {
-          type: "integer",
-          default: 28,
-          description: "Number of inference steps",
-        },
-        guidance_scale: {
-          type: "number",
-          default: 3.5,
-          description: "Guidance scale for generation",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      description: "Image generation result with URL",
-    },
-  },
+  schema,
 };
 
 export default definition;

@@ -3,13 +3,43 @@
  * These types form the foundation of the registry, executor, and provider systems
  */
 
+import type { z } from "zod";
+
 // ============================================================================
-// Schema Types
+// Zod Schema Types
+// ============================================================================
+
+/**
+ * Schema definition using Zod
+ * TInput: Zod schema for input validation
+ * TOutput: Zod schema for output type definition
+ */
+export interface ZodSchema<
+  TInput extends z.ZodTypeAny = z.ZodTypeAny,
+  TOutput extends z.ZodTypeAny = z.ZodTypeAny,
+> {
+  input: TInput;
+  output: TOutput;
+}
+
+/**
+ * Infer the TypeScript type from a ZodSchema's input
+ */
+export type InferInput<S extends ZodSchema> = z.infer<S["input"]>;
+
+/**
+ * Infer the TypeScript type from a ZodSchema's output
+ */
+export type InferOutput<S extends ZodSchema> = z.infer<S["output"]>;
+
+// ============================================================================
+// Legacy Schema Types (for JSON Schema compatibility)
+// These are used by CLI introspection via Zod v4's native toJSONSchema()
 // ============================================================================
 
 export interface SchemaProperty {
   type: "string" | "number" | "integer" | "boolean" | "array" | "object";
-  description: string;
+  description?: string;
   enum?: (string | number)[];
   default?: unknown;
   format?: string;
@@ -18,17 +48,11 @@ export interface SchemaProperty {
   required?: string[];
 }
 
-export interface Schema {
-  input: {
-    type: "object";
-    required: string[];
-    properties: Record<string, SchemaProperty>;
-  };
-  output: {
-    type: string;
-    format?: string;
-    description: string;
-  };
+export interface JsonSchema {
+  type: "object";
+  required?: string[];
+  properties?: Record<string, SchemaProperty>;
+  description?: string;
 }
 
 // ============================================================================
@@ -118,13 +142,13 @@ export interface Provider {
 // Definition Types
 // ============================================================================
 
-export interface ModelDefinition {
+export interface ModelDefinition<S extends ZodSchema = ZodSchema> {
   type: "model";
   name: string;
   description: string;
   providers: string[];
   defaultProvider: string;
-  schema: Schema;
+  schema: S;
   /**
    * Provider-specific model identifiers
    * e.g., { fal: "fal-ai/kling-video/v2.5", replicate: "..." }
@@ -143,15 +167,15 @@ export interface ActionRoute {
   transform?: (inputs: Record<string, unknown>) => Record<string, unknown>;
 }
 
-export interface ActionDefinition {
+export interface ActionDefinition<S extends ZodSchema = ZodSchema> {
   type: "action";
   name: string;
   description: string;
-  schema: Schema;
+  schema: S;
   /** Routes to models or other actions */
   routes: ActionRoute[];
   /** Direct execution function (for local actions like ffmpeg) */
-  execute?: (inputs: Record<string, unknown>) => Promise<unknown>;
+  execute?: (inputs: InferInput<S>) => Promise<InferOutput<S>>;
 }
 
 export interface SkillStep {
@@ -164,16 +188,19 @@ export interface SkillStep {
   when?: Record<string, unknown>;
 }
 
-export interface SkillDefinition {
+export interface SkillDefinition<S extends ZodSchema = ZodSchema> {
   type: "skill";
   name: string;
   description: string;
-  schema: Schema;
+  schema: S;
   /** Ordered steps to execute */
   steps: SkillStep[];
 }
 
-export type Definition = ModelDefinition | ActionDefinition | SkillDefinition;
+export type Definition =
+  | ModelDefinition<ZodSchema>
+  | ActionDefinition<ZodSchema>
+  | SkillDefinition<ZodSchema>;
 
 // ============================================================================
 // Execution Types

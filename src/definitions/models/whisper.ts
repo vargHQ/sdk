@@ -3,9 +3,32 @@
  * Speech-to-text transcription
  */
 
-import type { ModelDefinition } from "../../core/schema/types";
+import { z } from "zod";
+import { filePathSchema } from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const definition: ModelDefinition = {
+// Input schema with Zod
+const whisperInputSchema = z.object({
+  file: filePathSchema.describe("Audio file to transcribe"),
+  language: z.string().optional().describe("Language code (e.g., 'en', 'es')"),
+  prompt: z
+    .string()
+    .optional()
+    .describe("Optional prompt to guide transcription"),
+  temperature: z.number().default(0).describe("Sampling temperature"),
+});
+
+// Output schema with Zod
+const whisperOutputSchema = z.string().describe("Transcribed text");
+
+// Schema object for the definition
+const schema: ZodSchema<typeof whisperInputSchema, typeof whisperOutputSchema> =
+  {
+    input: whisperInputSchema,
+    output: whisperOutputSchema,
+  };
+
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "whisper",
   description: "OpenAI Whisper model for speech-to-text transcription",
@@ -15,36 +38,7 @@ export const definition: ModelDefinition = {
     groq: "whisper-large-v3",
     fireworks: "whisper-v3-large",
   },
-  schema: {
-    input: {
-      type: "object",
-      required: ["file"],
-      properties: {
-        file: {
-          type: "string",
-          format: "file-path",
-          description: "Audio file to transcribe",
-        },
-        language: {
-          type: "string",
-          description: "Language code (e.g., 'en', 'es')",
-        },
-        prompt: {
-          type: "string",
-          description: "Optional prompt to guide transcription",
-        },
-        temperature: {
-          type: "number",
-          default: 0,
-          description: "Sampling temperature",
-        },
-      },
-    },
-    output: {
-      type: "string",
-      description: "Transcribed text",
-    },
-  },
+  schema,
 };
 
 export default definition;
