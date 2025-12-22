@@ -3,42 +3,42 @@
  * Text-to-speech via ElevenLabs
  */
 
+import { z } from "zod";
 import type { ActionDefinition } from "../../core/schema/types";
 import { elevenlabsProvider, VOICES } from "../../providers/elevenlabs";
 import { storageProvider } from "../../providers/storage";
 
-export const definition: ActionDefinition = {
+export const voiceInputSchema = z.object({
+  text: z.string().describe("Text to convert to speech"),
+  voice: z
+    .enum(["rachel", "domi", "bella", "antoni", "josh", "adam", "sam"])
+    .default("rachel")
+    .describe("Voice to use"),
+  output: z.string().optional().describe("Output file path"),
+});
+
+export const voiceOutputSchema = z.object({
+  audio: z.instanceof(Buffer),
+  provider: z.string(),
+  voiceId: z.string(),
+  uploadUrl: z.string().optional(),
+});
+
+export type VoiceInput = z.infer<typeof voiceInputSchema>;
+export type VoiceOutput = z.infer<typeof voiceOutputSchema>;
+
+export const definition: ActionDefinition<
+  typeof voiceInputSchema,
+  typeof voiceOutputSchema
+> = {
   type: "action",
   name: "voice",
   description: "Text to speech generation",
-  schema: {
-    input: {
-      type: "object",
-      required: ["text"],
-      properties: {
-        text: { type: "string", description: "Text to convert to speech" },
-        voice: {
-          type: "string",
-          enum: ["rachel", "domi", "bella", "antoni", "josh", "adam", "sam"],
-          default: "rachel",
-          description: "Voice to use",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output file path",
-        },
-      },
-    },
-    output: { type: "string", format: "file-path", description: "Audio path" },
-  },
+  inputSchema: voiceInputSchema,
+  outputSchema: voiceOutputSchema,
   routes: [],
   execute: async (inputs) => {
-    const { text, voice, output } = inputs as {
-      text: string;
-      voice?: string;
-      output?: string;
-    };
+    const { text, voice, output } = inputs;
     return generateVoice({ text, voice, outputPath: output });
   },
 };

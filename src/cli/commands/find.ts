@@ -5,6 +5,7 @@
 
 import { defineCommand } from "citty";
 import { registry } from "../../core/registry";
+import { definitionsToRows } from "../../utils";
 import { box, c, table } from "../output";
 
 export const findCmd = defineCommand({
@@ -38,13 +39,7 @@ export const findCmd = defineCommand({
     const content: string[] = [];
     content.push("");
 
-    const rows = results.map((r) => ({
-      name: r.name,
-      description: r.description,
-      type: r.type,
-    }));
-
-    content.push(...table(rows));
+    content.push(...table(definitionsToRows(results)));
     content.push("");
     content.push(
       `  ${c.dim(`${results.length} result${results.length > 1 ? "s" : ""}`)}`,

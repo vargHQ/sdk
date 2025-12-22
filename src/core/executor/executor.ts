@@ -13,7 +13,7 @@ import type {
   RunOptions,
   SkillDefinition,
 } from "../schema/types";
-import { validateAndPrepare } from "../schema/validator";
+import { validateDefinitionInputs } from "../schema/validator";
 import { jobRunner } from "./job";
 import { pipelineRunner } from "./pipeline";
 
@@ -34,11 +34,9 @@ export class Executor {
     }
 
     // Validate and prepare inputs
-    const validation = validateAndPrepare(inputs, definition.schema);
+    const validation = validateDefinitionInputs(definition, inputs);
     if (!validation.valid) {
-      throw new Error(
-        `Validation failed: ${validation.errors.map((e) => e.message).join(", ")}`,
-      );
+      throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
     }
 
     // Route to appropriate handler

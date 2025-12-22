@@ -3,9 +3,27 @@
  * Speech-to-text transcription
  */
 
+import { z } from "zod";
 import type { ModelDefinition } from "../../core/schema/types";
 
-export const definition: ModelDefinition = {
+export const whisperInputSchema = z.object({
+  file: z.string().describe("Audio file to transcribe"),
+  language: z.string().optional().describe("Language code (e.g., 'en', 'es')"),
+  prompt: z.string().optional().describe("Optional prompt to guide transcription"),
+  temperature: z.number().default(0).describe("Sampling temperature"),
+});
+
+export const whisperOutputSchema = z.object({
+  text: z.string(),
+});
+
+export type WhisperInput = z.infer<typeof whisperInputSchema>;
+export type WhisperOutput = z.infer<typeof whisperOutputSchema>;
+
+export const definition: ModelDefinition<
+  typeof whisperInputSchema,
+  typeof whisperOutputSchema
+> = {
   type: "model",
   name: "whisper",
   description: "OpenAI Whisper model for speech-to-text transcription",
@@ -15,36 +33,8 @@ export const definition: ModelDefinition = {
     groq: "whisper-large-v3",
     fireworks: "whisper-v3-large",
   },
-  schema: {
-    input: {
-      type: "object",
-      required: ["file"],
-      properties: {
-        file: {
-          type: "string",
-          format: "file-path",
-          description: "Audio file to transcribe",
-        },
-        language: {
-          type: "string",
-          description: "Language code (e.g., 'en', 'es')",
-        },
-        prompt: {
-          type: "string",
-          description: "Optional prompt to guide transcription",
-        },
-        temperature: {
-          type: "number",
-          default: 0,
-          description: "Sampling temperature",
-        },
-      },
-    },
-    output: {
-      type: "string",
-      description: "Transcribed text",
-    },
-  },
+  inputSchema: whisperInputSchema,
+  outputSchema: whisperOutputSchema,
 };
 
 export default definition;

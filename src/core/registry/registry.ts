@@ -69,6 +69,7 @@ export class Registry {
    * Resolve a name to its definition
    * Resolution order: models -> actions -> skills
    */
+  
   resolve(name: string): Definition | null {
     // Handle explicit namespace prefixes
     if (name.startsWith("model/")) {
@@ -128,9 +129,9 @@ export class Registry {
         continue;
       }
 
-      // Match by input/output type (from schema)
-      const inputType = def.schema.input.properties?.type?.type ?? "";
-      const outputType = def.schema.output.type ?? "";
+      // Match by input/output type - skip for now as schemas use Zod
+      const inputType = "";
+      const outputType = "";
 
       if (
         options?.inputType &&

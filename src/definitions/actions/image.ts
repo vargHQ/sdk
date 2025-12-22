@@ -3,42 +3,41 @@
  * Routes to Fal or Higgsfield based on options
  */
 
+import { z } from "zod";
 import type { ActionDefinition } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { higgsfieldProvider } from "../../providers/higgsfield";
 import { storageProvider } from "../../providers/storage";
 
-export const definition: ActionDefinition = {
+export const imageInputSchema = z.object({
+  prompt: z.string().describe("What to generate"),
+  size: z
+    .enum(["square_hd", "landscape_4_3", "portrait_4_3", "landscape_16_9"])
+    .default("landscape_4_3")
+    .describe("Image size/aspect ratio"),
+  provider: z
+    .enum(["fal", "higgsfield"])
+    .default("fal")
+    .describe("Generation provider"),
+});
+
+export const imageOutputSchema = z.object({
+  imageUrl: z.string(),
+  uploaded: z.string().optional(),
+});
+
+export type ImageInput = z.infer<typeof imageInputSchema>;
+export type ImageOutput = z.infer<typeof imageOutputSchema>;
+
+export const definition: ActionDefinition<
+  typeof imageInputSchema,
+  typeof imageOutputSchema
+> = {
   type: "action",
   name: "image",
   description: "Generate image from text",
-  schema: {
-    input: {
-      type: "object",
-      required: ["prompt"],
-      properties: {
-        prompt: { type: "string", description: "What to generate" },
-        size: {
-          type: "string",
-          enum: [
-            "square_hd",
-            "landscape_4_3",
-            "portrait_4_3",
-            "landscape_16_9",
-          ],
-          default: "landscape_4_3",
-          description: "Image size/aspect ratio",
-        },
-        provider: {
-          type: "string",
-          enum: ["fal", "higgsfield"],
-          default: "fal",
-          description: "Generation provider",
-        },
-      },
-    },
-    output: { type: "string", format: "url", description: "Image URL" },
-  },
+  inputSchema: imageInputSchema,
+  outputSchema: imageOutputSchema,
   routes: [
     {
       target: "flux",
@@ -52,21 +51,13 @@ export const definition: ActionDefinition = {
     },
   ],
   execute: async (inputs) => {
-    const {
-      prompt,
-      size,
-      provider = "fal",
-    } = inputs as {
-      prompt: string;
-      size?: string;
-      provider?: "fal" | "higgsfield";
-    };
+    const { prompt, size, provider = "fal" } = inputs;
 
     if (provider === "higgsfield") {
       return generateWithSoul(prompt);
     }
 
-    return generateWithFal(prompt, { model: size });
+    return generateWithFal(prompt, { imageSize: size });
   },
 };
 
@@ -77,13 +68,13 @@ export interface ImageGenerationResult {
 
 export async function generateWithFal(
   prompt: string,
-  options: { model?: string; upload?: boolean } = {},
+  options: { imageSize?: string; upload?: boolean } = {},
 ): Promise<ImageGenerationResult> {
   console.log("[image] generating with fal");
 
   const result = await falProvider.generateImage({
     prompt,
-    model: options.model,
+    imageSize: options.imageSize,
   });
 
   const imageUrl = (result.data as { images?: Array<{ url?: string }> })

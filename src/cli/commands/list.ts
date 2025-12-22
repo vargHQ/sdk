@@ -5,6 +5,7 @@
 
 import { defineCommand } from "citty";
 import { registry } from "../../core/registry";
+import { definitionsToRows } from "../../utils";
 import { box, c, header, separator, table } from "../output";
 
 export const listCmd = defineCommand({
@@ -35,12 +36,7 @@ export const listCmd = defineCommand({
       content.push(header("MODELS"));
       content.push("");
       if (models.length > 0) {
-        const rows = models.map((m) => ({
-          name: m.name,
-          description: m.description,
-          type: m.type,
-        }));
-        content.push(...table(rows));
+        content.push(...table(definitionsToRows(models)));
       } else {
         content.push(c.dim("    no models registered"));
       }
@@ -51,12 +47,7 @@ export const listCmd = defineCommand({
       content.push(header("ACTIONS"));
       content.push("");
       if (actions.length > 0) {
-        const rows = actions.map((a) => ({
-          name: a.name,
-          description: a.description,
-          type: a.type,
-        }));
-        content.push(...table(rows));
+        content.push(...table(definitionsToRows(actions)));
       } else {
         content.push(c.dim("    no actions registered"));
       }
@@ -67,12 +58,7 @@ export const listCmd = defineCommand({
       content.push(header("SKILLS"));
       content.push("");
       if (skills.length > 0) {
-        const rows = skills.map((s) => ({
-          name: s.name,
-          description: s.description,
-          type: s.type,
-        }));
-        content.push(...table(rows));
+        content.push(...table(definitionsToRows(skills)));
       } else {
         content.push(c.dim("    no skills registered"));
       }

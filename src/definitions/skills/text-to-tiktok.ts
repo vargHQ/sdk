@@ -3,46 +3,43 @@
  * Turn text into a TikTok with AI-generated looping background and voiceover
  */
 
+import { z } from "zod";
 import type { SkillDefinition } from "../../core/schema/types";
 
-export const definition: SkillDefinition = {
+export const textToTiktokInputSchema = z.object({
+  text: z.string().describe("Text content to convert to video"),
+  voice: z
+    .enum(["sam", "adam", "josh", "rachel"])
+    .default("sam")
+    .describe("Voice for narration"),
+  backgroundPrompt: z
+    .string()
+    .default(
+      "POV from inside moving car driving through rainy city at night, motion blur on streetlights, cinematic",
+    )
+    .describe("Prompt for background video"),
+  captionStyle: z
+    .enum(["default", "tiktok", "youtube"])
+    .default("tiktok")
+    .describe("Caption style"),
+});
+
+export const textToTiktokOutputSchema = z.object({
+  videoUrl: z.string().describe("Final TikTok video URL"),
+});
+
+export type TextToTiktokInput = z.infer<typeof textToTiktokInputSchema>;
+export type TextToTiktokOutput = z.infer<typeof textToTiktokOutputSchema>;
+
+export const definition: SkillDefinition<
+  typeof textToTiktokInputSchema,
+  typeof textToTiktokOutputSchema
+> = {
   type: "skill",
   name: "text-to-tiktok",
   description: "Turn text into a TikTok with looping background and voiceover",
-  schema: {
-    input: {
-      type: "object",
-      required: ["text"],
-      properties: {
-        text: {
-          type: "string",
-          description: "Text content to convert to video",
-        },
-        voice: {
-          type: "string",
-          enum: ["sam", "adam", "josh", "rachel"],
-          default: "sam",
-          description: "Voice for narration",
-        },
-        backgroundPrompt: {
-          type: "string",
-          default:
-            "POV from inside moving car driving through rainy city at night, motion blur on streetlights, cinematic",
-          description: "Prompt for background video",
-        },
-        captionStyle: {
-          type: "string",
-          enum: ["default", "tiktok", "youtube"],
-          default: "tiktok",
-          description: "Caption style",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      description: "Final TikTok video",
-    },
-  },
+  inputSchema: textToTiktokInputSchema,
+  outputSchema: textToTiktokOutputSchema,
   steps: [
     {
       name: "generate-voiceover",

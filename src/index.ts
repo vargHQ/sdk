@@ -20,8 +20,6 @@ export type {
   Provider,
   ProviderConfig,
   RunOptions,
-  Schema,
-  SchemaProperty,
   SkillDefinition,
   VargConfig,
 } from "./core/schema/types";

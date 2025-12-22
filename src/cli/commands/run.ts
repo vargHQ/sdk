@@ -4,11 +4,47 @@
  */
 
 import { existsSync } from "node:fs";
+import { z } from "zod";
 import { defineCommand } from "citty";
 import { executor } from "../../core/executor";
 import { resolve } from "../../core/registry/resolver";
 import type { Definition } from "../../core/schema/types";
+import { handleNotFound } from "../../utils";
 import { box, c, runningBox } from "../output";
+
+// JSON Schema types for display
+interface JsonSchemaProperty {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  enum?: string[];
+}
+
+interface JsonSchema {
+  type?: string;
+  properties?: Record<string, JsonSchemaProperty>;
+  required?: string[];
+  description?: string;
+}
+
+/**
+ * Get JSON Schema for display - converts Zod schema to JSON Schema
+ */
+function getDisplaySchema(item: Definition): { input: JsonSchema; output: JsonSchema } {
+  if (!item.inputSchema) {
+    return {
+      input: { type: "object", properties: {}, required: [] },
+      output: { type: "object" },
+    };
+  }
+
+  const input = z.toJSONSchema(item.inputSchema) as JsonSchema;
+  const output = item.outputSchema
+    ? (z.toJSONSchema(item.outputSchema) as JsonSchema)
+    : { type: "object" };
+
+  return { input, output };
+}
 
 interface RunOptions {
   [key: string]: string | boolean | undefined;
@@ -60,23 +96,28 @@ function showHelp(item: Definition) {
   content.push(c.bold(c.dim("  USAGE")));
   content.push("");
 
-  const required = item.schema.input.required;
-  const reqArgs = required.map((r) => `--${r} <${r}>`).join(" ");
+  const { input } = getDisplaySchema(item);
+  const required = input.required ?? [];
+  const properties = input.properties ?? {};
+  // Only show args that are truly required (no default value)
+  const trulyRequired = required.filter((r) => properties[r]?.default === undefined);
+  const reqArgs = trulyRequired.map((r) => `--${r} <${r}>`).join(" ");
   content.push(`    varg run ${item.name} ${reqArgs} [options]`);
 
   content.push("");
   content.push(c.bold(c.dim("  OPTIONS")));
   content.push("");
 
-  for (const [key, prop] of Object.entries(item.schema.input.properties)) {
-    const req = item.schema.input.required.includes(key);
+  for (const [key, prop] of Object.entries(properties)) {
+    // Field is only truly required if it's in required array AND has no default
+    const hasDefault = prop.default !== undefined;
+    const req = required.includes(key) && !hasDefault;
     const reqTag = req ? c.yellow(" (required)") : "";
-    const defaultVal =
-      prop.default !== undefined ? c.dim(` default: ${prop.default}`) : "";
+    const defaultVal = hasDefault ? c.dim(` default: ${prop.default}`) : "";
     const enumVals = prop.enum ? c.dim(` [${prop.enum.join(", ")}]`) : "";
 
     content.push(
-      `    --${key.padEnd(12)}${prop.description}${reqTag}${defaultVal}${enumVals}`,
+      `    --${key.padEnd(12)}${prop.description ?? ""}${reqTag}${defaultVal}${enumVals}`,
     );
   }
 
@@ -100,12 +141,13 @@ function showHelp(item: Definition) {
 }
 
 function showSchema(item: Definition) {
+  const { input, output } = getDisplaySchema(item);
   const schema = {
     name: item.name,
     type: item.type,
     description: item.description,
-    input: item.schema.input,
-    output: item.schema.output,
+    input,
+    output,
   };
 
   console.log(JSON.stringify(schema, null, 2));
@@ -153,14 +195,12 @@ export const runCmd = defineCommand({
     const result = resolve(target, { fuzzy: true });
 
     if (!result.definition) {
-      console.error(`${c.red("error:")} '${target}' not found`);
-      if (result.suggestions && result.suggestions.length > 0) {
-        console.log(
-          `\ndid you mean: ${result.suggestions.slice(0, 3).join(", ")}?`,
-        );
-      }
-      console.log(`\nrun ${c.cyan("varg list")} to see available targets`);
-      process.exit(1);
+      handleNotFound(target, {
+        suggestions: result.suggestions,
+        errorColorFn: c.red,
+        hintColorFn: c.cyan,
+      });
+      return;
     }
 
     const item = result.definition;
@@ -175,9 +215,15 @@ export const runCmd = defineCommand({
       return;
     }
 
-    // Validate required args
-    for (const req of item.schema.input.required) {
-      if (!options[req]) {
+    // Get schema for validation and display
+    const { input: inputSchema } = getDisplaySchema(item);
+
+    // Validate required args (only those without defaults)
+    const requiredFields = inputSchema.required ?? [];
+    const inputProperties = inputSchema.properties ?? {};
+    for (const req of requiredFields) {
+      const hasDefault = inputProperties[req]?.default !== undefined;
+      if (!hasDefault && !options[req]) {
         console.error(`${c.red("error:")} --${req} is required`);
         console.log(`\nrun ${c.cyan(`varg run ${target} --info`)} for usage`);
         process.exit(1);
@@ -186,7 +232,7 @@ export const runCmd = defineCommand({
 
     // Build params for display
     const params: Record<string, string> = {};
-    for (const key of Object.keys(item.schema.input.properties)) {
+    for (const key of Object.keys(inputProperties)) {
       if (options[key] && typeof options[key] === "string") {
         params[key] = options[key] as string;
       }
@@ -201,7 +247,7 @@ export const runCmd = defineCommand({
     try {
       // Build inputs for executor
       const inputs: Record<string, unknown> = {};
-      for (const key of Object.keys(item.schema.input.properties)) {
+      for (const key of Object.keys(inputProperties)) {
         if (options[key] !== undefined) {
           inputs[key] = options[key];
         }

@@ -3,9 +3,42 @@
  * Inspect a specific model, action, or skill
  */
 
+import { z } from "zod";
 import { defineCommand } from "citty";
 import { resolve } from "../../core/registry/resolver";
+import type { Definition } from "../../core/schema/types";
+import { handleNotFound } from "../../utils";
 import { box, c, header, separator } from "../output";
+
+interface JsonSchemaProperty {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  enum?: string[];
+}
+
+interface JsonSchema {
+  type?: string;
+  properties?: Record<string, JsonSchemaProperty>;
+  required?: string[];
+  description?: string;
+}
+
+function getDisplaySchema(item: Definition): { input: JsonSchema; output: JsonSchema } {
+  if (!item.inputSchema) {
+    return {
+      input: { type: "object", properties: {}, required: [] },
+      output: { type: "object" },
+    };
+  }
+
+  const input = z.toJSONSchema(item.inputSchema) as JsonSchema;
+  const output = item.outputSchema
+    ? (z.toJSONSchema(item.outputSchema) as JsonSchema)
+    : { type: "object" };
+
+  return { input, output };
+}
 
 export const whichCmd = defineCommand({
   meta: {
@@ -28,13 +61,12 @@ export const whichCmd = defineCommand({
     const result = resolve(name, { fuzzy: true });
 
     if (!result.definition) {
-      console.error(`\n  ${c.red("not found:")} '${name}'\n`);
-      if (result.suggestions && result.suggestions.length > 0) {
-        console.log(
-          `  did you mean: ${result.suggestions.slice(0, 3).join(", ")}?\n`,
-        );
-      }
-      process.exit(1);
+      handleNotFound(name, {
+        suggestions: result.suggestions,
+        errorColorFn: c.red,
+        hintColorFn: c.cyan,
+      });
+      return; // TypeScript doesn't know handleNotFound exits
     }
 
     const item = result.definition;
@@ -84,19 +116,30 @@ export const whichCmd = defineCommand({
       content.push("");
     }
 
+    const { input, output } = getDisplaySchema(item);
+
     content.push(header("INPUT SCHEMA"));
     content.push("");
-    for (const [key, prop] of Object.entries(item.schema.input.properties)) {
-      const req = item.schema.input.required.includes(key)
-        ? c.yellow("*")
-        : " ";
-      const type = c.dim(`<${prop.type}>`);
-      content.push(`    ${req} ${key.padEnd(15)} ${type} ${prop.description}`);
+    const properties = input.properties ?? {};
+    const required = input.required ?? [];
+    if (Object.keys(properties).length > 0) {
+      for (const [key, prop] of Object.entries(properties)) {
+        const hasDefault = prop.default !== undefined;
+        const req = required.includes(key) && !hasDefault;
+        const reqTag = req ? c.yellow("*") : " ";
+        const defaultVal = hasDefault ? c.dim(` [default: ${prop.default}]`) : "";
+        const enumVals = prop.enum ? c.dim(` [${prop.enum.join(", ")}]`) : "";
+        content.push(
+          `    ${reqTag} ${key.padEnd(15)} ${c.dim(`<${prop.type}>`)} ${prop.description ?? ""}${defaultVal}${enumVals}`,
+        );
+      }
+    } else {
+      content.push(c.dim("    (no schema defined)"));
     }
     content.push("");
 
     content.push(header("OUTPUT"));
-    content.push(`    ${item.schema.output.description}`);
+    content.push(`    ${output.description ?? "(no description)"}`);
     content.push("");
 
     content.push(separator());

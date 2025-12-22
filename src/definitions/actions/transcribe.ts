@@ -4,6 +4,7 @@
  */
 
 import { writeFileSync } from "node:fs";
+import { z } from "zod";
 import { toFile } from "groq-sdk/uploads";
 import type { ActionDefinition } from "../../core/schema/types";
 import {
@@ -12,42 +13,37 @@ import {
 } from "../../providers/fireworks";
 import { GROQ_MODELS, groqProvider } from "../../providers/groq";
 
-export const definition: ActionDefinition = {
+export const transcribeInputSchema = z.object({
+  audio: z.string().describe("Audio/video file to transcribe"),
+  provider: z
+    .enum(["groq", "fireworks"])
+    .default("groq")
+    .describe("Transcription provider"),
+  output: z.string().optional().describe("Output file path"),
+});
+
+export const transcribeOutputSchema = z.object({
+  success: z.boolean(),
+  text: z.string().optional(),
+  srt: z.string().optional(),
+  error: z.string().optional(),
+});
+
+export type TranscribeInput = z.infer<typeof transcribeInputSchema>;
+export type TranscribeOutput = z.infer<typeof transcribeOutputSchema>;
+
+export const definition: ActionDefinition<
+  typeof transcribeInputSchema,
+  typeof transcribeOutputSchema
+> = {
   type: "action",
   name: "transcribe",
   description: "Speech to text transcription",
-  schema: {
-    input: {
-      type: "object",
-      required: ["audio"],
-      properties: {
-        audio: {
-          type: "string",
-          format: "file-path",
-          description: "Audio/video file to transcribe",
-        },
-        provider: {
-          type: "string",
-          enum: ["groq", "fireworks"],
-          default: "groq",
-          description: "Transcription provider",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output file path",
-        },
-      },
-    },
-    output: { type: "string", description: "Transcribed text" },
-  },
+  inputSchema: transcribeInputSchema,
+  outputSchema: transcribeOutputSchema,
   routes: [],
   execute: async (inputs) => {
-    const { audio, provider, output } = inputs as {
-      audio: string;
-      provider?: "groq" | "fireworks";
-      output?: string;
-    };
+    const { audio, provider, output } = inputs;
     return transcribe({ audioUrl: audio, provider, outputPath: output });
   },
 };
