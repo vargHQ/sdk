@@ -9,7 +9,10 @@ import type { ModelDefinition } from "../../core/schema/types";
 export const whisperInputSchema = z.object({
   file: z.string().describe("Audio file to transcribe"),
   language: z.string().optional().describe("Language code (e.g., 'en', 'es')"),
-  prompt: z.string().optional().describe("Optional prompt to guide transcription"),
+  prompt: z
+    .string()
+    .optional()
+    .describe("Optional prompt to guide transcription"),
   temperature: z.number().default(0).describe("Sampling temperature"),
 });
 

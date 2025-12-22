@@ -3,8 +3,8 @@
  * Inspect a specific model, action, or skill
  */
 
-import { z } from "zod";
 import { defineCommand } from "citty";
+import { z } from "zod";
 import { resolve } from "../../core/registry/resolver";
 import type { Definition } from "../../core/schema/types";
 import { handleNotFound } from "../../utils";
@@ -24,7 +24,10 @@ interface JsonSchema {
   description?: string;
 }
 
-function getDisplaySchema(item: Definition): { input: JsonSchema; output: JsonSchema } {
+function getDisplaySchema(item: Definition): {
+  input: JsonSchema;
+  output: JsonSchema;
+} {
   if (!item.inputSchema) {
     return {
       input: { type: "object", properties: {}, required: [] },
@@ -127,7 +130,9 @@ export const whichCmd = defineCommand({
         const hasDefault = prop.default !== undefined;
         const req = required.includes(key) && !hasDefault;
         const reqTag = req ? c.yellow("*") : " ";
-        const defaultVal = hasDefault ? c.dim(` [default: ${prop.default}]`) : "";
+        const defaultVal = hasDefault
+          ? c.dim(` [default: ${prop.default}]`)
+          : "";
         const enumVals = prop.enum ? c.dim(` [${prop.enum.join(", ")}]`) : "";
         content.push(
           `    ${reqTag} ${key.padEnd(15)} ${c.dim(`<${prop.type}>`)} ${prop.description ?? ""}${defaultVal}${enumVals}`,

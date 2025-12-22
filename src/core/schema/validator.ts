@@ -2,7 +2,7 @@
  * Input validation using Zod schemas
  */
 
-import { z } from "zod";
+import type { z } from "zod";
 import type { Definition } from "./types";
 
 export interface ZodValidationResult<T = unknown> {
@@ -15,7 +15,9 @@ export interface ZodValidationError {
   error: z.ZodError;
 }
 
-export type ZodResult<T = unknown> = ZodValidationResult<T> | ZodValidationError;
+export type ZodResult<T = unknown> =
+  | ZodValidationResult<T>
+  | ZodValidationError;
 
 /**
  * Validate inputs using a Zod schema
@@ -59,7 +61,11 @@ export function validateDefinitionInputs(
 
   const result = validateWithZod(definition.inputSchema, inputs);
   if (result.success) {
-    return { valid: true, errors: [], inputs: result.data as Record<string, unknown> };
+    return {
+      valid: true,
+      errors: [],
+      inputs: result.data as Record<string, unknown>,
+    };
   }
 
   return {

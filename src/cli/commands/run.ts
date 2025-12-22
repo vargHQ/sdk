@@ -4,8 +4,8 @@
  */
 
 import { existsSync } from "node:fs";
-import { z } from "zod";
 import { defineCommand } from "citty";
+import { z } from "zod";
 import { executor } from "../../core/executor";
 import { resolve } from "../../core/registry/resolver";
 import type { Definition } from "../../core/schema/types";
@@ -30,7 +30,10 @@ interface JsonSchema {
 /**
  * Get JSON Schema for display - converts Zod schema to JSON Schema
  */
-function getDisplaySchema(item: Definition): { input: JsonSchema; output: JsonSchema } {
+function getDisplaySchema(item: Definition): {
+  input: JsonSchema;
+  output: JsonSchema;
+} {
   if (!item.inputSchema) {
     return {
       input: { type: "object", properties: {}, required: [] },
@@ -100,7 +103,9 @@ function showHelp(item: Definition) {
   const required = input.required ?? [];
   const properties = input.properties ?? {};
   // Only show args that are truly required (no default value)
-  const trulyRequired = required.filter((r) => properties[r]?.default === undefined);
+  const trulyRequired = required.filter(
+    (r) => properties[r]?.default === undefined,
+  );
   const reqArgs = trulyRequired.map((r) => `--${r} <${r}>`).join(" ");
   content.push(`    varg run ${item.name} ${reqArgs} [options]`);
 

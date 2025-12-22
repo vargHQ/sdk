@@ -246,8 +246,7 @@ export const definitions = [
 // Convenience exports (using Zod-inferred types)
 export const trim = (opts: TrimInput) => ffmpegProvider.trimVideo(opts);
 export const cut = trim;
-export const merge = (opts: MergeInput) =>
-  ffmpegProvider.concatVideos(opts);
+export const merge = (opts: MergeInput) => ffmpegProvider.concatVideos(opts);
 export const split = (opts: SplitInput) =>
   ffmpegProvider.splitAtTimestamps(opts);
 export const fade = (opts: FadeInput) => ffmpegProvider.fadeVideo(opts);

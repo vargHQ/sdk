@@ -7,10 +7,7 @@
 
 import { registry } from "../core/registry";
 import { findSimilar, resolve, suggest } from "../core/registry/resolver";
-import {
-  validateDefinitionInputs,
-  validateWithZod,
-} from "../core/schema/validator";
+import { validateWithZod } from "../core/schema/validator";
 import { allDefinitions } from "../definitions";
 import { allActions } from "../definitions/actions";
 import { allModels } from "../definitions/models";
@@ -253,7 +250,10 @@ test("validateWithZod rejects missing required", () => {
 });
 
 test("validateWithZod validates enum values", () => {
-  const result = validateWithZod(testZodSchema, { prompt: "test", mode: "invalid" });
+  const result = validateWithZod(testZodSchema, {
+    prompt: "test",
+    mode: "invalid",
+  });
   assert(!result.success, "Should reject invalid enum");
 });
 

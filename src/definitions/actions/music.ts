@@ -11,7 +11,10 @@ import { storageProvider } from "../../providers/storage";
 
 export const musicInputSchema = z.object({
   prompt: z.string().optional().describe("Description of music to generate"),
-  tags: z.array(z.string()).optional().describe("Style tags like 'rock', 'energetic'"),
+  tags: z
+    .array(z.string())
+    .optional()
+    .describe("Style tags like 'rock', 'energetic'"),
   lyrics: z.string().optional().describe("Optional lyrics prompt"),
   format: z
     .enum(["mp3", "wav", "flac", "ogg", "m4a"])

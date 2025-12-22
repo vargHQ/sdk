@@ -18,10 +18,7 @@ export const soulInputSchema = z.object({
     .union([z.literal(1), z.literal(2), z.literal(4)])
     .default(1)
     .describe("Number of images to generate"),
-  enhance_prompt: z
-    .boolean()
-    .default(false)
-    .describe("Enhance prompt with AI"),
+  enhance_prompt: z.boolean().default(false).describe("Enhance prompt with AI"),
 });
 
 export const soulOutputSchema = z.object({

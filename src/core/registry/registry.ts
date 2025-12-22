@@ -69,7 +69,7 @@ export class Registry {
    * Resolve a name to its definition
    * Resolution order: models -> actions -> skills
    */
-  
+
   resolve(name: string): Definition | null {
     // Handle explicit namespace prefixes
     if (name.startsWith("model/")) {

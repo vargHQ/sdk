@@ -27,11 +27,15 @@ export const talkingCharacterInputSchema = z.object({
 });
 
 export const talkingCharacterOutputSchema = z.object({
-  videoUrl: z.string().describe("Final video URL with character, voice, and captions"),
+  videoUrl: z
+    .string()
+    .describe("Final video URL with character, voice, and captions"),
 });
 
 export type TalkingCharacterInput = z.infer<typeof talkingCharacterInputSchema>;
-export type TalkingCharacterOutput = z.infer<typeof talkingCharacterOutputSchema>;
+export type TalkingCharacterOutput = z.infer<
+  typeof talkingCharacterOutputSchema
+>;
 
 export const definition: SkillDefinition<
   typeof talkingCharacterInputSchema,

@@ -10,7 +10,11 @@ export const elevenlabsInputSchema = z.object({
   text: z.string().describe("Text to convert to speech"),
   voice_id: z.string().optional().describe("Voice ID to use"),
   model_id: z
-    .enum(["eleven_multilingual_v2", "eleven_monolingual_v1", "eleven_turbo_v2"])
+    .enum([
+      "eleven_multilingual_v2",
+      "eleven_monolingual_v1",
+      "eleven_turbo_v2",
+    ])
     .default("eleven_multilingual_v2")
     .describe("TTS model to use"),
   stability: z.number().default(0.5).describe("Voice stability (0-1)"),
