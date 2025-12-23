@@ -8,9 +8,8 @@ import { defineCommand } from "citty";
 import { executor } from "../../core/executor";
 import { resolve } from "../../core/registry/resolver";
 import type { Definition } from "../../core/schema/types";
-import { handleNotFound } from "../../utils";
 import { box, c, runningBox } from "../output";
-import { getDisplaySchema } from "../schema";
+import { getDisplaySchema, handleNotFound } from "../utils";
 
 interface RunOptions {
   [key: string]: string | boolean | undefined;

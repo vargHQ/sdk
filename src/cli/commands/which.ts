@@ -5,9 +5,8 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "../../core/registry/resolver";
-import { handleNotFound } from "../../utils";
 import { box, c, header, separator } from "../output";
-import { getDisplaySchema } from "../schema";
+import { getDisplaySchema, handleNotFound } from "../utils";
 
 export const whichCmd = defineCommand({
   meta: {

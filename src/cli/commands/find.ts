@@ -5,8 +5,8 @@
 
 import { defineCommand } from "citty";
 import { registry } from "../../core/registry";
-import { definitionsToRows } from "../../utils";
 import { box, c, table } from "../output";
+import { definitionsToRows } from "../utils";
 
 export const findCmd = defineCommand({
   meta: {
