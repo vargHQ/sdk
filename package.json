@@ -43,7 +43,6 @@
     "@higgsfield/client": "^0.1.2",
     "@remotion/cli": "^4.0.377",
     "@types/fluent-ffmpeg": "^2.1.28",
-    "@vargai/sdk": "*",
     "ai": "^5.0.98",
     "citty": "^0.1.6",
     "fluent-ffmpeg": "^2.1.3",
