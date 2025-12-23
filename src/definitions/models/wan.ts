@@ -12,10 +12,12 @@ export const wanInputSchema = z.object({
   audio_url: z.string().describe("Audio file for lip sync"),
   duration: z
     .enum(["5", "10"])
+    .optional()
     .default("5")
     .describe("Video duration in seconds"),
   resolution: z
     .enum(["480p", "720p", "1080p"])
+    .optional()
     .default("480p")
     .describe("Output resolution"),
   negative_prompt: z

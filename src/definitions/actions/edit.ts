@@ -163,6 +163,7 @@ export const transitionInputSchema = z.object({
   duration: z.number().describe("Transition duration"),
   fit: z
     .enum(["pad", "crop", "blur", "stretch"])
+    .optional()
     .default("pad")
     .describe("How to handle different resolutions"),
 });
@@ -201,6 +202,7 @@ export const removeInputSchema = z.object({
   output: z.string().describe("Output path"),
   what: z
     .enum(["audio", "video"])
+    .optional()
     .default("audio")
     .describe("What to extract/remove"),
 });

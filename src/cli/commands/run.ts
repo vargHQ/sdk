@@ -41,9 +41,9 @@ function getDisplaySchema(item: Definition): {
     };
   }
 
-  const input = z.toJSONSchema(item.inputSchema) as JsonSchema;
+  const input = z.toJSONSchema(item.inputSchema, { io: "input" }) as JsonSchema;
   const output = item.outputSchema
-    ? (z.toJSONSchema(item.outputSchema) as JsonSchema)
+    ? (z.toJSONSchema(item.outputSchema, { io: "output" }) as JsonSchema)
     : { type: "object" };
 
   return { input, output };
@@ -102,11 +102,7 @@ function showHelp(item: Definition) {
   const { input } = getDisplaySchema(item);
   const required = input.required ?? [];
   const properties = input.properties ?? {};
-  // Only show args that are truly required (no default value)
-  const trulyRequired = required.filter(
-    (r) => properties[r]?.default === undefined,
-  );
-  const reqArgs = trulyRequired.map((r) => `--${r} <${r}>`).join(" ");
+  const reqArgs = required.map((r) => `--${r} <${r}>`).join(" ");
   content.push(`    varg run ${item.name} ${reqArgs} [options]`);
 
   content.push("");
@@ -114,16 +110,21 @@ function showHelp(item: Definition) {
   content.push("");
 
   for (const [key, prop] of Object.entries(properties)) {
-    // Field is only truly required if it's in required array AND has no default
-    const hasDefault = prop.default !== undefined;
-    const req = required.includes(key) && !hasDefault;
+    const req = required.includes(key);
     const reqTag = req ? c.yellow(" (required)") : "";
-    const defaultVal = hasDefault ? c.dim(` default: ${prop.default}`) : "";
-    const enumVals = prop.enum ? c.dim(` [${prop.enum.join(", ")}]`) : "";
 
-    content.push(
-      `    --${key.padEnd(12)}${prop.description ?? ""}${reqTag}${defaultVal}${enumVals}`,
-    );
+    // First line: --key and description
+    content.push(`    --${key.padEnd(12)}${prop.description ?? ""}${reqTag}`);
+
+    // Additional lines for default and enum values
+    if (prop.default !== undefined) {
+      content.push(c.dim(`                    default: ${prop.default}`));
+    }
+    if (prop.enum && prop.enum.length > 0) {
+      content.push(
+        c.dim(`                    options: ${prop.enum.join(", ")}`),
+      );
+    }
   }
 
   content.push("");
@@ -223,12 +224,11 @@ export const runCmd = defineCommand({
     // Get schema for validation and display
     const { input: inputSchema } = getDisplaySchema(item);
 
-    // Validate required args (only those without defaults)
+    // Validate required args
     const requiredFields = inputSchema.required ?? [];
     const inputProperties = inputSchema.properties ?? {};
     for (const req of requiredFields) {
-      const hasDefault = inputProperties[req]?.default !== undefined;
-      if (!hasDefault && !options[req]) {
+      if (!options[req]) {
         console.error(`${c.red("error:")} --${req} is required`);
         console.log(`\nrun ${c.cyan(`varg run ${target} --info`)} for usage`);
         process.exit(1);

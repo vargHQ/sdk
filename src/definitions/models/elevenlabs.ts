@@ -15,11 +15,17 @@ export const elevenlabsInputSchema = z.object({
       "eleven_monolingual_v1",
       "eleven_turbo_v2",
     ])
+    .optional()
     .default("eleven_multilingual_v2")
     .describe("TTS model to use"),
-  stability: z.number().default(0.5).describe("Voice stability (0-1)"),
+  stability: z
+    .number()
+    .optional()
+    .default(0.5)
+    .describe("Voice stability (0-1)"),
   similarity_boost: z
     .number()
+    .optional()
     .default(0.75)
     .describe("Voice similarity boost (0-1)"),
 });

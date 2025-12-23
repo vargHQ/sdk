@@ -12,6 +12,7 @@ export const voiceInputSchema = z.object({
   text: z.string().describe("Text to convert to speech"),
   voice: z
     .enum(["rachel", "domi", "bella", "antoni", "josh", "adam", "sam"])
+    .optional()
     .default("rachel")
     .describe("Voice to use"),
   output: z.string().optional().describe("Output file path"),

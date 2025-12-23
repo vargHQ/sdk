@@ -13,7 +13,11 @@ export const whisperInputSchema = z.object({
     .string()
     .optional()
     .describe("Optional prompt to guide transcription"),
-  temperature: z.number().default(0).describe("Sampling temperature"),
+  temperature: z
+    .number()
+    .optional()
+    .default(0)
+    .describe("Sampling temperature"),
 });
 
 export const whisperOutputSchema = z.object({

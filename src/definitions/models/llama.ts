@@ -19,11 +19,21 @@ export const llamaInputSchema = z.object({
       "llama-3.1-8b-instant",
       "llama-3.1-70b-versatile",
     ])
+    .optional()
     .default("llama-3.3-70b-versatile")
     .describe("Llama model variant"),
-  temperature: z.number().default(1).describe("Sampling temperature"),
-  max_tokens: z.number().int().default(1024).describe("Maximum output tokens"),
-  stream: z.boolean().default(false).describe("Stream response"),
+  temperature: z
+    .number()
+    .optional()
+    .default(1)
+    .describe("Sampling temperature"),
+  max_tokens: z
+    .number()
+    .int()
+    .optional()
+    .default(1024)
+    .describe("Maximum output tokens"),
+  stream: z.boolean().optional().default(false).describe("Stream response"),
 });
 
 export const llamaOutputSchema = z.object({

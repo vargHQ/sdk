@@ -10,15 +10,25 @@ export const soulInputSchema = z.object({
   prompt: z.string().describe("Character description"),
   width_and_height: z
     .enum(["SQUARE_1024x1024", "PORTRAIT_1152x2048", "LANDSCAPE_2048x1152"])
+    .optional()
     .default("PORTRAIT_1152x2048")
     .describe("Output dimensions"),
-  quality: z.enum(["SD", "HD", "UHD"]).default("HD").describe("Output quality"),
+  quality: z
+    .enum(["SD", "HD", "UHD"])
+    .optional()
+    .default("HD")
+    .describe("Output quality"),
   style_id: z.string().optional().describe("Style preset ID"),
   batch_size: z
     .union([z.literal(1), z.literal(2), z.literal(4)])
+    .optional()
     .default(1)
     .describe("Number of images to generate"),
-  enhance_prompt: z.boolean().default(false).describe("Enhance prompt with AI"),
+  enhance_prompt: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Enhance prompt with AI"),
 });
 
 export const soulOutputSchema = z.object({

@@ -18,15 +18,18 @@ export const fluxInputSchema = z.object({
       "landscape_4_3",
       "landscape_16_9",
     ])
+    .optional()
     .default("landscape_4_3")
     .describe("Output image size/aspect"),
   num_inference_steps: z
     .number()
     .int()
+    .optional()
     .default(28)
     .describe("Number of inference steps"),
   guidance_scale: z
     .number()
+    .optional()
     .default(3.5)
     .describe("Guidance scale for generation"),
 });

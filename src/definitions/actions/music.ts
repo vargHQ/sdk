@@ -18,10 +18,12 @@ export const musicInputSchema = z.object({
   lyrics: z.string().optional().describe("Optional lyrics prompt"),
   format: z
     .enum(["mp3", "wav", "flac", "ogg", "m4a"])
+    .optional()
     .default("mp3")
     .describe("Output format"),
   numSongs: z
     .union([z.literal(1), z.literal(2)])
+    .optional()
     .default(1)
     .describe("Number of songs to generate"),
   output: z.string().optional().describe("Output file path"),

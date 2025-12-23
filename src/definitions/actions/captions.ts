@@ -15,6 +15,7 @@ export const captionsInputSchema = z.object({
   srt: z.string().optional().describe("SRT file (optional)"),
   style: z
     .enum(["default", "tiktok", "youtube"])
+    .optional()
     .default("default")
     .describe("Caption style"),
 });

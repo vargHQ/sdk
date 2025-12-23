@@ -13,10 +13,12 @@ export const videoInputSchema = z.object({
   image: z.string().optional().describe("Input image (enables image-to-video)"),
   duration: z
     .union([z.literal(5), z.literal(10)])
+    .optional()
     .default(5)
     .describe("Video duration in seconds"),
   aspectRatio: z
     .enum(["16:9", "9:16", "1:1"])
+    .optional()
     .default("16:9")
     .describe("Aspect ratio for text-to-video"),
 });

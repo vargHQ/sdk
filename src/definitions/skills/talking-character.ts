@@ -10,18 +10,22 @@ export const talkingCharacterInputSchema = z.object({
   text: z.string().describe("Script/text for the character to say"),
   characterPrompt: z
     .string()
+    .optional()
     .default("professional headshot of a friendly person, studio lighting")
     .describe("Prompt to generate the character"),
   voice: z
     .enum(["rachel", "sam", "adam", "josh"])
+    .optional()
     .default("sam")
     .describe("Voice to use for speech"),
   duration: z
     .union([z.literal(5), z.literal(10)])
+    .optional()
     .default(5)
     .describe("Video duration"),
   style: z
     .enum(["default", "tiktok", "youtube"])
+    .optional()
     .default("tiktok")
     .describe("Caption style"),
 });

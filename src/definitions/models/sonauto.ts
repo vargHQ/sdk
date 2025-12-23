@@ -12,14 +12,17 @@ export const sonautoInputSchema = z.object({
   lyrics_prompt: z.string().optional().describe("Lyrics to generate"),
   num_songs: z
     .union([z.literal(1), z.literal(2)])
+    .optional()
     .default(1)
     .describe("Number of songs"),
   output_format: z
     .enum(["mp3", "wav", "flac", "ogg", "m4a"])
+    .optional()
     .default("mp3")
     .describe("Output format"),
   bpm: z
     .union([z.number(), z.literal("auto")])
+    .optional()
     .default("auto")
     .describe("Beats per minute"),
 });

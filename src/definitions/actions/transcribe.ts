@@ -17,6 +17,7 @@ export const transcribeInputSchema = z.object({
   audio: z.string().describe("Audio/video file to transcribe"),
   provider: z
     .enum(["groq", "fireworks"])
+    .optional()
     .default("groq")
     .describe("Transcription provider"),
   output: z.string().optional().describe("Output file path"),

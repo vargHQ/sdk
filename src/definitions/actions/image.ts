@@ -13,10 +13,12 @@ export const imageInputSchema = z.object({
   prompt: z.string().describe("What to generate"),
   size: z
     .enum(["square_hd", "landscape_4_3", "portrait_4_3", "landscape_16_9"])
+    .optional()
     .default("landscape_4_3")
     .describe("Image size/aspect ratio"),
   provider: z
     .enum(["fal", "higgsfield"])
+    .optional()
     .default("fal")
     .describe("Generation provider"),
 });

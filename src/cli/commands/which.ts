@@ -35,9 +35,9 @@ function getDisplaySchema(item: Definition): {
     };
   }
 
-  const input = z.toJSONSchema(item.inputSchema) as JsonSchema;
+  const input = z.toJSONSchema(item.inputSchema, { io: "input" }) as JsonSchema;
   const output = item.outputSchema
-    ? (z.toJSONSchema(item.outputSchema) as JsonSchema)
+    ? (z.toJSONSchema(item.outputSchema, { io: "output" }) as JsonSchema)
     : { type: "object" };
 
   return { input, output };

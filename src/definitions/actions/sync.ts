@@ -12,9 +12,14 @@ export const syncInputSchema = z.object({
   image: z.string().describe("Input image"),
   audio: z.string().describe("Audio file"),
   prompt: z.string().describe("Description of the scene"),
-  duration: z.enum(["5", "10"]).default("5").describe("Output duration"),
+  duration: z
+    .enum(["5", "10"])
+    .optional()
+    .default("5")
+    .describe("Output duration"),
   resolution: z
     .enum(["480p", "720p", "1080p"])
+    .optional()
     .default("480p")
     .describe("Output resolution"),
 });

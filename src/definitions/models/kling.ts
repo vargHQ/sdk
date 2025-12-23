@@ -11,10 +11,12 @@ export const klingInputSchema = z.object({
   image_url: z.string().optional().describe("Input image for image-to-video"),
   duration: z
     .union([z.literal(5), z.literal(10)])
+    .optional()
     .default(5)
     .describe("Video duration in seconds"),
   aspect_ratio: z
     .enum(["16:9", "9:16", "1:1"])
+    .optional()
     .default("16:9")
     .describe("Output aspect ratio"),
 });

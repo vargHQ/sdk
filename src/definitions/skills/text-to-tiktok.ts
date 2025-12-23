@@ -10,16 +10,19 @@ export const textToTiktokInputSchema = z.object({
   text: z.string().describe("Text content to convert to video"),
   voice: z
     .enum(["sam", "adam", "josh", "rachel"])
+    .optional()
     .default("sam")
     .describe("Voice for narration"),
   backgroundPrompt: z
     .string()
+    .optional()
     .default(
       "POV from inside moving car driving through rainy city at night, motion blur on streetlights, cinematic",
     )
     .describe("Prompt for background video"),
   captionStyle: z
     .enum(["default", "tiktok", "youtube"])
+    .optional()
     .default("tiktok")
     .describe("Caption style"),
 });
