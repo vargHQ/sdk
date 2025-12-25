@@ -3,6 +3,23 @@
  * Central registry of all available providers
  */
 
+export type {
+  ApifyProviderConfig,
+  ApifyRunResult,
+  RunActorOptions,
+} from "./apify";
+// Apify provider (web scraping / actors)
+export {
+  ACTORS,
+  ApifyProvider,
+  apifyProvider,
+  downloadVideos,
+  getDataset,
+  getKeyValueStoreValue,
+  getRunInfo,
+  runActor,
+  waitForRun,
+} from "./apify";
 export type { ProviderResult } from "./base";
 // Base provider infrastructure
 export {
@@ -103,6 +120,7 @@ export {
 } from "./storage";
 
 // Register all providers
+import { apifyProvider } from "./apify";
 import { providers } from "./base";
 import { elevenlabsProvider } from "./elevenlabs";
 import { falProvider } from "./fal";
@@ -114,6 +132,7 @@ import { replicateProvider } from "./replicate";
 import { storageProvider } from "./storage";
 
 // Auto-register all providers
+providers.register(apifyProvider);
 providers.register(falProvider);
 providers.register(replicateProvider);
 providers.register(elevenlabsProvider);
