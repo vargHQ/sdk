@@ -4,39 +4,37 @@
  */
 
 import { z } from "zod";
-import type { ActionDefinition } from "../../core/schema/types";
+import { filePathSchema, voiceNameSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { elevenlabsProvider, VOICES } from "../../providers/elevenlabs";
 import { storageProvider } from "../../providers/storage";
 
-export const voiceInputSchema = z.object({
+// Input schema with Zod
+const voiceInputSchema = z.object({
   text: z.string().describe("Text to convert to speech"),
-  voice: z
-    .enum(["rachel", "domi", "bella", "antoni", "josh", "adam", "sam"])
-    .optional()
-    .default("rachel")
-    .describe("Voice to use"),
-  output: z.string().optional().describe("Output file path"),
+  voice: voiceNameSchema.default("rachel").describe("Voice to use"),
+  output: filePathSchema.optional().describe("Output file path"),
 });
 
-export const voiceOutputSchema = z.object({
+// Output schema with Zod
+const voiceOutputSchema = z.object({
   audio: z.instanceof(Buffer),
   provider: z.string(),
   voiceId: z.string(),
   uploadUrl: z.string().optional(),
 });
 
-export type VoiceInput = z.infer<typeof voiceInputSchema>;
-export type VoiceOutput = z.infer<typeof voiceOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof voiceInputSchema, typeof voiceOutputSchema> = {
+  input: voiceInputSchema,
+  output: voiceOutputSchema,
+};
 
-export const definition: ActionDefinition<
-  typeof voiceInputSchema,
-  typeof voiceOutputSchema
-> = {
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "voice",
   description: "Text to speech generation",
-  inputSchema: voiceInputSchema,
-  outputSchema: voiceOutputSchema,
+  schema,
   routes: [],
   execute: async (inputs) => {
     const { text, voice, output } = inputs;

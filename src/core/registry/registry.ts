@@ -3,6 +3,7 @@
  * The brain that knows about all models, actions, skills, and providers
  */
 
+import { getCliSchemaInfo, toJsonSchema } from "../schema/helpers";
 import type {
   ActionDefinition,
   Definition,
@@ -129,9 +130,11 @@ export class Registry {
         continue;
       }
 
-      // Match by input/output type - skip for now as schemas use Zod
-      const inputType = "";
-      const outputType = "";
+      // Match by input/output type (from schema)
+      const inputSchema = getCliSchemaInfo(def.schema.input);
+      const outputSchema = toJsonSchema(def.schema.output);
+      const inputType = inputSchema.properties?.type?.type ?? "";
+      const outputType = outputSchema.type ?? "";
 
       if (
         options?.inputType &&

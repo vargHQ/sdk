@@ -1,76 +1,92 @@
 /**
- * Input validation using Zod schemas
+ * Input validation using Zod
+ * Validates inputs before execution
  */
 
 import type { z } from "zod";
-import type { Definition } from "./types";
 
-export interface ZodValidationResult<T = unknown> {
-  success: true;
-  data: T;
+export interface ValidationError {
+  path: string;
+  message: string;
+  value?: unknown;
 }
 
-export interface ZodValidationError {
-  success: false;
-  error: z.ZodError;
-}
-
-export type ZodResult<T = unknown> =
-  | ZodValidationResult<T>
-  | ZodValidationError;
-
-/**
- * Validate inputs using a Zod schema
- */
-export function validateWithZod<T extends z.ZodType>(
-  schema: T,
-  data: unknown,
-): ZodResult<z.infer<T>> {
-  const result = schema.safeParse(data);
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-  return { success: false, error: result.error };
-}
-
-/**
- * Format Zod errors for display
- */
-export function formatZodErrors(error: z.ZodError): string[] {
-  return error.issues.map((issue) => {
-    const path = issue.path.join(".");
-    return path ? `${path}: ${issue.message}` : issue.message;
-  });
-}
-
-/**
- * Validate inputs for a definition
- */
-export function validateDefinitionInputs(
-  definition: Definition,
-  inputs: Record<string, unknown>,
-): {
+export interface ValidationResult<T = unknown> {
   valid: boolean;
-  errors: string[];
-  inputs: Record<string, unknown>;
-} {
-  if (!definition.inputSchema) {
-    // No schema defined, pass through
-    return { valid: true, errors: [], inputs };
-  }
+  errors: ValidationError[];
+  data?: T;
+}
 
-  const result = validateWithZod(definition.inputSchema, inputs);
+/**
+ * Validate inputs against a Zod schema
+ */
+export function validateInputs<T extends z.ZodTypeAny>(
+  inputs: unknown,
+  schema: T,
+): ValidationResult<z.infer<T>> {
+  const result = schema.safeParse(inputs);
+
   if (result.success) {
     return {
       valid: true,
       errors: [],
-      inputs: result.data as Record<string, unknown>,
+      data: result.data,
     };
   }
 
   return {
     valid: false,
-    errors: formatZodErrors(result.error),
-    inputs,
+    errors: result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+      value: inputs,
+    })),
   };
+}
+
+/**
+ * Validate and prepare inputs in one step
+ * Zod automatically applies defaults during parsing
+ */
+export function validateAndPrepare<T extends z.ZodTypeAny>(
+  inputs: unknown,
+  schema: T,
+): ValidationResult<z.infer<T>> {
+  return validateInputs(inputs, schema);
+}
+
+/**
+ * Type-safe validation helper that throws on invalid input
+ */
+export function parseOrThrow<T extends z.ZodTypeAny>(
+  inputs: unknown,
+  schema: T,
+): z.infer<T> {
+  return schema.parse(inputs);
+}
+
+/**
+ * Apply defaults to inputs using Zod schema
+ * Zod automatically applies defaults during parsing
+ * Returns the input with defaults applied
+ */
+export function applyDefaults(
+  inputs: unknown,
+  // biome-ignore lint/suspicious/noExplicitAny: Zod v4 type compatibility
+  schema: any,
+): Record<string, unknown> {
+  // If schema has .input property (ZodSchema interface), use that
+  const zodSchema = schema.input || schema;
+
+  // Parse with defaults - if invalid, return inputs as-is
+  try {
+    return zodSchema.parse(inputs);
+  } catch {
+    // If validation fails, try to apply partial defaults
+    const partial = zodSchema.partial().safeParse(inputs);
+    if (partial.success) {
+      return { ...(inputs as Record<string, unknown>), ...partial.data };
+    }
+    return inputs as Record<string, unknown>;
+  }
 }

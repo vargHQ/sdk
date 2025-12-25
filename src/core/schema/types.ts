@@ -6,6 +6,56 @@
 import type { z } from "zod";
 
 // ============================================================================
+// Zod Schema Types
+// ============================================================================
+
+/**
+ * Schema definition using Zod
+ * TInput: Zod schema for input validation
+ * TOutput: Zod schema for output type definition
+ */
+export interface ZodSchema<
+  TInput extends z.ZodTypeAny = z.ZodTypeAny,
+  TOutput extends z.ZodTypeAny = z.ZodTypeAny,
+> {
+  input: TInput;
+  output: TOutput;
+}
+
+/**
+ * Infer the TypeScript type from a ZodSchema's input
+ */
+export type InferInput<S extends ZodSchema> = z.infer<S["input"]>;
+
+/**
+ * Infer the TypeScript type from a ZodSchema's output
+ */
+export type InferOutput<S extends ZodSchema> = z.infer<S["output"]>;
+
+// ============================================================================
+// Legacy Schema Types (for JSON Schema compatibility)
+// These are used by CLI introspection via Zod v4's native toJSONSchema()
+// ============================================================================
+
+export interface SchemaProperty {
+  type: "string" | "number" | "integer" | "boolean" | "array" | "object";
+  description?: string;
+  enum?: (string | number)[];
+  default?: unknown;
+  format?: string;
+  items?: SchemaProperty;
+  properties?: Record<string, SchemaProperty>;
+  required?: string[];
+}
+
+export interface JsonSchema {
+  type: "object";
+  required?: string[];
+  properties?: Record<string, SchemaProperty>;
+  description?: string;
+}
+
+// ============================================================================
 // Job Types
 // ============================================================================
 
@@ -92,19 +142,13 @@ export interface Provider {
 // Definition Types
 // ============================================================================
 
-export interface ModelDefinition<
-  TInput extends z.ZodType = z.ZodType,
-  TOutput extends z.ZodType = z.ZodType,
-> {
+export interface ModelDefinition<S extends ZodSchema = ZodSchema> {
   type: "model";
   name: string;
   description: string;
   providers: string[];
   defaultProvider: string;
-  /** Zod schema for input validation */
-  inputSchema?: TInput;
-  /** Zod schema for output validation */
-  outputSchema?: TOutput;
+  schema: S;
   /**
    * Provider-specific model identifiers
    * e.g., { fal: "fal-ai/kling-video/v2.5", replicate: "..." }
@@ -123,21 +167,15 @@ export interface ActionRoute {
   transform?: (inputs: Record<string, unknown>) => Record<string, unknown>;
 }
 
-export interface ActionDefinition<
-  TInput extends z.ZodType = z.ZodType,
-  TOutput extends z.ZodType = z.ZodType,
-> {
+export interface ActionDefinition<S extends ZodSchema = ZodSchema> {
   type: "action";
   name: string;
   description: string;
-  /** Zod schema for input validation */
-  inputSchema?: TInput;
-  /** Zod schema for output validation */
-  outputSchema?: TOutput;
+  schema: S;
   /** Routes to models or other actions */
   routes: ActionRoute[];
   /** Direct execution function (for local actions like ffmpeg) */
-  execute?: (inputs: z.infer<TInput>) => Promise<z.infer<TOutput>>;
+  execute?: (inputs: InferInput<S>) => Promise<InferOutput<S>>;
 }
 
 export interface SkillStep {
@@ -150,22 +188,19 @@ export interface SkillStep {
   when?: Record<string, unknown>;
 }
 
-export interface SkillDefinition<
-  TInput extends z.ZodType = z.ZodType,
-  TOutput extends z.ZodType = z.ZodType,
-> {
+export interface SkillDefinition<S extends ZodSchema = ZodSchema> {
   type: "skill";
   name: string;
   description: string;
-  /** Zod schema for input validation */
-  inputSchema?: TInput;
-  /** Zod schema for output validation */
-  outputSchema?: TOutput;
+  schema: S;
   /** Ordered steps to execute */
   steps: SkillStep[];
 }
 
-export type Definition = ModelDefinition | ActionDefinition | SkillDefinition;
+export type Definition =
+  | ModelDefinition<ZodSchema>
+  | ActionDefinition<ZodSchema>
+  | SkillDefinition<ZodSchema>;
 
 // ============================================================================
 // Execution Types

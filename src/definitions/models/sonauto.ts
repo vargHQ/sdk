@@ -4,44 +4,56 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition } from "../../core/schema/types";
+import { audioFormatSchema } from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const sonautoInputSchema = z.object({
+// Input schema with Zod
+const sonautoInputSchema = z.object({
   prompt: z.string().optional().describe("Music description"),
   tags: z.array(z.string()).optional().describe("Style tags"),
   lyrics_prompt: z.string().optional().describe("Lyrics to generate"),
   num_songs: z
     .union([z.literal(1), z.literal(2)])
-    .optional()
     .default(1)
     .describe("Number of songs"),
-  output_format: z
-    .enum(["mp3", "wav", "flac", "ogg", "m4a"])
-    .optional()
-    .default("mp3")
-    .describe("Output format"),
+  output_format: audioFormatSchema.default("mp3").describe("Output format"),
   bpm: z
     .union([z.number(), z.literal("auto")])
-    .optional()
     .default("auto")
     .describe("Beats per minute"),
 });
 
-export const sonautoOutputSchema = z.object({
-  songs: z.array(
+// Output schema with Zod
+const sonautoOutputSchema = z.object({
+  seed: z.number(),
+  tags: z.array(z.string()).optional(),
+  lyrics: z.string().optional(),
+  audio: z.union([
+    z.array(
+      z.object({
+        url: z.string(),
+        file_name: z.string(),
+        content_type: z.string(),
+        file_size: z.number(),
+      }),
+    ),
     z.object({
       url: z.string(),
+      file_name: z.string(),
+      content_type: z.string(),
+      file_size: z.number(),
     }),
-  ),
+  ]),
 });
 
-export type SonautoInput = z.infer<typeof sonautoInputSchema>;
-export type SonautoOutput = z.infer<typeof sonautoOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof sonautoInputSchema, typeof sonautoOutputSchema> =
+  {
+    input: sonautoInputSchema,
+    output: sonautoOutputSchema,
+  };
 
-export const definition: ModelDefinition<
-  typeof sonautoInputSchema,
-  typeof sonautoOutputSchema
-> = {
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "sonauto",
   description: "Sonauto model for text-to-music generation",
@@ -50,8 +62,7 @@ export const definition: ModelDefinition<
   providerModels: {
     fal: "fal-ai/sonauto/bark",
   },
-  inputSchema: sonautoInputSchema,
-  outputSchema: sonautoOutputSchema,
+  schema,
 };
 
 export default definition;

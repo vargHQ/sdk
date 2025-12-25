@@ -6,42 +6,48 @@
 import { writeFileSync } from "node:fs";
 import { toFile } from "groq-sdk/uploads";
 import { z } from "zod";
-import type { ActionDefinition } from "../../core/schema/types";
+import {
+  filePathSchema,
+  transcriptionProviderSchema,
+} from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import {
   convertFireworksToSRT,
   fireworksProvider,
 } from "../../providers/fireworks";
 import { GROQ_MODELS, groqProvider } from "../../providers/groq";
 
-export const transcribeInputSchema = z.object({
-  audio: z.string().describe("Audio/video file to transcribe"),
-  provider: z
-    .enum(["groq", "fireworks"])
-    .optional()
+// Input schema with Zod
+const transcribeInputSchema = z.object({
+  audio: filePathSchema.describe("Audio/video file to transcribe"),
+  provider: transcriptionProviderSchema
     .default("groq")
     .describe("Transcription provider"),
-  output: z.string().optional().describe("Output file path"),
+  output: filePathSchema.optional().describe("Output file path"),
 });
 
-export const transcribeOutputSchema = z.object({
+// Output schema with Zod
+const transcribeOutputSchema = z.object({
   success: z.boolean(),
   text: z.string().optional(),
   srt: z.string().optional(),
   error: z.string().optional(),
 });
 
-export type TranscribeInput = z.infer<typeof transcribeInputSchema>;
-export type TranscribeOutput = z.infer<typeof transcribeOutputSchema>;
-
-export const definition: ActionDefinition<
+// Schema object for the definition
+const schema: ZodSchema<
   typeof transcribeInputSchema,
   typeof transcribeOutputSchema
 > = {
+  input: transcribeInputSchema,
+  output: transcribeOutputSchema,
+};
+
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "transcribe",
   description: "Speech to text transcription",
-  inputSchema: transcribeInputSchema,
-  outputSchema: transcribeOutputSchema,
+  schema,
   routes: [],
   execute: async (inputs) => {
     const { audio, provider, output } = inputs;

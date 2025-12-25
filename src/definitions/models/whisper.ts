@@ -4,33 +4,31 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition } from "../../core/schema/types";
+import { filePathSchema } from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const whisperInputSchema = z.object({
-  file: z.string().describe("Audio file to transcribe"),
+// Input schema with Zod
+const whisperInputSchema = z.object({
+  file: filePathSchema.describe("Audio file to transcribe"),
   language: z.string().optional().describe("Language code (e.g., 'en', 'es')"),
   prompt: z
     .string()
     .optional()
     .describe("Optional prompt to guide transcription"),
-  temperature: z
-    .number()
-    .optional()
-    .default(0)
-    .describe("Sampling temperature"),
+  temperature: z.number().default(0).describe("Sampling temperature"),
 });
 
-export const whisperOutputSchema = z.object({
-  text: z.string(),
-});
+// Output schema with Zod
+const whisperOutputSchema = z.string().describe("Transcribed text");
 
-export type WhisperInput = z.infer<typeof whisperInputSchema>;
-export type WhisperOutput = z.infer<typeof whisperOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof whisperInputSchema, typeof whisperOutputSchema> =
+  {
+    input: whisperInputSchema,
+    output: whisperOutputSchema,
+  };
 
-export const definition: ModelDefinition<
-  typeof whisperInputSchema,
-  typeof whisperOutputSchema
-> = {
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "whisper",
   description: "OpenAI Whisper model for speech-to-text transcription",
@@ -40,8 +38,7 @@ export const definition: ModelDefinition<
     groq: "whisper-large-v3",
     fireworks: "whisper-v3-large",
   },
-  inputSchema: whisperInputSchema,
-  outputSchema: whisperOutputSchema,
+  schema,
 };
 
 export default definition;

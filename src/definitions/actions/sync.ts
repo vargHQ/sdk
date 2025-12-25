@@ -4,42 +4,40 @@
  */
 
 import { z } from "zod";
-import type { ActionDefinition } from "../../core/schema/types";
+import {
+  filePathSchema,
+  resolutionSchema,
+  videoDurationStringSchema,
+} from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { ffmpegProvider } from "../../providers/ffmpeg";
 
-export const syncInputSchema = z.object({
-  image: z.string().describe("Input image"),
-  audio: z.string().describe("Audio file"),
+// Input schema with Zod
+const syncInputSchema = z.object({
+  image: filePathSchema.describe("Input image"),
+  audio: filePathSchema.describe("Audio file"),
   prompt: z.string().describe("Description of the scene"),
-  duration: z
-    .enum(["5", "10"])
-    .optional()
-    .default("5")
-    .describe("Output duration"),
-  resolution: z
-    .enum(["480p", "720p", "1080p"])
-    .optional()
-    .default("480p")
-    .describe("Output resolution"),
+  duration: videoDurationStringSchema.default("5").describe("Output duration"),
+  resolution: resolutionSchema.default("480p").describe("Output resolution"),
 });
 
-export const syncOutputSchema = z.object({
+// Output schema with Zod
+const syncOutputSchema = z.object({
   videoUrl: z.string(),
 });
 
-export type SyncInput = z.infer<typeof syncInputSchema>;
-export type SyncOutput = z.infer<typeof syncOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof syncInputSchema, typeof syncOutputSchema> = {
+  input: syncInputSchema,
+  output: syncOutputSchema,
+};
 
-export const definition: ActionDefinition<
-  typeof syncInputSchema,
-  typeof syncOutputSchema
-> = {
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "sync",
   description: "Lip sync audio to video/image",
-  inputSchema: syncInputSchema,
-  outputSchema: syncOutputSchema,
+  schema,
   routes: [],
   execute: async (inputs) => {
     const { image, audio, prompt, duration, resolution } = inputs;

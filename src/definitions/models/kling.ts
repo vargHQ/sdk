@@ -4,34 +4,42 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition } from "../../core/schema/types";
+import {
+  aspectRatioSchema,
+  videoDurationSchema,
+} from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const klingInputSchema = z.object({
+// Input schema with Zod
+const klingInputSchema = z.object({
   prompt: z.string().describe("Text description of the video"),
-  image_url: z.string().optional().describe("Input image for image-to-video"),
-  duration: z
-    .union([z.literal(5), z.literal(10)])
+  image_url: z
+    .string()
+    .url()
     .optional()
+    .describe("Input image for image-to-video"),
+  duration: videoDurationSchema
     .default(5)
     .describe("Video duration in seconds"),
-  aspect_ratio: z
-    .enum(["16:9", "9:16", "1:1"])
-    .optional()
+  aspect_ratio: aspectRatioSchema
     .default("16:9")
     .describe("Output aspect ratio"),
 });
 
-export const klingOutputSchema = z.object({
-  video: z.object({ url: z.string() }),
+// Output schema with Zod
+const klingOutputSchema = z.object({
+  video: z.object({
+    url: z.string(),
+  }),
 });
 
-export type KlingInput = z.infer<typeof klingInputSchema>;
-export type KlingOutput = z.infer<typeof klingOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof klingInputSchema, typeof klingOutputSchema> = {
+  input: klingInputSchema,
+  output: klingOutputSchema,
+};
 
-export const definition: ModelDefinition<
-  typeof klingInputSchema,
-  typeof klingOutputSchema
-> = {
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "kling",
   description:
@@ -42,8 +50,7 @@ export const definition: ModelDefinition<
     fal: "fal-ai/kling-video/v2.5-turbo/pro",
     replicate: "fofr/kling-v1.5",
   },
-  inputSchema: klingInputSchema,
-  outputSchema: klingOutputSchema,
+  schema,
 };
 
 export default definition;

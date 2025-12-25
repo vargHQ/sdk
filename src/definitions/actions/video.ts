@@ -4,42 +4,46 @@
  */
 
 import { z } from "zod";
-import type { ActionDefinition } from "../../core/schema/types";
+import {
+  aspectRatioSchema,
+  filePathSchema,
+  videoDurationSchema,
+} from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { storageProvider } from "../../providers/storage";
 
-export const videoInputSchema = z.object({
+// Input schema with Zod
+const videoInputSchema = z.object({
   prompt: z.string().describe("What to generate"),
-  image: z.string().optional().describe("Input image (enables image-to-video)"),
-  duration: z
-    .union([z.literal(5), z.literal(10)])
+  image: filePathSchema
     .optional()
+    .describe("Input image (enables image-to-video)"),
+  duration: videoDurationSchema
     .default(5)
     .describe("Video duration in seconds"),
-  aspectRatio: z
-    .enum(["16:9", "9:16", "1:1"])
-    .optional()
+  aspectRatio: aspectRatioSchema
     .default("16:9")
     .describe("Aspect ratio for text-to-video"),
 });
 
-export const videoOutputSchema = z.object({
+// Output schema with Zod
+const videoOutputSchema = z.object({
   videoUrl: z.string(),
   duration: z.number().optional(),
 });
 
-export type VideoInput = z.infer<typeof videoInputSchema>;
-export type VideoOutput = z.infer<typeof videoOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof videoInputSchema, typeof videoOutputSchema> = {
+  input: videoInputSchema,
+  output: videoOutputSchema,
+};
 
-export const definition: ActionDefinition<
-  typeof videoInputSchema,
-  typeof videoOutputSchema
-> = {
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "video",
   description: "Generate video from text or image",
-  inputSchema: videoInputSchema,
-  outputSchema: videoOutputSchema,
+  schema,
   routes: [
     {
       target: "kling",
@@ -47,6 +51,7 @@ export const definition: ActionDefinition<
     },
   ],
   execute: async (inputs) => {
+    // inputs is now fully typed as VideoInput - no more `as` cast!
     const { prompt, image, duration, aspectRatio } = inputs;
 
     let result: { data?: { video?: { url?: string }; duration?: number } };

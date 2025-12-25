@@ -4,39 +4,41 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition } from "../../core/schema/types";
+import {
+  resolutionSchema,
+  videoDurationStringSchema,
+} from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const wanInputSchema = z.object({
+// Input schema with Zod
+const wanInputSchema = z.object({
   prompt: z.string().describe("Scene description"),
-  image_url: z.string().describe("Input image of the character"),
-  audio_url: z.string().describe("Audio file for lip sync"),
-  duration: z
-    .enum(["5", "10"])
-    .optional()
+  image_url: z.string().url().describe("Input image of the character"),
+  audio_url: z.string().url().describe("Audio file for lip sync"),
+  duration: videoDurationStringSchema
     .default("5")
     .describe("Video duration in seconds"),
-  resolution: z
-    .enum(["480p", "720p", "1080p"])
-    .optional()
-    .default("480p")
-    .describe("Output resolution"),
+  resolution: resolutionSchema.default("480p").describe("Output resolution"),
   negative_prompt: z
     .string()
     .optional()
     .describe("What to avoid in generation"),
 });
 
-export const wanOutputSchema = z.object({
-  video: z.object({ url: z.string() }),
+// Output schema with Zod
+const wanOutputSchema = z.object({
+  video: z.object({
+    url: z.string(),
+  }),
 });
 
-export type WanInput = z.infer<typeof wanInputSchema>;
-export type WanOutput = z.infer<typeof wanOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof wanInputSchema, typeof wanOutputSchema> = {
+  input: wanInputSchema,
+  output: wanOutputSchema,
+};
 
-export const definition: ModelDefinition<
-  typeof wanInputSchema,
-  typeof wanOutputSchema
-> = {
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "wan",
   description: "Wan-25 model for audio-driven video generation with lip sync",
@@ -46,8 +48,7 @@ export const definition: ModelDefinition<
     fal: "fal-ai/wan-25-preview/image-to-video",
     replicate: "wan-video/wan-2.5-i2v",
   },
-  inputSchema: wanInputSchema,
-  outputSchema: wanOutputSchema,
+  schema,
 };
 
 export default definition;

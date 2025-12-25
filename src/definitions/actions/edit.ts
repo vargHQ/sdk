@@ -4,31 +4,33 @@
  */
 
 import { z } from "zod";
-import type { ActionDefinition } from "../../core/schema/types";
+import { filePathSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { ffmpegProvider } from "../../providers/ffmpeg";
 
-// === TRIM ===
-export const trimInputSchema = z.object({
-  input: z.string().describe("Input video"),
-  output: z.string().describe("Output path"),
+// ============================================================================
+// Trim action
+// ============================================================================
+
+const trimInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
+  output: filePathSchema.describe("Output path"),
   start: z.number().describe("Start time in seconds"),
   duration: z.number().optional().describe("Duration in seconds"),
 });
 
-export const trimOutputSchema = z.string().describe("Trimmed video path");
+const trimOutputSchema = z.string().describe("Trimmed video path");
 
-export type TrimInput = z.infer<typeof trimInputSchema>;
-export type TrimOutput = z.infer<typeof trimOutputSchema>;
+const trimSchema: ZodSchema<typeof trimInputSchema, typeof trimOutputSchema> = {
+  input: trimInputSchema,
+  output: trimOutputSchema,
+};
 
-export const trimDefinition: ActionDefinition<
-  typeof trimInputSchema,
-  typeof trimOutputSchema
-> = {
+export const trimDefinition: ActionDefinition<typeof trimSchema> = {
   type: "action",
   name: "trim",
   description: "Trim video to specific time range",
-  inputSchema: trimInputSchema,
-  outputSchema: trimOutputSchema,
+  schema: trimSchema,
   routes: [],
   execute: async (inputs) => {
     const { input, output, start, duration } = inputs;
@@ -36,45 +38,42 @@ export const trimDefinition: ActionDefinition<
   },
 };
 
-// === CUT (alias for trim) ===
-export const cutInputSchema = trimInputSchema;
-export const cutOutputSchema = trimOutputSchema;
+// ============================================================================
+// Cut action (alias for trim)
+// ============================================================================
 
-export type CutInput = TrimInput;
-export type CutOutput = TrimOutput;
-
-export const cutDefinition: ActionDefinition<
-  typeof cutInputSchema,
-  typeof cutOutputSchema
-> = {
+export const cutDefinition: ActionDefinition<typeof trimSchema> = {
   type: "action",
   name: "cut",
   description: "Cut video at specific point",
-  inputSchema: cutInputSchema,
-  outputSchema: cutOutputSchema,
+  schema: trimSchema,
   routes: [{ target: "trim" }],
 };
 
-// === MERGE ===
-export const mergeInputSchema = z.object({
+// ============================================================================
+// Merge action
+// ============================================================================
+
+const mergeInputSchema = z.object({
   inputs: z.array(z.string()).describe("Input video paths"),
-  output: z.string().describe("Output path"),
+  output: filePathSchema.describe("Output path"),
 });
 
-export const mergeOutputSchema = z.string().describe("Merged video path");
+const mergeOutputSchema = z.string().describe("Merged video path");
 
-export type MergeInput = z.infer<typeof mergeInputSchema>;
-export type MergeOutput = z.infer<typeof mergeOutputSchema>;
-
-export const mergeDefinition: ActionDefinition<
+const mergeSchema: ZodSchema<
   typeof mergeInputSchema,
   typeof mergeOutputSchema
 > = {
+  input: mergeInputSchema,
+  output: mergeOutputSchema,
+};
+
+export const mergeDefinition: ActionDefinition<typeof mergeSchema> = {
   type: "action",
   name: "merge",
   description: "Merge multiple videos together",
-  inputSchema: mergeInputSchema,
-  outputSchema: mergeOutputSchema,
+  schema: mergeSchema,
   routes: [],
   execute: async (inputs) => {
     const { inputs: videoInputs, output } = inputs;
@@ -82,29 +81,32 @@ export const mergeDefinition: ActionDefinition<
   },
 };
 
-// === SPLIT ===
-export const splitInputSchema = z.object({
-  input: z.string().describe("Input video"),
+// ============================================================================
+// Split action
+// ============================================================================
+
+const splitInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
   timestamps: z.array(z.number()).describe("Split points in seconds"),
   outputPrefix: z.string().describe("Output filename prefix"),
 });
 
-export const splitOutputSchema = z
-  .array(z.string())
-  .describe("Output paths array");
+// Output is an array of output paths
+const splitOutputSchema = z.array(z.string());
 
-export type SplitInput = z.infer<typeof splitInputSchema>;
-export type SplitOutput = z.infer<typeof splitOutputSchema>;
-
-export const splitDefinition: ActionDefinition<
+const splitSchema: ZodSchema<
   typeof splitInputSchema,
   typeof splitOutputSchema
 > = {
+  input: splitInputSchema,
+  output: splitOutputSchema,
+};
+
+export const splitDefinition: ActionDefinition<typeof splitSchema> = {
   type: "action",
   name: "split",
   description: "Split video at timestamps",
-  inputSchema: splitInputSchema,
-  outputSchema: splitOutputSchema,
+  schema: splitSchema,
   routes: [],
   execute: async (inputs) => {
     const { input, timestamps, outputPrefix } = inputs;
@@ -116,28 +118,29 @@ export const splitDefinition: ActionDefinition<
   },
 };
 
-// === FADE ===
-export const fadeInputSchema = z.object({
-  input: z.string().describe("Input video"),
-  output: z.string().describe("Output path"),
+// ============================================================================
+// Fade action
+// ============================================================================
+
+const fadeInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
+  output: filePathSchema.describe("Output path"),
   type: z.enum(["in", "out", "both"]).describe("Fade type"),
   duration: z.number().describe("Fade duration in seconds"),
 });
 
-export const fadeOutputSchema = z.string().describe("Faded video path");
+const fadeOutputSchema = z.string().describe("Faded video path");
 
-export type FadeInput = z.infer<typeof fadeInputSchema>;
-export type FadeOutput = z.infer<typeof fadeOutputSchema>;
+const fadeSchema: ZodSchema<typeof fadeInputSchema, typeof fadeOutputSchema> = {
+  input: fadeInputSchema,
+  output: fadeOutputSchema,
+};
 
-export const fadeDefinition: ActionDefinition<
-  typeof fadeInputSchema,
-  typeof fadeOutputSchema
-> = {
+export const fadeDefinition: ActionDefinition<typeof fadeSchema> = {
   type: "action",
   name: "fade",
   description: "Apply fade in/out effects",
-  inputSchema: fadeInputSchema,
-  outputSchema: fadeOutputSchema,
+  schema: fadeSchema,
   routes: [],
   execute: async (inputs) => {
     const { input, output, type, duration } = inputs;
@@ -145,11 +148,14 @@ export const fadeDefinition: ActionDefinition<
   },
 };
 
-// === TRANSITION ===
-export const transitionInputSchema = z.object({
-  input1: z.string().describe("First video"),
-  input2: z.string().describe("Second video"),
-  output: z.string().describe("Output path"),
+// ============================================================================
+// Transition action
+// ============================================================================
+
+const transitionInputSchema = z.object({
+  input1: filePathSchema.describe("First video"),
+  input2: filePathSchema.describe("Second video"),
+  output: filePathSchema.describe("Output path"),
   transition: z
     .enum([
       "crossfade",
@@ -163,25 +169,25 @@ export const transitionInputSchema = z.object({
   duration: z.number().describe("Transition duration"),
   fit: z
     .enum(["pad", "crop", "blur", "stretch"])
-    .optional()
     .default("pad")
     .describe("How to handle different resolutions"),
 });
 
-export const transitionOutputSchema = z.string().describe("Output path");
+const transitionOutputSchema = z.string().describe("Output path");
 
-export type TransitionInput = z.infer<typeof transitionInputSchema>;
-export type TransitionOutput = z.infer<typeof transitionOutputSchema>;
-
-export const transitionDefinition: ActionDefinition<
+const transitionSchema: ZodSchema<
   typeof transitionInputSchema,
   typeof transitionOutputSchema
 > = {
+  input: transitionInputSchema,
+  output: transitionOutputSchema,
+};
+
+export const transitionDefinition: ActionDefinition<typeof transitionSchema> = {
   type: "action",
   name: "transition",
   description: "Apply transition between two videos",
-  inputSchema: transitionInputSchema,
-  outputSchema: transitionOutputSchema,
+  schema: transitionSchema,
   routes: [],
   execute: async (inputs) => {
     const { input1, input2, output, transition, duration, fit } = inputs;
@@ -196,34 +202,37 @@ export const transitionDefinition: ActionDefinition<
   },
 };
 
-// === REMOVE ===
-export const removeInputSchema = z.object({
-  input: z.string().describe("Input video"),
-  output: z.string().describe("Output path"),
+// ============================================================================
+// Remove (audio) action
+// ============================================================================
+
+const removeInputSchema = z.object({
+  input: filePathSchema.describe("Input video"),
+  output: filePathSchema.describe("Output path"),
   what: z
     .enum(["audio", "video"])
-    .optional()
     .default("audio")
     .describe("What to extract/remove"),
 });
 
-export const removeOutputSchema = z.string().describe("Output path");
+const removeOutputSchema = z.string().describe("Output path");
 
-export type RemoveInput = z.infer<typeof removeInputSchema>;
-export type RemoveOutput = z.infer<typeof removeOutputSchema>;
-
-export const removeDefinition: ActionDefinition<
+const removeSchema: ZodSchema<
   typeof removeInputSchema,
   typeof removeOutputSchema
 > = {
+  input: removeInputSchema,
+  output: removeOutputSchema,
+};
+
+export const removeDefinition: ActionDefinition<typeof removeSchema> = {
   type: "action",
   name: "remove",
   description: "Remove audio from video or extract audio",
-  inputSchema: removeInputSchema,
-  outputSchema: removeOutputSchema,
+  schema: removeSchema,
   routes: [],
   execute: async (inputs) => {
-    const { input, output, what = "audio" } = inputs;
+    const { input, output, what } = inputs;
 
     if (what === "audio") {
       return ffmpegProvider.extractAudio(input, output);
@@ -245,14 +254,44 @@ export const definitions = [
   removeDefinition,
 ];
 
-// Convenience exports (using Zod-inferred types)
-export const trim = (opts: TrimInput) => ffmpegProvider.trimVideo(opts);
+// Re-export types for backward compatibility
+export type TrimOptions = Parameters<typeof ffmpegProvider.trimVideo>[0];
+export type TrimResult = Awaited<ReturnType<typeof ffmpegProvider.trimVideo>>;
+export type CutOptions = TrimOptions;
+export type CutResult = TrimResult;
+export type MergeOptions = Parameters<typeof ffmpegProvider.concatVideos>[0];
+export type MergeResult = Awaited<
+  ReturnType<typeof ffmpegProvider.concatVideos>
+>;
+export type SplitOptions = Parameters<
+  typeof ffmpegProvider.splitAtTimestamps
+>[0];
+export type SplitResult = Awaited<
+  ReturnType<typeof ffmpegProvider.splitAtTimestamps>
+>;
+export type FadeOptions = Parameters<typeof ffmpegProvider.fadeVideo>[0];
+export type FadeResult = Awaited<ReturnType<typeof ffmpegProvider.fadeVideo>>;
+export type TransitionOptions = Parameters<
+  typeof ffmpegProvider.xfadeVideos
+>[0];
+export type TransitionResult = Awaited<
+  ReturnType<typeof ffmpegProvider.xfadeVideos>
+>;
+export type RemoveOptions = {
+  input: string;
+  output: string;
+  what?: "audio" | "video";
+};
+export type RemoveResult = string;
+
+// Convenience exports
+export const trim = (opts: TrimOptions) => ffmpegProvider.trimVideo(opts);
 export const cut = trim;
-export const merge = (opts: MergeInput) => ffmpegProvider.concatVideos(opts);
-export const split = (opts: SplitInput) =>
+export const merge = (opts: MergeOptions) => ffmpegProvider.concatVideos(opts);
+export const split = (opts: SplitOptions) =>
   ffmpegProvider.splitAtTimestamps(opts);
-export const fade = (opts: FadeInput) => ffmpegProvider.fadeVideo(opts);
-export const transition = (opts: TransitionInput) =>
+export const fade = (opts: FadeOptions) => ffmpegProvider.fadeVideo(opts);
+export const transition = (opts: TransitionOptions) =>
   ffmpegProvider.xfadeVideos(opts);
 export const remove = removeDefinition.execute;
 

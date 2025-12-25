@@ -220,7 +220,18 @@ export class FalProvider extends BaseProvider {
       input: {
         prompt: args.prompt,
         image_urls: [imageUrl],
-        aspect_ratio: args.aspectRatio || "auto",
+        aspect_ratio: (args.aspectRatio || "auto") as
+          | "16:9"
+          | "9:16"
+          | "1:1"
+          | "auto"
+          | "21:9"
+          | "3:2"
+          | "4:3"
+          | "5:4"
+          | "4:5"
+          | "3:4"
+          | "2:3",
         resolution: "2K",
       },
       logs: true,

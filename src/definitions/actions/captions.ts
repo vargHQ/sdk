@@ -5,35 +5,36 @@
 
 import { writeFileSync } from "node:fs";
 import { z } from "zod";
-import type { ActionDefinition } from "../../core/schema/types";
+import { captionStyleSchema, filePathSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { ffmpegProvider } from "../../providers/ffmpeg";
 import { transcribe } from "./transcribe";
 
-export const captionsInputSchema = z.object({
-  video: z.string().describe("Input video"),
-  output: z.string().describe("Output path"),
-  srt: z.string().optional().describe("SRT file (optional)"),
-  style: z
-    .enum(["default", "tiktok", "youtube"])
-    .optional()
-    .default("default")
-    .describe("Caption style"),
+// Input schema with Zod
+const captionsInputSchema = z.object({
+  video: filePathSchema.describe("Input video"),
+  output: filePathSchema.describe("Output path"),
+  srt: filePathSchema.optional().describe("SRT file (optional)"),
+  style: captionStyleSchema.default("default").describe("Caption style"),
 });
 
-export const captionsOutputSchema = z.string().describe("Captioned video path");
+// Output schema with Zod - returns the output path
+const captionsOutputSchema = z.string().describe("Captioned video path");
 
-export type CaptionsInput = z.infer<typeof captionsInputSchema>;
-export type CaptionsOutput = z.infer<typeof captionsOutputSchema>;
-
-export const definition: ActionDefinition<
+// Schema object for the definition
+const schema: ZodSchema<
   typeof captionsInputSchema,
   typeof captionsOutputSchema
 > = {
+  input: captionsInputSchema,
+  output: captionsOutputSchema,
+};
+
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "captions",
   description: "Add captions/subtitles to video",
-  inputSchema: captionsInputSchema,
-  outputSchema: captionsOutputSchema,
+  schema,
   routes: [],
   execute: async (inputs) => {
     const { video, output, srt, style } = inputs;
@@ -153,7 +154,7 @@ export async function addCaptions(
   await convertSrtToAss(srtFile, assFile, styleConfig);
 
   // Burn subtitles into video using ffmpeg
-  // This is a simplified implementation - full implementation would use ffmpegProvider
+  // This is a simplified implementation - full implementation would use subtitles filter
   console.log(`[captions] burning subtitles...`);
 
   // For now, just copy the video (proper implementation would use subtitles filter)

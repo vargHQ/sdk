@@ -4,52 +4,46 @@
  */
 
 import { z } from "zod";
-import type { SkillDefinition } from "../../core/schema/types";
+import {
+  captionStyleSchema,
+  simpleVoiceSchema,
+  videoDurationSchema,
+} from "../../core/schema/shared";
+import type { SkillDefinition, ZodSchema } from "../../core/schema/types";
 
-export const talkingCharacterInputSchema = z.object({
+// Input schema with Zod
+const talkingCharacterInputSchema = z.object({
   text: z.string().describe("Script/text for the character to say"),
   characterPrompt: z
     .string()
-    .optional()
     .default("professional headshot of a friendly person, studio lighting")
     .describe("Prompt to generate the character"),
-  voice: z
-    .enum(["rachel", "sam", "adam", "josh"])
-    .optional()
-    .default("sam")
-    .describe("Voice to use for speech"),
-  duration: z
-    .union([z.literal(5), z.literal(10)])
-    .optional()
-    .default(5)
-    .describe("Video duration"),
-  style: z
-    .enum(["default", "tiktok", "youtube"])
-    .optional()
-    .default("tiktok")
-    .describe("Caption style"),
+  voice: simpleVoiceSchema.default("sam").describe("Voice to use for speech"),
+  duration: videoDurationSchema.default(5).describe("Video duration"),
+  style: captionStyleSchema.default("tiktok").describe("Caption style"),
 });
 
-export const talkingCharacterOutputSchema = z.object({
-  videoUrl: z
-    .string()
-    .describe("Final video URL with character, voice, and captions"),
+// Output schema with Zod
+const talkingCharacterOutputSchema = z.object({
+  videoUrl: z.string(),
+  characterImageUrl: z.string().optional(),
+  audioPath: z.string().optional(),
 });
 
-export type TalkingCharacterInput = z.infer<typeof talkingCharacterInputSchema>;
-export type TalkingCharacterOutput = z.infer<
-  typeof talkingCharacterOutputSchema
->;
-
-export const definition: SkillDefinition<
+// Schema object for the definition
+const schema: ZodSchema<
   typeof talkingCharacterInputSchema,
   typeof talkingCharacterOutputSchema
 > = {
+  input: talkingCharacterInputSchema,
+  output: talkingCharacterOutputSchema,
+};
+
+export const definition: SkillDefinition<typeof schema> = {
   type: "skill",
   name: "talking-character",
   description: "Create a talking character video with lipsync and captions",
-  inputSchema: talkingCharacterInputSchema,
-  outputSchema: talkingCharacterOutputSchema,
+  schema,
   steps: [
     {
       name: "generate-character",

@@ -4,45 +4,47 @@
  */
 
 import { z } from "zod";
-import type { SkillDefinition } from "../../core/schema/types";
+import {
+  captionStyleSchema,
+  simpleVoiceSchema,
+} from "../../core/schema/shared";
+import type { SkillDefinition, ZodSchema } from "../../core/schema/types";
 
-export const textToTiktokInputSchema = z.object({
+// Input schema with Zod
+const textToTiktokInputSchema = z.object({
   text: z.string().describe("Text content to convert to video"),
-  voice: z
-    .enum(["sam", "adam", "josh", "rachel"])
-    .optional()
-    .default("sam")
-    .describe("Voice for narration"),
+  voice: simpleVoiceSchema.default("sam").describe("Voice for narration"),
   backgroundPrompt: z
     .string()
-    .optional()
     .default(
       "POV from inside moving car driving through rainy city at night, motion blur on streetlights, cinematic",
     )
     .describe("Prompt for background video"),
-  captionStyle: z
-    .enum(["default", "tiktok", "youtube"])
-    .optional()
-    .default("tiktok")
-    .describe("Caption style"),
+  captionStyle: captionStyleSchema.default("tiktok").describe("Caption style"),
 });
 
-export const textToTiktokOutputSchema = z.object({
-  videoUrl: z.string().describe("Final TikTok video URL"),
+// Output schema with Zod
+const textToTiktokOutputSchema = z.object({
+  videoUrl: z.string(),
+  voiceoverPath: z.string().optional(),
+  captionsPath: z.string().optional(),
+  backgroundVideoUrl: z.string().optional(),
 });
 
-export type TextToTiktokInput = z.infer<typeof textToTiktokInputSchema>;
-export type TextToTiktokOutput = z.infer<typeof textToTiktokOutputSchema>;
-
-export const definition: SkillDefinition<
+// Schema object for the definition
+const schema: ZodSchema<
   typeof textToTiktokInputSchema,
   typeof textToTiktokOutputSchema
 > = {
+  input: textToTiktokInputSchema,
+  output: textToTiktokOutputSchema,
+};
+
+export const definition: SkillDefinition<typeof schema> = {
   type: "skill",
   name: "text-to-tiktok",
   description: "Turn text into a TikTok with looping background and voiceover",
-  inputSchema: textToTiktokInputSchema,
-  outputSchema: textToTiktokOutputSchema,
+  schema,
   steps: [
     {
       name: "generate-voiceover",

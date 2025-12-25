@@ -4,43 +4,37 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition } from "../../core/schema/types";
+import { elevenLabsModelSchema, percentSchema } from "../../core/schema/shared";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-export const elevenlabsInputSchema = z.object({
+// Input schema with Zod
+const elevenlabsInputSchema = z.object({
   text: z.string().describe("Text to convert to speech"),
   voice_id: z.string().optional().describe("Voice ID to use"),
-  model_id: z
-    .enum([
-      "eleven_multilingual_v2",
-      "eleven_monolingual_v1",
-      "eleven_turbo_v2",
-    ])
-    .optional()
+  model_id: elevenLabsModelSchema
     .default("eleven_multilingual_v2")
     .describe("TTS model to use"),
-  stability: z
-    .number()
-    .optional()
-    .default(0.5)
-    .describe("Voice stability (0-1)"),
-  similarity_boost: z
-    .number()
-    .optional()
+  stability: percentSchema.default(0.5).describe("Voice stability (0-1)"),
+  similarity_boost: percentSchema
     .default(0.75)
     .describe("Voice similarity boost (0-1)"),
 });
 
-export const elevenlabsOutputSchema = z.object({
-  audio: z.instanceof(ArrayBuffer),
+// Output schema with Zod
+const elevenlabsOutputSchema = z.object({
+  audio: z.instanceof(Buffer),
 });
 
-export type ElevenlabsInput = z.infer<typeof elevenlabsInputSchema>;
-export type ElevenlabsOutput = z.infer<typeof elevenlabsOutputSchema>;
-
-export const definition: ModelDefinition<
+// Schema object for the definition
+const schema: ZodSchema<
   typeof elevenlabsInputSchema,
   typeof elevenlabsOutputSchema
 > = {
+  input: elevenlabsInputSchema,
+  output: elevenlabsOutputSchema,
+};
+
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "elevenlabs-tts",
   description:
@@ -50,8 +44,7 @@ export const definition: ModelDefinition<
   providerModels: {
     elevenlabs: "eleven_multilingual_v2",
   },
-  inputSchema: elevenlabsInputSchema,
-  outputSchema: elevenlabsOutputSchema,
+  schema,
 };
 
 export default definition;

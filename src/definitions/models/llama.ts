@@ -4,55 +4,42 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition } from "../../core/schema/types";
+import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 
-const messageSchema = z.object({
+// Llama model variants schema
+const llamaModelSchema = z.enum([
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "llama-3.1-70b-versatile",
+]);
+
+// Chat message schema
+const chatMessageSchema = z.object({
   role: z.enum(["system", "user", "assistant"]),
   content: z.string(),
 });
 
-export const llamaInputSchema = z.object({
-  messages: z.array(messageSchema).describe("Chat messages array"),
-  model: z
-    .enum([
-      "llama-3.3-70b-versatile",
-      "llama-3.1-8b-instant",
-      "llama-3.1-70b-versatile",
-    ])
-    .optional()
+// Input schema with Zod
+const llamaInputSchema = z.object({
+  messages: z.array(chatMessageSchema).describe("Chat messages array"),
+  model: llamaModelSchema
     .default("llama-3.3-70b-versatile")
     .describe("Llama model variant"),
-  temperature: z
-    .number()
-    .optional()
-    .default(1)
-    .describe("Sampling temperature"),
-  max_tokens: z
-    .number()
-    .int()
-    .optional()
-    .default(1024)
-    .describe("Maximum output tokens"),
-  stream: z.boolean().optional().default(false).describe("Stream response"),
+  temperature: z.number().default(1).describe("Sampling temperature"),
+  max_tokens: z.number().int().default(1024).describe("Maximum output tokens"),
+  stream: z.boolean().default(false).describe("Stream response"),
 });
 
-export const llamaOutputSchema = z.object({
-  choices: z.array(
-    z.object({
-      message: z.object({
-        content: z.string(),
-      }),
-    }),
-  ),
-});
+// Output schema with Zod
+const llamaOutputSchema = z.string().describe("Generated text response");
 
-export type LlamaInput = z.infer<typeof llamaInputSchema>;
-export type LlamaOutput = z.infer<typeof llamaOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof llamaInputSchema, typeof llamaOutputSchema> = {
+  input: llamaInputSchema,
+  output: llamaOutputSchema,
+};
 
-export const definition: ModelDefinition<
-  typeof llamaInputSchema,
-  typeof llamaOutputSchema
-> = {
+export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "llama",
   description: "Meta Llama model for fast text generation via Groq",
@@ -61,8 +48,7 @@ export const definition: ModelDefinition<
   providerModels: {
     groq: "llama-3.3-70b-versatile",
   },
-  inputSchema: llamaInputSchema,
-  outputSchema: llamaOutputSchema,
+  schema,
 };
 
 export default definition;

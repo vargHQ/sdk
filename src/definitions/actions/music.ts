@@ -5,31 +5,29 @@
 
 import { writeFile } from "node:fs/promises";
 import { z } from "zod";
-import type { ActionDefinition } from "../../core/schema/types";
+import { audioFormatSchema, filePathSchema } from "../../core/schema/shared";
+import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { storageProvider } from "../../providers/storage";
 
-export const musicInputSchema = z.object({
+// Input schema with Zod
+const musicInputSchema = z.object({
   prompt: z.string().optional().describe("Description of music to generate"),
   tags: z
     .array(z.string())
     .optional()
     .describe("Style tags like 'rock', 'energetic'"),
   lyrics: z.string().optional().describe("Optional lyrics prompt"),
-  format: z
-    .enum(["mp3", "wav", "flac", "ogg", "m4a"])
-    .optional()
-    .default("mp3")
-    .describe("Output format"),
+  format: audioFormatSchema.default("mp3").describe("Output format"),
   numSongs: z
     .union([z.literal(1), z.literal(2)])
-    .optional()
     .default(1)
     .describe("Number of songs to generate"),
-  output: z.string().optional().describe("Output file path"),
+  output: filePathSchema.optional().describe("Output file path"),
 });
 
-export const musicOutputSchema = z.object({
+// Output schema with Zod
+const musicOutputSchema = z.object({
   seed: z.number(),
   tags: z.array(z.string()).optional(),
   lyrics: z.string().optional(),
@@ -44,18 +42,17 @@ export const musicOutputSchema = z.object({
   uploadUrls: z.array(z.string()).optional(),
 });
 
-export type MusicInput = z.infer<typeof musicInputSchema>;
-export type MusicOutput = z.infer<typeof musicOutputSchema>;
+// Schema object for the definition
+const schema: ZodSchema<typeof musicInputSchema, typeof musicOutputSchema> = {
+  input: musicInputSchema,
+  output: musicOutputSchema,
+};
 
-export const definition: ActionDefinition<
-  typeof musicInputSchema,
-  typeof musicOutputSchema
-> = {
+export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "music",
   description: "Generate music from text prompt or tags",
-  inputSchema: musicInputSchema,
-  outputSchema: musicOutputSchema,
+  schema,
   routes: [],
   execute: async (inputs) => {
     return generateMusic({
