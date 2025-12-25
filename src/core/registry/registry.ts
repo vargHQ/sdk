@@ -30,15 +30,12 @@ export class Registry {
     switch (definition.type) {
       case "model":
         this.models.set(definition.name, definition);
-        console.log(`[registry] registered model: ${definition.name}`);
         break;
       case "action":
         this.actions.set(definition.name, definition);
-        console.log(`[registry] registered action: ${definition.name}`);
         break;
       case "skill":
         this.skills.set(definition.name, definition);
-        console.log(`[registry] registered skill: ${definition.name}`);
         break;
     }
   }

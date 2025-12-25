@@ -4,7 +4,7 @@
  */
 
 import { Box, Text } from "ink";
-import { theme } from "../theme.ts";
+import { VargText } from "./VargText.tsx";
 
 interface HelpBlockProps {
   usage?: string;
@@ -16,17 +16,23 @@ export function HelpBlock({ usage, examples }: HelpBlockProps) {
     <Box flexDirection="column">
       {usage && (
         <Box marginBottom={1}>
-          <Text dimColor>usage: </Text>
-          <Text color={theme.colors.accent}>{usage}</Text>
+          <VargText variant="muted">usage: </VargText>
+          <VargText variant="accent">{usage}</VargText>
         </Box>
       )}
 
       {examples && examples.length > 0 && (
         <Box flexDirection="column">
           {examples.map((ex) => (
-            <Box key={ex.command} paddingLeft={2}>
-              <Text color={theme.colors.accent}>{ex.command}</Text>
-              {ex.description && <Text dimColor> {ex.description}</Text>}
+            <Box key={ex.command} flexDirection="column" marginBottom={1}>
+              {ex.description && (
+                <Box paddingLeft={2}>
+                  <Text dimColor># {ex.description}</Text>
+                </Box>
+              )}
+              <Box paddingLeft={2}>
+                <VargText variant="accent">{ex.command}</VargText>
+              </Box>
             </Box>
           ))}
         </Box>

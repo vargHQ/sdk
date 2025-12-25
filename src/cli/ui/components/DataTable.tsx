@@ -4,7 +4,8 @@
  */
 
 import { Box, Text } from "ink";
-import { theme } from "../theme.ts";
+import { Badge } from "./Badge.tsx";
+import { VargText } from "./VargText.tsx";
 
 interface TableRow {
   name: string;
@@ -17,17 +18,11 @@ interface DataTableProps {
   showType?: boolean;
 }
 
-const typeColors: Record<string, string> = {
-  model: theme.colors.accent,
-  action: theme.colors.success,
-  skill: theme.colors.warning,
-};
-
 export function DataTable({ rows, showType = false }: DataTableProps) {
   if (rows.length === 0) {
     return (
       <Box paddingLeft={2}>
-        <Text dimColor>no items</Text>
+        <VargText variant="muted">no items</VargText>
       </Box>
     );
   }
@@ -39,15 +34,14 @@ export function DataTable({ rows, showType = false }: DataTableProps) {
     <Box flexDirection="column">
       {rows.map((row) => (
         <Box key={row.name} paddingLeft={2}>
-          <Text>
-            {showType && row.type && (
-              <Text color={typeColors[row.type]} dimColor>
-                [{row.type}]{" "}
-              </Text>
-            )}
-            <Text bold>{row.name.padEnd(maxNameWidth)}</Text>
-            <Text dimColor> {row.description}</Text>
-          </Text>
+          {showType && row.type && (
+            <>
+              <Badge type={row.type} />
+              <Text> </Text>
+            </>
+          )}
+          <Text bold>{row.name.padEnd(maxNameWidth)}</Text>
+          <VargText variant="muted"> {row.description}</VargText>
         </Box>
       ))}
     </Box>

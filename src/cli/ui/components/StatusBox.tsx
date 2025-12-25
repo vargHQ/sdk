@@ -7,7 +7,9 @@ import { Box, Text } from "ink";
 import { icons, theme } from "../theme.ts";
 import KeyValue from "./KeyValue.tsx";
 import VargBox from "./VargBox.tsx";
+import { VargProgress } from "./VargProgress.tsx";
 import VargSpinner from "./VargSpinner.tsx";
+import { VargText } from "./VargText.tsx";
 
 type Status = "running" | "done" | "error";
 
@@ -18,6 +20,7 @@ interface StatusBoxProps {
   output?: string;
   error?: string;
   duration?: number;
+  progress?: number; // 0-100, shows progress bar when provided
 }
 
 const statusConfig: Record<
@@ -47,6 +50,7 @@ export function StatusBox({
   output,
   error,
   duration,
+  progress,
 }: StatusBoxProps) {
   const config = statusConfig[status];
 
@@ -62,6 +66,13 @@ export function StatusBox({
           </Text>
         )}
       </Box>
+
+      {/* Progress bar (when provided) */}
+      {progress !== undefined && status === "running" && (
+        <Box marginBottom={1}>
+          <VargProgress value={progress} label="processing" />
+        </Box>
+      )}
 
       {/* Parameters */}
       {params && Object.keys(params).length > 0 && (
@@ -82,7 +93,7 @@ export function StatusBox({
       {/* Error */}
       {error && (
         <Box marginTop={1}>
-          <Text color={theme.colors.error}>error: {error}</Text>
+          <VargText variant="error">error: {error}</VargText>
         </Box>
       )}
 

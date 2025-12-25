@@ -5,9 +5,8 @@
 
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";
-import { Header, VargBox } from "../ui/index.ts";
+import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
-import { theme } from "../ui/theme.ts";
 
 interface CommandRowProps {
   name: string;
@@ -17,31 +16,33 @@ interface CommandRowProps {
 function CommandRow({ name, description }: CommandRowProps) {
   return (
     <Box paddingLeft={2}>
-      <Text color={theme.colors.accent}>{name.padEnd(12)}</Text>
+      <VargText variant="accent">{name.padEnd(12)}</VargText>
       <Text>{description}</Text>
     </Box>
   );
 }
 
-interface ExampleBlockProps {
-  comment: string;
-  command: string;
-}
-
-function ExampleBlock({ comment, command }: ExampleBlockProps) {
-  return (
-    <Box flexDirection="column" marginBottom={1}>
-      <Box paddingLeft={2}>
-        <Text dimColor># {comment}</Text>
-      </Box>
-      <Box paddingLeft={2}>
-        <Text>{command}</Text>
-      </Box>
-    </Box>
-  );
-}
-
 function HelpView() {
+  const examples = [
+    {
+      command: 'varg run video --prompt "ocean waves"',
+      description: "generate a video from text",
+    },
+    {
+      command: 'varg run video --prompt "person talking" --image photo.jpg',
+      description: "generate video from image",
+    },
+    {
+      command: 'varg run voice --text "hello world" --voice sam',
+      description: "text to speech",
+    },
+    { command: "varg list", description: "see all available" },
+    {
+      command: "varg which video",
+      description: "inspect an action or model",
+    },
+  ];
+
   return (
     <VargBox title="varg">
       <Box marginBottom={1}>
@@ -61,27 +62,16 @@ function HelpView() {
       </Box>
 
       <Header>EXAMPLES</Header>
-      <Box flexDirection="column" marginTop={1}>
-        <ExampleBlock
-          comment="generate a video from text"
-          command='varg run video --prompt "ocean waves"'
-        />
-        <ExampleBlock
-          comment="generate video from image"
-          command='varg run video --prompt "person talking" --image photo.jpg'
-        />
-        <ExampleBlock
-          comment="text to speech"
-          command='varg run voice --text "hello world" --voice sam'
-        />
-        <ExampleBlock comment="see all available actions" command="varg list" />
-        <ExampleBlock
-          comment="get detailed info about an action"
-          command="varg run video --info"
-        />
+      <Box marginTop={1}>
+        <HelpBlock examples={examples} />
       </Box>
     </VargBox>
   );
+}
+
+/** Render help view - can be called directly */
+export function showHelp() {
+  renderStatic(<HelpView />);
 }
 
 export const helpCmd = defineCommand({
@@ -90,6 +80,6 @@ export const helpCmd = defineCommand({
     description: "show help",
   },
   async run() {
-    renderStatic(<HelpView />);
+    showHelp();
   },
 });

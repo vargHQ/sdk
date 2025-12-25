@@ -10,13 +10,13 @@ import { executor } from "../../core/executor/index.ts";
 import { resolve } from "../../core/registry/resolver.ts";
 import { getCliSchemaInfo, toJsonSchema } from "../../core/schema/helpers.ts";
 import type { Definition } from "../../core/schema/types.ts";
-import { Header, StatusBox, VargBox } from "../ui/index.ts";
+import { Header, StatusBox, VargBox, VargText } from "../ui/index.ts";
 import { renderLive, renderStatic } from "../ui/render.ts";
 import { theme } from "../ui/theme.ts";
 
 interface RunOptions {
   [key: string]: string | boolean | undefined;
-  info?: boolean;
+  help?: boolean;
   schema?: boolean;
   json?: boolean;
   quiet?: boolean;
@@ -31,9 +31,11 @@ function parseArgs(args: string[]): { target: string; options: RunOptions } {
     const arg = args[i];
     if (!arg) continue;
 
-    if (arg.startsWith("--")) {
+    if (arg === "--help" || arg === "-h") {
+      options.help = true;
+    } else if (arg.startsWith("--")) {
       const key = arg.slice(2);
-      if (["info", "schema", "json", "quiet"].includes(key)) {
+      if (["schema", "json", "quiet"].includes(key)) {
         options[key] = true;
       } else {
         const value = args[++i];
@@ -72,9 +74,9 @@ function HelpView({ item }: HelpViewProps) {
 
       <Header>USAGE</Header>
       <Box paddingLeft={2} marginBottom={1}>
-        <Text color={theme.colors.accent}>
+        <VargText variant="accent">
           varg run {item.name} {reqArgs} [options]
-        </Text>
+        </VargText>
       </Box>
 
       <Header>OPTIONS</Header>
@@ -108,7 +110,7 @@ function HelpView({ item }: HelpViewProps) {
       <Box flexDirection="column" paddingLeft={2}>
         <Text>--json output result as json</Text>
         <Text>--quiet minimal output</Text>
-        <Text>--info show this help</Text>
+        <Text>--help, -h show this help</Text>
       </Box>
     </VargBox>
   );
@@ -117,16 +119,74 @@ function HelpView({ item }: HelpViewProps) {
 function ErrorView({ message, hint }: { message: string; hint?: string }) {
   return (
     <Box flexDirection="column" padding={1}>
-      <Text color={theme.colors.error}>error: {message}</Text>
+      <VargText variant="error">error: {message}</VargText>
       {hint && (
         <Box marginTop={1}>
-          <Text dimColor>run </Text>
-          <Text color={theme.colors.accent}>{hint}</Text>
-          <Text dimColor> for help</Text>
+          <VargText variant="muted">run </VargText>
+          <VargText variant="accent">{hint}</VargText>
+          <VargText variant="muted"> for help</VargText>
         </Box>
       )}
     </Box>
   );
+}
+
+/** Help view for run command without target */
+function RunHelpView() {
+  return (
+    <VargBox title="varg run">
+      <Box marginBottom={1}>
+        <Text>run a model, action, or skill</Text>
+      </Box>
+
+      <Header>USAGE</Header>
+      <Box paddingLeft={2} marginBottom={1}>
+        <VargText variant="accent">varg run {"<target>"} [--options]</VargText>
+      </Box>
+
+      <Header>OPTIONS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <Text>--json output result as json</Text>
+        <Text>--quiet minimal output</Text>
+        <Text>--schema show target schema as json</Text>
+        <Text>--provider override default provider (models only)</Text>
+        <Text>--help, -h show this help</Text>
+      </Box>
+
+      <Header>EXAMPLES</Header>
+      <Box flexDirection="column" paddingLeft={2}>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text dimColor># generate a video from text</Text>
+          <VargText variant="accent">
+            varg run video --prompt "ocean waves"
+          </VargText>
+        </Box>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text dimColor># get help for a specific target</Text>
+          <VargText variant="accent">varg run video --help</VargText>
+        </Box>
+        <Box flexDirection="column">
+          <Text dimColor># see available targets</Text>
+          <VargText variant="accent">varg list</VargText>
+        </Box>
+      </Box>
+    </VargBox>
+  );
+}
+
+/** Show run command help */
+export function showRunHelp() {
+  renderStatic(<RunHelpView />);
+}
+
+/** Show target-specific help */
+export function showTargetHelp(target: string): boolean {
+  const result = resolve(target, { fuzzy: true });
+  if (result.definition) {
+    renderStatic(<HelpView item={result.definition} />);
+    return true;
+  }
+  return false;
 }
 
 export const runCmd = defineCommand({
@@ -140,7 +200,6 @@ export const runCmd = defineCommand({
       description: "what to run",
       required: false,
     },
-    info: { type: "boolean", description: "show info" },
     schema: { type: "boolean", description: "show schema as json" },
     json: { type: "boolean", description: "output result as json" },
     quiet: { type: "boolean", description: "minimal output" },
@@ -148,9 +207,10 @@ export const runCmd = defineCommand({
   async run({ rawArgs }) {
     const { target, options } = parseArgs(rawArgs);
 
-    if (!target) {
-      renderStatic(<ErrorView message="target required" hint="varg list" />);
-      process.exit(1);
+    // Show run help when no target or --help without target
+    if (!target || (options.help && !target)) {
+      showRunHelp();
+      return;
     }
 
     // Resolve the target
@@ -159,7 +219,7 @@ export const runCmd = defineCommand({
     if (!result.definition) {
       renderStatic(
         <Box flexDirection="column" padding={1}>
-          <Text color={theme.colors.error}>error: '{target}' not found</Text>
+          <VargText variant="error">error: '{target}' not found</VargText>
           {result.suggestions && result.suggestions.length > 0 && (
             <Box marginTop={1}>
               <Text>
@@ -168,9 +228,9 @@ export const runCmd = defineCommand({
             </Box>
           )}
           <Box marginTop={1}>
-            <Text dimColor>run </Text>
-            <Text color={theme.colors.accent}>varg list</Text>
-            <Text dimColor> to see available targets</Text>
+            <VargText variant="muted">run </VargText>
+            <VargText variant="accent">varg list</VargText>
+            <VargText variant="muted"> to see available targets</VargText>
           </Box>
         </Box>,
       );
@@ -179,7 +239,8 @@ export const runCmd = defineCommand({
 
     const item = result.definition;
 
-    if (options.info) {
+    // Show target-specific help
+    if (options.help) {
       renderStatic(<HelpView item={item} />);
       return;
     }
@@ -205,7 +266,7 @@ export const runCmd = defineCommand({
         renderStatic(
           <ErrorView
             message={`--${req} is required`}
-            hint={`varg run ${target} --info`}
+            hint={`varg run ${target} --help`}
           />,
         );
         process.exit(1);

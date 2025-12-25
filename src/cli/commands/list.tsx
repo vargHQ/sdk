@@ -6,9 +6,14 @@
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";
 import { registry } from "../../core/registry/index.ts";
-import { DataTable, Header, Separator, VargBox } from "../ui/index.ts";
+import {
+  DataTable,
+  Header,
+  Separator,
+  VargBox,
+  VargText,
+} from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
-import { theme } from "../ui/theme.ts";
 
 interface ListViewProps {
   filterType?: "model" | "action" | "skill";
@@ -39,7 +44,7 @@ function ListView({ filterType }: ListViewProps) {
               />
             ) : (
               <Box paddingLeft={2}>
-                <Text dimColor>no models registered</Text>
+                <VargText variant="muted">no models registered</VargText>
               </Box>
             )}
           </Box>
@@ -61,7 +66,7 @@ function ListView({ filterType }: ListViewProps) {
               />
             ) : (
               <Box paddingLeft={2}>
-                <Text dimColor>no actions registered</Text>
+                <VargText variant="muted">no actions registered</VargText>
               </Box>
             )}
           </Box>
@@ -83,7 +88,7 @@ function ListView({ filterType }: ListViewProps) {
               />
             ) : (
               <Box paddingLeft={2}>
-                <Text dimColor>no skills registered</Text>
+                <VargText variant="muted">no skills registered</VargText>
               </Box>
             )}
           </Box>
@@ -99,12 +104,54 @@ function ListView({ filterType }: ListViewProps) {
         </Text>
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>run </Text>
-        <Text color={theme.colors.accent}>varg run {"<name>"} --info</Text>
-        <Text dimColor> for details</Text>
+        <VargText variant="muted">run </VargText>
+        <VargText variant="accent">varg which {"<name>"}</VargText>
+        <VargText variant="muted"> for details</VargText>
       </Box>
     </VargBox>
   );
+}
+
+/** Help view for list command */
+function ListHelpView() {
+  return (
+    <VargBox title="varg list">
+      <Box marginBottom={1}>
+        <Text>discover what's available</Text>
+      </Box>
+
+      <Header>USAGE</Header>
+      <Box paddingLeft={2} marginBottom={1}>
+        <VargText variant="accent">varg list [type]</VargText>
+      </Box>
+
+      <Header>ARGUMENTS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <Text>type filter by type: model, action, skill</Text>
+      </Box>
+
+      <Header>EXAMPLES</Header>
+      <Box flexDirection="column" paddingLeft={2}>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text dimColor># list everything</Text>
+          <VargText variant="accent">varg list</VargText>
+        </Box>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text dimColor># list only models</Text>
+          <VargText variant="accent">varg list model</VargText>
+        </Box>
+        <Box flexDirection="column">
+          <Text dimColor># list only actions</Text>
+          <VargText variant="accent">varg list action</VargText>
+        </Box>
+      </Box>
+    </VargBox>
+  );
+}
+
+/** Show list command help */
+export function showListHelp() {
+  renderStatic(<ListHelpView />);
 }
 
 export const listCmd = defineCommand({
@@ -119,7 +166,13 @@ export const listCmd = defineCommand({
       required: false,
     },
   },
-  async run({ args }) {
+  async run({ args, rawArgs }) {
+    // Handle --help
+    if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
+      showListHelp();
+      return;
+    }
+
     const filterType = args.type as "model" | "action" | "skill" | undefined;
     renderStatic(<ListView filterType={filterType} />);
   },

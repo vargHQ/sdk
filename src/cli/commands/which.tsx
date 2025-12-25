@@ -13,7 +13,7 @@ import type {
   ModelDefinition,
   SkillDefinition,
 } from "../../core/schema/types.ts";
-import { Header, Separator, VargBox } from "../ui/index.ts";
+import { Badge, Header, Separator, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
 import { theme } from "../ui/theme.ts";
 
@@ -72,7 +72,7 @@ function WhichView({ item }: WhichViewProps) {
 
       <Header>TYPE</Header>
       <Box paddingLeft={2} marginBottom={1}>
-        <Text>{item.type}</Text>
+        <Badge type={item.type} />
       </Box>
 
       {/* Providers for models */}
@@ -148,7 +148,7 @@ function NotFoundView({
 }) {
   return (
     <Box flexDirection="column" padding={1}>
-      <Text color={theme.colors.error}>not found: '{name}'</Text>
+      <VargText variant="error">not found: '{name}'</VargText>
       {suggestions && suggestions.length > 0 && (
         <Box marginTop={1}>
           <Text>did you mean: {suggestions.slice(0, 3).join(", ")}?</Text>
@@ -156,6 +156,49 @@ function NotFoundView({
       )}
     </Box>
   );
+}
+
+/** Help view for which command */
+function WhichHelpView() {
+  return (
+    <VargBox title="varg which">
+      <Box marginBottom={1}>
+        <Text>inspect a model, action, or skill</Text>
+      </Box>
+
+      <Header>USAGE</Header>
+      <Box paddingLeft={2} marginBottom={1}>
+        <VargText variant="accent">varg which {"<name>"} [--json]</VargText>
+      </Box>
+
+      <Header>ARGUMENTS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <Text>name name of item to inspect</Text>
+      </Box>
+
+      <Header>OPTIONS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <Text>--json output as json</Text>
+      </Box>
+
+      <Header>EXAMPLES</Header>
+      <Box flexDirection="column" paddingLeft={2}>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text dimColor># inspect video action</Text>
+          <VargText variant="accent">varg which video</VargText>
+        </Box>
+        <Box flexDirection="column">
+          <Text dimColor># get json schema</Text>
+          <VargText variant="accent">varg which flux --json</VargText>
+        </Box>
+      </Box>
+    </VargBox>
+  );
+}
+
+/** Show which command help */
+export function showWhichHelp() {
+  renderStatic(<WhichHelpView />);
 }
 
 export const whichCmd = defineCommand({
@@ -167,15 +210,27 @@ export const whichCmd = defineCommand({
     name: {
       type: "positional",
       description: "name to inspect",
-      required: true,
+      required: false,
     },
     json: {
       type: "boolean",
       description: "output as json",
     },
   },
-  async run({ args }) {
+  async run({ args, rawArgs }) {
+    // Handle --help
+    if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
+      showWhichHelp();
+      return;
+    }
+
     const name = args.name as string;
+
+    if (!name) {
+      showWhichHelp();
+      return;
+    }
+
     const result = resolve(name, { fuzzy: true });
 
     if (!result.definition) {
