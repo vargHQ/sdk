@@ -1,17 +1,34 @@
 {
   "name": "@vargai/sdk",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "varg": "./cli/index.ts"
+    "varg": "./src/cli/index.ts"
   },
   "scripts": {
-    "check": "biome check . && biome format .",
-    "format": "biome check --write . && biome format --write ."
+    "check": "biome check . && tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "type-check": "tsc --noEmit",
+    "prepare": "husky install",
+    "size": "size-limit"
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "*.json": [
+      "biome format --write"
+    ]
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
-    "@types/bun": "latest"
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@size-limit/preset-small-lib": "^11.2.0",
+    "@types/bun": "latest",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -34,10 +51,14 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "remotion": "^4.0.377",
-    "replicate": "^1.4.0"
+    "replicate": "^1.4.0",
+    "zod": "^4.2.1"
   },
-  "version": "0.1.1",
+  "version": "0.3.0",
   "exports": {
-    ".": "./index.ts"
+    ".": "./src/index.ts",
+    "./core": "./src/core/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./definitions": "./src/definitions/index.ts"
   }
 }

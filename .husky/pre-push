@@ -1,0 +1,6 @@
+# Run type checking before push
+bun run type-check
+
+
+
+

@@ -1,0 +1,9 @@
+# Check for secrets with gitleaks
+gitleaks protect --staged
+
+# Run linters on staged files
+bunx lint-staged
+
+
+
+

@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": ["**", "!node_modules", "!sdk-py-reference"]
   },
   "formatter": {
     "enabled": true,
