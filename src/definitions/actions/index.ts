@@ -6,20 +6,20 @@ export type { AddCaptionsOptions, SubtitleStyle } from "./captions";
 // Captions
 export { addCaptions, definition as captions } from "./captions";
 export type {
-  CutInput,
-  CutOutput,
-  FadeInput,
-  FadeOutput,
-  MergeInput,
-  MergeOutput,
-  RemoveInput,
-  RemoveOutput,
-  SplitInput,
-  SplitOutput,
-  TransitionInput,
-  TransitionOutput,
-  TrimInput,
-  TrimOutput,
+  CutOptions,
+  CutResult,
+  FadeOptions,
+  FadeResult,
+  MergeOptions,
+  MergeResult,
+  RemoveOptions,
+  RemoveResult,
+  SplitOptions,
+  SplitResult,
+  TransitionOptions,
+  TransitionResult,
+  TrimOptions,
+  TrimResult,
 } from "./edit";
 // Video editing (FFmpeg)
 export {

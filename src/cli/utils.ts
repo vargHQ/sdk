@@ -60,16 +60,18 @@ export function getDisplaySchema(item: Definition): {
   input: JsonSchema;
   output: JsonSchema;
 } {
-  if (!item.inputSchema) {
+  if (!item.schema) {
     return {
       input: { type: "object", properties: {}, required: [] },
       output: { type: "object" },
     };
   }
 
-  const input = z.toJSONSchema(item.inputSchema, { io: "input" }) as JsonSchema;
-  const output = item.outputSchema
-    ? (z.toJSONSchema(item.outputSchema, { io: "output" }) as JsonSchema)
+  const input = z.toJSONSchema(item.schema.input, {
+    io: "input",
+  }) as JsonSchema;
+  const output = item.schema.output
+    ? (z.toJSONSchema(item.schema.output, { io: "output" }) as JsonSchema)
     : { type: "object" };
 
   return { input, output };
