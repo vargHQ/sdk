@@ -7,11 +7,7 @@
 
 import { registry } from "../core/registry";
 import { findSimilar, resolve, suggest } from "../core/registry/resolver";
-import {
-  applyDefaults,
-  validateAndPrepare,
-  validateInputs,
-} from "../core/schema/validator";
+import { validateWithZod } from "../core/schema/validator";
 import { allDefinitions } from "../definitions";
 import { allActions } from "../definitions/actions";
 import { allModels } from "../definitions/models";
@@ -230,64 +226,44 @@ test("suggest() returns prefix matches", () => {
 });
 
 // ============================================================================
-// Schema Validation Tests
+// Schema Validation Tests (Zod)
 // ============================================================================
+
+import { z } from "zod";
 
 console.log(`\n${dim("─ Schema Validation ─\n")}`);
 
-const testSchema = {
-  input: {
-    type: "object" as const,
-    required: ["prompt"],
-    properties: {
-      prompt: { type: "string" as const, description: "Test prompt" },
-      count: { type: "integer" as const, description: "Count", default: 1 },
-      mode: {
-        type: "string" as const,
-        description: "Mode",
-        enum: ["fast", "slow"],
-        default: "fast",
-      },
-    },
-  },
-  output: { type: "string", description: "Output" },
-};
-
-test("validateInputs accepts valid inputs", () => {
-  const result = validateInputs({ prompt: "test" }, testSchema);
-  assert(
-    result.valid,
-    `Should be valid: ${result.errors.map((e) => e.message).join(", ")}`,
-  );
+const testZodSchema = z.object({
+  prompt: z.string().describe("Test prompt"),
+  count: z.number().int().default(1).describe("Count"),
+  mode: z.enum(["fast", "slow"]).default("fast").describe("Mode"),
 });
 
-test("validateInputs rejects missing required", () => {
-  const result = validateInputs({}, testSchema);
-  assert(!result.valid, "Should be invalid");
-  assert(
-    result.errors.some((e) => e.path === "prompt"),
-    "Should report missing prompt",
-  );
+test("validateWithZod accepts valid inputs", () => {
+  const result = validateWithZod(testZodSchema, { prompt: "test" });
+  assert(result.success, "Should be valid");
 });
 
-test("validateInputs validates enum values", () => {
-  const result = validateInputs(
-    { prompt: "test", mode: "invalid" },
-    testSchema,
-  );
-  assert(!result.valid, "Should reject invalid enum");
+test("validateWithZod rejects missing required", () => {
+  const result = validateWithZod(testZodSchema, {});
+  assert(!result.success, "Should be invalid");
 });
 
-test("applyDefaults adds default values", () => {
-  const inputs = applyDefaults({ prompt: "test" }, testSchema);
-  assertEqual(inputs.count, 1, "Should apply count default");
-  assertEqual(inputs.mode, "fast", "Should apply mode default");
+test("validateWithZod validates enum values", () => {
+  const result = validateWithZod(testZodSchema, {
+    prompt: "test",
+    mode: "invalid",
+  });
+  assert(!result.success, "Should reject invalid enum");
 });
 
-test("validateAndPrepare combines validation and defaults", () => {
-  const result = validateAndPrepare({ prompt: "test" }, testSchema);
-  assert(result.valid, "Should be valid");
-  assertEqual(result.inputs.count, 1, "Should have default count");
+test("validateWithZod applies defaults", () => {
+  const result = validateWithZod(testZodSchema, { prompt: "test" });
+  assert(result.success, "Should be valid");
+  if (result.success) {
+    assertEqual(result.data.count, 1, "Should apply count default");
+    assertEqual(result.data.mode, "fast", "Should apply mode default");
+  }
 });
 
 // ============================================================================
@@ -307,11 +283,7 @@ for (const model of allModels) {
       model.providers.includes(model.defaultProvider),
       "Default provider should be in providers",
     );
-    assert(model.schema !== undefined, "Should have schema");
-    assert(
-      model.schema.input.properties !== undefined,
-      "Should have input properties",
-    );
+    assert(model.inputSchema !== undefined, "Should have inputSchema");
   });
 }
 
@@ -326,7 +298,7 @@ for (const action of allActions) {
     assert(action.type === "action", "Type should be 'action'");
     assert(action.name.length > 0, "Name should not be empty");
     assert(action.description.length > 0, "Description should not be empty");
-    assert(action.schema !== undefined, "Should have schema");
+    assert(action.inputSchema !== undefined, "Should have inputSchema");
     assert(
       action.routes !== undefined || action.execute !== undefined,
       "Should have routes or execute function",
@@ -345,7 +317,7 @@ for (const skill of allSkills) {
     assert(skill.type === "skill", "Type should be 'skill'");
     assert(skill.name.length > 0, "Name should not be empty");
     assert(skill.description.length > 0, "Description should not be empty");
-    assert(skill.schema !== undefined, "Should have schema");
+    assert(skill.inputSchema !== undefined, "Should have inputSchema");
     assert(skill.steps.length > 0, "Should have steps");
   });
 

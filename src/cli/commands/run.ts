@@ -9,6 +9,7 @@ import { executor } from "../../core/executor";
 import { resolve } from "../../core/registry/resolver";
 import type { Definition } from "../../core/schema/types";
 import { box, c, runningBox } from "../output";
+import { getDisplaySchema, handleNotFound } from "../utils";
 
 interface RunOptions {
   [key: string]: string | boolean | undefined;
@@ -60,7 +61,9 @@ function showHelp(item: Definition) {
   content.push(c.bold(c.dim("  USAGE")));
   content.push("");
 
-  const required = item.schema.input.required;
+  const { input } = getDisplaySchema(item);
+  const required = input.required ?? [];
+  const properties = input.properties ?? {};
   const reqArgs = required.map((r) => `--${r} <${r}>`).join(" ");
   content.push(`    varg run ${item.name} ${reqArgs} [options]`);
 
@@ -68,16 +71,22 @@ function showHelp(item: Definition) {
   content.push(c.bold(c.dim("  OPTIONS")));
   content.push("");
 
-  for (const [key, prop] of Object.entries(item.schema.input.properties)) {
-    const req = item.schema.input.required.includes(key);
+  for (const [key, prop] of Object.entries(properties)) {
+    const req = required.includes(key);
     const reqTag = req ? c.yellow(" (required)") : "";
-    const defaultVal =
-      prop.default !== undefined ? c.dim(` default: ${prop.default}`) : "";
-    const enumVals = prop.enum ? c.dim(` [${prop.enum.join(", ")}]`) : "";
 
-    content.push(
-      `    --${key.padEnd(12)}${prop.description}${reqTag}${defaultVal}${enumVals}`,
-    );
+    // First line: --key and description
+    content.push(`    --${key.padEnd(12)}${prop.description ?? ""}${reqTag}`);
+
+    // Additional lines for default and enum values
+    if (prop.default !== undefined) {
+      content.push(c.dim(`                    default: ${prop.default}`));
+    }
+    if (prop.enum && prop.enum.length > 0) {
+      content.push(
+        c.dim(`                    options: ${prop.enum.join(", ")}`),
+      );
+    }
   }
 
   content.push("");
@@ -100,12 +109,13 @@ function showHelp(item: Definition) {
 }
 
 function showSchema(item: Definition) {
+  const { input, output } = getDisplaySchema(item);
   const schema = {
     name: item.name,
     type: item.type,
     description: item.description,
-    input: item.schema.input,
-    output: item.schema.output,
+    input,
+    output,
   };
 
   console.log(JSON.stringify(schema, null, 2));
@@ -153,14 +163,12 @@ export const runCmd = defineCommand({
     const result = resolve(target, { fuzzy: true });
 
     if (!result.definition) {
-      console.error(`${c.red("error:")} '${target}' not found`);
-      if (result.suggestions && result.suggestions.length > 0) {
-        console.log(
-          `\ndid you mean: ${result.suggestions.slice(0, 3).join(", ")}?`,
-        );
-      }
-      console.log(`\nrun ${c.cyan("varg list")} to see available targets`);
-      process.exit(1);
+      handleNotFound(target, {
+        suggestions: result.suggestions,
+        errorColorFn: c.red,
+        hintColorFn: c.cyan,
+      });
+      return;
     }
 
     const item = result.definition;
@@ -175,8 +183,13 @@ export const runCmd = defineCommand({
       return;
     }
 
+    // Get schema for validation and display
+    const { input: inputSchema } = getDisplaySchema(item);
+
     // Validate required args
-    for (const req of item.schema.input.required) {
+    const requiredFields = inputSchema.required ?? [];
+    const inputProperties = inputSchema.properties ?? {};
+    for (const req of requiredFields) {
       if (!options[req]) {
         console.error(`${c.red("error:")} --${req} is required`);
         console.log(`\nrun ${c.cyan(`varg run ${target} --info`)} for usage`);
@@ -186,7 +199,7 @@ export const runCmd = defineCommand({
 
     // Build params for display
     const params: Record<string, string> = {};
-    for (const key of Object.keys(item.schema.input.properties)) {
+    for (const key of Object.keys(inputProperties)) {
       if (options[key] && typeof options[key] === "string") {
         params[key] = options[key] as string;
       }
@@ -201,7 +214,7 @@ export const runCmd = defineCommand({
     try {
       // Build inputs for executor
       const inputs: Record<string, unknown> = {};
-      for (const key of Object.keys(item.schema.input.properties)) {
+      for (const key of Object.keys(inputProperties)) {
         if (options[key] !== undefined) {
           inputs[key] = options[key];
         }

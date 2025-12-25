@@ -3,33 +3,7 @@
  * These types form the foundation of the registry, executor, and provider systems
  */
 
-// ============================================================================
-// Schema Types
-// ============================================================================
-
-export interface SchemaProperty {
-  type: "string" | "number" | "integer" | "boolean" | "array" | "object";
-  description: string;
-  enum?: (string | number)[];
-  default?: unknown;
-  format?: string;
-  items?: SchemaProperty;
-  properties?: Record<string, SchemaProperty>;
-  required?: string[];
-}
-
-export interface Schema {
-  input: {
-    type: "object";
-    required: string[];
-    properties: Record<string, SchemaProperty>;
-  };
-  output: {
-    type: string;
-    format?: string;
-    description: string;
-  };
-}
+import type { z } from "zod";
 
 // ============================================================================
 // Job Types
@@ -118,13 +92,19 @@ export interface Provider {
 // Definition Types
 // ============================================================================
 
-export interface ModelDefinition {
+export interface ModelDefinition<
+  TInput extends z.ZodType = z.ZodType,
+  TOutput extends z.ZodType = z.ZodType,
+> {
   type: "model";
   name: string;
   description: string;
   providers: string[];
   defaultProvider: string;
-  schema: Schema;
+  /** Zod schema for input validation */
+  inputSchema?: TInput;
+  /** Zod schema for output validation */
+  outputSchema?: TOutput;
   /**
    * Provider-specific model identifiers
    * e.g., { fal: "fal-ai/kling-video/v2.5", replicate: "..." }
@@ -143,15 +123,21 @@ export interface ActionRoute {
   transform?: (inputs: Record<string, unknown>) => Record<string, unknown>;
 }
 
-export interface ActionDefinition {
+export interface ActionDefinition<
+  TInput extends z.ZodType = z.ZodType,
+  TOutput extends z.ZodType = z.ZodType,
+> {
   type: "action";
   name: string;
   description: string;
-  schema: Schema;
+  /** Zod schema for input validation */
+  inputSchema?: TInput;
+  /** Zod schema for output validation */
+  outputSchema?: TOutput;
   /** Routes to models or other actions */
   routes: ActionRoute[];
   /** Direct execution function (for local actions like ffmpeg) */
-  execute?: (inputs: Record<string, unknown>) => Promise<unknown>;
+  execute?: (inputs: z.infer<TInput>) => Promise<z.infer<TOutput>>;
 }
 
 export interface SkillStep {
@@ -164,11 +150,17 @@ export interface SkillStep {
   when?: Record<string, unknown>;
 }
 
-export interface SkillDefinition {
+export interface SkillDefinition<
+  TInput extends z.ZodType = z.ZodType,
+  TOutput extends z.ZodType = z.ZodType,
+> {
   type: "skill";
   name: string;
   description: string;
-  schema: Schema;
+  /** Zod schema for input validation */
+  inputSchema?: TInput;
+  /** Zod schema for output validation */
+  outputSchema?: TOutput;
   /** Ordered steps to execute */
   steps: SkillStep[];
 }

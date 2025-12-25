@@ -4,52 +4,39 @@
  */
 
 import { writeFileSync } from "node:fs";
+import { z } from "zod";
 import type { ActionDefinition } from "../../core/schema/types";
 import { ffmpegProvider } from "../../providers/ffmpeg";
 import { transcribe } from "./transcribe";
 
-export const definition: ActionDefinition = {
+export const captionsInputSchema = z.object({
+  video: z.string().describe("Input video"),
+  output: z.string().describe("Output path"),
+  srt: z.string().optional().describe("SRT file (optional)"),
+  style: z
+    .enum(["default", "tiktok", "youtube"])
+    .optional()
+    .default("default")
+    .describe("Caption style"),
+});
+
+export const captionsOutputSchema = z.string().describe("Captioned video path");
+
+export type CaptionsInput = z.infer<typeof captionsInputSchema>;
+export type CaptionsOutput = z.infer<typeof captionsOutputSchema>;
+
+export const definition: ActionDefinition<
+  typeof captionsInputSchema,
+  typeof captionsOutputSchema
+> = {
   type: "action",
   name: "captions",
   description: "Add captions/subtitles to video",
-  schema: {
-    input: {
-      type: "object",
-      required: ["video", "output"],
-      properties: {
-        video: {
-          type: "string",
-          format: "file-path",
-          description: "Input video",
-        },
-        output: {
-          type: "string",
-          format: "file-path",
-          description: "Output path",
-        },
-        srt: {
-          type: "string",
-          format: "file-path",
-          description: "SRT file (optional)",
-        },
-        style: {
-          type: "string",
-          enum: ["default", "tiktok", "youtube"],
-          default: "default",
-          description: "Caption style",
-        },
-      },
-    },
-    output: {
-      type: "string",
-      format: "file-path",
-      description: "Captioned video",
-    },
-  },
+  inputSchema: captionsInputSchema,
+  outputSchema: captionsOutputSchema,
   routes: [],
   execute: async (inputs) => {
-    const { video, output, srt, style } =
-      inputs as unknown as AddCaptionsOptions;
+    const { video, output, srt, style } = inputs;
     return addCaptions({ video, output, srt, style });
   },
 };

@@ -3,9 +3,45 @@
  * Text-to-music generation
  */
 
+import { z } from "zod";
 import type { ModelDefinition } from "../../core/schema/types";
 
-export const definition: ModelDefinition = {
+export const sonautoInputSchema = z.object({
+  prompt: z.string().optional().describe("Music description"),
+  tags: z.array(z.string()).optional().describe("Style tags"),
+  lyrics_prompt: z.string().optional().describe("Lyrics to generate"),
+  num_songs: z
+    .union([z.literal(1), z.literal(2)])
+    .optional()
+    .default(1)
+    .describe("Number of songs"),
+  output_format: z
+    .enum(["mp3", "wav", "flac", "ogg", "m4a"])
+    .optional()
+    .default("mp3")
+    .describe("Output format"),
+  bpm: z
+    .union([z.number(), z.literal("auto")])
+    .optional()
+    .default("auto")
+    .describe("Beats per minute"),
+});
+
+export const sonautoOutputSchema = z.object({
+  songs: z.array(
+    z.object({
+      url: z.string(),
+    }),
+  ),
+});
+
+export type SonautoInput = z.infer<typeof sonautoInputSchema>;
+export type SonautoOutput = z.infer<typeof sonautoOutputSchema>;
+
+export const definition: ModelDefinition<
+  typeof sonautoInputSchema,
+  typeof sonautoOutputSchema
+> = {
   type: "model",
   name: "sonauto",
   description: "Sonauto model for text-to-music generation",
@@ -14,45 +50,8 @@ export const definition: ModelDefinition = {
   providerModels: {
     fal: "fal-ai/sonauto/bark",
   },
-  schema: {
-    input: {
-      type: "object",
-      required: [],
-      properties: {
-        prompt: { type: "string", description: "Music description" },
-        tags: {
-          type: "array",
-          items: { type: "string", description: "Tag" },
-          description: "Style tags",
-        },
-        lyrics_prompt: {
-          type: "string",
-          description: "Lyrics to generate",
-        },
-        num_songs: {
-          type: "integer",
-          enum: [1, 2],
-          default: 1,
-          description: "Number of songs",
-        },
-        output_format: {
-          type: "string",
-          enum: ["mp3", "wav", "flac", "ogg", "m4a"],
-          default: "mp3",
-          description: "Output format",
-        },
-        bpm: {
-          type: "string",
-          default: "auto",
-          description: "Beats per minute",
-        },
-      },
-    },
-    output: {
-      type: "object",
-      description: "Music generation result",
-    },
-  },
+  inputSchema: sonautoInputSchema,
+  outputSchema: sonautoOutputSchema,
 };
 
 export default definition;

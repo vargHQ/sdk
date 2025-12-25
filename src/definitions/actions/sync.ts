@@ -3,54 +3,46 @@
  * Audio-to-video synchronization
  */
 
+import { z } from "zod";
 import type { ActionDefinition } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { ffmpegProvider } from "../../providers/ffmpeg";
 
-export const definition: ActionDefinition = {
+export const syncInputSchema = z.object({
+  image: z.string().describe("Input image"),
+  audio: z.string().describe("Audio file"),
+  prompt: z.string().describe("Description of the scene"),
+  duration: z
+    .enum(["5", "10"])
+    .optional()
+    .default("5")
+    .describe("Output duration"),
+  resolution: z
+    .enum(["480p", "720p", "1080p"])
+    .optional()
+    .default("480p")
+    .describe("Output resolution"),
+});
+
+export const syncOutputSchema = z.object({
+  videoUrl: z.string(),
+});
+
+export type SyncInput = z.infer<typeof syncInputSchema>;
+export type SyncOutput = z.infer<typeof syncOutputSchema>;
+
+export const definition: ActionDefinition<
+  typeof syncInputSchema,
+  typeof syncOutputSchema
+> = {
   type: "action",
   name: "sync",
   description: "Lip sync audio to video/image",
-  schema: {
-    input: {
-      type: "object",
-      required: ["image", "audio", "prompt"],
-      properties: {
-        image: {
-          type: "string",
-          format: "file-path",
-          description: "Input image",
-        },
-        audio: {
-          type: "string",
-          format: "file-path",
-          description: "Audio file",
-        },
-        prompt: { type: "string", description: "Description of the scene" },
-        duration: {
-          type: "string",
-          enum: ["5", "10"],
-          default: "5",
-          description: "Output duration",
-        },
-        resolution: {
-          type: "string",
-          enum: ["480p", "720p", "1080p"],
-          default: "480p",
-          description: "Output resolution",
-        },
-      },
-    },
-    output: {
-      type: "string",
-      format: "url",
-      description: "Generated video URL",
-    },
-  },
+  inputSchema: syncInputSchema,
+  outputSchema: syncOutputSchema,
   routes: [],
   execute: async (inputs) => {
-    const { image, audio, prompt, duration, resolution } =
-      inputs as unknown as LipsyncOptions;
+    const { image, audio, prompt, duration, resolution } = inputs;
     return lipsync({ image, audio, prompt, duration, resolution });
   },
 };

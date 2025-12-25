@@ -3,41 +3,43 @@
  * Routes to appropriate video generation models based on input
  */
 
+import { z } from "zod";
 import type { ActionDefinition } from "../../core/schema/types";
 import { falProvider } from "../../providers/fal";
 import { storageProvider } from "../../providers/storage";
 
-export const definition: ActionDefinition = {
+export const videoInputSchema = z.object({
+  prompt: z.string().describe("What to generate"),
+  image: z.string().optional().describe("Input image (enables image-to-video)"),
+  duration: z
+    .union([z.literal(5), z.literal(10)])
+    .optional()
+    .default(5)
+    .describe("Video duration in seconds"),
+  aspectRatio: z
+    .enum(["16:9", "9:16", "1:1"])
+    .optional()
+    .default("16:9")
+    .describe("Aspect ratio for text-to-video"),
+});
+
+export const videoOutputSchema = z.object({
+  videoUrl: z.string(),
+  duration: z.number().optional(),
+});
+
+export type VideoInput = z.infer<typeof videoInputSchema>;
+export type VideoOutput = z.infer<typeof videoOutputSchema>;
+
+export const definition: ActionDefinition<
+  typeof videoInputSchema,
+  typeof videoOutputSchema
+> = {
   type: "action",
   name: "video",
   description: "Generate video from text or image",
-  schema: {
-    input: {
-      type: "object",
-      required: ["prompt"],
-      properties: {
-        prompt: { type: "string", description: "What to generate" },
-        image: {
-          type: "string",
-          format: "file-path",
-          description: "Input image (enables image-to-video)",
-        },
-        duration: {
-          type: "integer",
-          enum: [5, 10],
-          default: 5,
-          description: "Video duration in seconds",
-        },
-        aspectRatio: {
-          type: "string",
-          enum: ["16:9", "9:16", "1:1"],
-          default: "16:9",
-          description: "Aspect ratio for text-to-video",
-        },
-      },
-    },
-    output: { type: "string", format: "file-path", description: "Video URL" },
-  },
+  inputSchema: videoInputSchema,
+  outputSchema: videoOutputSchema,
   routes: [
     {
       target: "kling",
@@ -45,12 +47,7 @@ export const definition: ActionDefinition = {
     },
   ],
   execute: async (inputs) => {
-    const { prompt, image, duration, aspectRatio } = inputs as {
-      prompt: string;
-      image?: string;
-      duration?: 5 | 10;
-      aspectRatio?: "16:9" | "9:16" | "1:1";
-    };
+    const { prompt, image, duration, aspectRatio } = inputs;
 
     let result: { data?: { video?: { url?: string }; duration?: number } };
 

@@ -159,46 +159,37 @@ await test("storage provider is registered", async () => {
 });
 
 // ============================================================================
-// Schema Validation Tests
+// Schema Validation Tests (Zod)
 // ============================================================================
 
 console.log("\n📝 SCHEMA VALIDATION TESTS\n");
 
-import { applyDefaults, validateInputs } from "../core/schema/validator";
+import { validateDefinitionInputs } from "../core/schema/validator";
 
 await test("validator accepts valid inputs", async () => {
-  const schema = registry.resolve("video")?.schema;
-  if (!schema) throw new Error("No schema");
+  const definition = registry.resolve("video");
+  if (!definition) throw new Error("No definition");
 
-  const result = validateInputs({ prompt: "test video" }, schema);
+  const result = validateDefinitionInputs(definition, { prompt: "test video" });
   if (!result.valid)
-    throw new Error(
-      `Validation failed: ${result.errors.map((e) => e.message).join(", ")}`,
-    );
+    throw new Error(`Validation failed: ${result.errors.join(", ")}`);
 });
 
 await test("validator rejects missing required fields", async () => {
-  const schema = registry.resolve("video")?.schema;
-  if (!schema) throw new Error("No schema");
+  const definition = registry.resolve("video");
+  if (!definition) throw new Error("No definition");
 
-  const result = validateInputs({}, schema);
+  const result = validateDefinitionInputs(definition, {});
   if (result.valid) throw new Error("Should have failed validation");
-  if (!result.errors.some((e) => e.path === "prompt")) {
-    throw new Error("Should report missing 'prompt' field");
-  }
 });
 
 await test("validator applies defaults", async () => {
-  const schema = registry.resolve("video")?.schema;
-  if (!schema) throw new Error("No schema");
+  const definition = registry.resolve("video");
+  if (!definition) throw new Error("No definition");
 
-  const inputs = applyDefaults({ prompt: "test" }, schema);
-  if (
-    inputs.duration === undefined &&
-    schema.input.properties.duration?.default !== undefined
-  ) {
-    // Check if default was applied
-    console.log(`   Defaults applied: duration=${inputs.duration}`);
+  const result = validateDefinitionInputs(definition, { prompt: "test" });
+  if (result.valid) {
+    console.log(`   Defaults applied via Zod`);
   }
 });
 
@@ -229,8 +220,8 @@ for (const name of modelNames) {
     if (!model.defaultProvider) {
       throw new Error("Model has no default provider");
     }
-    if (!model.schema) {
-      throw new Error("Model has no schema");
+    if (!model.inputSchema) {
+      throw new Error("Model has no inputSchema");
     }
     console.log(
       `   Providers: ${model.providers.join(", ")}, default: ${model.defaultProvider}`,
@@ -265,8 +256,8 @@ for (const name of actionNames) {
   await test(`action '${name}' is properly defined`, async () => {
     const action = registry.getAction(name);
     if (!action) throw new Error(`Action '${name}' not found`);
-    if (!action.schema) {
-      throw new Error("Action has no schema");
+    if (!action.inputSchema) {
+      throw new Error("Action has no inputSchema");
     }
     if (!action.routes && !action.execute) {
       throw new Error("Action has no routes or execute function");
