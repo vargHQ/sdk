@@ -6,9 +6,12 @@
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";
 import { registry } from "../../core/registry/index.ts";
+import { toJsonSchema } from "../../core/schema/helpers.ts";
+import type { Definition } from "../../core/schema/types.ts";
 import {
   DataTable,
   Header,
+  OptionRow,
   Separator,
   VargBox,
   VargText,
@@ -112,6 +115,37 @@ function ListView({ filterType }: ListViewProps) {
   );
 }
 
+/**
+ * Convert a definition to an AI agent tool schema
+ */
+function definitionToToolSchema(def: Definition) {
+  const inputSchema = toJsonSchema(def.schema.input);
+
+  return {
+    type: "function" as const,
+    function: {
+      name: def.name,
+      description: def.description,
+      parameters: {
+        type: "object",
+        properties: inputSchema.properties || {},
+        required: inputSchema.required || [],
+      },
+    },
+  };
+}
+
+/**
+ * Generate all tools as JSON schemas for AI agents
+ */
+function generateToolsSchema(filterType?: "model" | "action" | "skill") {
+  const definitions = registry.list(filterType);
+
+  return {
+    tools: definitions.map(definitionToToolSchema),
+  };
+}
+
 /** Help view for list command */
 function ListHelpView() {
   return (
@@ -122,12 +156,21 @@ function ListHelpView() {
 
       <Header>USAGE</Header>
       <Box paddingLeft={2} marginBottom={1}>
-        <VargText variant="accent">varg list [type]</VargText>
+        <VargText variant="accent">varg list [type] [options]</VargText>
       </Box>
 
       <Header>ARGUMENTS</Header>
       <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
         <Text>type filter by type: model, action, skill</Text>
+      </Box>
+
+      <Header>OPTIONS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <OptionRow
+          name="schema"
+          description="output all tools as JSON schemas for AI agents"
+        />
+        <OptionRow name="help, -h" description="show this help" />
       </Box>
 
       <Header>EXAMPLES</Header>
@@ -140,9 +183,13 @@ function ListHelpView() {
           <Text dimColor># list only models</Text>
           <VargText variant="accent">varg list model</VargText>
         </Box>
-        <Box flexDirection="column">
+        <Box flexDirection="column" marginBottom={1}>
           <Text dimColor># list only actions</Text>
           <VargText variant="accent">varg list action</VargText>
+        </Box>
+        <Box flexDirection="column">
+          <Text dimColor># export tools for AI agent</Text>
+          <VargText variant="accent">varg list --schema</VargText>
         </Box>
       </Box>
     </VargBox>
@@ -165,6 +212,10 @@ export const listCmd = defineCommand({
       description: "filter by type (model, action, skill)",
       required: false,
     },
+    schema: {
+      type: "boolean",
+      description: "output all tools as JSON schemas for AI agents",
+    },
   },
   async run({ args, rawArgs }) {
     // Handle --help
@@ -174,6 +225,14 @@ export const listCmd = defineCommand({
     }
 
     const filterType = args.type as "model" | "action" | "skill" | undefined;
+
+    // Output JSON schemas for AI agents
+    if (args.schema) {
+      const toolsSchema = generateToolsSchema(filterType);
+      console.log(JSON.stringify(toolsSchema, null, 2));
+      return;
+    }
+
     renderStatic(<ListView filterType={filterType} />);
   },
 });
