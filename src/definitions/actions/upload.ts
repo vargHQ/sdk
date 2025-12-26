@@ -101,6 +101,7 @@ export const definition: ActionDefinition<typeof schema> = {
   name: "upload",
   description: "Upload file to S3/R2 storage",
   schema,
+  routes: [],
   execute: async (inputs) => {
     const { file, key } = inputs;
     return upload(file, { key });
