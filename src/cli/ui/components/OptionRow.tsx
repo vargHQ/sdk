@@ -11,7 +11,7 @@ interface OptionRowProps {
   description?: string;
   required?: boolean;
   defaultValue?: unknown;
-  enumValues?: string[];
+  enumValues?: (string | number)[];
   type?: string;
   nameWidth?: number;
 }
@@ -30,11 +30,12 @@ export function OptionRow({
   const hasEnum = enumValues && enumValues.length > 0;
 
   // Format enum values - if many values, show abbreviated
-  const formatEnums = (values: string[]) => {
-    const joined = values.join(", ");
+  const formatEnums = (values: (string | number)[]) => {
+    const stringValues = values.map(String);
+    const joined = stringValues.join(", ");
     if (joined.length > 50) {
       // Show first few and count
-      const shown = values.slice(0, 4).join(", ");
+      const shown = stringValues.slice(0, 4).join(", ");
       return `${shown}, ... (${values.length} options)`;
     }
     return joined;
