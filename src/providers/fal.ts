@@ -15,17 +15,37 @@ export class FalProvider extends BaseProvider {
     inputs: Record<string, unknown>,
     _config?: ProviderConfig,
   ): Promise<string> {
-    console.log(`[fal] submitting job for model: ${model}`);
+    // Handle nano-banana-pro routing: use /edit endpoint when image_urls provided
+    const resolvedModel = this.resolveModelEndpoint(model, inputs);
+    console.log(`[fal] submitting job for model: ${resolvedModel}`);
 
     // Upload local files if needed
     const processedInputs = await this.processInputs(inputs);
 
-    const result = await fal.queue.submit(model, {
+    const result = await fal.queue.submit(resolvedModel, {
       input: processedInputs,
     });
 
     console.log(`[fal] job submitted: ${result.request_id}`);
     return result.request_id;
+  }
+
+  /**
+   * Resolve model endpoint based on inputs
+   * Handles special routing for models like nano-banana-pro (text-to-image vs image-to-image)
+   */
+  private resolveModelEndpoint(
+    model: string,
+    inputs: Record<string, unknown>,
+  ): string {
+    // Nano Banana Pro: use /edit endpoint when image_urls are provided
+    if (model === "fal-ai/nano-banana-pro") {
+      const imageUrls = inputs.image_urls as string[] | undefined;
+      if (imageUrls && imageUrls.length > 0) {
+        return "fal-ai/nano-banana-pro/edit";
+      }
+    }
+    return model;
   }
 
   async getStatus(jobId: string): Promise<JobStatusUpdate> {

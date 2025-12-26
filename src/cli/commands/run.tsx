@@ -10,7 +10,13 @@ import { executor } from "../../core/executor/index.ts";
 import { resolve } from "../../core/registry/resolver.ts";
 import { getCliSchemaInfo, toJsonSchema } from "../../core/schema/helpers.ts";
 import type { Definition } from "../../core/schema/types.ts";
-import { Header, StatusBox, VargBox, VargText } from "../ui/index.ts";
+import {
+  Header,
+  OptionRow,
+  StatusBox,
+  VargBox,
+  VargText,
+} from "../ui/index.ts";
 import { renderLive, renderStatic } from "../ui/render.ts";
 import { theme } from "../ui/theme.ts";
 
@@ -69,7 +75,7 @@ function HelpView({ item }: HelpViewProps) {
   return (
     <VargBox title={`${item.type}: ${item.name}`}>
       <Box marginBottom={1}>
-        <Text>{item.description}</Text>
+        <Text wrap="wrap">{item.description}</Text>
       </Box>
 
       <Header>USAGE</Header>
@@ -81,36 +87,33 @@ function HelpView({ item }: HelpViewProps) {
 
       <Header>OPTIONS</Header>
       <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        {Object.entries(properties).map(([key, prop]) => {
-          const isRequired = required.includes(key);
-          const defaultVal =
-            prop.default !== undefined ? ` default: ${prop.default}` : "";
-          const enumVals = prop.enum ? ` [${prop.enum.join(", ")}]` : "";
-          return (
-            <Box key={key}>
-              <Text>--{key.padEnd(12)}</Text>
-              <Text>{prop.description}</Text>
-              {isRequired && (
-                <Text color={theme.colors.warning}> (required)</Text>
-              )}
-              {defaultVal && <Text dimColor>{defaultVal}</Text>}
-              {enumVals && <Text dimColor>{enumVals}</Text>}
-            </Box>
-          );
-        })}
+        {Object.entries(properties).map(([key, prop]) => (
+          <OptionRow
+            key={key}
+            name={key}
+            description={prop.description}
+            required={required.includes(key)}
+            defaultValue={prop.default}
+            enumValues={prop.enum}
+            type={prop.type}
+          />
+        ))}
       </Box>
 
       {item.type === "model" && (
         <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-          <Text>--provider override default provider</Text>
-          <Text dimColor> available: {item.providers.join(", ")}</Text>
+          <OptionRow name="provider" description="override default provider" />
+          <Box paddingLeft={theme.layout.optionNameWidth}>
+            <Text dimColor>available: {item.providers.join(", ")}</Text>
+          </Box>
         </Box>
       )}
 
+      <Header>GLOBAL OPTIONS</Header>
       <Box flexDirection="column" paddingLeft={2}>
-        <Text>--json output result as json</Text>
-        <Text>--quiet minimal output</Text>
-        <Text>--help, -h show this help</Text>
+        <OptionRow name="json" description="output result as json" />
+        <OptionRow name="quiet" description="minimal output" />
+        <OptionRow name="help, -h" description="show this help" />
       </Box>
     </VargBox>
   );

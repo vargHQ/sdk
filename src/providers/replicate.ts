@@ -25,13 +25,34 @@ export class ReplicateProvider extends BaseProvider {
   ): Promise<string> {
     console.log(`[replicate] submitting job for model: ${model}`);
 
+    // Transform inputs for provider-specific field names
+    const transformedInputs = this.transformInputs(model, inputs);
+
     const prediction = await this.client.predictions.create({
       model: model as `${string}/${string}`,
-      input: inputs,
+      input: transformedInputs,
     });
 
     console.log(`[replicate] job submitted: ${prediction.id}`);
     return prediction.id;
+  }
+
+  /**
+   * Transform inputs for provider-specific field names
+   */
+  private transformInputs(
+    model: string,
+    inputs: Record<string, unknown>,
+  ): Record<string, unknown> {
+    // Nano Banana Pro: Replicate uses 'image_input' instead of 'image_urls'
+    if (model === "google/nano-banana-pro" && inputs.image_urls) {
+      const { image_urls, ...rest } = inputs;
+      return {
+        ...rest,
+        image_input: image_urls,
+      };
+    }
+    return inputs;
   }
 
   async getStatus(jobId: string): Promise<JobStatusUpdate> {
@@ -108,6 +129,7 @@ export const MODELS = {
     FLUX_DEV: "black-forest-labs/flux-dev",
     FLUX_SCHNELL: "black-forest-labs/flux-schnell",
     STABLE_DIFFUSION: "stability-ai/sdxl",
+    NANO_BANANA_PRO: "google/nano-banana-pro",
   },
 };
 

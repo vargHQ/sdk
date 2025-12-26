@@ -13,7 +13,14 @@ import type {
   ModelDefinition,
   SkillDefinition,
 } from "../../core/schema/types.ts";
-import { Badge, Header, Separator, VargBox, VargText } from "../ui/index.ts";
+import {
+  Badge,
+  Header,
+  OptionRow,
+  Separator,
+  VargBox,
+  VargText,
+} from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
 import { theme } from "../ui/theme.ts";
 
@@ -28,23 +35,17 @@ function InputSchemaView({ schema }: { schema: unknown }) {
     <>
       <Header>INPUT SCHEMA</Header>
       <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        {Object.entries(properties).map(([key, prop]) => {
-          const isRequired = required.includes(key);
-          return (
-            <Box key={key}>
-              <Text color={isRequired ? theme.colors.warning : undefined}>
-                {isRequired ? "*" : " "}
-              </Text>
-              <Text> {key.padEnd(15)}</Text>
-              <Text dimColor>
-                {"<"}
-                {prop.type || "any"}
-                {">"}
-              </Text>
-              <Text> {prop.description || ""}</Text>
-            </Box>
-          );
-        })}
+        {Object.entries(properties).map(([key, prop]) => (
+          <OptionRow
+            key={key}
+            name={key}
+            description={prop.description}
+            required={required.includes(key)}
+            defaultValue={prop.default}
+            enumValues={prop.enum}
+            type={prop.type}
+          />
+        ))}
       </Box>
     </>
   );

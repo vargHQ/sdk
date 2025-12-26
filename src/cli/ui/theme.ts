@@ -42,8 +42,9 @@ export const theme = {
   },
 
   layout: {
-    maxWidth: 64,
-    boxPadding: 1,
+    maxWidth: 100,
+    boxPadding: 2,
+    optionNameWidth: 22,
   },
 } as const;
 

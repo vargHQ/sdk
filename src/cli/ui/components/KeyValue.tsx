@@ -16,7 +16,7 @@ interface KeyValueProps {
 export function KeyValue({
   label,
   value,
-  labelWidth = 12,
+  labelWidth = theme.layout.optionNameWidth,
   required = false,
 }: KeyValueProps) {
   const paddedLabel = label.padEnd(labelWidth);
