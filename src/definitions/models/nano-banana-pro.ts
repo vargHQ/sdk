@@ -9,9 +9,8 @@ import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
 // Nano Banana Pro resolution options
 const nanoBananaResolutionSchema = z.enum(["1K", "2K", "4K"]);
 
-// Nano Banana Pro aspect ratio options
+// Nano Banana Pro aspect ratio options (fal.ai API does not support "auto")
 const nanoBananaAspectRatioSchema = z.enum([
-  "auto",
   "21:9",
   "16:9",
   "3:2",
@@ -37,18 +36,18 @@ const nanoBananaSafetyFilterSchema = z.enum([
 
 // Input schema with Zod
 const nanoBananaProInputSchema = z.object({
-  prompt: z
-    .string()
-    .describe("Text description for image generation or editing"),
+  prompt: z.string().describe("Text description for generation or editing"),
   image_urls: z
     .array(z.string().url())
     .optional()
-    .describe("Input image URLs for image-to-image editing (up to 14 images)"),
+    .describe(
+      "Input image URLs for image-to-image editing (up to 14 images). If omitted, generates new image from prompt.",
+    ),
   resolution: nanoBananaResolutionSchema
     .default("1K")
     .describe("Output resolution: 1K (1024px), 2K (2048px), or 4K"),
   aspect_ratio: nanoBananaAspectRatioSchema
-    .default("auto")
+    .default("1:1")
     .describe("Output aspect ratio"),
   output_format: nanoBananaOutputFormatSchema
     .default("png")
@@ -90,7 +89,7 @@ export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "nano-banana-pro",
   description:
-    "Google Nano Banana Pro (Gemini 3 Pro Image) for high-quality image generation and editing. Supports text-to-image and image-to-image with semantic understanding.",
+    "Google Nano Banana Pro (Gemini 3 Pro Image) for text-to-image generation and image editing. Provide image_urls for editing, omit for generation.",
   providers: ["fal", "replicate"],
   defaultProvider: "fal",
   providerModels: {

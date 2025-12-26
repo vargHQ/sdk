@@ -8,7 +8,11 @@ import { defineCommand } from "citty";
 import { Box, Text } from "ink";
 import { executor } from "../../core/executor/index.ts";
 import { resolve } from "../../core/registry/resolver.ts";
-import { getCliSchemaInfo, toJsonSchema } from "../../core/schema/helpers.ts";
+import {
+  coerceCliValue,
+  getCliSchemaInfo,
+  toJsonSchema,
+} from "../../core/schema/helpers.ts";
 import type { Definition } from "../../core/schema/types.ts";
 import {
   Header,
@@ -19,6 +23,53 @@ import {
 } from "../ui/index.ts";
 import { renderLive, renderStatic } from "../ui/render.ts";
 import { theme } from "../ui/theme.ts";
+
+/**
+ * Extract detailed error message from provider errors
+ * Handles fal.ai ApiError, Replicate errors, and generic errors
+ */
+function extractErrorMessage(err: unknown): string {
+  if (!(err instanceof Error)) {
+    return String(err);
+  }
+
+  // Check for fal.ai ApiError with body details
+  const apiError = err as Error & {
+    body?: { detail?: string | Array<{ msg: string; loc: string[] }> };
+    status?: number;
+  };
+
+  if (apiError.body?.detail) {
+    // Handle validation errors (array of field errors)
+    if (Array.isArray(apiError.body.detail)) {
+      return apiError.body.detail
+        .map((e) => `${e.loc?.join(".") || "field"}: ${e.msg}`)
+        .join("; ");
+    }
+    // Handle string detail
+    if (typeof apiError.body.detail === "string") {
+      return apiError.body.detail;
+    }
+  }
+
+  // Check for body as string or with message
+  if (apiError.body) {
+    const body = apiError.body as Record<string, unknown>;
+    if (body.message && typeof body.message === "string") {
+      return body.message;
+    }
+    if (body.error && typeof body.error === "string") {
+      return body.error;
+    }
+  }
+
+  // Add status code context if available
+  if (apiError.status && apiError.message) {
+    return `${apiError.message} (${apiError.status})`;
+  }
+
+  return err.message;
+}
 
 interface RunOptions {
   [key: string]: string | boolean | undefined;
@@ -70,7 +121,11 @@ interface HelpViewProps {
 
 function HelpView({ item }: HelpViewProps) {
   const { properties, required } = getCliSchemaInfo(item.schema.input);
-  const reqArgs = required.map((r) => `--${r} <${r}>`).join(" ");
+  // Only show truly required args (no default value)
+  const trulyRequired = required.filter(
+    (r) => properties[r]?.default === undefined,
+  );
+  const reqArgs = trulyRequired.map((r) => `--${r} <${r}>`).join(" ");
 
   return (
     <VargBox title={`${item.type}: ${item.name}`}>
@@ -87,17 +142,20 @@ function HelpView({ item }: HelpViewProps) {
 
       <Header>OPTIONS</Header>
       <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        {Object.entries(properties).map(([key, prop]) => (
-          <OptionRow
-            key={key}
-            name={key}
-            description={prop.description}
-            required={required.includes(key)}
-            defaultValue={prop.default}
-            enumValues={prop.enum}
-            type={prop.type}
-          />
-        ))}
+        {Object.entries(properties).map(([key, prop]) => {
+          const hasDefault = prop.default !== undefined;
+          return (
+            <OptionRow
+              key={key}
+              name={key}
+              description={prop.description}
+              required={required.includes(key) && !hasDefault}
+              defaultValue={prop.default}
+              enumValues={prop.enum}
+              type={prop.type}
+            />
+          );
+        })}
       </Box>
 
       {item.type === "model" && (
@@ -263,9 +321,11 @@ export const runCmd = defineCommand({
     // Get schema info for validation
     const { properties, required } = getCliSchemaInfo(item.schema.input);
 
-    // Validate required args
+    // Validate required args (skip fields with default values)
     for (const req of required) {
-      if (!options[req]) {
+      const prop = properties[req];
+      const hasDefault = prop?.default !== undefined;
+      if (!options[req] && !hasDefault) {
         renderStatic(
           <ErrorView
             message={`--${req} is required`}
@@ -291,8 +351,13 @@ export const runCmd = defineCommand({
       try {
         const inputs: Record<string, unknown> = {};
         for (const key of Object.keys(properties)) {
-          if (options[key] !== undefined) {
-            inputs[key] = options[key];
+          const value = options[key];
+          if (value !== undefined) {
+            const prop = properties[key];
+            inputs[key] =
+              typeof value === "string" && prop
+                ? coerceCliValue(value, prop)
+                : value;
           }
         }
 
@@ -315,7 +380,7 @@ export const runCmd = defineCommand({
         }
       } catch (err) {
         const elapsed = Date.now() - startTime;
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const errorMsg = extractErrorMessage(err);
 
         if (options.json) {
           console.log(
@@ -337,8 +402,13 @@ export const runCmd = defineCommand({
     try {
       const inputs: Record<string, unknown> = {};
       for (const key of Object.keys(properties)) {
-        if (options[key] !== undefined) {
-          inputs[key] = options[key];
+        const value = options[key];
+        if (value !== undefined) {
+          const prop = properties[key];
+          inputs[key] =
+            typeof value === "string" && prop
+              ? coerceCliValue(value, prop)
+              : value;
         }
       }
 
@@ -350,13 +420,29 @@ export const runCmd = defineCommand({
 
       // Extract URL from result
       const output = execResult.output as Record<string, unknown> | string;
-      const url =
-        typeof output === "string"
-          ? output
-          : (output?.imageUrl as string) ||
-            (output?.videoUrl as string) ||
-            (output?.url as string) ||
-            null;
+      let url: string | null = null;
+
+      if (typeof output === "string") {
+        url = output;
+      } else if (output) {
+        // Try common URL fields
+        url =
+          (output.imageUrl as string) ||
+          (output.videoUrl as string) ||
+          (output.url as string) ||
+          null;
+
+        // Handle images array (nano-banana-pro, flux, etc.)
+        if (!url && Array.isArray(output.images) && output.images.length > 0) {
+          const firstImage = output.images[0] as Record<string, unknown>;
+          url = (firstImage?.url as string) || null;
+        }
+
+        // Handle video object
+        if (!url && output.video && typeof output.video === "object") {
+          url = (output.video as Record<string, unknown>).url as string;
+        }
+      }
 
       // Clear and show done state
       process.stdout.write("\x1b[2J\x1b[H");
@@ -367,23 +453,22 @@ export const runCmd = defineCommand({
             title={target}
             status="done"
             params={params}
-            output={url ? "saved" : "done"}
+            output={url ? url : "done"}
             duration={elapsed}
           />
-          {url && (
-            <Box marginTop={1} paddingLeft={1}>
-              <Text color={theme.colors.accent}>url</Text>
-              <Text> {url}</Text>
-            </Box>
-          )}
         </Box>,
       );
+
+      // Also log the URL to console for easy copying
+      if (url) {
+        console.log(`\n${url}`);
+      }
 
       // Allow render to complete then unmount
       setTimeout(() => unmount(), 100);
     } catch (err) {
       const elapsed = Date.now() - startTime;
-      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorMsg = extractErrorMessage(err);
 
       process.stdout.write("\x1b[2J\x1b[H");
 

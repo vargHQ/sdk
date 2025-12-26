@@ -10,6 +10,9 @@ import { BaseProvider, ensureUrl } from "./base";
 export class FalProvider extends BaseProvider {
   readonly name = "fal";
 
+  // Track model per job for status/result calls
+  private jobModels = new Map<string, string>();
+
   async submit(
     model: string,
     inputs: Record<string, unknown>,
@@ -17,7 +20,6 @@ export class FalProvider extends BaseProvider {
   ): Promise<string> {
     // Handle nano-banana-pro routing: use /edit endpoint when image_urls provided
     const resolvedModel = this.resolveModelEndpoint(model, inputs);
-    console.log(`[fal] submitting job for model: ${resolvedModel}`);
 
     // Upload local files if needed
     const processedInputs = await this.processInputs(inputs);
@@ -26,7 +28,9 @@ export class FalProvider extends BaseProvider {
       input: processedInputs,
     });
 
-    console.log(`[fal] job submitted: ${result.request_id}`);
+    // Store model for later status/result calls
+    this.jobModels.set(result.request_id, resolvedModel);
+
     return result.request_id;
   }
 
@@ -49,7 +53,12 @@ export class FalProvider extends BaseProvider {
   }
 
   async getStatus(jobId: string): Promise<JobStatusUpdate> {
-    const status = await fal.queue.status("", { requestId: jobId });
+    const model = this.jobModels.get(jobId);
+    if (!model) {
+      throw new Error(`Unknown job: ${jobId}`);
+    }
+
+    const status = await fal.queue.status(model, { requestId: jobId });
 
     const statusMap: Record<string, JobStatusUpdate["status"]> = {
       IN_QUEUE: "queued",
@@ -68,7 +77,16 @@ export class FalProvider extends BaseProvider {
   }
 
   async getResult(jobId: string): Promise<unknown> {
-    const result = await fal.queue.result("", { requestId: jobId });
+    const model = this.jobModels.get(jobId);
+    if (!model) {
+      throw new Error(`Unknown job: ${jobId}`);
+    }
+
+    const result = await fal.queue.result(model, { requestId: jobId });
+
+    // Clean up job model mapping after getting result
+    this.jobModels.delete(jobId);
+
     return result.data;
   }
 
@@ -76,8 +94,6 @@ export class FalProvider extends BaseProvider {
     file: File | Blob | ArrayBuffer,
     _filename?: string,
   ): Promise<string> {
-    console.log(`[fal] uploading file...`);
-
     const blob =
       file instanceof ArrayBuffer
         ? new Blob([file])
@@ -86,7 +102,6 @@ export class FalProvider extends BaseProvider {
           : file;
 
     const url = await fal.storage.upload(blob);
-    console.log(`[fal] uploaded to: ${url}`);
     return url;
   }
 
@@ -240,11 +255,10 @@ export class FalProvider extends BaseProvider {
       input: {
         prompt: args.prompt,
         image_urls: [imageUrl],
-        aspect_ratio: (args.aspectRatio || "auto") as
+        aspect_ratio: (args.aspectRatio || "1:1") as
           | "16:9"
           | "9:16"
           | "1:1"
-          | "auto"
           | "21:9"
           | "3:2"
           | "4:3"

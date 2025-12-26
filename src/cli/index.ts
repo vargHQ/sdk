@@ -5,6 +5,9 @@
  * ai video infrastructure from your terminal
  */
 
+// Must be first import to suppress logs before other modules load
+import "./quiet";
+
 import { defineCommand, runMain } from "citty";
 import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
@@ -23,11 +26,17 @@ import {
 } from "./commands";
 
 // Register all providers
-import "../providers"; // Side effect: registers providers
+import "../providers"; // Side effect: registers providers to base registry
+import { providers } from "../providers/base";
 
 // Register all definitions
 for (const definition of allDefinitions) {
   registry.register(definition);
+}
+
+// Also register providers to core registry
+for (const provider of providers.all()) {
+  registry.registerProvider(provider);
 }
 
 // Intercept --help and -h to use our custom help views

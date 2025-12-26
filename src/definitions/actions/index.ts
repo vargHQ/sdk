@@ -62,6 +62,9 @@ export {
   definition as transcribe,
   transcribe as transcribeAudio,
 } from "./transcribe";
+export type { UploadOptions, UploadResult } from "./upload";
+// Upload
+export { definition as uploadDef, upload } from "./upload";
 export type { VideoGenerationResult } from "./video";
 // Video generation
 export {
@@ -88,6 +91,7 @@ import { definition as imageDefinition } from "./image";
 import { definition as musicDefinition } from "./music";
 import { definition as syncDefinition } from "./sync";
 import { definition as transcribeDefinition } from "./transcribe";
+import { definition as uploadDefinition } from "./upload";
 import { definition as videoDefinition } from "./video";
 import { definition as voiceDefinition } from "./voice";
 
@@ -106,4 +110,5 @@ export const allActions = [
   fadeDefinition,
   transitionDefinition,
   removeDefinition,
+  uploadDefinition,
 ];

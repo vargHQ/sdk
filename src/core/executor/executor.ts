@@ -36,7 +36,10 @@ export class Executor {
     // Validate and prepare inputs using Zod schema
     const validation = validateAndPrepare(inputs, definition.schema.input);
     if (!validation.valid) {
-      throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
+      const errorMessages = validation.errors
+        .map((e) => (e.path ? `${e.path}: ${e.message}` : e.message))
+        .join(", ");
+      throw new Error(`Validation failed: ${errorMessages}`);
     }
 
     // Use validated and transformed data (Zod applies defaults)
@@ -65,8 +68,6 @@ export class Executor {
     inputs: Record<string, unknown>,
     options?: RunOptions,
   ): Promise<ExecutionResult> {
-    console.log(`[executor] running model: ${model.name}`);
-
     // Determine provider
     const providerName = options?.provider ?? model.defaultProvider;
     const provider = registry.getProvider(providerName);
@@ -101,8 +102,6 @@ export class Executor {
     inputs: Record<string, unknown>,
     options?: RunOptions,
   ): Promise<ExecutionResult> {
-    console.log(`[executor] running action: ${action.name}`);
-
     // If action has direct execute function, use it
     if (action.execute) {
       const startTime = Date.now();
@@ -123,8 +122,6 @@ export class Executor {
       throw new Error(`No valid route found for action: ${action.name}`);
     }
 
-    console.log(`[executor] routing to: ${route.target}`);
-
     // Transform inputs if needed
     const transformedInputs = route.transform
       ? route.transform(inputs)
@@ -142,8 +139,6 @@ export class Executor {
     inputs: Record<string, unknown>,
     options?: RunOptions,
   ): Promise<ExecutionResult> {
-    console.log(`[executor] running skill: ${skill.name}`);
-
     return pipelineRunner.run(
       skill,
       inputs,

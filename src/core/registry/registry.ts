@@ -45,7 +45,6 @@ export class Registry {
    */
   registerProvider(provider: Provider): void {
     this.providers.set(provider.name, provider);
-    console.log(`[registry] registered provider: ${provider.name}`);
   }
 
   /**

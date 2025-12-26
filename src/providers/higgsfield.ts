@@ -44,8 +44,6 @@ export class HiggsfieldProvider extends BaseProvider {
     inputs: Record<string, unknown>,
     _config?: ProviderConfig,
   ): Promise<string> {
-    console.log(`[higgsfield] submitting job for model: ${model}`);
-
     const jobSet = await this.client.generate(model as "/v1/text2image/soul", {
       prompt: inputs.prompt as string,
       width_and_height:

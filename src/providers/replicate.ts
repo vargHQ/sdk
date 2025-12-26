@@ -23,8 +23,6 @@ export class ReplicateProvider extends BaseProvider {
     inputs: Record<string, unknown>,
     _config?: ProviderConfig,
   ): Promise<string> {
-    console.log(`[replicate] submitting job for model: ${model}`);
-
     // Transform inputs for provider-specific field names
     const transformedInputs = this.transformInputs(model, inputs);
 
