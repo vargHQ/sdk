@@ -9,35 +9,49 @@ Create 15 video creatives showing "talking heads" emotionally reacting to animat
 - Background music/sfx
 - Packshot at end: `media/Packshot_9_16.mp4`
 
-## Assets to Generate
+## Assets Generated
 
 ### 1. Animated Retro Photos (5 total, shared across all videos)
-| # | Description | Status |
-|---|-------------|--------|
-| 1 | Young grandparents sitting side by side, holding hands | video generated |
-| 2 | Woman holding cat, cat rubbing against her hand | pending |
-| 3 | New Year by old tree, two kids in costumes, adults nearby | pending |
-| 4 | Old person on porch of old house | pending |
-| 5 | Family dinner gathering | pending |
+| # | Description | Image | Video |
+|---|-------------|-------|-------|
+| 1 | Young grandparents sitting side by side, holding hands | `media/retro/01_grandparents.jpg` | `media/retro/01_grandparents.mp4` |
+| 2 | Woman holding cat, cat rubbing against her hand | `media/retro/02_woman_cat.jpg` | `media/retro/02_woman_cat.mp4` |
+| 3 | New Year by old tree, two kids in costumes | `media/retro/03_newyear.jpg` | `media/retro/03_newyear.mp4` |
+| 4 | Old person on porch of old house | `media/retro/04_elderly_porch.jpg` | `media/retro/04_elderly_porch.mp4` |
+| 5 | Family dinner gathering | `media/retro/05_family_dinner.jpg` | `media/retro/05_family_dinner.mp4` |
 
 ### 2. Talking Head Characters (15 total)
-| # | Description |
-|---|-------------|
-| 1 | Girl with long light brown hair (25-30), natural makeup |
-| 2 | Asian girl with short black hair and bangs (20-25) |
-| 3 | Girl with red curls and freckles (25-35) |
-| 4 | Girl with bright colored hair (pink/blue), edgy (18-25) |
-| 5 | Girl with bangs and long dark hair (25-30) |
-| 6 | Middle-aged woman with gray streaks (40-50) |
-| 7 | Girl with soft curls, warm skin tone (30-40) |
-| 8 | Girl with shaved side, asymmetric cut (20-30) |
-| 9 | Dark-skinned girl with afro curls, wide smile (25-35) |
-| 10 | Girl with long braids or dreads (18-30) |
-| 11 | Girl with glasses, bob haircut (30-40) |
-| 12 | Young girl with short cut, septum piercing (25-35) |
-| 13 | Girl with super long platinum white hair |
-| 14 | Asian woman with neat haircut, glasses, big eyes |
-| 15 | Dark-skinned girl with wavy pink hair (wig), bold makeup (18-25) |
+| # | Description | Portrait | Greenscreen |
+|---|-------------|----------|-------------|
+| 1 | Girl with long light brown hair (25-30) | `media/characters/01_light_brown_hair.jpg` | `media/characters/01_light_brown_hair_greenscreen.jpg` |
+| 2 | Asian girl with short black hair and bangs | `media/characters/02_asian_bangs.jpg` | `media/characters/02_gs.jpg` |
+| 3 | Girl with red curls and freckles | `media/characters/03_red_curls.jpg` | `media/characters/03_gs.jpg` |
+| 4 | Girl with bright colored hair (pink/blue) | `media/characters/04_pink_hair.jpg` | `media/characters/04_gs.jpg` |
+| 5 | Girl with bangs and long dark hair | `media/characters/05_dark_bangs.jpg` | `media/characters/05_gs.jpg` |
+| 6 | Middle-aged woman with gray streaks | `media/characters/06_gray_streaks.jpg` | `media/characters/06_gs.jpg` |
+| 7 | Girl with soft curls, warm skin tone | `media/characters/07_soft_curls.jpg` | `media/characters/07_gs.jpg` |
+| 8 | Girl with shaved side, asymmetric cut | `media/characters/08_shaved_side.jpg` | `media/characters/08_gs.jpg` |
+| 9 | Dark-skinned girl with afro curls | `media/characters/09_afro_curls.jpg` | `media/characters/09_gs.jpg` |
+| 10 | Girl with long braids or dreads | `media/characters/10_long_braids.jpg` | `media/characters/10_gs.jpg` |
+| 11 | Girl with glasses, bob haircut | `media/characters/11_glasses_bob.jpg` | `media/characters/11_gs.jpg` |
+| 12 | Young girl with short cut, septum piercing | `media/characters/12_septum.jpg` | `media/characters/12_gs.jpg` |
+| 13 | Girl with super long platinum white hair | `media/characters/13_platinum_hair.jpg` | `media/characters/13_gs.jpg` |
+| 14 | Asian woman with neat haircut, glasses | `media/characters/14_asian_glasses.jpg` | `media/characters/14_gs.jpg` |
+| 15 | Dark-skinned girl with wavy pink hair | `media/characters/15_pink_wig.jpg` | `media/characters/15_gs.jpg` |
+
+### 3. Audio Assets
+| Asset | File | Duration |
+|-------|------|----------|
+| Voice (Rachel) | `output/scene01/voice.mp3` | ~7 seconds |
+| Captions SRT | `output/scene01/captions.srt` | 0-5 seconds |
+
+### 4. Packshot
+| Format | File | Duration |
+|--------|------|----------|
+| 9x16 | `media/Packshot_9_16.mp4` | 2.18s |
+| 4x5 | `media/Packshot_4x5.mp4` | 2.18s (created from 9x16) |
+
+---
 
 ## Script
 **Voice:** "Guys... I animated old family photos with Photify, and realized my great-grandma had the exact same smile as me."
@@ -46,169 +60,222 @@ Create 15 video creatives showing "talking heads" emotionally reacting to animat
 
 ---
 
-## Implementation Plan (with CLI commands)
+## Captions SRT Format
+```srt
+1
+00:00:00,000 --> 00:00:01,500
+Guys...
 
-### Phase 1: Generate Retro Photos (static images)
+2
+00:00:01,500 --> 00:00:03,500
+I animated old family photos
+with Photify
 
-```bash
-# Generate vintage-style family photos
-varg run image --prompt "1970s vintage photograph, young couple sitting on couch holding hands, film grain, sepia tones, authentic retro family photo" --quiet
-
-varg run image --prompt "1960s vintage photograph, woman holding cat lovingly, cat rubbing against her arm, film grain, warm sepia, authentic retro" --quiet
-
-varg run image --prompt "1980s vintage photograph, New Year celebration by decorated tree, two children in costumes, adults watching, film grain, nostalgic" --quiet
-
-varg run image --prompt "1950s vintage photograph, elderly person sitting on wooden porch of old farmhouse, film grain, black and white" --quiet
-
-varg run image --prompt "1970s vintage photograph, large family gathered around dinner table, celebration, warm lighting, film grain, authentic retro" --quiet
+3
+00:00:03,500 --> 00:00:05,000
+and realized my great-grandma
+had the exact same smile as me
 ```
-
-### Phase 2: Animate Retro Photos (image-to-video)
-
-```bash
-# Animate each photo with subtle motion
-varg run video --image output/retro_1.png --prompt "subtle gentle movement, breathing, slight sway, nostalgic atmosphere" --quiet
-# repeat for all 5
-```
-
-### Phase 3: Generate Talking Head Portraits
-
-```bash
-# Generate character portraits (15 total) with GREEN BACKGROUND for chromakey
-varg run image --prompt "portrait photo of young woman 25-30, long light brown hair, natural makeup, SOLID BRIGHT GREEN BACKGROUND for chromakey, looking at camera with warm emotional touched expression, eyes glistening with happy tears, gentle smile" --quiet
-# repeat for all 15 characters with their descriptions
-# IMPORTANT: Always include "SOLID BRIGHT GREEN BACKGROUND for chromakey" and warm/emotional expression
-```
-
-### Phase 4: Generate Voice Audio
-
-```bash
-# Generate TTS for the script
-varg run voice --text "Guys... I animated old family photos with Photify, and realized my great-grandma had the exact same smile as me." --voice rachel --quiet
-```
-
-### Phase 5: Create Talking Head Videos with Lipsync
-
-```bash
-# Use sync action for lipsync - 10 second duration to fit full audio
-# Character image should have GREEN BACKGROUND for compositing
-varg run sync --image output/character_1_greenscreen.png --audio output/voice.mp3 --prompt "woman speaking emotionally, warm expression, wiping tears" --duration 10 --resolution 720p --quiet
-
-# Then use ffmpeg chromakey to remove green background when compositing
-```
-
-**IMPORTANT:**
-- Generate character portraits with GREEN BACKGROUND for easy chromakey removal
-- Use 10 second duration (audio is ~7s, will trim excess)
-- Prompt should emphasize WARM, EMOTIONAL expression (not cold/neutral)
-
-### Phase 6: Assembly (ffmpeg operations)
-
-```bash
-# Step 1: Composite talking head over animated background with CHROMAKEY
-# - Loop background to extend duration
-# - Remove green screen from talking head
-# - Crop talking head to portrait (face focus) to avoid head cutoff
-# - Position at bottom with padding
-ffmpeg -y \
-  -i media/retro/01_grandparents.mp4 \
-  -stream_loop 1 -i media/retro/01_grandparents.mp4 \
-  -i output/scene01/talking_head.mp4 \
-  -filter_complex "\
-    [0:v][1:v]concat=n=2:v=1:a=0[bglong]; \
-    [bglong]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1[bg]; \
-    [2:v]chromakey=0x00ff00:0.3:0.1,crop=600:700:250:50,scale=350:-1[fg]; \
-    [bg][fg]overlay=(W-w)/2:H-h-80[out]" \
-  -map "[out]" -map 2:a \
-  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
-  -t 7 \
-  output/scene01/composite.mp4
-
-# CHROMAKEY PARAMS:
-# - 0x00ff00 = green color to remove
-# - 0.3 = similarity threshold (how close to green to remove)
-# - 0.1 = blend (edge softness)
-#
-# CROP PARAMS for talking head (crop=600:700:250:50):
-# - 600:700 = output width:height (portrait crop)
-# - 250:50 = x:y offset from top-left (centers on face)
-# Adjust these values based on each character's face position
-#
-# OVERLAY POSITION:
-# - (W-w)/2 = horizontally centered
-# - H-h-80 = 80px padding from bottom
-
-# Step 2: Burn in captions (smaller font, positioned above character)
-ffmpeg -y \
-  -i output/scene01/composite.mp4 \
-  -vf "subtitles='output/scene01/captions.srt':force_style='FontSize=18,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Bold=1,Alignment=2,MarginV=500'" \
-  -c:a copy \
-  output/scene01/captioned.mp4
-
-# CAPTION PARAMS:
-# - FontSize=18 (smaller, fits better)
-# - Alignment=2 (bottom center, but MarginV pushes it up)
-# - MarginV=500 (pixels from bottom - positions above character)
-
-# Step 3: Concat with packshot (9x16)
-ffmpeg -y \
-  -i output/scene01/captioned.mp4 \
-  -i media/Packshot_9_16.mp4 \
-  -filter_complex "\
-    [0:v]fps=24,scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v0]; \
-    [1:v]fps=24,scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v1]; \
-    [v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]" \
-  -map "[outv]" -map "[outa]" \
-  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
-  output/scene01/final_9x16.mp4
-
-# Step 4: Create 4x5 version
-# NOTE: Character positioning needs adjustment for 4x5 crop
-# The 4x5 frame is shorter, so character may get cut off
-# Solution: Re-composite with adjusted overlay position for 4x5
-ffmpeg -y \
-  -i media/retro/01_grandparents.mp4 \
-  -stream_loop 1 -i media/retro/01_grandparents.mp4 \
-  -i output/scene01/talking_head.mp4 \
-  -filter_complex "\
-    [0:v][1:v]concat=n=2:v=1:a=0[bglong]; \
-    [bglong]scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350,setsar=1[bg]; \
-    [2:v]chromakey=0x00ff00:0.3:0.1,crop=600:700:250:50,scale=300:-1[fg]; \
-    [bg][fg]overlay=(W-w)/2:H-h-60[out]" \
-  -map "[out]" -map 2:a \
-  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
-  -t 7 \
-  output/scene01/composite_4x5.mp4
-
-# Add captions for 4x5 (adjust MarginV for shorter frame)
-ffmpeg -y \
-  -i output/scene01/composite_4x5.mp4 \
-  -vf "subtitles='output/scene01/captions.srt':force_style='FontSize=16,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Bold=1,Alignment=2,MarginV=380'" \
-  -c:a copy \
-  output/scene01/captioned_4x5.mp4
-
-# Concat 4x5 with packshot
-ffmpeg -y \
-  -i output/scene01/captioned_4x5.mp4 \
-  -i media/Packshot_9_16.mp4 \
-  -filter_complex "\
-    [0:v]fps=24[v0]; \
-    [1:v]fps=24,scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350[v1]; \
-    [v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]" \
-  -map "[outv]" -map "[outa]" \
-  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
-  output/scene01/final_4x5.mp4
-```
-
-### Phase 7: Export Both Formats
-
-Need to handle aspect ratio crops/resizing:
-- 9x16 (1080x1920) - vertical TikTok/Reels
-- 4x5 (1080x1350) - Instagram feed
 
 ---
 
-## Questions
-- [ ] Voice: generate TTS or do you have recordings?
-- [ ] Music/sfx preferences?
-- [ ] Should all 15 characters use same 5 background photos, or vary?
+## FINAL WORKING COMMANDS (Scene 01)
+
+### Step 1: Generate Lipsync Video
+```bash
+bun run src/cli/index.ts run sync \
+  --image media/characters/01_light_brown_hair_greenscreen.jpg \
+  --audio output/scene01/voice.mp3 \
+  --prompt "woman speaking emotionally, warm expression" \
+  --duration 10 \
+  --resolution 720p \
+  --quiet
+```
+
+**Output:** `output/scene01/talking_head_v2.mp4` (10 seconds, greenscreen background)
+
+### Step 2: Composite 9x16 (1080x1920)
+```bash
+ffmpeg -y \
+  -i media/retro/01_grandparents.mp4 \
+  -stream_loop 1 -i media/retro/01_grandparents.mp4 \
+  -i output/scene01/talking_head_v2.mp4 \
+  -filter_complex "\
+    [0:v][1:v]concat=n=2:v=1:a=0[bglong]; \
+    [bglong]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1[bg]; \
+    [2:v]chromakey=0x00ff00:0.3:0.1,crop=600:700:250:50,scale=420:-1[fg]; \
+    [bg][fg]overlay=(W-w)/2:H-h-650[out]" \
+  -map "[out]" -map 2:a -t 7 output/scene01/composite_9x16.mp4
+```
+
+**Key parameters for 9x16:**
+- `scale=420:-1` - talking head width (420px, larger)
+- `H-h-650` - position from bottom (650px up = upper-middle area)
+- `crop=600:700:250:50` - crop talking head video (600x700, offset 250,50 to center on face)
+
+### Step 3: Add Captions to 9x16
+```bash
+ffmpeg -y -i output/scene01/composite_9x16.mp4 \
+  -vf "subtitles=/Users/aleks/Github/varghq/sdk/output/scene01/captions.srt:force_style='FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2,Bold=1,Alignment=2,MarginV=15'" \
+  -c:a copy output/scene01/captioned_9x16.mp4
+```
+
+**Key parameters:**
+- `FontSize=18` - smaller font (standard for social media)
+- `MarginV=15` - 15px from bottom edge
+- `Alignment=2` - bottom center
+- **MUST use absolute path for subtitles file**
+
+### Step 4: Add Packshot to 9x16
+```bash
+ffmpeg -y -i output/scene01/captioned_9x16.mp4 -i media/Packshot_9_16.mp4 \
+  -filter_complex "[0:v]fps=24[v0];[1:v]fps=24[v1];[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]" \
+  -map "[outv]" -map "[outa]" output/scene01/final_9x16_v4.mp4
+```
+
+### Step 5: Composite 4x5 (1080x1350)
+```bash
+ffmpeg -y \
+  -i media/retro/01_grandparents.mp4 \
+  -stream_loop 1 -i media/retro/01_grandparents.mp4 \
+  -i output/scene01/talking_head_v2.mp4 \
+  -filter_complex "\
+    [0:v][1:v]concat=n=2:v=1:a=0[bglong]; \
+    [bglong]scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350,setsar=1[bg]; \
+    [2:v]chromakey=0x00ff00:0.3:0.1,crop=600:700:250:50,scale=420:-1[fg]; \
+    [bg][fg]overlay=(W-w)/2:H-h-550[out]" \
+  -map "[out]" -map 2:a -t 7 output/scene01/composite_4x5.mp4
+```
+
+**Key parameters for 4x5:**
+- `scale=420:-1` - same talking head width
+- `H-h-550` - position from bottom (550px up for shorter frame)
+- Background scales to 1080x1350 instead of 1920
+
+### Step 6: Add Captions to 4x5
+```bash
+ffmpeg -y -i output/scene01/composite_4x5.mp4 \
+  -vf "subtitles=/Users/aleks/Github/varghq/sdk/output/scene01/captions.srt:force_style='FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2,Bold=1,Alignment=2,MarginV=15'" \
+  -c:a copy output/scene01/captioned_4x5.mp4
+```
+
+### Step 7: Create 4x5 Packshot (one-time)
+```bash
+ffmpeg -y -i media/Packshot_9_16.mp4 \
+  -vf "scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350" \
+  -c:a copy media/Packshot_4x5.mp4
+```
+
+### Step 8: Add Packshot to 4x5
+```bash
+ffmpeg -y -i output/scene01/captioned_4x5.mp4 -i media/Packshot_4x5.mp4 \
+  -filter_complex "[0:v]fps=24[v0];[1:v]fps=24[v1];[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]" \
+  -map "[outv]" -map "[outa]" output/scene01/final_4x5_v4.mp4
+```
+
+---
+
+## CRITICAL LESSONS LEARNED
+
+### 1. Subtitles Filter Issues
+- **MUST use absolute path** for subtitle file: `subtitles=/full/path/to/captions.srt`
+- Relative paths like `subtitles='output/scene01/captions.srt'` may silently fail
+- MarginV is distance from BOTTOM edge when Alignment=2
+
+### 2. Talking Head Positioning
+- **9x16 (1920 height):** Use `H-h-650` to position character in upper-middle
+- **4x5 (1350 height):** Use `H-h-550` for similar visual position
+- Character should be ABOVE captions, not overlapping
+- Larger head size (420px width) looks better than smaller (260-320px)
+
+### 3. Caption Positioning
+- **FontSize=18** is good for social media (not too big, not too small)
+- **MarginV=15** places captions at very bottom
+- Higher MarginV values push captions UP (e.g., MarginV=500 = 500px from bottom)
+- For 4x5, use same MarginV as 9x16 since captions should be at bottom in both
+
+### 4. Chromakey Settings
+- `chromakey=0x00ff00:0.3:0.1` works well for bright green backgrounds
+- 0x00ff00 = pure green
+- 0.3 = similarity threshold
+- 0.1 = blend/edge softness
+
+### 5. Crop for Face Focus
+- `crop=600:700:250:50` crops the lipsync video to focus on face
+- Format: `crop=width:height:x_offset:y_offset`
+- Adjust x_offset and y_offset based on face position in source video
+
+### 6. Background Looping
+- Use `-stream_loop 1` to loop short backgrounds
+- Animated photos are ~5 seconds, need ~7 seconds for full audio
+- Concat looped background before compositing
+
+### 7. FPS Alignment for Concat
+- Both videos must have same FPS for clean concat
+- Use `fps=24` filter on both before concat
+- Packshot may be 60fps, main content is 24fps
+
+### 8. Color Format for ASS Styles
+- Use `&H00FFFFFF` format (AABBGGRR in hex)
+- `&H00FFFFFF` = white
+- `&H00000000` = black
+- The `00` prefix is alpha (00 = opaque)
+
+---
+
+## Scene 01 Final Output
+
+| Format | File | Resolution | Duration |
+|--------|------|------------|----------|
+| 9x16 | `output/scene01/final_9x16_v4.mp4` | 1080x1920 | ~9.2s |
+| 4x5 | `output/scene01/final_4x5_v4.mp4` | 1080x1350 | ~9.2s |
+
+---
+
+## Remaining Work
+
+### Scenes 02-15
+Each scene needs:
+1. Generate lipsync video using greenscreen character image
+2. Create composite (9x16 and 4x5)
+3. Add captions
+4. Add packshot
+5. Export finals
+
+### Batch Processing Template
+```bash
+# For each scene N (02-15):
+SCENE="02"
+CHAR_IMG="media/characters/02_gs.jpg"
+BG_VIDEO="media/retro/02_woman_cat.mp4"
+
+# Create scene folder
+mkdir -p output/scene${SCENE}
+cp output/scene01/voice.mp3 output/scene${SCENE}/
+cp output/scene01/captions.srt output/scene${SCENE}/
+
+# Generate lipsync
+bun run src/cli/index.ts run sync \
+  --image ${CHAR_IMG} \
+  --audio output/scene${SCENE}/voice.mp3 \
+  --prompt "woman speaking emotionally, warm expression" \
+  --duration 10 \
+  --resolution 720p \
+  --output output/scene${SCENE}/talking_head.mp4
+
+# Then run composite/caption/packshot commands as above
+```
+
+---
+
+## Cost Tracking
+
+| Item | Cost |
+|------|------|
+| Flux Pro images (5 retro + 15 chars + 15 greenscreen) | ~$0.80 |
+| Kling video (5 animations) | ~$2.10 |
+| Wan-25 lipsync (1 so far) | ~$0.50 |
+| ElevenLabs TTS | ~$0.05 |
+| **Total so far** | **~$3.45** |
+
+Estimated for all 15 scenes: ~$10-12 total
