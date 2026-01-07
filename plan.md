@@ -106,7 +106,10 @@ varg run sync --image output/character_1_greenscreen.png --audio output/voice.mp
 
 ```bash
 # Step 1: Composite talking head over animated background with CHROMAKEY
-# Loop background to extend duration, remove green screen from talking head
+# - Loop background to extend duration
+# - Remove green screen from talking head
+# - Crop talking head to portrait (face focus) to avoid head cutoff
+# - Position at bottom with padding
 ffmpeg -y \
   -i media/retro/01_grandparents.mp4 \
   -stream_loop 1 -i media/retro/01_grandparents.mp4 \
@@ -114,8 +117,8 @@ ffmpeg -y \
   -filter_complex "\
     [0:v][1:v]concat=n=2:v=1:a=0[bglong]; \
     [bglong]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1[bg]; \
-    [2:v]chromakey=0x00ff00:0.3:0.1,scale=500:-1[fg]; \
-    [bg][fg]overlay=(W-w)/2:H-h-150[out]" \
+    [2:v]chromakey=0x00ff00:0.3:0.1,crop=600:700:250:50,scale=350:-1[fg]; \
+    [bg][fg]overlay=(W-w)/2:H-h-80[out]" \
   -map "[out]" -map 2:a \
   -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
   -t 7 \
@@ -125,13 +128,27 @@ ffmpeg -y \
 # - 0x00ff00 = green color to remove
 # - 0.3 = similarity threshold (how close to green to remove)
 # - 0.1 = blend (edge softness)
+#
+# CROP PARAMS for talking head (crop=600:700:250:50):
+# - 600:700 = output width:height (portrait crop)
+# - 250:50 = x:y offset from top-left (centers on face)
+# Adjust these values based on each character's face position
+#
+# OVERLAY POSITION:
+# - (W-w)/2 = horizontally centered
+# - H-h-80 = 80px padding from bottom
 
-# Step 2: Burn in captions
+# Step 2: Burn in captions (smaller font, positioned above character)
 ffmpeg -y \
   -i output/scene01/composite.mp4 \
-  -vf "subtitles=output/scene01/captions.srt:force_style='FontName=Arial,FontSize=28,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=3,Bold=1,Alignment=2,MarginV=180'" \
+  -vf "subtitles='output/scene01/captions.srt':force_style='FontSize=18,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Bold=1,Alignment=2,MarginV=500'" \
   -c:a copy \
   output/scene01/captioned.mp4
+
+# CAPTION PARAMS:
+# - FontSize=18 (smaller, fits better)
+# - Alignment=2 (bottom center, but MarginV pushes it up)
+# - MarginV=500 (pixels from bottom - positions above character)
 
 # Step 3: Concat with packshot (9x16)
 ffmpeg -y \
@@ -145,12 +162,37 @@ ffmpeg -y \
   -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
   output/scene01/final_9x16.mp4
 
-# Step 4: Create 4x5 version (crop from 9x16)
+# Step 4: Create 4x5 version
+# NOTE: Character positioning needs adjustment for 4x5 crop
+# The 4x5 frame is shorter, so character may get cut off
+# Solution: Re-composite with adjusted overlay position for 4x5
 ffmpeg -y \
-  -i output/scene01/captioned.mp4 \
+  -i media/retro/01_grandparents.mp4 \
+  -stream_loop 1 -i media/retro/01_grandparents.mp4 \
+  -i output/scene01/talking_head.mp4 \
+  -filter_complex "\
+    [0:v][1:v]concat=n=2:v=1:a=0[bglong]; \
+    [bglong]scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350,setsar=1[bg]; \
+    [2:v]chromakey=0x00ff00:0.3:0.1,crop=600:700:250:50,scale=300:-1[fg]; \
+    [bg][fg]overlay=(W-w)/2:H-h-60[out]" \
+  -map "[out]" -map 2:a \
+  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
+  -t 7 \
+  output/scene01/composite_4x5.mp4
+
+# Add captions for 4x5 (adjust MarginV for shorter frame)
+ffmpeg -y \
+  -i output/scene01/composite_4x5.mp4 \
+  -vf "subtitles='output/scene01/captions.srt':force_style='FontSize=16,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Bold=1,Alignment=2,MarginV=380'" \
+  -c:a copy \
+  output/scene01/captioned_4x5.mp4
+
+# Concat 4x5 with packshot
+ffmpeg -y \
+  -i output/scene01/captioned_4x5.mp4 \
   -i media/Packshot_9_16.mp4 \
   -filter_complex "\
-    [0:v]fps=24,scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350[v0]; \
+    [0:v]fps=24[v0]; \
     [1:v]fps=24,scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350[v1]; \
     [v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]" \
   -map "[outv]" -map "[outa]" \
