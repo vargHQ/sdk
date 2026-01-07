@@ -74,9 +74,10 @@ varg run video --image output/retro_1.png --prompt "subtle gentle movement, brea
 ### Phase 3: Generate Talking Head Portraits
 
 ```bash
-# Generate character portraits (15 total)
-varg run image --prompt "portrait photo of young woman 25-30, long light brown hair, natural makeup, neutral background, looking at camera, emotional expression" --quiet
+# Generate character portraits (15 total) with GREEN BACKGROUND for chromakey
+varg run image --prompt "portrait photo of young woman 25-30, long light brown hair, natural makeup, SOLID BRIGHT GREEN BACKGROUND for chromakey, looking at camera with warm emotional touched expression, eyes glistening with happy tears, gentle smile" --quiet
 # repeat for all 15 characters with their descriptions
+# IMPORTANT: Always include "SOLID BRIGHT GREEN BACKGROUND for chromakey" and warm/emotional expression
 ```
 
 ### Phase 4: Generate Voice Audio
@@ -104,20 +105,57 @@ varg run sync --image output/character_1_greenscreen.png --audio output/voice.mp
 ### Phase 6: Assembly (ffmpeg operations)
 
 ```bash
-# Composite talking head over animated background
-varg run merge --inputs output/retro_animated.mp4 output/talking_head.mp4 --quiet
+# Step 1: Composite talking head over animated background with CHROMAKEY
+# Loop background to extend duration, remove green screen from talking head
+ffmpeg -y \
+  -i media/retro/01_grandparents.mp4 \
+  -stream_loop 1 -i media/retro/01_grandparents.mp4 \
+  -i output/scene01/talking_head.mp4 \
+  -filter_complex "\
+    [0:v][1:v]concat=n=2:v=1:a=0[bglong]; \
+    [bglong]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1[bg]; \
+    [2:v]chromakey=0x00ff00:0.3:0.1,scale=500:-1[fg]; \
+    [bg][fg]overlay=(W-w)/2:H-h-150[out]" \
+  -map "[out]" -map 2:a \
+  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
+  -t 7 \
+  output/scene01/composite.mp4
 
-# Add captions
-varg run captions --video output/merged.mp4 --quiet
+# CHROMAKEY PARAMS:
+# - 0x00ff00 = green color to remove
+# - 0.3 = similarity threshold (how close to green to remove)
+# - 0.1 = blend (edge softness)
 
-# Trim/adjust timing
-varg run trim --input output/captioned.mp4 --start 0 --end 15 --quiet
+# Step 2: Burn in captions
+ffmpeg -y \
+  -i output/scene01/composite.mp4 \
+  -vf "subtitles=output/scene01/captions.srt:force_style='FontName=Arial,FontSize=28,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=3,Bold=1,Alignment=2,MarginV=180'" \
+  -c:a copy \
+  output/scene01/captioned.mp4
 
-# Add packshot at end
-varg run merge --inputs output/main.mp4 Packshot_9_16.mp4 --quiet
+# Step 3: Concat with packshot (9x16)
+ffmpeg -y \
+  -i output/scene01/captioned.mp4 \
+  -i media/Packshot_9_16.mp4 \
+  -filter_complex "\
+    [0:v]fps=24,scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v0]; \
+    [1:v]fps=24,scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v1]; \
+    [v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]" \
+  -map "[outv]" -map "[outa]" \
+  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
+  output/scene01/final_9x16.mp4
 
-# Add fade transitions
-varg run fade --input output/final.mp4 --type both --quiet
+# Step 4: Create 4x5 version (crop from 9x16)
+ffmpeg -y \
+  -i output/scene01/captioned.mp4 \
+  -i media/Packshot_9_16.mp4 \
+  -filter_complex "\
+    [0:v]fps=24,scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350[v0]; \
+    [1:v]fps=24,scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350[v1]; \
+    [v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]" \
+  -map "[outv]" -map "[outa]" \
+  -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
+  output/scene01/final_4x5.mp4
 ```
 
 ### Phase 7: Export Both Formats
