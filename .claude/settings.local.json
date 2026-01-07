@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(varg --help:*)",
+      "Bash(varg --info:*)",
+      "Bash(varg run --help:*)",
+      "Bash(varg list --help:*)",
+      "Bash(varg find --help:*)",
+      "Bash(varg which --help:*)",
+      "Bash(varg upload --help:*)",
+      "Bash(varg list:*)",
+      "Bash(varg run:*)",
+      "Bash(varg find video)",
+      "Bash(varg which:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

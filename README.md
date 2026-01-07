@@ -14,6 +14,39 @@ varg run video --prompt "camera flies through clouds" --duration 5
 varg run voice --text "Hello world" --voice rachel
 ```
 
+## As a Library
+
+```typescript
+import {
+  generateImage,
+  imageToVideo,
+  textToSpeech,
+  uploadFromUrl
+} from "@vargai/sdk"
+
+// Generate an image
+const image = await generateImage({
+  prompt: "cyberpunk cityscape at night",
+  model: "fal-ai/flux-pro/v1.1",
+})
+
+// Animate it to video
+const video = await imageToVideo({
+  prompt: "camera slowly pans across the scene",
+  imageUrl: image.data.images[0].url,
+  duration: 5,
+})
+
+// Generate voiceover
+const audio = await textToSpeech({
+  text: "Welcome to the future",
+  voice: "rachel",
+})
+
+// Upload to S3
+const url = await uploadFromUrl(video.data.video.url, "videos/output.mp4")
+```
+
 ## Commands
 
 | Command | Description |
