@@ -71,6 +71,23 @@ function extractErrorMessage(err: unknown): string {
   return err.message;
 }
 
+function sanitizeOutput(key: string, value: unknown): unknown {
+  if (value instanceof Buffer) {
+    return `<Buffer ${value.length} bytes>`;
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    "type" in value &&
+    (value as { type: string }).type === "Buffer" &&
+    "data" in value
+  ) {
+    const data = (value as { data: unknown[] }).data;
+    return `<Buffer ${Array.isArray(data) ? data.length : "?"} bytes>`;
+  }
+  return value;
+}
+
 interface RunOptions {
   [key: string]: string | boolean | undefined;
   help?: boolean;
@@ -369,14 +386,17 @@ export const runCmd = defineCommand({
 
         if (options.json) {
           console.log(
-            JSON.stringify({
-              success: true,
-              result: execResult,
-              time: elapsed,
-            }),
+            JSON.stringify(
+              {
+                success: true,
+                result: execResult,
+                time: elapsed,
+              },
+              sanitizeOutput,
+            ),
           );
         } else {
-          console.log(JSON.stringify(execResult.output));
+          console.log(JSON.stringify(execResult.output, sanitizeOutput));
         }
       } catch (err) {
         const elapsed = Date.now() - startTime;
