@@ -89,11 +89,17 @@ varg run voice --text "Guys... I animated old family photos with Photify, and re
 ### Phase 5: Create Talking Head Videos with Lipsync
 
 ```bash
-# Use sync action for lipsync
-varg run sync --video output/character_1.mp4 --audio output/voice.mp3 --quiet
-# OR use the talking-character skill which combines it all:
-varg run talking-character --image output/character_1.png --text "Guys... I animated old family photos..." --voice rachel
+# Use sync action for lipsync - 10 second duration to fit full audio
+# Character image should have GREEN BACKGROUND for compositing
+varg run sync --image output/character_1_greenscreen.png --audio output/voice.mp3 --prompt "woman speaking emotionally, warm expression, wiping tears" --duration 10 --resolution 720p --quiet
+
+# Then use ffmpeg chromakey to remove green background when compositing
 ```
+
+**IMPORTANT:**
+- Generate character portraits with GREEN BACKGROUND for easy chromakey removal
+- Use 10 second duration (audio is ~7s, will trim excess)
+- Prompt should emphasize WARM, EMOTIONAL expression (not cold/neutral)
 
 ### Phase 6: Assembly (ffmpeg operations)
 
