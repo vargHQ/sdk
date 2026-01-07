@@ -42,3 +42,7 @@ media/
 
 scripts/*
 !scripts/.gitkeep
+
+lib
+
+
