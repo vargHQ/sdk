@@ -4,6 +4,8 @@
  */
 
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import type { ZodSchema } from "zod";
+import { ELEVENLABS_TTS_SCHEMAS } from "../schemas";
 import {
   MediaResult,
   type ProviderSettings,
@@ -69,10 +71,12 @@ class ElevenLabsTTSModel implements TTSModel {
 
   private settings: ElevenLabsProviderSettings;
   private _client: ElevenLabsClient | null = null;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: ElevenLabsProviderSettings) {
     this.modelId = modelId;
     this.settings = settings;
+    this.schema = ELEVENLABS_TTS_SCHEMAS[modelId];
   }
 
   private get client(): ElevenLabsClient {
@@ -89,7 +93,10 @@ class ElevenLabsTTSModel implements TTSModel {
   }
 
   async doGenerate(options: TTSGenerateOptions): Promise<TTSGenerateResult> {
-    const { text, voice, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as TTSGenerateOptions;
+    const { text, voice, providerOptions } = validated;
 
     const voiceId = resolveVoiceId(voice ?? "rachel");
     const model = resolveModelId(this.modelId);

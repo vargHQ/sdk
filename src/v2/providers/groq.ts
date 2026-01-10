@@ -4,6 +4,8 @@
  */
 
 import Groq from "groq-sdk";
+import type { ZodSchema } from "zod";
+import { GROQ_TRANSCRIPTION_SCHEMAS } from "../schemas";
 import type {
   ProviderSettings,
   TranscribeOptions,
@@ -50,6 +52,7 @@ class GroqTranscriptionModel implements TranscriptionModel {
 
   private settings: GroqProviderSettings;
   private client: Groq;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: GroqProviderSettings) {
     this.modelId = modelId;
@@ -57,10 +60,14 @@ class GroqTranscriptionModel implements TranscriptionModel {
     this.client = new Groq({
       apiKey: settings.apiKey || process.env.GROQ_API_KEY || "",
     });
+    this.schema = GROQ_TRANSCRIPTION_SCHEMAS[modelId];
   }
 
   async doTranscribe(options: TranscribeOptions): Promise<TranscribeResult> {
-    const { audio, language, prompt, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as TranscribeOptions;
+    const { audio, language, prompt, providerOptions } = validated;
 
     const model = resolveModelId(this.modelId);
     const file = await loadAudioFile(audio);

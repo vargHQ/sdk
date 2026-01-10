@@ -4,6 +4,13 @@
  */
 
 import { fal } from "@fal-ai/client";
+import type { ZodSchema } from "zod";
+import {
+  FAL_IMAGE_SCHEMAS,
+  FAL_SYNC_SCHEMAS,
+  FAL_TRANSCRIPTION_SCHEMAS,
+  FAL_VIDEO_SCHEMAS,
+} from "../schemas";
 import {
   type ImageGenerateOptions,
   type ImageGenerateResult,
@@ -121,16 +128,21 @@ class FalVideoModel implements VideoModel {
   readonly modelId: string;
 
   private settings: ProviderSettings;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: ProviderSettings) {
     this.modelId = modelId;
     this.settings = settings;
+    this.schema = FAL_VIDEO_SCHEMAS[modelId];
   }
 
   async doGenerate(
     options: VideoGenerateOptions,
   ): Promise<VideoGenerateResult> {
-    const { prompt, image, duration, aspectRatio, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as VideoGenerateOptions;
+    const { prompt, image, duration, aspectRatio, providerOptions } = validated;
 
     // resolve endpoint based on whether image is provided
     const hasImage = !!image;
@@ -207,16 +219,21 @@ class FalImageModel implements ImageModel {
   readonly modelId: string;
 
   private settings: ProviderSettings;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: ProviderSettings) {
     this.modelId = modelId;
     this.settings = settings;
+    this.schema = FAL_IMAGE_SCHEMAS[modelId];
   }
 
   async doGenerate(
     options: ImageGenerateOptions,
   ): Promise<ImageGenerateResult> {
-    const { prompt, size, n, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as ImageGenerateOptions;
+    const { prompt, size, n, providerOptions } = validated;
 
     const endpoint = resolveModelId(this.modelId, IMAGE_MODELS);
 
@@ -287,14 +304,19 @@ class FalSyncModel implements SyncModel {
   readonly modelId: string;
 
   private settings: ProviderSettings;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: ProviderSettings) {
     this.modelId = modelId;
     this.settings = settings;
+    this.schema = FAL_SYNC_SCHEMAS[modelId];
   }
 
   async doSync(options: SyncOptions): Promise<SyncResult> {
-    const { video, audio, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as SyncOptions;
+    const { video, audio, providerOptions } = validated;
 
     const endpoint = resolveModelId(this.modelId, SYNC_MODELS);
 
@@ -348,14 +370,19 @@ class FalTranscriptionModel implements TranscriptionModel {
   readonly modelId: string;
 
   private settings: ProviderSettings;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: ProviderSettings) {
     this.modelId = modelId;
     this.settings = settings;
+    this.schema = FAL_TRANSCRIPTION_SCHEMAS[modelId];
   }
 
   async doTranscribe(options: TranscribeOptions): Promise<TranscribeResult> {
-    const { audio, language, prompt, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as TranscribeOptions;
+    const { audio, language, prompt, providerOptions } = validated;
 
     const endpoint = resolveModelId(this.modelId, TRANSCRIPTION_MODELS);
     const audioUrl = await ensureUrl(audio, uploadToFal);
