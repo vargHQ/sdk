@@ -4,6 +4,8 @@
  */
 
 import Replicate from "replicate";
+import type { ZodSchema } from "zod";
+import { REPLICATE_IMAGE_SCHEMAS, REPLICATE_VIDEO_SCHEMAS } from "../schemas";
 import {
   type ImageGenerateOptions,
   type ImageGenerateResult,
@@ -75,6 +77,7 @@ class ReplicateVideoModel implements VideoModel {
 
   private settings: ReplicateProviderSettings;
   private client: Replicate;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: ReplicateProviderSettings) {
     this.modelId = modelId;
@@ -82,12 +85,16 @@ class ReplicateVideoModel implements VideoModel {
     this.client = new Replicate({
       auth: settings.apiKey || process.env.REPLICATE_API_TOKEN || "",
     });
+    this.schema = REPLICATE_VIDEO_SCHEMAS[modelId];
   }
 
   async doGenerate(
     options: VideoGenerateOptions,
   ): Promise<VideoGenerateResult> {
-    const { prompt, image, duration, aspectRatio, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as VideoGenerateOptions;
+    const { prompt, image, duration, aspectRatio, providerOptions } = validated;
 
     const model = resolveModelId(this.modelId, VIDEO_MODELS);
 
@@ -136,6 +143,7 @@ class ReplicateImageModel implements ImageModel {
 
   private settings: ReplicateProviderSettings;
   private client: Replicate;
+  private schema: ZodSchema | undefined;
 
   constructor(modelId: string, settings: ReplicateProviderSettings) {
     this.modelId = modelId;
@@ -143,12 +151,16 @@ class ReplicateImageModel implements ImageModel {
     this.client = new Replicate({
       auth: settings.apiKey || process.env.REPLICATE_API_TOKEN || "",
     });
+    this.schema = REPLICATE_IMAGE_SCHEMAS[modelId];
   }
 
   async doGenerate(
     options: ImageGenerateOptions,
   ): Promise<ImageGenerateResult> {
-    const { prompt, size, n, providerOptions } = options;
+    const validated = (
+      this.schema ? this.schema.parse(options) : options
+    ) as ImageGenerateOptions;
+    const { prompt, size, n, providerOptions } = validated;
 
     const model = resolveModelId(this.modelId, IMAGE_MODELS);
 
