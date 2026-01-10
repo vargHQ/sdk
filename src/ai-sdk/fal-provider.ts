@@ -44,6 +44,7 @@ const IMAGE_MODELS: Record<string, string> = {
   "flux-dev": "fal-ai/flux/dev",
   "flux-schnell": "fal-ai/flux/schnell",
   "recraft-v3": "fal-ai/recraft/v3/text-to-image",
+  "nano-banana-pro": "fal-ai/nano-banana-pro",
 };
 
 const TRANSCRIPTION_MODELS: Record<string, string> = {
@@ -207,6 +208,10 @@ class FalImageModel implements ImageModelV3 {
 
     if (size) {
       input.image_size = size;
+    }
+
+    if (aspectRatio) {
+      input.aspect_ratio = aspectRatio;
     }
 
     if (seed !== undefined) {
