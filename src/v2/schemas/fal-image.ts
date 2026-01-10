@@ -6,12 +6,12 @@ const baseImageSchema = z.object({
     z.object({
       text: z.string().min(1),
       images: z
-        .array(z.union([z.string(), z.instanceof(ArrayBuffer, {})]))
+        .array(z.union([z.string(), z.instanceof(ArrayBuffer)]))
         .optional(),
     }),
   ]),
   n: z.number().min(1).max(4).optional().default(1),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),

@@ -2,10 +2,10 @@ import { z } from "zod";
 
 const baseVideoSchema = z.object({
   prompt: z.string().min(1, "prompt is required"),
-  image: z.union([z.string(), z.instanceof(ArrayBuffer, {})]).optional(),
+  image: z.union([z.string(), z.instanceof(ArrayBuffer)]).optional(),
   duration: z.number().optional(),
   aspectRatio: z.string().optional(),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),
@@ -40,13 +40,13 @@ const baseImageSchema = z.object({
     z.object({
       text: z.string().min(1),
       images: z
-        .array(z.union([z.string(), z.instanceof(ArrayBuffer, {})]))
+        .array(z.union([z.string(), z.instanceof(ArrayBuffer)]))
         .optional(),
     }),
   ]),
   size: z.string().optional(),
   n: z.number().min(1).max(4).optional(),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),

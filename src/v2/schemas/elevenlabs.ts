@@ -6,7 +6,7 @@ export const ttsSchema = z.object({
   text: z.string().min(1, "text is required"),
   voice: voiceIdSchema.optional().default("rachel"),
   speed: z.number().min(0.5).max(2).optional(),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),

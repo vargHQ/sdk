@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const whisperGroqSchema = z.object({
-  audio: z.union([z.string(), z.instanceof(ArrayBuffer, {})]),
+  audio: z.union([z.string(), z.instanceof(ArrayBuffer)]),
   language: z.string().optional(),
   prompt: z.string().optional(),
   response_format: z
@@ -9,7 +9,7 @@ export const whisperGroqSchema = z.object({
     .optional()
     .default("verbose_json"),
   temperature: z.number().min(0).max(1).optional(),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),

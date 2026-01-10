@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 const baseSyncSchema = z.object({
-  video: z.union([z.string(), z.instanceof(ArrayBuffer, {})]),
-  audio: z.union([z.string(), z.instanceof(ArrayBuffer, {})]),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  video: z.union([z.string(), z.instanceof(ArrayBuffer)]),
+  audio: z.union([z.string(), z.instanceof(ArrayBuffer)]),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),

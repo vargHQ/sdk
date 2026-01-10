@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const whisperSchema = z.object({
-  audio: z.union([z.string(), z.instanceof(ArrayBuffer, {})]),
+  audio: z.union([z.string(), z.instanceof(ArrayBuffer)]),
   language: z.string().optional(),
   prompt: z.string().optional(),
   task: z.enum(["transcribe", "translate"]).optional().default("transcribe"),
   chunk_level: z.enum(["segment", "word"]).optional().default("segment"),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),

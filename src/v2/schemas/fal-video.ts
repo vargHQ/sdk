@@ -2,8 +2,8 @@ import { z } from "zod";
 
 const baseVideoSchema = z.object({
   prompt: z.string().min(1, "prompt is required"),
-  image: z.union([z.string(), z.instanceof(ArrayBuffer, {})]).optional(),
-  abortSignal: z.instanceof(AbortSignal, {}).optional(),
+  image: z.union([z.string(), z.instanceof(ArrayBuffer)]).optional(),
+  abortSignal: z.instanceof(AbortSignal).optional(),
   providerOptions: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),
