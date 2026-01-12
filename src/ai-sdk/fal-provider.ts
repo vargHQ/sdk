@@ -218,11 +218,17 @@ class FalImageModel implements ImageModelV3 {
       input.seed = seed;
     }
 
-    if (files && files.length > 0) {
+    const hasFiles = files && files.length > 0;
+    if (hasFiles) {
       input.image_urls = await Promise.all(files.map((f) => fileToUrl(f)));
     }
 
-    const result = await fal.subscribe(endpoint, {
+    const hasImageUrls =
+      hasFiles ||
+      !!(providerOptions?.fal as Record<string, unknown>)?.image_urls;
+    const finalEndpoint = this.resolveEndpoint(hasImageUrls);
+
+    const result = await fal.subscribe(finalEndpoint, {
       input,
       logs: true,
     });
@@ -252,11 +258,18 @@ class FalImageModel implements ImageModelV3 {
     };
   }
 
-  private resolveEndpoint(): string {
+  private resolveEndpoint(hasFiles = false): string {
     if (this.modelId.startsWith("raw:")) {
       return this.modelId.slice(4);
     }
-    return IMAGE_MODELS[this.modelId] ?? this.modelId;
+
+    const baseEndpoint = IMAGE_MODELS[this.modelId] ?? this.modelId;
+
+    if (hasFiles && this.modelId === "nano-banana-pro") {
+      return "fal-ai/nano-banana-pro/edit";
+    }
+
+    return baseEndpoint;
   }
 }
 
