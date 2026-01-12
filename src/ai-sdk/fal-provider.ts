@@ -33,6 +33,10 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     t2v: "fal-ai/wan-25/text-to-video",
     i2v: "fal-ai/wan-25/image-to-video",
   },
+  "wan-2.5-preview": {
+    t2v: "fal-ai/wan-25-preview/text-to-video",
+    i2v: "fal-ai/wan-25-preview/image-to-video",
+  },
   minimax: {
     t2v: "fal-ai/minimax-video/text-to-video",
     i2v: "fal-ai/minimax-video/image-to-video",
@@ -109,6 +113,12 @@ class FalVideoModel implements VideoModelV3 {
       }
     } else {
       input.aspect_ratio = aspectRatio ?? "16:9";
+    }
+
+    // Handle audio input for audio-reactive video generation
+    const audioFile = files?.find((f) => f.mediaType?.startsWith("audio/"));
+    if (audioFile) {
+      input.audio_url = await fileToUrl(audioFile);
     }
 
     if (options.seed !== undefined) {
