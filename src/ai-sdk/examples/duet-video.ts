@@ -31,7 +31,7 @@ async function main() {
   const { images } = await generateImage({
     model: fal.imageModel("nano-banana-pro"),
     prompt:
-      "Two elegant women performers on stage singing into microphones facing camera, concert hall with dramatic purple and blue lighting, audience silhouettes in background, emotional duet performance, both faces visible looking at viewer, glamorous dresses",
+      "Wide shot of two different women singing duet on grand concert stage, dark-haired brunette Taisa on left and blonde Irina on right, both facing camera, dramatic purple blue stage lighting, audience visible, glamorous dresses, professional concert hall",
     aspectRatio: "16:9",
     n: 1,
     providerOptions: {
