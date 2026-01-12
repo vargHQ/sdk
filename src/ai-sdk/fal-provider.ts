@@ -18,16 +18,16 @@ import type {
 
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   "kling-v2.5": {
-    t2v: "fal-ai/kling-video/v2.5/pro/text-to-video",
-    i2v: "fal-ai/kling-video/v2.5/pro/image-to-video",
+    t2v: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+    i2v: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+  },
+  "kling-v2.1": {
+    t2v: "fal-ai/kling-video/v2.1/pro/text-to-video",
+    i2v: "fal-ai/kling-video/v2.1/pro/image-to-video",
   },
   "kling-v2": {
-    t2v: "fal-ai/kling-video/v2/pro/text-to-video",
-    i2v: "fal-ai/kling-video/v2/pro/image-to-video",
-  },
-  "kling-v1.5": {
-    t2v: "fal-ai/kling-video/v1.5/pro/text-to-video",
-    i2v: "fal-ai/kling-video/v1.5/pro/image-to-video",
+    t2v: "fal-ai/kling-video/v2/master/text-to-video",
+    i2v: "fal-ai/kling-video/v2/master/image-to-video",
   },
   "wan-2.5": {
     t2v: "fal-ai/wan-25/text-to-video",
