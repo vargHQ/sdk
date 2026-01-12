@@ -1,0 +1,52 @@
+{
+  "name": "@varg/sdk",
+  "version": "0.1.0-prototype",
+  "description": "VARG AI SDK - Composable API for AI video generation",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./providers": {
+      "import": "./dist/providers.mjs",
+      "require": "./dist/providers.js",
+      "types": "./dist/providers.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "example:basic": "npx ts-node basic.ts",
+    "example:campaign": "npx ts-node campaign.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "video",
+    "generation",
+    "lipsync",
+    "tts",
+    "text-to-speech",
+    "image-to-video",
+    "ugc",
+    "ads"
+  ],
+  "author": "VARG",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

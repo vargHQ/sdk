@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(varg upload:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
