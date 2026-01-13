@@ -38,15 +38,10 @@ Whether you're building social content or creative apps, Varg has got you covere
   console.log("\nanimating lion (10 seconds)...");
   const { video } = await generateVideo({
     model: fal.videoModel("wan-2.5"),
-    prompt:
-      "lion talking and moving its mouth naturally, subtle head movements, breathing, blinking",
-    files: [
-      {
-        type: "file",
-        mediaType: "image/png",
-        data: imageData,
-      },
-    ],
+    prompt: {
+      text: "lion talking and moving its mouth naturally, subtle head movements, breathing, blinking",
+      images: [imageData],
+    },
     duration: 5,
   });
 

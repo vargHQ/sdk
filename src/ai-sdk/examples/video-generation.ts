@@ -22,14 +22,10 @@ async function main() {
   console.log("animating image to video...");
   const { video: animatedVideo } = await generateVideo({
     model: fal.videoModel("wan-2.5"),
-    prompt: "robot waves cheerfully, smooth animation",
-    files: [
-      {
-        type: "file",
-        mediaType: "image/png",
-        data: images[0]!.uint8Array,
-      },
-    ],
+    prompt: {
+      text: "robot waves cheerfully, smooth animation",
+      images: [images[0]!.uint8Array],
+    },
     duration: 5,
   });
 
