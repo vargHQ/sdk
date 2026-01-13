@@ -40,6 +40,8 @@ async function main() {
     prompt: scene`${ralph} writes on the ${blackboard}`,
   });
 
+  await Bun.write("output/first-frame.png", firstFrame.uint8Array);
+
   console.log("generating video...");
   const { video } = await generateVideo({
     model: fal.videoModel("wan-2.5"),
