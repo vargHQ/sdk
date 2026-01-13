@@ -180,7 +180,7 @@ export async function toInputs(files: File[]): Promise<ImageModelV3File[]> {
   return Promise.all(files.map((f) => f.toInput()));
 }
 
-export function toInput(generated: {
+export function convertToInput(generated: {
   uint8Array: Uint8Array;
   mediaType: string;
 }): ImageModelV3File {

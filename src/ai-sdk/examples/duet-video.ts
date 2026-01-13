@@ -1,5 +1,5 @@
 import { generateImage } from "ai";
-import { File, fal, generateVideo, toInput } from "../index";
+import { convertToInput, File, fal, generateVideo } from "../index";
 
 async function main() {
   console.log("=== taisa & irina duet - scene 3 ===\n");
@@ -42,7 +42,7 @@ async function main() {
     model: fal.videoModel("kling-v2.5"),
     prompt:
       "two women singing together on stage, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
-    files: [toInput(image)],
+    files: [convertToInput(image)],
     duration: 10,
   });
 
