@@ -6,7 +6,7 @@ export {
 } from "./elevenlabs-provider";
 
 export { createFal, type FalProvider, fal } from "./fal-provider";
-export { convertToInput, File, files, toInputs } from "./file";
+export { File, files, toImageModelV3File, toInputs } from "./file";
 export { type GenerateVideoResult, generateVideo } from "./generate-video";
 export type {
   VideoModelV3,
