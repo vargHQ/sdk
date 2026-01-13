@@ -1,12 +1,17 @@
-import { fal, generateElement, generateVideo, scene } from "../index";
+import { File, fal, generateElement, generateVideo, scene } from "../index";
 
 async function main() {
   console.log("generating ralph...");
+
+  const ralphShot = await File.fromPath("media/ralph.jpg").arrayBuffer();
+
   const { element: ralph } = await generateElement({
     model: fal.imageModel("nano-banana-pro"),
     type: "character",
-    prompt:
-      "ralph wiggum from the simpsons, yellow skin, blue shorts, red shirt, simple cartoon style",
+    prompt: {
+      text: "ralph wiggum from the simpsons, yellow skin, blue shorts, red shirt, simple cartoon style",
+      images: [ralphShot],
+    },
   });
   console.log(`ralph: ${ralph.images.length} images`);
 
