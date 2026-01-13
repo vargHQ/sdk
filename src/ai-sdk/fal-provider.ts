@@ -1,14 +1,14 @@
 import type {
+  EmbeddingModelV3,
   ImageModelV3,
   ImageModelV3CallOptions,
   ImageModelV3File,
+  LanguageModelV3,
+  ProviderV3,
   SharedV3Warning,
-  SpeechModelV3,
-  SpeechModelV3CallOptions,
   TranscriptionModelV3,
   TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { fal } from "@fal-ai/client";
 import type {
   VideoModelV3,
@@ -345,7 +345,7 @@ export interface FalProviderSettings {
   apiKey?: string;
 }
 
-export interface FalProvider {
+export interface FalProvider extends ProviderV3 {
   videoModel(modelId: string): VideoModelV3;
   imageModel(modelId: string): ImageModelV3;
   transcriptionModel(modelId: string): TranscriptionModelV3;
@@ -357,14 +357,21 @@ export function createFal(settings: FalProviderSettings = {}): FalProvider {
   }
 
   return {
-    videoModel(modelId: string) {
+    specificationVersion: "v3",
+    videoModel(modelId: string): FalVideoModel {
       return new FalVideoModel(modelId);
     },
-    imageModel(modelId: string) {
+    imageModel(modelId: string): FalImageModel {
       return new FalImageModel(modelId);
     },
-    transcriptionModel(modelId: string) {
+    transcriptionModel(modelId: string): FalTranscriptionModel {
       return new FalTranscriptionModel(modelId);
+    },
+    languageModel(modelId: string): LanguageModelV3 {
+      throw new Error("Function not implemented.");
+    },
+    embeddingModel(modelId: string): EmbeddingModelV3 {
+      throw new Error("Function not implemented.");
     },
   };
 }
