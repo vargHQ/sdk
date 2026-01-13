@@ -3,7 +3,7 @@ import { fal, generateElement, generateVideo, scene } from "../index";
 async function main() {
   console.log("generating ralph...");
   const { element: ralph } = await generateElement({
-    model: fal.imageModel("flux-schnell"),
+    model: fal.imageModel("nano-banana-pro"),
     type: "character",
     prompt:
       "ralph wiggum from the simpsons, yellow skin, blue shorts, red shirt, simple cartoon style",
@@ -12,7 +12,7 @@ async function main() {
 
   console.log("generating blackboard...");
   const { element: blackboard } = await generateElement({
-    model: fal.imageModel("flux-schnell"),
+    model: fal.imageModel("nano-banana-pro"),
     type: "item",
     prompt:
       "green chalkboard from simpsons intro that says 'I will not run claude code in a loop', white chalk text",
