@@ -1,28 +1,26 @@
 import { generateImage } from "ai";
-import { createFile, fal, generateVideo } from "../index";
+import { File, fal, generateVideo, toInput } from "../index";
 
 async function main() {
   console.log("=== taisa & irina duet - scene 3 ===\n");
 
-  // load reference images as Uint8Array
   console.log("loading reference images...");
-  const taisa1 = new Uint8Array(
-    await Bun.file("media/taisa/taisa.jpg").arrayBuffer(),
-  );
-  const irina1 = new Uint8Array(
-    await Bun.file("media/taisa/irina.jpg").arrayBuffer(),
-  );
-  const irinaScene = new Uint8Array(
-    await Bun.file("media/taisa/irina-scene.png").arrayBuffer(),
+  const referenceImages = [
+    File.fromPath("media/taisa/taisa.jpg"),
+    File.fromPath("media/taisa/irina.jpg"),
+    File.fromPath("media/taisa/irina-scene.png"),
+  ];
+
+  const imageContents = await Promise.all(
+    referenceImages.map((f) => f.arrayBuffer()),
   );
   console.log("loaded.\n");
 
   console.log("generating first frame with nano-banana-pro/edit...");
-  const { images } = await generateImage({
+  const { image } = await generateImage({
     model: fal.imageModel("nano-banana-pro"),
-    // ai-sdk uses prompt object with images for image-to-image
     prompt: {
-      images: [taisa1, irina1, irinaScene],
+      images: imageContents,
       text: "Wide shot of two different women singing duet on grand concert stage, dark-haired brunette Taisa on left and blonde Irina on right, both facing camera, dramatic purple blue stage lighting, audience visible, glamorous dresses, professional concert hall",
     },
     aspectRatio: "16:9",
@@ -34,10 +32,9 @@ async function main() {
     },
   });
 
-  const frameData = images[0]!.uint8Array;
-  await Bun.write("output/duet-frame-3.png", frameData);
+  await Bun.write("output/duet-frame-3.png", image.uint8Array);
   console.log(
-    `frame saved: output/duet-frame-3.png (${frameData.byteLength} bytes)\n`,
+    `frame saved: output/duet-frame-3.png (${image.uint8Array.byteLength} bytes)\n`,
   );
 
   console.log("animating 10s with kling-v2.5...");
@@ -45,7 +42,7 @@ async function main() {
     model: fal.videoModel("kling-v2.5"),
     prompt:
       "two women singing together on stage, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
-    files: [await createFile(frameData, "image/png")],
+    files: [toInput(image)],
     duration: 10,
   });
 

@@ -1,36 +1,35 @@
 import { generateImage } from "ai";
-import { createFile, fal, generateVideo } from "../index";
+import { File, fal, generateVideo, toInput } from "../index";
 
 async function main() {
   console.log("=== taisa solo closeup - scene 4 ===\n");
 
-  const taisa1 = new Uint8Array(
-    await Bun.file("media/taisa/taisa.jpg").arrayBuffer(),
-  );
-  const originalFrame = new Uint8Array(
-    await Bun.file("output/original-frame-1m08s.png").arrayBuffer(),
+  const referenceImages = [
+    File.fromPath("media/taisa/taisa.jpg"),
+    File.fromPath("output/original-frame-1m08s.png"),
+  ];
+
+  const imageContents = await Promise.all(
+    referenceImages.map((f) => f.arrayBuffer()),
   );
 
   console.log("generating closeup frame with nano-banana-pro/edit...");
-  const { images } = await generateImage({
+  const { image } = await generateImage({
     model: fal.imageModel("nano-banana-pro"),
     prompt: {
-      images: [taisa1, originalFrame],
+      images: imageContents,
       text: "Closeup portrait of dark-haired brunette woman Taisa singing passionately on concert stage, dramatic purple blue stage lighting, emotional expression, glamorous dress, beautiful face, professional concert hall background blurred",
     },
     aspectRatio: "16:9",
     n: 1,
     providerOptions: {
-      fal: {
-        resolution: "1K",
-      },
+      fal: { resolution: "1K" },
     },
   });
 
-  const frameData = images[0]!.uint8Array;
-  await Bun.write("output/duet-frame-4.png", frameData);
+  await Bun.write("output/duet-frame-4.png", image.uint8Array);
   console.log(
-    `frame saved: output/duet-frame-4.png (${frameData.byteLength} bytes)\n`,
+    `frame saved: output/duet-frame-4.png (${image.uint8Array.byteLength} bytes)\n`,
   );
 
   console.log("animating 10s with kling-v2.5...");
@@ -38,7 +37,7 @@ async function main() {
     model: fal.videoModel("kling-v2.5"),
     prompt:
       "closeup of woman singing passionately, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
-    files: [await createFile(frameData, "image/png")],
+    files: [toInput(image)],
     duration: 10,
   });
 
