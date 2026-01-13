@@ -39,7 +39,7 @@ async function main() {
   const { video } = await generateVideo({
     model: fal.videoModel("kling-v2.5"),
     prompt: {
-      image: image.uint8Array,
+      images: image.uint8Array,
       text: "two women singing together on stage, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
     },
     duration: 10,

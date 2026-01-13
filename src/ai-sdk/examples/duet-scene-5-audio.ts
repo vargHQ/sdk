@@ -14,8 +14,8 @@ async function main() {
   const { video } = await generateVideo({
     model: fal.videoModel("wan-2.5-preview"),
     prompt: {
-      image: imageData,
-      audio: audioData,
+      images: imageData,
+      audios: audioData,
       text: "static camera, fixed closeup shot of woman singing passionately, no camera movement, no zoom, lips synced to audio, subtle head movements, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
     },
     duration: 5,
