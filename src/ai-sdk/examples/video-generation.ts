@@ -1,5 +1,5 @@
 import { generateImage } from "ai";
-import { fal, generateVideo } from "../index";
+import { fal, generateVideo, toDataContent } from "../index";
 
 async function main() {
   console.log("generating video from text...");
@@ -24,7 +24,7 @@ async function main() {
     model: fal.videoModel("wan-2.5"),
     prompt: {
       text: "robot waves cheerfully, smooth animation",
-      images: [images[0]!.uint8Array],
+      images: toDataContent(images),
     },
     duration: 5,
   });

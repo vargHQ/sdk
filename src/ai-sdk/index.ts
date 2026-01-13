@@ -11,7 +11,7 @@ export {
   VOICES,
 } from "./elevenlabs-provider";
 export { createFal, type FalProvider, fal } from "./fal-provider";
-export { File, files, toImageModelV3File, toInputs } from "./file";
+export { File, files, toDataContent } from "./file";
 export { fileCache } from "./file-cache";
 export {
   type GenerateVideoOptions,
