@@ -1,13 +1,14 @@
-import type {
-  EmbeddingModelV3,
-  ImageModelV3,
-  ImageModelV3CallOptions,
-  ImageModelV3File,
-  LanguageModelV3,
-  ProviderV3,
-  SharedV3Warning,
-  TranscriptionModelV3,
-  TranscriptionModelV3CallOptions,
+import {
+  type EmbeddingModelV3,
+  type ImageModelV3,
+  type ImageModelV3CallOptions,
+  type ImageModelV3File,
+  type LanguageModelV3,
+  NoSuchModelError,
+  type ProviderV3,
+  type SharedV3Warning,
+  type TranscriptionModelV3,
+  type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
 import type {
@@ -368,10 +369,16 @@ export function createFal(settings: FalProviderSettings = {}): FalProvider {
       return new FalTranscriptionModel(modelId);
     },
     languageModel(modelId: string): LanguageModelV3 {
-      throw new Error("Function not implemented.");
+      throw new NoSuchModelError({
+        modelId,
+        modelType: "languageModel",
+      });
     },
     embeddingModel(modelId: string): EmbeddingModelV3 {
-      throw new Error("Function not implemented.");
+      throw new NoSuchModelError({
+        modelId,
+        modelType: "embeddingModel",
+      });
     },
   };
 }

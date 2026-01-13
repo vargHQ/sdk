@@ -1,7 +1,12 @@
-import type {
-  SharedV3Warning,
-  SpeechModelV3,
-  SpeechModelV3CallOptions,
+import {
+  type EmbeddingModelV3,
+  type ImageModelV3,
+  type LanguageModelV3,
+  NoSuchModelError,
+  type ProviderV3,
+  type SharedV3Warning,
+  type SpeechModelV3,
+  type SpeechModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 
@@ -40,23 +45,11 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
   readonly provider = "elevenlabs";
   readonly modelId: string;
 
-  private _client: ElevenLabsClient | null = null;
-  private apiKey?: string;
+  private client: ElevenLabsClient;
 
-  constructor(modelId: string, apiKey?: string) {
+  constructor(modelId: string, client: ElevenLabsClient) {
     this.modelId = modelId;
-    this.apiKey = apiKey;
-  }
-
-  private get client(): ElevenLabsClient {
-    if (!this._client) {
-      const key = this.apiKey ?? process.env.ELEVENLABS_API_KEY;
-      if (!key) {
-        throw new Error("ELEVENLABS_API_KEY not set");
-      }
-      this._client = new ElevenLabsClient({ apiKey: key });
-    }
-    return this._client;
+    this.client = client;
   }
 
   async doGenerate(options: SpeechModelV3CallOptions) {
@@ -115,20 +108,35 @@ export interface ElevenLabsProviderSettings {
   apiKey?: string;
 }
 
-export interface ElevenLabsProvider {
+export interface ElevenLabsProvider extends ProviderV3 {
   speechModel(modelId?: string): SpeechModelV3;
 }
 
 export function createElevenLabs(
   settings: ElevenLabsProviderSettings = {},
 ): ElevenLabsProvider {
+  const apiKey = settings.apiKey ?? process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) {
+    throw new Error("ELEVENLABS_API_KEY not set");
+  }
+  const client = new ElevenLabsClient({ apiKey });
+
   return {
+    specificationVersion: "v3",
     speechModel(modelId = "eleven_turbo_v2") {
-      return new ElevenLabsSpeechModel(modelId, settings.apiKey);
+      return new ElevenLabsSpeechModel(modelId, client);
+    },
+    languageModel(modelId: string): LanguageModelV3 {
+      throw new NoSuchModelError({ modelId, modelType: "languageModel" });
+    },
+    embeddingModel(modelId: string): EmbeddingModelV3 {
+      throw new NoSuchModelError({ modelId, modelType: "embeddingModel" });
+    },
+    imageModel(modelId: string): ImageModelV3 {
+      throw new NoSuchModelError({ modelId, modelType: "imageModel" });
     },
   };
 }
 
 export const elevenlabs_provider = createElevenLabs();
-export { elevenlabs_provider as elevenlabs };
-export { VOICES };
+export { elevenlabs_provider as elevenlabs, VOICES };
