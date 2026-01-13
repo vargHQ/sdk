@@ -10,8 +10,8 @@ export type GenerateVideoPrompt =
   | string
   | {
       text?: string;
-      image?: DataContent;
-      audio?: DataContent;
+      images?: DataContent | DataContent[];
+      audios?: DataContent | DataContent[];
     };
 
 export interface GenerateVideoOptions {
@@ -76,6 +76,11 @@ function toUint8Array(data: DataContent): Uint8Array {
   return data;
 }
 
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 function normalizePrompt(prompt: GenerateVideoPrompt): {
   prompt: string | undefined;
   files: ImageModelV3File[] | undefined;
@@ -86,19 +91,19 @@ function normalizePrompt(prompt: GenerateVideoPrompt): {
 
   const files: ImageModelV3File[] = [];
 
-  if (prompt.image) {
+  for (const img of toArray(prompt.images)) {
     files.push({
       type: "file",
       mediaType: "image/png",
-      data: toUint8Array(prompt.image),
+      data: toUint8Array(img),
     });
   }
 
-  if (prompt.audio) {
+  for (const audio of toArray(prompt.audios)) {
     files.push({
       type: "file",
       mediaType: "audio/mpeg",
-      data: toUint8Array(prompt.audio),
+      data: toUint8Array(audio),
     });
   }
 
