@@ -1,10 +1,5 @@
-import { fal as falClient } from "@fal-ai/client";
 import { generateImage } from "ai";
-import { fal, generateVideo } from "../index";
-
-async function uploadFile(data: Uint8Array): Promise<string> {
-  return falClient.storage.upload(new Blob([data]));
-}
+import { createFile, fal, generateVideo } from "../index";
 
 async function main() {
   console.log("=== taisa solo closeup - scene 4 ===\n");
@@ -16,23 +11,17 @@ async function main() {
     await Bun.file("output/original-frame-1m08s.png").arrayBuffer(),
   );
 
-  console.log("uploading reference images...");
-  const [taisa1Url, originalFrameUrl] = await Promise.all([
-    uploadFile(taisa1),
-    uploadFile(originalFrame),
-  ]);
-  console.log("uploaded.\n");
-
   console.log("generating closeup frame with nano-banana-pro/edit...");
   const { images } = await generateImage({
     model: fal.imageModel("nano-banana-pro"),
-    prompt:
-      "Closeup portrait of dark-haired brunette woman Taisa singing passionately on concert stage, dramatic purple blue stage lighting, emotional expression, glamorous dress, beautiful face, professional concert hall background blurred",
+    prompt: {
+      images: [taisa1, originalFrame],
+      text: "Closeup portrait of dark-haired brunette woman Taisa singing passionately on concert stage, dramatic purple blue stage lighting, emotional expression, glamorous dress, beautiful face, professional concert hall background blurred",
+    },
     aspectRatio: "16:9",
     n: 1,
     providerOptions: {
       fal: {
-        image_urls: [taisa1Url, originalFrameUrl],
         resolution: "1K",
       },
     },
@@ -49,7 +38,7 @@ async function main() {
     model: fal.videoModel("kling-v2.5"),
     prompt:
       "closeup of woman singing passionately, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
-    files: [{ type: "file", mediaType: "image/png", data: frameData }],
+    files: [await createFile(frameData, "image/png")],
     duration: 10,
   });
 

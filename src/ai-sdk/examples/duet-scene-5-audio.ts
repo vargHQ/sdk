@@ -1,14 +1,7 @@
-import { fal, generateVideo } from "../index";
+import { createFile, fal, generateVideo } from "../index";
 
 async function main() {
   console.log("=== taisa closeup with audio - scene 5 ===\n");
-
-  const imageData = new Uint8Array(
-    await Bun.file("output/duet-frame-4.png").arrayBuffer(),
-  );
-  const audioData = new Uint8Array(
-    await Bun.file("output/audio-1m09s-5s.mp3").arrayBuffer(),
-  );
 
   console.log("generating 5s video with wan-2.5-preview (audio-driven)...");
   const { video } = await generateVideo({
@@ -16,8 +9,8 @@ async function main() {
     prompt:
       "static camera, fixed closeup shot of woman singing passionately, no camera movement, no zoom, lips synced to audio, subtle head movements, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
     files: [
-      { type: "file", mediaType: "image/png", data: imageData },
-      { type: "file", mediaType: "audio/mp3", data: audioData },
+      await createFile("output/duet-frame-4.png"),
+      await createFile("output/audio-1m09s-5s.mp3"),
     ],
     duration: 5,
   });
