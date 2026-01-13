@@ -1,5 +1,5 @@
-export interface CacheOptions {
-  key: string | ((...args: unknown[]) => string);
+export interface CacheOptions<T extends unknown[] = unknown[]> {
+  key: string | ((...args: T) => string);
   ttl?: number | string;
   storage?: CacheStorage;
 }
@@ -59,7 +59,7 @@ function parseTTL(ttl: number | string | undefined): number | undefined {
 
 export function withCache<T extends unknown[], R>(
   fn: AsyncFn<T, R>,
-  options: CacheOptions,
+  options: CacheOptions<T>,
 ): AsyncFn<T, R> {
   const storage = options.storage ?? defaultStorage;
   const ttl = parseTTL(options.ttl);
