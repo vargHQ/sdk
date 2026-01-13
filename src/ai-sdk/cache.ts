@@ -60,8 +60,9 @@ function parseTTL(ttl: number | string | undefined): number | undefined {
   }
 }
 
-function depsToKey(deps: CacheKeyDeps): string {
-  return deps.map((d) => String(d ?? "")).join(":");
+function depsToKey(prefix: string, deps: CacheKeyDeps): string {
+  const depsStr = deps.map((d) => String(d ?? "")).join(":");
+  return prefix ? `${prefix}:${depsStr}` : depsStr;
 }
 
 /**
@@ -89,16 +90,16 @@ export function withCache<T extends object, R>(
 ): CachedFn<T, R> {
   const storage = options.storage ?? defaultStorage;
   const ttl = parseTTL(options.ttl ?? DEFAULT_TTL);
+  const prefix = fn.name || "anonymous";
 
   return async (opts: WithCacheKey<T>): Promise<R> => {
     const { cacheKey, ...rest } = opts;
 
-    // no cacheKey = no caching, pass through
     if (!cacheKey) {
       return fn(rest as T);
     }
 
-    const key = depsToKey(cacheKey);
+    const key = depsToKey(prefix, cacheKey);
     const cached = await storage.get(key);
     if (cached !== undefined) {
       return cached as R;
