@@ -15,7 +15,7 @@ async function main() {
 
   console.log("generating closeup frame with nano-banana-pro/edit...");
   const { image } = await generateImage({
-    model: fal.imageModel("nano-banana-pro"),
+    model: fal.imageModel("nano-banana-pro/edit"),
     prompt: {
       images: imageContents,
       text: "Closeup portrait of dark-haired brunette woman Taisa singing passionately on concert stage, dramatic purple blue stage lighting, emotional expression, glamorous dress, beautiful face, professional concert hall background blurred",

@@ -46,6 +46,7 @@ const IMAGE_MODELS: Record<string, string> = {
   "flux-schnell": "fal-ai/flux/schnell",
   "recraft-v3": "fal-ai/recraft/v3/text-to-image",
   "nano-banana-pro": "fal-ai/nano-banana-pro",
+  "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
 };
 
 const TRANSCRIPTION_MODELS: Record<string, string> = {
@@ -216,8 +217,6 @@ class FalImageModel implements ImageModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
-    const endpoint = this.resolveEndpoint();
-
     const input: Record<string, unknown> = {
       prompt,
       num_images: n,
@@ -244,7 +243,13 @@ class FalImageModel implements ImageModelV3 {
     const hasImageUrls =
       hasFiles ||
       !!(providerOptions?.fal as Record<string, unknown>)?.image_urls;
-    const finalEndpoint = this.resolveEndpoint(hasImageUrls);
+    if (hasImageUrls) {
+      if (!files) {
+        throw new Error("No files provided");
+      }
+    }
+
+    const finalEndpoint = this.resolveEndpoint();
 
     const result = await fal.subscribe(finalEndpoint, {
       input,
@@ -276,18 +281,12 @@ class FalImageModel implements ImageModelV3 {
     };
   }
 
-  private resolveEndpoint(hasFiles = false): string {
+  private resolveEndpoint(): string {
     if (this.modelId.startsWith("raw:")) {
       return this.modelId.slice(4);
     }
 
-    const baseEndpoint = IMAGE_MODELS[this.modelId] ?? this.modelId;
-
-    if (hasFiles && this.modelId === "nano-banana-pro") {
-      return "fal-ai/nano-banana-pro/edit";
-    }
-
-    return baseEndpoint;
+    return IMAGE_MODELS[this.modelId] ?? this.modelId;
   }
 }
 
@@ -301,7 +300,7 @@ class FalTranscriptionModel implements TranscriptionModelV3 {
   }
 
   async doGenerate(options: TranscriptionModelV3CallOptions) {
-    const { audio, mediaType, providerOptions, abortSignal } = options;
+    const { audio, providerOptions } = options;
     const warnings: SharedV3Warning[] = [];
 
     const endpoint = TRANSCRIPTION_MODELS[this.modelId] ?? this.modelId;
