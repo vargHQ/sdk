@@ -1,9 +1,14 @@
 import { generateImage as _generateImage } from "ai";
-import { generateVideo as _generateVideo, fal, withCache } from "../index";
+import {
+  generateVideo as _generateVideo,
+  fal,
+  fileCache,
+  withCache,
+} from "../index";
 
-// wrap with defaults (memory cache, 1h ttl)
-const generateImage = withCache(_generateImage);
-const generateVideo = withCache(_generateVideo);
+const storage = fileCache({ dir: ".cache/ai" });
+const generateImage = withCache(_generateImage, { storage });
+const generateVideo = withCache(_generateVideo, { storage });
 
 async function main() {
   const take = 1;
@@ -41,15 +46,6 @@ async function main() {
     cacheKey: ["cyberpunk-city", 1],
   });
   console.log(`image: ${images[0]?.uint8Array.byteLength} bytes`);
-
-  // no cacheKey = no caching
-  console.log("\nno cacheKey (always hits API)...");
-  const { video: video3 } = await generateVideo({
-    model: fal.videoModel("wan-2.5"),
-    prompt: "waves on beach",
-    duration: 5,
-  });
-  console.log(`video: ${video3.uint8Array.byteLength} bytes`);
 
   console.log("\ndone!");
 }
