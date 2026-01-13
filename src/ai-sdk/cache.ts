@@ -65,6 +65,30 @@ function depsToKey(prefix: string, deps: CacheKeyDeps): string {
   return prefix ? `${prefix}:${depsStr}` : depsStr;
 }
 
+function flatten(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (value instanceof Uint8Array) return value;
+  if (Array.isArray(value)) return value.map(flatten);
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+      result[key] = flatten(obj[key]);
+    }
+    const proto = Object.getPrototypeOf(obj);
+    if (proto && proto !== Object.prototype) {
+      const descriptors = Object.getOwnPropertyDescriptors(proto);
+      for (const [key, desc] of Object.entries(descriptors)) {
+        if (desc.get && key !== "constructor") {
+          result[key] = flatten(desc.get.call(obj));
+        }
+      }
+    }
+    return result;
+  }
+  return value;
+}
+
 /**
  * Wrap an async function to add caching via `cacheKey` option.
  *
@@ -106,7 +130,8 @@ export function withCache<T extends object, R>(
     }
 
     const result = await fn(rest as T);
-    await storage.set(key, result, ttl);
+    const flattened = flatten(result);
+    await storage.set(key, flattened, ttl);
 
     return result;
   };
