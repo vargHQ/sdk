@@ -10,10 +10,11 @@ export {
   elevenlabs,
   VOICES,
 } from "./elevenlabs-provider";
-
 export { createFal, type FalProvider, fal } from "./fal-provider";
 export { File, files, toImageModelV3File, toInputs } from "./file";
+export { fileCache, hashPrompt } from "./file-cache";
 export {
+  type GenerateVideoOptions,
   type GenerateVideoPrompt,
   type GenerateVideoResult,
   generateVideo,
