@@ -11,7 +11,7 @@ export type GenerateVideoPrompt =
   | {
       text?: string;
       images?: DataContent | DataContent[];
-      audios?: DataContent | DataContent[];
+      audio?: DataContent;
     };
 
 export interface GenerateVideoOptions {
@@ -99,11 +99,11 @@ function normalizePrompt(prompt: GenerateVideoPrompt): {
     });
   }
 
-  for (const audio of toArray(prompt.audios)) {
+  if (prompt.audio) {
     files.push({
       type: "file",
       mediaType: "audio/mpeg",
-      data: toUint8Array(audio),
+      data: toUint8Array(prompt.audio),
     });
   }
 

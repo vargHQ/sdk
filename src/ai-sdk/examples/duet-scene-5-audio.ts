@@ -15,7 +15,7 @@ async function main() {
     model: fal.videoModel("wan-2.5-preview"),
     prompt: {
       images: imageData,
-      audios: audioData,
+      audio: audioData,
       text: "static camera, fixed closeup shot of woman singing passionately, no camera movement, no zoom, lips synced to audio, subtle head movements, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
     },
     duration: 5,
