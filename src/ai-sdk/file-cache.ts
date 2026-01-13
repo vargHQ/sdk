@@ -5,6 +5,27 @@ interface CacheEntry {
   expires: number;
 }
 
+function serialize(value: unknown): string {
+  return JSON.stringify(value, (_key, val) => {
+    if (val instanceof Uint8Array) {
+      return {
+        __type: "Uint8Array",
+        data: Buffer.from(val).toString("base64"),
+      };
+    }
+    return val;
+  });
+}
+
+function deserialize(json: string): unknown {
+  return JSON.parse(json, (_key, val) => {
+    if (val && typeof val === "object" && val.__type === "Uint8Array") {
+      return new Uint8Array(Buffer.from(val.data, "base64"));
+    }
+    return val;
+  });
+}
+
 /**
  * File-based cache storage using Bun's file API.
  * Persists cache entries to disk as JSON files.
@@ -51,7 +72,7 @@ export function fileCache(options: { dir: string }): CacheStorage {
         }
 
         const content = await file.text();
-        const entry = JSON.parse(content) as CacheEntry;
+        const entry = deserialize(content) as CacheEntry;
 
         if (entry.expires && Date.now() > entry.expires) {
           // expired, clean up
@@ -72,7 +93,7 @@ export function fileCache(options: { dir: string }): CacheStorage {
         value,
         expires: ttl ? Date.now() + ttl : 0,
       };
-      await Bun.write(path, JSON.stringify(entry, null, 2));
+      await Bun.write(path, serialize(entry));
     },
 
     async delete(key: string): Promise<void> {
