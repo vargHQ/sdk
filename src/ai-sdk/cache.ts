@@ -81,12 +81,14 @@ function depsToKey(deps: CacheKeyDeps): string {
  * });
  * ```
  */
+const DEFAULT_TTL = "1h";
+
 export function withCache<T extends object, R>(
   fn: (options: T) => Promise<R>,
   options: WithCacheOptions = {},
 ): CachedFn<T, R> {
   const storage = options.storage ?? defaultStorage;
-  const ttl = parseTTL(options.ttl);
+  const ttl = parseTTL(options.ttl ?? DEFAULT_TTL);
 
   return async (opts: WithCacheKey<T>): Promise<R> => {
     const { cacheKey, ...rest } = opts;
