@@ -1,19 +1,28 @@
 import type {
+  ImageModelV3File,
   SharedV3ProviderOptions,
   SharedV3Warning,
 } from "@ai-sdk/provider";
-import type { VideoModelV3, VideoModelV3File } from "./video-model";
+import type { DataContent } from "ai";
+import type { VideoModelV3 } from "./video-model";
+
+export type GenerateVideoPrompt =
+  | string
+  | {
+      text?: string;
+      image?: DataContent;
+      audio?: DataContent;
+    };
 
 export interface GenerateVideoOptions {
   model: VideoModelV3;
-  prompt: string;
+  prompt: GenerateVideoPrompt;
   n?: number;
   resolution?: `${number}x${number}`;
   aspectRatio?: `${number}:${number}`;
   duration?: number;
   fps?: number;
   seed?: number;
-  files?: VideoModelV3File[];
   providerOptions?: SharedV3ProviderOptions;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
@@ -57,26 +66,69 @@ class DefaultGeneratedVideo implements GeneratedVideo {
   }
 }
 
+function toUint8Array(data: DataContent): Uint8Array {
+  if (typeof data === "string") {
+    return Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+  }
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
+  }
+  return data;
+}
+
+function normalizePrompt(prompt: GenerateVideoPrompt): {
+  prompt: string | undefined;
+  files: ImageModelV3File[] | undefined;
+} {
+  if (typeof prompt === "string") {
+    return { prompt, files: undefined };
+  }
+
+  const files: ImageModelV3File[] = [];
+
+  if (prompt.image) {
+    files.push({
+      type: "file",
+      mediaType: "image/png",
+      data: toUint8Array(prompt.image),
+    });
+  }
+
+  if (prompt.audio) {
+    files.push({
+      type: "file",
+      mediaType: "audio/mpeg",
+      data: toUint8Array(prompt.audio),
+    });
+  }
+
+  return {
+    prompt: prompt.text,
+    files: files.length > 0 ? files : undefined,
+  };
+}
+
 export async function generateVideo(
   options: GenerateVideoOptions,
 ): Promise<GenerateVideoResult> {
   const {
     model,
-    prompt,
+    prompt: promptArg,
     n = 1,
     resolution,
     aspectRatio,
     duration,
     fps,
     seed,
-    files,
     providerOptions = {},
     abortSignal,
     headers,
   } = options;
 
+  const { prompt, files } = normalizePrompt(promptArg);
+
   const result = await model.doGenerate({
-    prompt,
+    prompt: prompt ?? "",
     n,
     resolution,
     aspectRatio,
