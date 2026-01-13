@@ -1,16 +1,19 @@
-export interface CacheOptions<T extends unknown[] = unknown[]> {
-  key: string | ((...args: T) => string);
-  ttl?: number | string;
-  storage?: CacheStorage;
-}
-
 export interface CacheStorage {
   get(key: string): Promise<unknown | undefined>;
   set(key: string, value: unknown, ttl?: number): Promise<void>;
   delete(key: string): Promise<void>;
 }
 
-type AsyncFn<T extends unknown[], R> = (...args: T) => Promise<R>;
+export interface WithCacheOptions {
+  ttl?: number | string;
+  storage?: CacheStorage;
+}
+
+type CacheKeyDeps = (string | number | boolean | null | undefined)[];
+
+type WithCacheKey<T> = T & { cacheKey?: CacheKeyDeps };
+
+type CachedFn<T, R> = (options: WithCacheKey<T>) => Promise<R>;
 
 const memoryCache = new Map<string, { value: unknown; expires: number }>();
 
@@ -57,24 +60,50 @@ function parseTTL(ttl: number | string | undefined): number | undefined {
   }
 }
 
-export function withCache<T extends unknown[], R>(
-  fn: AsyncFn<T, R>,
-  options: CacheOptions<T>,
-): AsyncFn<T, R> {
+function depsToKey(deps: CacheKeyDeps): string {
+  return deps.map((d) => String(d ?? "")).join(":");
+}
+
+/**
+ * Wrap an async function to add caching via `cacheKey` option.
+ *
+ * @example
+ * ```ts
+ * import { generateImage } from "ai";
+ * import { withCache } from "./cache";
+ *
+ * const generateImage_ = withCache(generateImage);
+ *
+ * const { images } = await generateImage_({
+ *   model: fal.imageModel("flux-schnell"),
+ *   prompt: "lion roaring",
+ *   cacheKey: ["lion", take], // cache based on deps
+ * });
+ * ```
+ */
+export function withCache<T extends object, R>(
+  fn: (options: T) => Promise<R>,
+  options: WithCacheOptions = {},
+): CachedFn<T, R> {
   const storage = options.storage ?? defaultStorage;
   const ttl = parseTTL(options.ttl);
 
-  return async (...args: T): Promise<R> => {
-    const cacheKey =
-      typeof options.key === "function" ? options.key(...args) : options.key;
+  return async (opts: WithCacheKey<T>): Promise<R> => {
+    const { cacheKey, ...rest } = opts;
 
-    const cached = await storage.get(cacheKey);
+    // no cacheKey = no caching, pass through
+    if (!cacheKey) {
+      return fn(rest as T);
+    }
+
+    const key = depsToKey(cacheKey);
+    const cached = await storage.get(key);
     if (cached !== undefined) {
       return cached as R;
     }
 
-    const result = await fn(...args);
-    await storage.set(cacheKey, result, ttl);
+    const result = await fn(rest as T);
+    await storage.set(key, result, ttl);
 
     return result;
   };

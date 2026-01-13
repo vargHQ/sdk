@@ -11,15 +11,16 @@ interface CacheEntry {
  *
  * @example
  * ```ts
- * import { withCache } from "./cache";
- * import { fileCache } from "./file-cache";
+ * import { generateImage } from "ai";
+ * import { withCache, fileCache } from "./index";
  *
- * const storage = fileCache({ dir: ".cache" });
+ * const storage = fileCache({ dir: ".cache/ai" });
+ * const generateImage_ = withCache(generateImage, { ttl: "24h", storage });
  *
- * const cachedGenerate = withCache(generateVideo, {
- *   key: (opts) => `video:${hashPrompt(opts.prompt)}`,
- *   ttl: "24h",
- *   storage,
+ * const { images } = await generateImage_({
+ *   model: fal.imageModel("flux-schnell"),
+ *   prompt: "lion roaring",
+ *   cacheKey: ["lion", take],
  * });
  * ```
  */
@@ -84,15 +85,4 @@ export function fileCache(options: { dir: string }): CacheStorage {
       }
     },
   };
-}
-
-/**
- * Create a hash from a prompt for use as cache key.
- * Uses Bun's native CryptoHasher for performance.
- */
-export function hashPrompt(prompt: unknown): string {
-  const str = typeof prompt === "string" ? prompt : JSON.stringify(prompt);
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(str);
-  return hasher.digest("hex").slice(0, 16);
 }
