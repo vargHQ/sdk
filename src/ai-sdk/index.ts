@@ -1,7 +1,7 @@
 export {
-  type CacheOptions,
   type CacheStorage,
   clearCache,
+  type WithCacheOptions,
   withCache,
 } from "./cache";
 export {
@@ -12,7 +12,7 @@ export {
 } from "./elevenlabs-provider";
 export { createFal, type FalProvider, fal } from "./fal-provider";
 export { File, files, toImageModelV3File, toInputs } from "./file";
-export { fileCache, hashPrompt } from "./file-cache";
+export { fileCache } from "./file-cache";
 export {
   type GenerateVideoOptions,
   type GenerateVideoPrompt,
