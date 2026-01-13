@@ -14,6 +14,14 @@ export { createFal, type FalProvider, fal } from "./fal-provider";
 export { File, files } from "./file";
 export { fileCache } from "./file-cache";
 export {
+  type Element,
+  type ElementType,
+  type GenerateElementOptions,
+  type GenerateElementResult,
+  generateElement,
+  scene,
+} from "./generate-element";
+export {
   type GenerateVideoOptions,
   type GenerateVideoPrompt,
   type GenerateVideoResult,
