@@ -1,5 +1,5 @@
 import { generateImage } from "ai";
-import { File, fal, generateVideo, toImageModelV3File } from "../index";
+import { File, fal, generateVideo } from "../index";
 
 async function main() {
   console.log("=== taisa solo closeup - scene 4 ===\n");
@@ -35,9 +35,10 @@ async function main() {
   console.log("animating 10s with kling-v2.5...");
   const { video } = await generateVideo({
     model: fal.videoModel("kling-v2.5"),
-    prompt:
-      "closeup of woman singing passionately, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
-    files: [toImageModelV3File(image)],
+    prompt: {
+      image: image.uint8Array,
+      text: "closeup of woman singing passionately, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
+    },
     duration: 10,
   });
 
