@@ -62,10 +62,29 @@ export class File {
     return new File({ data, mediaType: mediaType ?? blob.type });
   }
 
-  static async from(
+  static from(input: {
+    uint8Array: Uint8Array;
+    mimeType?: string;
+    mediaType?: string;
+  }): File;
+  static from(
     input: string | Uint8Array | ArrayBuffer | Blob,
     mediaType?: string,
-  ): Promise<File> {
+  ): File | Promise<File>;
+  static from(
+    input:
+      | string
+      | Uint8Array
+      | ArrayBuffer
+      | Blob
+      | { uint8Array: Uint8Array; mimeType?: string; mediaType?: string },
+    mediaType?: string,
+  ): File | Promise<File> {
+    if (typeof input === "object" && input !== null && "uint8Array" in input) {
+      const mime =
+        input.mimeType ?? input.mediaType ?? "application/octet-stream";
+      return File.fromBuffer(input.uint8Array, mime);
+    }
     if (typeof input === "string" && /^https?:\/\//.test(input)) {
       return File.fromUrl(input, mediaType);
     }
@@ -100,7 +119,7 @@ export class File {
     return this._mediaType.startsWith("video/");
   }
 
-  async arrayBuffer(): Promise<Uint8Array> {
+  async data(): Promise<Uint8Array> {
     if (this._data) return this._data;
     if (this._loader) {
       this._data = await this._loader();
@@ -112,6 +131,10 @@ export class File {
       return this._data;
     }
     throw new Error("File has no data source");
+  }
+
+  async arrayBuffer(): Promise<Uint8Array> {
+    return this.data();
   }
 
   async blob(): Promise<Blob> {
@@ -174,19 +197,4 @@ function inferMediaType(path: string): string {
 
 export function files(...paths: string[]): File[] {
   return paths.map((p) => File.fromPath(p));
-}
-
-export function toDataContent(generated: {
-  uint8Array: Uint8Array;
-}): Uint8Array;
-export function toDataContent(
-  generated: { uint8Array: Uint8Array }[],
-): Uint8Array[];
-export function toDataContent(
-  generated: { uint8Array: Uint8Array } | { uint8Array: Uint8Array }[],
-): Uint8Array | Uint8Array[] {
-  if (Array.isArray(generated)) {
-    return generated.map((g) => g.uint8Array);
-  }
-  return generated.uint8Array;
 }
