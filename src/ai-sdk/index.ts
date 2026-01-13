@@ -1,4 +1,3 @@
-export { createFile, createFiles } from "./create-file";
 export {
   createElevenLabs,
   type ElevenLabsProvider,
@@ -7,6 +6,7 @@ export {
 } from "./elevenlabs-provider";
 
 export { createFal, type FalProvider, fal } from "./fal-provider";
+export { File, files, toInput, toInputs } from "./file";
 export { type GenerateVideoResult, generateVideo } from "./generate-video";
 export type {
   VideoModelV3,

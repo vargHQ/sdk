@@ -11,11 +11,7 @@ import {
   type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
-import type {
-  VideoModelV3,
-  VideoModelV3CallOptions,
-  VideoModelV3File,
-} from "./video-model";
+import type { VideoModelV3, VideoModelV3CallOptions } from "./video-model";
 
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   "kling-v2.5": {
@@ -57,19 +53,27 @@ const TRANSCRIPTION_MODELS: Record<string, string> = {
   "whisper-large-v3": "fal-ai/whisper",
 };
 
-async function fileToUrl(
-  file: VideoModelV3File | ImageModelV3File,
-): Promise<string> {
-  if ("url" in file && file.type === "url") {
-    return file.url;
-  }
+function getMediaType(file: ImageModelV3File): string | undefined {
+  if (file.type === "file") return file.mediaType;
+  const ext = file.url.split(".").pop()?.toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    mp4: "video/mp4",
+  };
+  return mimeTypes[ext ?? ""];
+}
 
+async function fileToUrl(file: ImageModelV3File): Promise<string> {
+  if (file.type === "url") return file.url;
   const data = file.data;
   const bytes =
     typeof data === "string"
       ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
       : data;
-
   return fal.storage.upload(new Blob([bytes]));
 }
 
@@ -98,7 +102,9 @@ class FalVideoModel implements VideoModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
-    const hasImageInput = files?.some((f) => f.mediaType?.startsWith("image/"));
+    const hasImageInput = files?.some((f) =>
+      getMediaType(f)?.startsWith("image/"),
+    );
     const endpoint = this.resolveEndpoint(hasImageInput ?? false);
 
     const input: Record<string, unknown> = {
@@ -108,7 +114,9 @@ class FalVideoModel implements VideoModelV3 {
     };
 
     if (hasImageInput && files) {
-      const imageFile = files.find((f) => f.mediaType?.startsWith("image/"));
+      const imageFile = files.find((f) =>
+        getMediaType(f)?.startsWith("image/"),
+      );
       if (imageFile) {
         input.image_url = await fileToUrl(imageFile);
       }
@@ -116,8 +124,7 @@ class FalVideoModel implements VideoModelV3 {
       input.aspect_ratio = aspectRatio ?? "16:9";
     }
 
-    // Handle audio input for audio-reactive video generation
-    const audioFile = files?.find((f) => f.mediaType?.startsWith("audio/"));
+    const audioFile = files?.find((f) => getMediaType(f)?.startsWith("audio/"));
     if (audioFile) {
       input.audio_url = await fileToUrl(audioFile);
     }

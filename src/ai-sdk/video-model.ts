@@ -8,40 +8,18 @@
  */
 
 import type {
+  ImageModelV3File,
   JSONArray,
   JSONValue,
   SharedV3ProviderOptions,
   SharedV3Warning,
 } from "@ai-sdk/provider";
 
-// ============================================================================
-// File Types (matching ImageModelV3File pattern)
-// ============================================================================
-
-export type VideoModelV3File =
-  | {
-      type: "file";
-      /**
-       * The IANA media type of the file, e.g. `image/png`, `audio/mp3`, `video/mp4`.
-       * @see https://www.iana.org/assignments/media-types/media-types.xhtml
-       */
-      mediaType: string;
-      /**
-       * File data as base64 encoded string or binary data.
-       */
-      data: string | Uint8Array;
-    }
-  | {
-      type: "url";
-      /**
-       * URL to the file. Must be publicly accessible.
-       */
-      url: string;
-      /**
-       * Optional media type hint for the URL.
-       */
-      mediaType?: string;
-    };
+/**
+ * Re-export ImageModelV3File as VideoModelV3File for clarity.
+ * They're the same type - works for image, audio, and video inputs.
+ */
+export type VideoModelV3File = ImageModelV3File;
 
 // ============================================================================
 // Call Options
