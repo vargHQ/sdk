@@ -10,6 +10,10 @@ async function main() {
   });
   console.log(`ralph: ${ralph.images.length} images`);
 
+  await Promise.all(
+    ralph.images.map((img, i) => Bun.write(`output/ralph-${i}.png`, img)),
+  );
+
   console.log("generating blackboard...");
   const { element: blackboard } = await generateElement({
     model: fal.imageModel("nano-banana-pro"),
@@ -18,6 +22,12 @@ async function main() {
       "green chalkboard from simpsons intro that says 'I will not run claude code in a loop', white chalk text",
   });
   console.log(`blackboard: ${blackboard.images.length} images`);
+
+  await Promise.all(
+    blackboard.images.map((img, i) =>
+      Bun.write(`output/blackboard-${i}.png`, img),
+    ),
+  );
 
   console.log("generating video...");
   const { video } = await generateVideo({
