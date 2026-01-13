@@ -1,14 +1,11 @@
-import { fal as falClient } from "@fal-ai/client";
 import { generateImage } from "ai";
-import { fal, generateVideo } from "../index";
-
-async function uploadFile(data: Uint8Array): Promise<string> {
-  return falClient.storage.upload(new Blob([data]));
-}
+import { createFile, fal, generateVideo } from "../index";
 
 async function main() {
   console.log("=== taisa & irina duet - scene 3 ===\n");
 
+  // load reference images as Uint8Array
+  console.log("loading reference images...");
   const taisa1 = new Uint8Array(
     await Bun.file("media/taisa/taisa.jpg").arrayBuffer(),
   );
@@ -18,25 +15,20 @@ async function main() {
   const irinaScene = new Uint8Array(
     await Bun.file("media/taisa/irina-scene.png").arrayBuffer(),
   );
-
-  console.log("uploading reference images...");
-  const [taisa1Url, irina1Url, irinaSceneUrl] = await Promise.all([
-    uploadFile(taisa1),
-    uploadFile(irina1),
-    uploadFile(irinaScene),
-  ]);
-  console.log("uploaded.\n");
+  console.log("loaded.\n");
 
   console.log("generating first frame with nano-banana-pro/edit...");
   const { images } = await generateImage({
     model: fal.imageModel("nano-banana-pro"),
-    prompt:
-      "Wide shot of two different women singing duet on grand concert stage, dark-haired brunette Taisa on left and blonde Irina on right, both facing camera, dramatic purple blue stage lighting, audience visible, glamorous dresses, professional concert hall",
+    // ai-sdk uses prompt object with images for image-to-image
+    prompt: {
+      images: [taisa1, irina1, irinaScene],
+      text: "Wide shot of two different women singing duet on grand concert stage, dark-haired brunette Taisa on left and blonde Irina on right, both facing camera, dramatic purple blue stage lighting, audience visible, glamorous dresses, professional concert hall",
+    },
     aspectRatio: "16:9",
     n: 1,
     providerOptions: {
       fal: {
-        image_urls: [taisa1Url, irina1Url, irinaSceneUrl],
         resolution: "1K",
       },
     },
@@ -53,7 +45,7 @@ async function main() {
     model: fal.videoModel("kling-v2.5"),
     prompt:
       "two women singing together on stage, subtle head movements, lips moving as singing, natural breathing, blinking, emotional expressions, concert atmosphere with stage lighting",
-    files: [{ type: "file", mediaType: "image/png", data: frameData }],
+    files: [await createFile(frameData, "image/png")],
     duration: 10,
   });
 

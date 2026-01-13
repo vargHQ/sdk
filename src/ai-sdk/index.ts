@@ -1,3 +1,4 @@
+export { createFile, createFiles } from "./create-file";
 export {
   createElevenLabs,
   type ElevenLabsProvider,
