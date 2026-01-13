@@ -176,17 +176,17 @@ export function files(...paths: string[]): File[] {
   return paths.map((p) => File.fromPath(p));
 }
 
-export async function toInputs(files: File[]): Promise<ImageModelV3File[]> {
-  return Promise.all(files.map((f) => f.toInput()));
-}
-
-export function toImageModelV3File(generated: {
+export function toDataContent(generated: {
   uint8Array: Uint8Array;
-  mediaType: string;
-}): ImageModelV3File {
-  return {
-    type: "file",
-    mediaType: generated.mediaType,
-    data: generated.uint8Array,
-  };
+}): Uint8Array;
+export function toDataContent(
+  generated: { uint8Array: Uint8Array }[],
+): Uint8Array[];
+export function toDataContent(
+  generated: { uint8Array: Uint8Array } | { uint8Array: Uint8Array }[],
+): Uint8Array | Uint8Array[] {
+  if (Array.isArray(generated)) {
+    return generated.map((g) => g.uint8Array);
+  }
+  return generated.uint8Array;
 }
