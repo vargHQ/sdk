@@ -1,4 +1,10 @@
 export {
+  type CacheOptions,
+  type CacheStorage,
+  clearCache,
+  withCache,
+} from "./cache";
+export {
   createElevenLabs,
   type ElevenLabsProvider,
   elevenlabs,
