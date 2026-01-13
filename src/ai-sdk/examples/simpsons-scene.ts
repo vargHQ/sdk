@@ -1,3 +1,4 @@
+import { generateImage } from "ai";
 import { File, fal, generateElement, generateVideo, scene } from "../index";
 
 async function main() {
@@ -6,7 +7,7 @@ async function main() {
   const ralphShot = await File.fromPath("media/ralph.jpg").arrayBuffer();
 
   const { element: ralph } = await generateElement({
-    model: fal.imageModel("nano-banana-pro"),
+    model: fal.imageModel("nano-banana-pro/edit"),
     type: "character",
     prompt: {
       text: "ralph wiggum from the simpsons, yellow skin, blue shorts, red shirt, simple cartoon style",
@@ -34,10 +35,18 @@ async function main() {
     ),
   );
 
+  const { image: firstFrame } = await generateImage({
+    model: fal.imageModel("nano-banana-pro/edit"),
+    prompt: scene`${ralph} writes on the ${blackboard}`,
+  });
+
   console.log("generating video...");
   const { video } = await generateVideo({
     model: fal.videoModel("wan-2.5"),
-    prompt: scene`${ralph} writes on the ${blackboard}`,
+    prompt: {
+      text: `${ralph.text} writes on the ${blackboard.text}`,
+      images: [firstFrame.base64],
+    },
     duration: 5,
   });
 
