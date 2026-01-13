@@ -40,25 +40,30 @@ export interface GenerateVideoResult {
   readonly warnings: SharedV3Warning[];
 }
 
-function toBase64(data: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < data.byteLength; i++) {
-    binary += String.fromCharCode(data[i]!);
+class DefaultGeneratedVideo implements GeneratedVideo {
+  private _data: Uint8Array;
+  readonly mimeType = "video/mp4";
+
+  constructor(data: Uint8Array | string) {
+    if (typeof data === "string") {
+      this._data = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    } else {
+      this._data = data;
+    }
   }
-  return btoa(binary);
-}
 
-function createGeneratedVideo(data: Uint8Array | string): GeneratedVideo {
-  const uint8Array =
-    typeof data === "string"
-      ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
-      : data;
+  get uint8Array(): Uint8Array {
+    return this._data;
+  }
 
-  return {
-    uint8Array,
-    base64: toBase64(uint8Array),
-    mimeType: "video/mp4",
-  };
+  get base64(): string {
+    let binary = "";
+    const bytes = this._data;
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]!);
+    }
+    return btoa(binary);
+  }
 }
 
 function toUint8Array(data: DataContent): Uint8Array {
@@ -136,7 +141,7 @@ export async function generateVideo(
     headers,
   });
 
-  const videos = result.videos.map((v) => createGeneratedVideo(v));
+  const videos = result.videos.map((v) => new DefaultGeneratedVideo(v));
   const warnings = result.warnings;
 
   if (videos.length === 0) {
