@@ -90,35 +90,41 @@ export function getImageFilter(
   height: number,
   duration: number,
 ): LayerFilter {
-  const inputLabel = `img${index}`;
+  const inputLabel = `${index}:v`;
   const outputLabel = `imgout${index}`;
   const filters: string[] = [];
 
-  filters.push(`loop=loop=-1:size=1:start=0`);
-  filters.push(`fps=30`);
-  filters.push(`trim=duration=${duration}`);
-
-  let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
-  if (layer.resizeMode === "cover") {
-    scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
-  } else if (layer.resizeMode === "stretch") {
-    scaleFilter = `scale=${width}:${height}`;
-  }
-
-  filters.push(scaleFilter);
-  filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
-  filters.push("setsar=1");
-
   const zoomDir = layer.zoomDirection ?? "in";
   const zoomAmt = layer.zoomAmount ?? 0.1;
+  const totalFrames = Math.ceil(duration * 30);
 
+  // zoompan takes a single image and produces video frames
+  // it must come FIRST before any video filters
   if (zoomDir && zoomDir !== null) {
     const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
     const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
+    // zoompan: d=total frames to output, fps=output framerate
     filters.push(
-      `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${duration * 30}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${duration * 30}:s=${width}x${height}`,
+      `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
     );
+  } else {
+    // no zoom - use loop to create video from image
+    filters.push(`loop=loop=-1:size=1:start=0`);
+    filters.push(`fps=30`);
+    filters.push(`trim=duration=${duration}`);
+
+    let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
+    if (layer.resizeMode === "cover") {
+      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+    } else if (layer.resizeMode === "stretch") {
+      scaleFilter = `scale=${width}:${height}`;
+    }
+    filters.push(scaleFilter);
+    filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
   }
+
+  filters.push("setsar=1");
+  filters.push("settb=1/30");
 
   return {
     inputs: [{ label: inputLabel, path: layer.path }],

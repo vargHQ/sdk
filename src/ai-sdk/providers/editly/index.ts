@@ -200,14 +200,13 @@ function buildTransitionFilter(
   toLabel: string,
   transitionName: string,
   transitionDuration: number,
-  fromDuration: number,
+  offset: number,
   outputLabel: string,
 ): string {
   if (transitionName === "none" || transitionDuration <= 0) {
     return `[${fromLabel}][${toLabel}]concat=n=2:v=1:a=0[${outputLabel}]`;
   }
 
-  const offset = Math.max(0, fromDuration - transitionDuration);
   return `[${fromLabel}][${toLabel}]xfade=transition=${transitionName}:duration=${transitionDuration}:offset=${offset}[${outputLabel}]`;
 }
 
@@ -311,13 +310,17 @@ export async function editly(config: EditlyConfig): Promise<void> {
 
   if (clipOutputLabels.length > 1) {
     let currentLabel = clipOutputLabels[0] ?? "v0";
+    let accumulatedDuration = clips[0]?.duration ?? 0;
 
     for (let i = 0; i < clips.length - 1; i++) {
       const nextLabel = clipOutputLabels[i + 1] ?? `v${i + 1}`;
       const clip = clips[i];
+      const nextClip = clips[i + 1];
       if (!clip) continue;
       const transition = clip.transition;
       const outputLabel = i === clips.length - 2 ? "vfinal" : `vmix${i}`;
+
+      const offset = Math.max(0, accumulatedDuration - transition.duration);
 
       allFilters.push(
         buildTransitionFilter(
@@ -325,11 +328,12 @@ export async function editly(config: EditlyConfig): Promise<void> {
           nextLabel,
           transition.name,
           transition.duration,
-          clip.duration,
+          offset,
           outputLabel,
         ),
       );
 
+      accumulatedDuration = offset + (nextClip?.duration ?? 0);
       currentLabel = outputLabel;
     }
 
