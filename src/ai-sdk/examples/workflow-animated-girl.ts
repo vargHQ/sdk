@@ -1,8 +1,18 @@
 import {
-  generateImage,
+  generateImage as _generateImage,
   experimental_generateSpeech as generateSpeech,
 } from "ai";
-import { elevenlabs, fal, generateVideo } from "../index";
+import {
+  generateVideo as _generateVideo,
+  elevenlabs,
+  fal,
+  fileCache,
+  withCache,
+} from "../index";
+
+const storage = fileCache({ dir: ".cache/ai" });
+const generateImage = withCache(_generateImage, { storage });
+const generateVideo = withCache(_generateVideo, { storage });
 
 async function main() {
   const script = `Hi everyone! Welcome to my channel. Today I want to share something exciting with you. 
@@ -17,6 +27,7 @@ Don't forget to like and subscribe for more content like this!`;
       "young woman portrait, friendly smile, casual style, looking at camera, natural lighting, social media influencer vibe",
     aspectRatio: "9:16",
     n: 1,
+    cacheKey: ["animated-girl", "portrait"],
   });
 
   const imageData = images[0]!.uint8Array;
@@ -42,6 +53,7 @@ Don't forget to like and subscribe for more content like this!`;
       images: [imageData],
     },
     duration: 5,
+    cacheKey: ["animated-girl", "video"],
   });
 
   await Bun.write("output/workflow-girl-animated.mp4", video.uint8Array);
@@ -54,6 +66,7 @@ Don't forget to like and subscribe for more content like this!`;
       video: video.uint8Array,
       audio: audioData,
     },
+    cacheKey: ["animated-girl", "synced"],
   });
 
   await Bun.write("output/workflow-girl-synced.mp4", syncedVideo.uint8Array);
