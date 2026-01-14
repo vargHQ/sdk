@@ -5,6 +5,12 @@ export {
   withCache,
 } from "./cache";
 export {
+  type EditlyClip,
+  type EditlyConfig,
+  type EditlyLayer,
+  editly,
+} from "./editly";
+export {
   createElevenLabs,
   type ElevenLabsProvider,
   elevenlabs,

@@ -1,23 +1,19 @@
 /**
- * Example: Using editly for video composition with varg sdk
- *
- * editly is a declarative video editing library. We use File.toTemp()
- * to bridge AI-generated content to editly's file-based API.
- *
- * Install editly: bun add editly
+ * Editly Video Composition
+ * Requires: ffmpeg installed system-wide
  */
 
 import { generateImage } from "ai";
-import * as editly from "editly";
-import { File, fal, generateVideo } from "../index";
+import { editly, File, fal, generateVideo } from "../index";
 
 async function main() {
-  // 1. generate assets with ai
+  console.log("generating product image...");
   const { image } = await generateImage({
     model: fal.imageModel("flux-schnell"),
     prompt: "product shot of headphones on white background",
   });
 
+  console.log("animating image to video...");
   const { video } = await generateVideo({
     model: fal.videoModel("kling-v2.5"),
     prompt: {
@@ -27,13 +23,12 @@ async function main() {
     duration: 5,
   });
 
-  // 2. save to temp files for editly
   const videoPath = await File.toTemp(video);
   const imagePath = await File.toTemp(image);
 
-  // 3. compose with editly
+  console.log("composing final video with editly...");
   await editly({
-    outPath: "./output/composed.mp4",
+    outPath: "output/editly-composed.mp4",
     width: 1080,
     height: 1920,
     fps: 30,
@@ -62,7 +57,7 @@ async function main() {
     ],
   });
 
-  console.log("composed video saved to output/composed.mp4");
+  console.log("done! output saved to output/editly-composed.mp4");
 }
 
 main().catch(console.error);
