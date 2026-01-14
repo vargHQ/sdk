@@ -116,6 +116,38 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
   });
 
+  test("pip with originX/originY", async () => {
+    const outPath = "output/editly-test-pip-origin.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "video", path: VIDEO_1 },
+            {
+              type: "video",
+              path: VIDEO_2,
+              width: 0.3,
+              height: 0.3,
+              left: 0.95,
+              top: 0.05,
+              originX: "right",
+              originY: "top",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
   test("gradients", async () => {
     const outPath = "output/editly-test-gradients.mp4";
     if (existsSync(outPath)) unlinkSync(outPath);

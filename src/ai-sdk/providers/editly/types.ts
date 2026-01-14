@@ -35,6 +35,8 @@ export interface VideoLayer extends BaseLayer {
   height?: number;
   left?: number;
   top?: number;
+  originX?: "left" | "center" | "right";
+  originY?: "top" | "center" | "bottom";
   mixVolume?: number | string;
 }
 

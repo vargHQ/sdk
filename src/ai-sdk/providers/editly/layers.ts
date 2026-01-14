@@ -77,10 +77,25 @@ export function getOverlayFilter(
   height: number,
   outputLabel: string,
 ): string {
-  const x = layer.left !== undefined ? Math.round(layer.left * width) : 0;
-  const y = layer.top !== undefined ? Math.round(layer.top * height) : 0;
+  const baseX = layer.left !== undefined ? Math.round(layer.left * width) : 0;
+  const baseY = layer.top !== undefined ? Math.round(layer.top * height) : 0;
 
-  return `[${baseLabel}][${overlayLabel}]overlay=${x}:${y}:shortest=1[${outputLabel}]`;
+  let xExpr = String(baseX);
+  let yExpr = String(baseY);
+
+  if (layer.originX === "center") {
+    xExpr = `${baseX}-overlay_w/2`;
+  } else if (layer.originX === "right") {
+    xExpr = `${baseX}-overlay_w`;
+  }
+
+  if (layer.originY === "center") {
+    yExpr = `${baseY}-overlay_h/2`;
+  } else if (layer.originY === "bottom") {
+    yExpr = `${baseY}-overlay_h`;
+  }
+
+  return `[${baseLabel}][${overlayLabel}]overlay=${xExpr}:${yExpr}:shortest=1[${outputLabel}]`;
 }
 
 export function getImageFilter(
