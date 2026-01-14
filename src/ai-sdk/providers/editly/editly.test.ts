@@ -5,6 +5,7 @@ import { editly } from "./index";
 
 const VIDEO_1 = "output/sora-landscape.mp4";
 const VIDEO_2 = "output/simpsons-scene.mp4";
+const VIDEO_TALKING = "output/workflow-talking-synced.mp4";
 
 describe("editly", () => {
   test("requires outPath", async () => {
@@ -143,6 +144,41 @@ describe("editly", () => {
           ],
         },
       ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("pip continuous across clips", async () => {
+    const outPath = "output/editly-test-pip-continuous.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff"];
+    const clips = colors.map((color, i) => ({
+      duration: 1,
+      layers: [
+        { type: "fill-color" as const, color },
+        {
+          type: "video" as const,
+          path: VIDEO_TALKING,
+          width: 0.3,
+          height: 0.3,
+          left: 0.95,
+          top: 0.05,
+          originX: "right" as const,
+          originY: "top" as const,
+        },
+      ],
+      transition:
+        i < colors.length - 1 ? { name: "fade", duration: 0.3 } : undefined,
+    }));
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips,
     });
 
     expect(existsSync(outPath)).toBe(true);

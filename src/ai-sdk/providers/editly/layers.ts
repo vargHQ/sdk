@@ -69,6 +69,54 @@ export function getVideoFilter(
   };
 }
 
+export function getVideoFilterWithTrim(
+  layer: VideoLayer,
+  inputIndex: number,
+  width: number,
+  height: number,
+  trimStart: number,
+  trimEnd: number,
+  outputLabel: string,
+  isOverlay = false,
+): LayerFilter {
+  const inputLabel = `${inputIndex}:v`;
+  const filters: string[] = [];
+
+  filters.push(`trim=start=${trimStart}:end=${trimEnd}`);
+  filters.push("setpts=PTS-STARTPTS");
+
+  const layerWidth = layer.width ? Math.round(layer.width * width) : width;
+  const layerHeight = layer.height ? Math.round(layer.height * height) : height;
+
+  if (isOverlay) {
+    filters.push(
+      `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
+    );
+    filters.push("setsar=1");
+    filters.push("fps=30");
+    filters.push("settb=1/30");
+  } else {
+    let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
+    if (layer.resizeMode === "cover") {
+      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+    } else if (layer.resizeMode === "stretch") {
+      scaleFilter = `scale=${width}:${height}`;
+    }
+
+    filters.push(scaleFilter);
+    filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`);
+    filters.push("setsar=1");
+    filters.push("fps=30");
+    filters.push("settb=1/30");
+  }
+
+  return {
+    inputs: [],
+    filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
 export function getOverlayFilter(
   baseLabel: string,
   overlayLabel: string,
