@@ -99,13 +99,13 @@ export function getImageFilter(
   const totalFrames = Math.ceil(duration * 30);
 
   // zoompan takes a single image and produces video frames
-  // it must come FIRST before any video filters
+  // upscale first to prevent subpixel jitter from rounding errors
   if (zoomDir && zoomDir !== null) {
     const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
     const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
-    // zoompan: d=total frames to output, fps=output framerate
+    filters.push(`scale=8000:-1`);
     filters.push(
-      `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
+      `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
     );
   } else {
     // no zoom - use loop to create video from image
