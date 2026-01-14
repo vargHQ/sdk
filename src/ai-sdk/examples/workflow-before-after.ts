@@ -1,5 +1,15 @@
-import { generateImage } from "ai";
-import { editly, fal, generateVideo } from "../index";
+import { generateImage as _generateImage } from "ai";
+import {
+  generateVideo as _generateVideo,
+  editly,
+  fal,
+  fileCache,
+  withCache,
+} from "../index";
+
+const storage = fileCache({ dir: ".cache/ai" });
+const generateImage = withCache(_generateImage, { storage });
+const generateVideo = withCache(_generateVideo, { storage });
 
 async function main() {
   const personBase =
@@ -11,6 +21,7 @@ async function main() {
     prompt: `${personBase}, overweight, tired expression, slouching posture, before fitness transformation`,
     aspectRatio: "3:4",
     n: 1,
+    cacheKey: ["before-after", "before-image"],
   });
 
   const beforeImage = beforeImages[0]!.uint8Array;
@@ -23,6 +34,7 @@ async function main() {
     prompt: `${personBase}, fit and muscular, confident smile, good posture, after fitness transformation, healthy glow`,
     aspectRatio: "3:4",
     n: 1,
+    cacheKey: ["before-after", "after-image"],
   });
 
   const afterImage = afterImages[0]!.uint8Array;
@@ -37,6 +49,7 @@ async function main() {
       images: [beforeImage],
     },
     duration: 5,
+    cacheKey: ["before-after", "before-video"],
   });
 
   await Bun.write("output/workflow-before-video.mp4", beforeVideo.uint8Array);
@@ -50,6 +63,7 @@ async function main() {
       images: [afterImage],
     },
     duration: 5,
+    cacheKey: ["before-after", "after-video"],
   });
 
   await Bun.write("output/workflow-after-video.mp4", afterVideo.uint8Array);

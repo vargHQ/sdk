@@ -1,8 +1,19 @@
 import {
-  generateImage,
+  generateImage as _generateImage,
   experimental_generateSpeech as generateSpeech,
 } from "ai";
-import { editly, elevenlabs, fal, generateVideo } from "../index";
+import {
+  generateVideo as _generateVideo,
+  editly,
+  elevenlabs,
+  fal,
+  fileCache,
+  withCache,
+} from "../index";
+
+const storage = fileCache({ dir: ".cache/ai" });
+const generateImage = withCache(_generateImage, { storage });
+const generateVideo = withCache(_generateVideo, { storage });
 
 const SCENES = [
   "standing in a modern coffee shop, holding a latte",
@@ -33,6 +44,7 @@ And ending with this amazing view.`;
         prompt: `${characterBase}, ${scene}, lifestyle photography`,
         aspectRatio: "16:9",
         n: 1,
+        cacheKey: ["slideshow", "scene", i],
       });
       const data = images[0]!.uint8Array;
       await Bun.write(`output/workflow-scene-${i}.png`, data);
@@ -47,6 +59,7 @@ And ending with this amazing view.`;
     prompt: `${characterBase}, headshot, facing camera, talking, vlog style, clean background`,
     aspectRatio: "1:1",
     n: 1,
+    cacheKey: ["slideshow", "talking-head"],
   });
 
   const talkingImage = talkingImages[0]!.uint8Array;
@@ -70,6 +83,7 @@ And ending with this amazing view.`;
       images: [talkingImage],
     },
     duration: 5,
+    cacheKey: ["slideshow", "talking-video"],
   });
 
   await Bun.write("output/workflow-talking-head.mp4", talkingVideo.uint8Array);
@@ -81,6 +95,7 @@ And ending with this amazing view.`;
       video: talkingVideo.uint8Array,
       audio: audioData,
     },
+    cacheKey: ["slideshow", "synced-video"],
   });
 
   await Bun.write(

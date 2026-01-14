@@ -1,5 +1,8 @@
-import { generateImage } from "ai";
-import { editly, fal } from "../index";
+import { generateImage as _generateImage } from "ai";
+import { editly, fal, fileCache, withCache } from "../index";
+
+const storage = fileCache({ dir: ".cache/ai" });
+const generateImage = withCache(_generateImage, { storage });
 
 const CHARACTER_PROMPTS = [
   {
@@ -66,6 +69,7 @@ async function main() {
         prompt: `${prompt}, ${baseStyle}`,
         aspectRatio: "1:1",
         n: 1,
+        cacheKey: ["character-grid", name],
       });
       const data = images[0]!.uint8Array;
       await Bun.write(`output/character-${i}-${name.toLowerCase()}.png`, data);
