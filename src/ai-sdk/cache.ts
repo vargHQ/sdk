@@ -11,7 +11,7 @@ export interface WithCacheOptions {
 
 type CacheKeyDeps = (string | number | boolean | null | undefined)[];
 
-type WithCacheKey<T> = T & { cacheKey?: CacheKeyDeps };
+type WithCacheKey<T> = Omit<T, "cacheKey"> & { cacheKey?: CacheKeyDeps };
 
 type CachedFn<T, R> = (options: WithCacheKey<T>) => Promise<R>;
 
