@@ -40,6 +40,13 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   },
 };
 
+// lipsync models - video + audio input
+const LIPSYNC_MODELS: Record<string, string> = {
+  "sync-v2": "fal-ai/sync-lipsync",
+  "sync-v2-pro": "fal-ai/sync-lipsync/v2",
+  lipsync: "fal-ai/sync-lipsync",
+};
+
 const IMAGE_MODELS: Record<string, string> = {
   "flux-pro": "fal-ai/flux-pro/v1.1",
   "flux-dev": "fal-ai/flux/dev",
@@ -103,31 +110,60 @@ class FalVideoModel implements VideoModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
+    const hasVideoInput = files?.some((f) =>
+      getMediaType(f)?.startsWith("video/"),
+    );
     const hasImageInput = files?.some((f) =>
       getMediaType(f)?.startsWith("image/"),
     );
-    const endpoint = this.resolveEndpoint(hasImageInput ?? false);
+    const hasAudioInput = files?.some((f) =>
+      getMediaType(f)?.startsWith("audio/"),
+    );
+
+    const isLipsync = LIPSYNC_MODELS[this.modelId] !== undefined;
+    const endpoint = isLipsync
+      ? this.resolveLipsyncEndpoint()
+      : this.resolveEndpoint(hasImageInput ?? false);
 
     const input: Record<string, unknown> = {
-      prompt,
-      duration: duration ?? 5,
       ...(providerOptions?.fal ?? {}),
     };
 
-    if (hasImageInput && files) {
-      const imageFile = files.find((f) =>
-        getMediaType(f)?.startsWith("image/"),
+    if (isLipsync) {
+      const videoFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("video/"),
       );
-      if (imageFile) {
-        input.image_url = await fileToUrl(imageFile);
+      const audioFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("audio/"),
+      );
+
+      if (videoFile) {
+        input.video_url = await fileToUrl(videoFile);
+      }
+      if (audioFile) {
+        input.audio_url = await fileToUrl(audioFile);
       }
     } else {
-      input.aspect_ratio = aspectRatio ?? "16:9";
-    }
+      input.prompt = prompt;
+      input.duration = duration ?? 5;
 
-    const audioFile = files?.find((f) => getMediaType(f)?.startsWith("audio/"));
-    if (audioFile) {
-      input.audio_url = await fileToUrl(audioFile);
+      if (hasImageInput && files) {
+        const imageFile = files.find((f) =>
+          getMediaType(f)?.startsWith("image/"),
+        );
+        if (imageFile) {
+          input.image_url = await fileToUrl(imageFile);
+        }
+      } else {
+        input.aspect_ratio = aspectRatio ?? "16:9";
+      }
+
+      const audioFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("audio/"),
+      );
+      if (audioFile) {
+        input.audio_url = await fileToUrl(audioFile);
+      }
     }
 
     if (options.seed !== undefined) {
@@ -191,6 +227,14 @@ class FalVideoModel implements VideoModelV3 {
     }
 
     return this.modelId;
+  }
+
+  private resolveLipsyncEndpoint(): string {
+    if (this.modelId.startsWith("raw:")) {
+      return this.modelId.slice(4);
+    }
+
+    return LIPSYNC_MODELS[this.modelId] ?? this.modelId;
   }
 }
 

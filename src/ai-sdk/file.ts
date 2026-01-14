@@ -172,6 +172,44 @@ export class File {
     const data = await this.arrayBuffer();
     return { type: "file", mediaType: this._mediaType, data };
   }
+
+  async toTemp(): Promise<string> {
+    const data = await this.data();
+    const ext = this.extensionFromMediaType();
+    const tmpDir = process.env.TMPDIR ?? "/tmp";
+    const filename = `varg-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const path = `${tmpDir}/${filename}`;
+    await Bun.write(path, data);
+    return path;
+  }
+
+  private extensionFromMediaType(): string {
+    const extMap: Record<string, string> = {
+      "image/png": ".png",
+      "image/jpeg": ".jpg",
+      "image/gif": ".gif",
+      "image/webp": ".webp",
+      "audio/mpeg": ".mp3",
+      "audio/wav": ".wav",
+      "audio/mp4": ".m4a",
+      "video/mp4": ".mp4",
+      "video/webm": ".webm",
+      "video/quicktime": ".mov",
+    };
+    return extMap[this._mediaType] ?? "";
+  }
+
+  static async toTemp(
+    file:
+      | { uint8Array: Uint8Array; mimeType?: string; mediaType?: string }
+      | File,
+  ): Promise<string> {
+    if (file instanceof File) {
+      return file.toTemp();
+    }
+    const f = File.from(file);
+    return f.toTemp();
+  }
 }
 
 function inferMediaType(path: string): string {
