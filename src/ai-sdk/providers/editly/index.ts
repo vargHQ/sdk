@@ -124,14 +124,16 @@ function buildClipFilter(
     );
 
     if (layerFilter) {
+      let hasFileInput = false;
       for (const input of layerFilter.inputs) {
         if (input.path) {
           inputs.push(input.path);
+          hasFileInput = true;
         }
       }
       filters.push(layerFilter.filterComplex);
       baseLabel = layerFilter.outputLabel;
-      inputIdx++;
+      if (hasFileInput) inputIdx++;
     }
 
     if (layer.type === "title") {
@@ -161,9 +163,11 @@ function buildClipFilter(
     );
 
     if (layerFilter) {
+      let hasFileInput = false;
       for (const input of layerFilter.inputs) {
         if (input.path) {
           inputs.push(input.path);
+          hasFileInput = true;
         }
       }
       filters.push(layerFilter.filterComplex);
@@ -179,7 +183,7 @@ function buildClipFilter(
       );
       filters.push(overlayFilter);
       baseLabel = overlayOutputLabel;
-      inputIdx++;
+      if (hasFileInput) inputIdx++;
     }
   }
 
@@ -207,60 +211,46 @@ function buildTransitionFilter(
   return `[${fromLabel}][${toLabel}]xfade=transition=${transitionName}:duration=${transitionDuration}:offset=${offset}[${outputLabel}]`;
 }
 
-async function buildAudioFilter(
-  clips: ProcessedClip[],
+function buildAudioFilter(
+  videoInputCount: number,
   audioTracks: AudioTrack[],
   audioFilePath?: string,
   keepSourceAudio?: boolean,
-  clipsAudioVolume?: number | string,
   outputVolume?: number | string,
-): Promise<{ inputs: string[]; filter: string; outputLabel: string } | null> {
+): { inputs: string[]; filter: string; outputLabel: string } | null {
   const audioInputs: string[] = [];
-  const audioLabels: string[] = [];
-  let audioIdx = 0;
+  const audioStreamRefs: string[] = [];
+  let inputIdx = videoInputCount;
 
   if (audioFilePath) {
     audioInputs.push(audioFilePath);
-    audioLabels.push(`a${audioIdx}`);
-    audioIdx++;
+    audioStreamRefs.push(`${inputIdx}:a`);
+    inputIdx++;
   }
 
   for (const track of audioTracks) {
     audioInputs.push(track.path);
-    audioLabels.push(`a${audioIdx}`);
-    audioIdx++;
+    audioStreamRefs.push(`${inputIdx}:a`);
+    inputIdx++;
   }
 
-  if (keepSourceAudio) {
-    for (const clip of clips) {
-      for (const layer of clip.layers) {
-        if (layer && layer.type === "video") {
-          audioInputs.push((layer as VideoLayer).path);
-          audioLabels.push(`a${audioIdx}`);
-          audioIdx++;
-          break;
-        }
-      }
-    }
-  }
-
-  if (audioLabels.length === 0) {
+  if (audioStreamRefs.length === 0) {
     return null;
   }
 
   const volumeFilter = outputVolume ? `,volume=${outputVolume}` : "";
-  if (audioLabels.length === 1) {
+  if (audioStreamRefs.length === 1) {
     return {
       inputs: audioInputs,
-      filter: `[${audioLabels[0]}]anull${volumeFilter}[aout]`,
+      filter: `[${audioStreamRefs[0]}]anull${volumeFilter}[aout]`,
       outputLabel: "aout",
     };
   }
 
-  const mixInputs = audioLabels.map((l) => `[${l}]`).join("");
+  const mixInputs = audioStreamRefs.map((l) => `[${l}]`).join("");
   return {
     inputs: audioInputs,
-    filter: `${mixInputs}amix=inputs=${audioLabels.length}${volumeFilter}[aout]`,
+    filter: `${mixInputs}amix=inputs=${audioStreamRefs.length}${volumeFilter}[aout]`,
     outputLabel: "aout",
   };
 }
@@ -273,7 +263,6 @@ export async function editly(config: EditlyConfig): Promise<void> {
     audioFilePath,
     audioTracks = [],
     keepSourceAudio,
-    clipsAudioVolume,
     outputVolume,
     customOutputArgs,
     verbose,
@@ -347,18 +336,18 @@ export async function editly(config: EditlyConfig): Promise<void> {
     finalVideoLabel = "vfinal";
   }
 
-  const audioFilter = await buildAudioFilter(
-    clips,
+  const videoInputCount = allInputs.length;
+  const audioFilter = buildAudioFilter(
+    videoInputCount,
     audioTracks,
     audioFilePath,
     keepSourceAudio,
-    clipsAudioVolume,
     outputVolume,
   );
 
   if (audioFilter) {
-    allFilters.push(audioFilter.filter);
     allInputs.push(...audioFilter.inputs);
+    allFilters.push(audioFilter.filter);
   }
 
   const inputArgs = allInputs.flatMap((input) => ["-i", input]);
