@@ -15,7 +15,6 @@ type VideoModelId = (typeof VIDEO_MODELS)[number];
 const SIZE_MAP: Record<string, string> = {
   "9:16": "720x1280",
   "16:9": "1280x720",
-  "1:1": "1024x1024",
 };
 
 class OpenAIVideoModel implements VideoModelV3 {
