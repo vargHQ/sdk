@@ -5,12 +5,6 @@ export {
   withCache,
 } from "./cache";
 export {
-  type EditlyClip,
-  type EditlyConfig,
-  type EditlyLayer,
-  editly,
-} from "./editly";
-export {
   createElevenLabs,
   type ElevenLabsProvider,
   elevenlabs,
@@ -33,6 +27,13 @@ export {
   type GenerateVideoResult,
   generateVideo,
 } from "./generate-video";
+export {
+  type AudioTrack,
+  type Clip as EditlyClip,
+  type EditlyConfig,
+  editly,
+  type Layer as EditlyLayer,
+} from "./providers/editly";
 export {
   createHiggsfield,
   type HiggsfieldImageModelSettings,
