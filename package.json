@@ -36,8 +36,9 @@
   },
   "dependencies": {
     "@ai-sdk/fal": "^1.0.23",
+    "@ai-sdk/openai": "^3.0.9",
     "@ai-sdk/provider": "^3.0.2",
-    "@ai-sdk/replicate": "^1.0.18",
+    "@ai-sdk/replicate": "^2.0.5",
     "@aws-sdk/client-s3": "^3.937.0",
     "@aws-sdk/s3-request-presigner": "^3.937.0",
     "@elevenlabs/elevenlabs-js": "^2.28.0",

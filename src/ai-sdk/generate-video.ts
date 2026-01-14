@@ -12,6 +12,7 @@ export type GenerateVideoPrompt =
       text?: string;
       images?: Array<DataContent>;
       audio?: DataContent;
+      video?: DataContent;
     };
 
 export interface GenerateVideoOptions {
@@ -99,6 +100,14 @@ function normalizePrompt(prompt: GenerateVideoPrompt): {
       type: "file",
       mediaType: "audio/mpeg",
       data: toUint8Array(prompt.audio),
+    });
+  }
+
+  if (prompt.video) {
+    files.push({
+      type: "file",
+      mediaType: "video/mp4",
+      data: toUint8Array(prompt.video),
     });
   }
 

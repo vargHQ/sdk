@@ -27,6 +27,25 @@ export {
   type GenerateVideoResult,
   generateVideo,
 } from "./generate-video";
+export {
+  createHiggsfield,
+  type HiggsfieldImageModelSettings,
+  type HiggsfieldProvider,
+  type HiggsfieldProviderSettings,
+  higgsfield,
+} from "./providers/higgsfield";
+export {
+  createOpenAI,
+  type OpenAIProvider,
+  type OpenAIProviderSettings,
+  openai,
+} from "./providers/openai";
+export {
+  createReplicate,
+  type ReplicateProvider,
+  type ReplicateProviderSettings,
+  replicate,
+} from "./providers/replicate";
 export type {
   VideoModelV3,
   VideoModelV3CallOptions,
