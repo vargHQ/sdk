@@ -1,6 +1,6 @@
 import { elevenlabs } from "../elevenlabs-provider";
 import { fal } from "../fal-provider";
-import { Clip, Image, Render, render, Speech, Title } from "../react";
+import { Clip, Image, Render, render, Speech, Title, Music } from "../react";
 
 async function main() {
   console.log("rendering varg-react video...\n");
@@ -40,6 +40,8 @@ async function main() {
           DAY 365
         </Title>
       </Clip>
+
+      <Music src="./output/duet-mixed.mp4" />
     </Render>
   );
 
