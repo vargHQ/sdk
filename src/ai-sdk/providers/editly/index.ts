@@ -370,10 +370,11 @@ function buildTransitionFilter(
   outputLabel: string,
 ): string {
   if (transitionName === "none" || transitionDuration <= 0) {
-    return `[${fromLabel}][${toLabel}]concat=n=2:v=1:a=0[${outputLabel}]`;
+    return `[${fromLabel}][${toLabel}]concat=n=2:v=1:a=0,settb=1/30[${outputLabel}]`;
   }
 
-  return `[${fromLabel}][${toLabel}]xfade=transition=${transitionName}:duration=${transitionDuration}:offset=${offset}[${outputLabel}]`;
+  // settb=1/30 ensures consistent timebase for chained xfades
+  return `[${fromLabel}][${toLabel}]xfade=transition=${transitionName}:duration=${transitionDuration}:offset=${offset},settb=1/30[${outputLabel}]`;
 }
 
 interface VideoSourceAudio {
