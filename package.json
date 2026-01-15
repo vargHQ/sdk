@@ -62,6 +62,7 @@
   "version": "0.3.0",
   "exports": {
     ".": "./src/index.ts",
+    "./ai": "./src/ai-sdk/index.ts",
     "./core": "./src/core/index.ts",
     "./providers": "./src/providers/index.ts",
     "./definitions": "./src/definitions/index.ts"
