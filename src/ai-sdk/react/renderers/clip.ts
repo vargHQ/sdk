@@ -2,10 +2,12 @@ import type {
   AudioLayer,
   Clip,
   ImageLayer,
+  ImageOverlayLayer,
   Layer,
   VideoLayer,
 } from "../../providers/editly/types";
 import type {
+  AnimateProps,
   ClipProps,
   ImageProps,
   SpeechProps,
@@ -35,12 +37,29 @@ async function renderClipLayers(
       case "image": {
         const path = await renderImage(element as VargElement<"image">, ctx);
         const props = element.props as ImageProps;
-        layers.push({
-          type: "image",
-          path,
-          resizeMode: props.resize,
-          zoomDirection: props.zoom,
-        } as ImageLayer);
+        const hasPosition =
+          props.left !== undefined ||
+          props.top !== undefined ||
+          props.width !== undefined ||
+          props.height !== undefined;
+
+        if (hasPosition) {
+          layers.push({
+            type: "image-overlay",
+            path,
+            zoomDirection: props.zoom,
+            width: props.width,
+            height: props.height,
+            position: { x: props.left ?? 0, y: props.top ?? 0 },
+          } as ImageOverlayLayer);
+        } else {
+          layers.push({
+            type: "image",
+            path,
+            resizeMode: props.resize,
+            zoomDirection: props.zoom,
+          } as ImageLayer);
+        }
         break;
       }
 
@@ -54,6 +73,10 @@ async function renderClipLayers(
           cutFrom: props.cutFrom,
           cutTo: props.cutTo,
           mixVolume: props.keepAudio ? props.volume : 0,
+          left: props.left,
+          top: props.top,
+          width: props.width,
+          height: props.height,
         } as VideoLayer);
         break;
       }
@@ -63,9 +86,14 @@ async function renderClipLayers(
           element as VargElement<"animate">,
           ctx,
         );
+        const props = element.props as AnimateProps;
         layers.push({
           type: "video",
           path,
+          left: props.left,
+          top: props.top,
+          width: props.width,
+          height: props.height,
         } as VideoLayer);
         break;
       }

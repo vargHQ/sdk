@@ -41,6 +41,13 @@ export interface BaseProps {
   key?: string | number;
 }
 
+export interface PositionProps {
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+}
+
 // Root container - sets dimensions, fps, contains clips
 export interface RenderProps extends BaseProps {
   width?: number;
@@ -56,7 +63,7 @@ export interface ClipProps extends BaseProps {
   children?: VargNode;
 }
 
-export interface ImageProps extends BaseProps {
+export interface ImageProps extends BaseProps, PositionProps {
   prompt?: string;
   src?: string;
   model?: ImageModelV3;
@@ -69,7 +76,7 @@ export interface ImageProps extends BaseProps {
 }
 
 // Video layer - t2v generation or existing file
-export interface VideoProps extends BaseProps {
+export interface VideoProps extends BaseProps, PositionProps {
   prompt?: string;
   src?: string;
   model?: VideoModelV3;
@@ -81,9 +88,8 @@ export interface VideoProps extends BaseProps {
 }
 
 // Image-to-video animation
-export interface AnimateProps extends BaseProps {
-  /** Accepts <Image /> element. JSX returns VargElement so we accept both for ergonomics. */
-  image?: VargElement<"image"> | VargElement;
+export interface AnimateProps extends BaseProps, PositionProps {
+  image?: VargElement<"image">;
   src?: string;
   model?: VideoModelV3;
   motion?: string;
