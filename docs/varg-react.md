@@ -158,16 +158,33 @@ voices: `rachel`, `adam`, `bella`, `sam`, `josh`
 
 ## talking heads
 
-the killer feature. renders image, speech, animation, and lipsync in one element.
+compose Image, Animate, and Speech to create talking characters:
 
 ```tsx
-import { TalkingHead } from "@vargai/react";
+import { Clip, Image, Animate, Speech } from "@vargai/react";
+import { fal, elevenlabs } from "@vargai/sdk";
 
-<Clip>
-  <TalkingHead
-    character="south park cartman, angry face"
-    voice="adam"
-  >
+// define a reusable TalkingHead component
+const TalkingHead = ({ character, voice, children }: {
+  character: string;
+  voice: string;
+  children: string;
+}) => (
+  <>
+    <Animate 
+      image={<Image prompt={character} model={fal.imageModel("flux-schnell")} />}
+      model={fal.videoModel("wan-2.5")}
+      motion="subtle talking, head movements, blinking"
+    />
+    <Speech voice={voice} model={elevenlabs.speechModel("turbo")}>
+      {children}
+    </Speech>
+  </>
+);
+
+// use it
+<Clip duration="auto">
+  <TalkingHead character="south park cartman, angry face" voice="adam">
     Screw you guys, I'm going home. But first let me tell you 
     about our sponsor, NordVPN.
   </TalkingHead>
@@ -175,23 +192,34 @@ import { TalkingHead } from "@vargai/react";
 ```
 
 this internally:
-1. renders character image from prompt
-2. renders speech audio from text
-3. animates image to video (5s loop)
-4. lipsyncs video to audio
-5. sets clip duration to match audio
+1. generates character image from prompt
+2. generates speech audio from text  
+3. animates image to video
+4. sets clip duration to match audio length
 
 all steps cached independently.
 
 ### with existing image
 
 ```tsx
-<TalkingHead
-  src="./fat-tiger.png"
-  voice="josh"
->
-  I'm not fat, I'm cultivating mass.
-</TalkingHead>
+const TalkingHead = ({ src, voice, children }) => (
+  <>
+    <Animate 
+      src={src}
+      model={fal.videoModel("wan-2.5")}
+      motion="talking naturally"
+    />
+    <Speech voice={voice} model={elevenlabs.speechModel("turbo")}>
+      {children}
+    </Speech>
+  </>
+);
+
+<Clip duration="auto">
+  <TalkingHead src="./fat-tiger.png" voice="josh">
+    I'm not fat, I'm cultivating mass.
+  </TalkingHead>
+</Clip>
 ```
 
 ## overlays and pip
@@ -622,7 +650,26 @@ for await (const event of stream) {
 ## full example: ralph explains crypto
 
 ```tsx
-import { render, Render, Clip, TalkingHead, Title, Image } from "@vargai/react";
+import { render, Render, Clip, Image, Animate, Speech, Title } from "@vargai/react";
+import { fal, elevenlabs } from "@vargai/sdk";
+
+// TalkingHead is just a composition of primitives
+const TalkingHead = ({ character, voice, children }: {
+  character: string;
+  voice: string;
+  children: string;
+}) => (
+  <Clip duration="auto">
+    <Animate 
+      image={<Image prompt={character} model={fal.imageModel("flux-schnell")} />}
+      model={fal.videoModel("wan-2.5")}
+      motion="subtle head movements, blinking, mouth moving"
+    />
+    <Speech voice={voice} model={elevenlabs.speechModel("turbo")}>
+      {children}
+    </Speech>
+  </Clip>
+);
 
 const script = `Hi, I'm Ralph! My cat's breath smells like cat food. 
 Also I invested my lunch money in dogecoin. 
@@ -631,18 +678,20 @@ It has a window. The window is a hole.`;
 
 await render(
   <Render width={1080} height={1920}>
-    <Clip>
-      <TalkingHead
-        character="ralph wiggum, simpsons style, innocent smile, slightly confused"
-        voice="adam"
-      >
-        {script}
-      </TalkingHead>
-    </Clip>
+    <TalkingHead
+      character="ralph wiggum, simpsons style, innocent smile, slightly confused"
+      voice="adam"
+    >
+      {script}
+    </TalkingHead>
     
     <Clip duration={2} transition={{ name: "fade", duration: 0.5 }}>
-      <Image prompt="ralph wiggum in cardboard box, happy, simpsons style" />
-      <Title>@RalphInvests</Title>
+      <Image 
+        prompt="ralph wiggum in cardboard box, happy, simpsons style"
+        model={fal.imageModel("flux-schnell")}
+        zoom="in"
+      />
+      <Title position="bottom">@RalphInvests</Title>
     </Clip>
   </Render>,
   { 
