@@ -122,6 +122,23 @@ these work out of the box:
 
 ---
 
+## key differences from original editly
+
+### continuous video overlays
+
+when the same video file is used as an overlay (with `left`/`top`/`width`/`height` positioning) across multiple clips, our implementation automatically makes it continuous:
+
+1. `collectVideoOverlays()` groups overlay videos by path
+2. calculates `totalDuration` across all clips
+3. uses a single ffmpeg input stream
+4. overlays it on the final composited video
+
+this means if you add `{ type: "video", path: "pip.mp4", left: 0.73, top: 0.73, width: 0.25, height: 0.25 }` to each clip, the video plays continuously across the timeline (not restarting per clip).
+
+**limitation**: the overlay video must be long enough to cover the total timeline. if your timeline is 12s but the overlay video is 5s, it stops at 5s.
+
+---
+
 ## progress log
 
 <!-- append progress here as we implement -->
