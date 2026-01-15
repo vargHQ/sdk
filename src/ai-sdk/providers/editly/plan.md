@@ -21,14 +21,14 @@ implement features one by one. check with user and show examples before moving o
 
 | layer | status | notes |
 |-------|--------|-------|
-| video | ⚠️ partial | missing: originX/originY |
-| image | ⚠️ partial | missing: zoomDirection left/right |
+| video | ✅ done | originX/originY, cutFrom/cutTo, contain-blur |
+| image | ✅ done | zoomDirection in/out/left/right, contain-blur |
 | image-overlay | ✅ done | position presets, PositionObject, Ken Burns zoom/pan |
-| title | ⚠️ partial | missing: fontPath, fontFamily, ken burns |
-| subtitle | ✅ done | centered bottom, background box, custom colors |
+| title | ✅ done | fontPath, fontFamily, start/stop timing |
+| subtitle | ✅ done | centered bottom, background box, start/stop timing |
 | title-background | ✅ done | title with gradient/color background |
-| news-title | ✅ done | colored bar with text, top/bottom position |
-| slide-in-text | ✅ done | animated text sliding from left |
+| news-title | ✅ done | colored bar with text, top/bottom, start/stop timing |
+| slide-in-text | ✅ done | animated text sliding from left, start/stop timing |
 | fill-color | ✅ done | |
 | pause | ✅ done | aliased to fill-color |
 | radial-gradient | ✅ done | |
