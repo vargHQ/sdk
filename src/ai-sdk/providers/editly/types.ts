@@ -1,5 +1,33 @@
+// Types from original editly (https://github.com/mifi/editly)
+// Adapted for pure ffmpeg implementation (no fabric/canvas/gl dependencies)
+
+export type OriginX = "left" | "center" | "right";
+export type OriginY = "top" | "center" | "bottom";
+
+/**
+ * How to fit image to screen. Can be one of:
+ * - `'contain'` - All the video will be contained within the frame and letterboxed.
+ * - `'contain-blur'` - Like contain, but with a blurred copy as the letterbox.
+ * - `'cover'` - Video be cropped to cover the whole screen (aspect ratio preserved).
+ * - `'stretch'` - Video will be stretched to cover the whole screen (aspect ratio ignored).
+ *
+ * @default 'contain-blur'
+ */
 export type ResizeMode = "contain" | "contain-blur" | "cover" | "stretch";
 
+/**
+ * An object, where `{ x: 0, y: 0 }` is the upper left corner of the screen and `{ x: 1, y: 1 }` is the lower right corner.
+ */
+export interface PositionObject {
+  x: number;
+  y: number;
+  originX?: OriginX;
+  originY?: OriginY;
+}
+
+/**
+ * Certain layers support the position parameter.
+ */
 export type Position =
   | "top"
   | "top-left"
@@ -12,19 +40,59 @@ export type Position =
   | "bottom-right"
   | PositionObject;
 
-export interface PositionObject {
-  x: number;
-  y: number;
-  originX?: "left" | "center" | "right";
-  originY?: "top" | "center" | "bottom";
+/**
+ * Arbitrary audio tracks.
+ */
+export interface AudioTrack {
+  path: string;
+  mixVolume?: number | string;
+  cutFrom?: number;
+  cutTo?: number;
+  start?: number;
 }
 
+/**
+ * Ken Burns parameters.
+ */
+export interface KenBurns {
+  zoomDirection?: "in" | "out" | "left" | "right" | null;
+  zoomAmount?: number;
+}
+
+export type LayerType =
+  | "video"
+  | "audio"
+  | "detached-audio"
+  | "image"
+  | "image-overlay"
+  | "title"
+  | "subtitle"
+  | "title-background"
+  | "news-title"
+  | "slide-in-text"
+  | "fill-color"
+  | "pause"
+  | "radial-gradient"
+  | "linear-gradient"
+  | "rainbow-colors";
+
 export interface BaseLayer {
-  type: string;
+  type: LayerType;
   start?: number;
   stop?: number;
 }
 
+export interface TextLayer extends BaseLayer {
+  text: string;
+  textColor?: string;
+  fontPath?: string;
+  fontFamily?: string;
+}
+
+/**
+ * For video layers, if parent `clip.duration` is specified, the video will be slowed/sped-up to match `clip.duration`.
+ * If `cutFrom`/`cutTo` is set, the resulting segment (`cutTo`-`cutFrom`) will be slowed/sped-up to fit `clip.duration`.
+ */
 export interface VideoLayer extends BaseLayer {
   type: "video";
   path: string;
@@ -35,9 +103,14 @@ export interface VideoLayer extends BaseLayer {
   height?: number;
   left?: number;
   top?: number;
+  originX?: OriginX;
+  originY?: OriginY;
   mixVolume?: number | string;
 }
 
+/**
+ * Audio layers will be mixed together.
+ */
 export interface AudioLayer extends BaseLayer {
   type: "audio";
   path: string;
@@ -46,15 +119,27 @@ export interface AudioLayer extends BaseLayer {
   mixVolume?: number | string;
 }
 
-export interface ImageLayer extends BaseLayer {
+/**
+ * Detached audio - like audioTracks but start time is relative to clip's start.
+ */
+export interface DetachedAudioLayer extends BaseLayer, AudioTrack {
+  type: "detached-audio";
+}
+
+/**
+ * Full screen image.
+ */
+export interface ImageLayer extends BaseLayer, KenBurns {
   type: "image";
   path: string;
   resizeMode?: ResizeMode;
-  zoomDirection?: "in" | "out" | "left" | "right" | null;
-  zoomAmount?: number;
+  duration?: number;
 }
 
-export interface ImageOverlayLayer extends BaseLayer {
+/**
+ * Image overlay with a custom position and size on the screen.
+ */
+export interface ImageOverlayLayer extends BaseLayer, KenBurns {
   type: "image-overlay";
   path: string;
   position?: Position;
@@ -62,25 +147,45 @@ export interface ImageOverlayLayer extends BaseLayer {
   height?: number;
 }
 
-export interface TitleLayer extends BaseLayer {
+export interface TitleLayer extends TextLayer, KenBurns {
   type: "title";
-  text: string;
-  textColor?: string;
-  fontPath?: string;
   position?: Position;
-  zoomDirection?: "in" | "out" | null;
-  zoomAmount?: number;
 }
 
-export interface SubtitleLayer extends BaseLayer {
+export interface SubtitleLayer extends TextLayer {
   type: "subtitle";
-  text: string;
-  textColor?: string;
   backgroundColor?: string;
+}
+
+/**
+ * Title with background.
+ */
+export interface TitleBackgroundLayer extends TextLayer {
+  type: "title-background";
+  background?: BackgroundLayer;
+}
+
+export interface NewsTitleLayer extends TextLayer {
+  type: "news-title";
+  backgroundColor?: string;
+  position?: Position;
+}
+
+export interface SlideInTextLayer extends TextLayer {
+  type: "slide-in-text";
+  fontSize?: number;
+  charSpacing?: number;
+  color?: string;
+  position?: Position;
 }
 
 export interface FillColorLayer extends BaseLayer {
   type: "fill-color";
+  color?: string;
+}
+
+export interface PauseLayer extends BaseLayer {
+  type: "pause";
   color?: string;
 }
 
@@ -98,43 +203,60 @@ export interface RainbowColorsLayer extends BaseLayer {
   type: "rainbow-colors";
 }
 
-export interface TitleBackgroundLayer extends BaseLayer {
-  type: "title-background";
-  text: string;
-  textColor?: string;
-  background?: FillColorLayer | RadialGradientLayer | LinearGradientLayer;
-}
-
-export interface PauseLayer extends BaseLayer {
-  type: "pause";
-  color?: string;
-}
-
 export type Layer =
   | VideoLayer
   | AudioLayer
+  | DetachedAudioLayer
   | ImageLayer
   | ImageOverlayLayer
   | TitleLayer
   | SubtitleLayer
+  | TitleBackgroundLayer
+  | NewsTitleLayer
+  | SlideInTextLayer
   | FillColorLayer
+  | PauseLayer
   | RadialGradientLayer
   | LinearGradientLayer
-  | RainbowColorsLayer
-  | TitleBackgroundLayer
-  | PauseLayer;
+  | RainbowColorsLayer;
+
+/**
+ * Special layers that can be used in the 'title-background' layer.
+ */
+export type BackgroundLayer =
+  | RadialGradientLayer
+  | LinearGradientLayer
+  | FillColorLayer;
+
+/**
+ * Curve types for audio fades.
+ * @see https://trac.ffmpeg.org/wiki/AfadeCurves
+ */
+export type CurveType =
+  | "tri"
+  | "qsin"
+  | "hsin"
+  | "esin"
+  | "log"
+  | "ipar"
+  | "qua"
+  | "cub"
+  | "squ"
+  | "cbr"
+  | "par"
+  | "exp"
+  | "iqsin"
+  | "ihsin"
+  | "dese"
+  | "desi"
+  | "losi"
+  | "nofade";
 
 export interface TransitionOptions {
-  name?: string;
   duration?: number;
-}
-
-export interface AudioTrack {
-  path: string;
-  mixVolume?: number | string;
-  cutFrom?: number;
-  cutTo?: number;
-  start?: number;
+  name?: string;
+  audioOutCurve?: CurveType;
+  audioInCurve?: CurveType;
 }
 
 export interface Clip {
@@ -143,13 +265,27 @@ export interface Clip {
   transition?: TransitionOptions | null;
 }
 
-export interface DefaultOptions {
-  duration?: number;
-  transition?: TransitionOptions | null;
-  layer?: Record<string, unknown>;
+export interface DefaultLayerOptions {
+  fontPath?: string;
+  [key: string]: unknown;
 }
 
-export interface AudioNormOptions {
+export type DefaultLayerTypeOptions = {
+  [P in LayerType]?: Partial<Omit<Extract<Layer, { type: P }>, "type">>;
+};
+
+export interface DefaultOptions {
+  duration?: number;
+  layer?: DefaultLayerOptions;
+  layerType?: DefaultLayerTypeOptions;
+  transition?: TransitionOptions | null;
+}
+
+/**
+ * Audio normalization options.
+ * @see https://ffmpeg.org/ffmpeg-filters.html#dynaudnorm
+ */
+export interface AudioNormalizationOptions {
   enable?: boolean;
   gaussSize?: number;
   maxGain?: number;
@@ -161,21 +297,23 @@ export interface EditlyConfig {
   width?: number;
   height?: number;
   fps?: number;
+  customOutputArgs?: string[];
+  allowRemoteRequests?: boolean;
   fast?: boolean;
   defaults?: DefaultOptions;
+  audioTracks?: AudioTrack[];
   audioFilePath?: string;
+  backgroundAudioVolume?: string | number;
   loopAudio?: boolean;
   keepSourceAudio?: boolean;
   clipsAudioVolume?: number | string;
   outputVolume?: number | string;
-  audioTracks?: AudioTrack[];
-  audioNorm?: AudioNormOptions;
-  allowRemoteRequests?: boolean;
-  customOutputArgs?: string[];
+  audioNorm?: AudioNormalizationOptions;
   verbose?: boolean;
   enableFfmpegLog?: boolean;
 }
 
+// Internal types used by our implementation
 export interface VideoInfo {
   duration: number;
   width?: number;

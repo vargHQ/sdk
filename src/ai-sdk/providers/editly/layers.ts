@@ -1,9 +1,16 @@
 import type {
   FillColorLayer,
   ImageLayer,
+  ImageOverlayLayer,
   Layer,
   LinearGradientLayer,
+  NewsTitleLayer,
+  Position,
   RadialGradientLayer,
+  RainbowColorsLayer,
+  SlideInTextLayer,
+  SubtitleLayer,
+  TitleBackgroundLayer,
   TitleLayer,
   VideoLayer,
 } from "./types";
@@ -25,11 +32,109 @@ export function getVideoFilter(
   index: number,
   width: number,
   height: number,
+  clipDuration: number,
   isOverlay = false,
 ): LayerFilter {
   const inputLabel = `${index}:v`;
   const outputLabel = `vout${index}`;
   const filters: string[] = [];
+
+  const start = layer.cutFrom ?? 0;
+  const end = layer.cutTo ?? start + clipDuration;
+  filters.push(`trim=start=${start}:end=${end}`);
+  filters.push("setpts=PTS-STARTPTS");
+
+  const layerWidth = layer.width ? Math.round(layer.width * width) : width;
+  const layerHeight = layer.height ? Math.round(layer.height * height) : height;
+
+  if (isOverlay) {
+    filters.push(
+      `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
+    );
+    filters.push("setsar=1");
+    filters.push("fps=30");
+    filters.push("settb=1/30");
+    return {
+      inputs: [
+        {
+          label: inputLabel,
+          path: layer.path,
+          duration: layer.cutTo
+            ? layer.cutTo - (layer.cutFrom ?? 0)
+            : undefined,
+        },
+      ],
+      filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
+      outputLabel,
+    };
+  }
+
+  if (layer.resizeMode === "contain-blur") {
+    const baseFilters = filters.join(",");
+    const blurLabel = `vblur${index}`;
+    const fgLabel = `vfg${index}`;
+    const filterComplex = [
+      `[${inputLabel}]${baseFilters},split[${blurLabel}][${fgLabel}]`,
+      `[${blurLabel}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=20:5,setsar=1[${blurLabel}bg]`,
+      `[${fgLabel}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[${fgLabel}fg]`,
+      `[${blurLabel}bg][${fgLabel}fg]overlay=(W-w)/2:(H-h)/2,fps=30,settb=1/30[${outputLabel}]`,
+    ].join(";");
+    return {
+      inputs: [
+        {
+          label: inputLabel,
+          path: layer.path,
+          duration: layer.cutTo
+            ? layer.cutTo - (layer.cutFrom ?? 0)
+            : undefined,
+        },
+      ],
+      filterComplex,
+      outputLabel,
+    };
+  }
+
+  let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
+  if (layer.resizeMode === "cover") {
+    scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+  } else if (layer.resizeMode === "stretch") {
+    scaleFilter = `scale=${width}:${height}`;
+  }
+
+  filters.push(scaleFilter);
+  filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`);
+  filters.push("setsar=1");
+  filters.push("fps=30");
+  filters.push("settb=1/30");
+
+  return {
+    inputs: [
+      {
+        label: inputLabel,
+        path: layer.path,
+        duration: layer.cutTo ? layer.cutTo - (layer.cutFrom ?? 0) : undefined,
+      },
+    ],
+    filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
+export function getVideoFilterWithTrim(
+  layer: VideoLayer,
+  inputIndex: number,
+  width: number,
+  height: number,
+  trimStart: number,
+  trimEnd: number,
+  outputLabel: string,
+  isOverlay = false,
+): LayerFilter {
+  const inputLabel = `${inputIndex}:v`;
+  const filters: string[] = [];
+
+  filters.push(`trim=start=${trimStart}:end=${trimEnd}`);
+  filters.push("setpts=PTS-STARTPTS");
 
   const layerWidth = layer.width ? Math.round(layer.width * width) : width;
   const layerHeight = layer.height ? Math.round(layer.height * height) : height;
@@ -57,13 +162,7 @@ export function getVideoFilter(
   }
 
   return {
-    inputs: [
-      {
-        label: inputLabel,
-        path: layer.path,
-        duration: layer.cutTo ? layer.cutTo - (layer.cutFrom ?? 0) : undefined,
-      },
-    ],
+    inputs: [],
     filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
     outputLabel,
   };
@@ -77,10 +176,25 @@ export function getOverlayFilter(
   height: number,
   outputLabel: string,
 ): string {
-  const x = layer.left !== undefined ? Math.round(layer.left * width) : 0;
-  const y = layer.top !== undefined ? Math.round(layer.top * height) : 0;
+  const baseX = layer.left !== undefined ? Math.round(layer.left * width) : 0;
+  const baseY = layer.top !== undefined ? Math.round(layer.top * height) : 0;
 
-  return `[${baseLabel}][${overlayLabel}]overlay=${x}:${y}:shortest=1[${outputLabel}]`;
+  let xExpr = String(baseX);
+  let yExpr = String(baseY);
+
+  if (layer.originX === "center") {
+    xExpr = `${baseX}-overlay_w/2`;
+  } else if (layer.originX === "right") {
+    xExpr = `${baseX}-overlay_w`;
+  }
+
+  if (layer.originY === "center") {
+    yExpr = `${baseY}-overlay_h/2`;
+  } else if (layer.originY === "bottom") {
+    yExpr = `${baseY}-overlay_h`;
+  }
+
+  return `[${baseLabel}][${overlayLabel}]overlay=${xExpr}:${yExpr}:shortest=1[${outputLabel}]`;
 }
 
 export function getImageFilter(
@@ -94,24 +208,81 @@ export function getImageFilter(
   const outputLabel = `imgout${index}`;
   const filters: string[] = [];
 
-  const zoomDir = layer.zoomDirection ?? "in";
+  const zoomDir =
+    layer.zoomDirection === null ? null : (layer.zoomDirection ?? "in");
   const zoomAmt = layer.zoomAmount ?? 0.1;
   const totalFrames = Math.ceil(duration * 30);
 
-  // zoompan takes a single image and produces video frames
-  // upscale first to prevent subpixel jitter from rounding errors
-  if (zoomDir && zoomDir !== null) {
-    const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
-    const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
-    filters.push(`scale=8000:-1`);
-    filters.push(
-      `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
-    );
+  if (zoomDir !== null) {
+    let zoomExpr: string;
+    let xExpr: string;
+    let yExpr: string;
+
+    if (zoomDir === "left" || zoomDir === "right") {
+      // Pan horizontally while zoomed in slightly - creates cinematic pan effect
+      // Zoom is constant, x position animates from one side to other
+      const zoom = 1 + zoomAmt;
+      zoomExpr = String(zoom);
+      yExpr = "trunc((ih-ih/zoom)/2)";
+      if (zoomDir === "left") {
+        // Start right, pan left (x decreases)
+        xExpr = `trunc((iw-iw/zoom)*(1-on/${totalFrames}))`;
+      } else {
+        // Start left, pan right (x increases)
+        xExpr = `trunc((iw-iw/zoom)*on/${totalFrames})`;
+      }
+    } else {
+      // in/out: zoom animation, centered
+      const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
+      const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
+      zoomExpr = `${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}`;
+      xExpr = "trunc((iw-iw/zoom)/2)";
+      yExpr = "trunc((ih-ih/zoom)/2)";
+    }
+
+    if (layer.resizeMode === "cover") {
+      filters.push(`scale=8000:-1`);
+      filters.push(
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
+      );
+    } else if (layer.resizeMode === "stretch") {
+      filters.push(`scale=8000:-1`);
+      filters.push(
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
+      );
+    } else {
+      // Default "contain" mode: preserve aspect ratio with letterboxing
+      // Zoompan at high res square, then scale down preserving aspect, then pad
+      filters.push(`scale=8000:8000:force_original_aspect_ratio=increase`);
+      filters.push(
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=8000x8000:fps=30`,
+      );
+      filters.push(
+        `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
+      );
+      filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
+    }
   } else {
-    // no zoom - use loop to create video from image
     filters.push(`loop=loop=-1:size=1:start=0`);
     filters.push(`fps=30`);
     filters.push(`trim=duration=${duration}`);
+
+    if (layer.resizeMode === "contain-blur") {
+      const blurLabel = `imgblur${index}`;
+      const fgLabel = `imgfg${index}`;
+      const baseFilters = filters.join(",");
+      const filterComplex = [
+        `[${inputLabel}]${baseFilters},split[${blurLabel}][${fgLabel}]`,
+        `[${blurLabel}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=20:5,setsar=1[${blurLabel}bg]`,
+        `[${fgLabel}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[${fgLabel}fg]`,
+        `[${blurLabel}bg][${fgLabel}fg]overlay=(W-w)/2:(H-h)/2,settb=1/30[${outputLabel}]`,
+      ].join(";");
+      return {
+        inputs: [{ label: inputLabel, path: layer.path }],
+        filterComplex,
+        outputLabel,
+      };
+    }
 
     let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
     if (layer.resizeMode === "cover") {
@@ -186,11 +357,156 @@ export function getGradientFilter(
   };
 }
 
+// IMAGE-OVERLAY IMPLEMENTATION NOTES:
+// Unlike full-screen image layer, image-overlay:
+// 1. Has position/width/height like video overlay
+// 2. Supports Ken Burns (zoom/pan) effects
+// 3. Gets composited on top of base layers (not as base layer)
+// 4. Uses overlay filter for positioning instead of pad filter
+
+function resolvePositionForOverlay(
+  position: Position | undefined,
+  width: number,
+  height: number,
+): { x: string; y: string } {
+  if (!position) {
+    return { x: "(W-w)/2", y: "(H-h)/2" };
+  }
+
+  if (typeof position === "object") {
+    const baseX = Math.round(position.x * width);
+    const baseY = Math.round(position.y * height);
+
+    let xExpr = String(baseX);
+    let yExpr = String(baseY);
+
+    if (position.originX === "center") {
+      xExpr = `${baseX}-overlay_w/2`;
+    } else if (position.originX === "right") {
+      xExpr = `${baseX}-overlay_w`;
+    }
+
+    if (position.originY === "center") {
+      yExpr = `${baseY}-overlay_h/2`;
+    } else if (position.originY === "bottom") {
+      yExpr = `${baseY}-overlay_h`;
+    }
+
+    return { x: xExpr, y: yExpr };
+  }
+
+  const posMap: Record<string, { x: string; y: string }> = {
+    "top-left": { x: "W*0.1", y: "H*0.1" },
+    top: { x: "(W-w)/2", y: "H*0.1" },
+    "top-right": { x: "W*0.9-w", y: "H*0.1" },
+    "center-left": { x: "W*0.1", y: "(H-h)/2" },
+    center: { x: "(W-w)/2", y: "(H-h)/2" },
+    "center-right": { x: "W*0.9-w", y: "(H-h)/2" },
+    "bottom-left": { x: "W*0.1", y: "H*0.9-h" },
+    bottom: { x: "(W-w)/2", y: "H*0.9-h" },
+    "bottom-right": { x: "W*0.9-w", y: "H*0.9-h" },
+  };
+
+  return posMap[position] ?? { x: "(W-w)/2", y: "(H-h)/2" };
+}
+
+export function getImageOverlayFilter(
+  layer: ImageOverlayLayer,
+  index: number,
+  width: number,
+  height: number,
+  duration: number,
+): LayerFilter {
+  const inputLabel = `${index}:v`;
+  const outputLabel = `imgovout${index}`;
+  const filters: string[] = [];
+
+  // -2 preserves aspect ratio and ensures even number (required for most codecs)
+  const targetWidth = layer.width
+    ? Math.round(layer.width * width)
+    : Math.round(width * 0.3);
+  const scaleExpr = layer.height
+    ? `scale=${targetWidth}:${Math.round(layer.height * height)}`
+    : `scale=${targetWidth}:-2`;
+
+  const zoomDir = layer.zoomDirection ?? null;
+  const zoomAmt = layer.zoomAmount ?? 0.1;
+  const totalFrames = Math.ceil(duration * 30);
+
+  if (zoomDir) {
+    let zoomExpr: string;
+    let xExpr: string;
+    let yExpr: string;
+
+    if (zoomDir === "left" || zoomDir === "right") {
+      const zoom = 1 + zoomAmt;
+      zoomExpr = String(zoom);
+      yExpr = "trunc((ih-ih/zoom)/2)";
+      if (zoomDir === "left") {
+        xExpr = `trunc((iw-iw/zoom)*(1-on/${totalFrames}))`;
+      } else {
+        xExpr = `trunc((iw-iw/zoom)*on/${totalFrames})`;
+      }
+    } else {
+      const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
+      const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
+      zoomExpr = `${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}`;
+      xExpr = "trunc((iw-iw/zoom)/2)";
+      yExpr = "trunc((ih-ih/zoom)/2)";
+    }
+
+    // Upscale, zoompan at high res, then scale to target preserving aspect ratio
+    filters.push("scale=4000:-2");
+    filters.push(
+      `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=4000x4000:fps=30`,
+    );
+    filters.push(scaleExpr);
+  } else {
+    filters.push(scaleExpr);
+    filters.push("loop=loop=-1:size=1:start=0");
+    filters.push("fps=30");
+    filters.push(`trim=duration=${duration}`);
+  }
+
+  filters.push("setsar=1");
+  filters.push("settb=1/30");
+
+  return {
+    inputs: [{ label: inputLabel, path: layer.path }],
+    filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
+export function getImageOverlayPositionFilter(
+  baseLabel: string,
+  overlayLabel: string,
+  layer: ImageOverlayLayer,
+  width: number,
+  height: number,
+  outputLabel: string,
+): string {
+  const { x, y } = resolvePositionForOverlay(layer.position, width, height);
+  return `[${baseLabel}][${overlayLabel}]overlay=${x}:${y}:shortest=1[${outputLabel}]`;
+}
+
+function getEnableExpr(
+  start: number | undefined,
+  stop: number | undefined,
+  clipDuration: number,
+): string {
+  if (start === undefined && stop === undefined) return "";
+  const s = start ?? 0;
+  const e = stop ?? clipDuration;
+  return `:enable='between(t,${s},${e})'`;
+}
+
 export function getTitleFilter(
   layer: TitleLayer,
   baseLabel: string,
   width: number,
   height: number,
+  clipDuration?: number,
 ): string {
   const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
   const color = layer.textColor ?? "white";
@@ -207,7 +523,153 @@ export function getTitleFilter(
     if (pos.includes("bottom")) y = "h*0.9-text_h";
   }
 
-  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}`;
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
+
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}${fontFile}${fontFamily}${enable}`;
+}
+
+export function getSubtitleFilter(
+  layer: SubtitleLayer,
+  baseLabel: string,
+  width: number,
+  height: number,
+  clipDuration?: number,
+): string {
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.textColor ?? "white";
+  const bgColor = layer.backgroundColor ?? "black@0.7";
+  const fontSize = Math.round(Math.min(width, height) * 0.05);
+  const boxPadding = Math.round(fontSize * 0.4);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
+
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=(w-text_w)/2:y=h*0.85-text_h/2:box=1:boxcolor=${bgColor}:boxborderw=${boxPadding}${fontFile}${fontFamily}${enable}`;
+}
+
+export function getTitleBackgroundFilter(
+  layer: TitleBackgroundLayer,
+  index: number,
+  width: number,
+  height: number,
+  duration: number,
+): LayerFilter {
+  const bg = layer.background ?? {
+    type: "fill-color" as const,
+    color: "#000000",
+  };
+  let bgFilter: LayerFilter;
+
+  if (bg.type === "radial-gradient" || bg.type === "linear-gradient") {
+    bgFilter = getGradientFilter(bg, index, width, height, duration);
+  } else {
+    bgFilter = getFillColorFilter(
+      bg as FillColorLayer,
+      index,
+      width,
+      height,
+      duration,
+    );
+  }
+
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.textColor ?? "white";
+  const fontSize = Math.round(Math.min(width, height) * 0.1);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+
+  const outputLabel = `titlebg${index}`;
+  const drawText = `drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=(w-text_w)/2:y=(h-text_h)/2${fontFile}${fontFamily}`;
+
+  return {
+    inputs: bgFilter.inputs,
+    filterComplex: `${bgFilter.filterComplex};[${bgFilter.outputLabel}]${drawText}[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
+export function getRainbowColorsFilter(
+  layer: RainbowColorsLayer,
+  index: number,
+  width: number,
+  height: number,
+  duration: number,
+): LayerFilter {
+  const outputLabel = `rainbow${index}`;
+  const fps = 30;
+
+  return {
+    inputs: [],
+    filterComplex: `color=c=red:s=${width}x${height}:d=${duration}:r=${fps},hue=h=t*60[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
+export function getNewsTitleFilter(
+  layer: NewsTitleLayer,
+  baseLabel: string,
+  width: number,
+  height: number,
+  clipDuration?: number,
+): string {
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.textColor ?? "white";
+  const bgColor = layer.backgroundColor ?? "red";
+  const fontSize = Math.round(Math.min(width, height) * 0.05);
+  const barHeight = Math.round(fontSize * 2.5);
+  const padding = Math.round(fontSize * 0.5);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
+
+  const pos = layer.position ?? "bottom";
+  const yBar = pos === "top" ? 0 : height - barHeight;
+  const yText = pos === "top" ? padding : height - barHeight + padding;
+
+  return `[${baseLabel}]drawbox=x=0:y=${yBar}:w=iw:h=${barHeight}:color=${bgColor}:t=fill${enable},drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=${padding}:y=${yText}${fontFile}${fontFamily}${enable}`;
+}
+
+export function getSlideInTextFilter(
+  layer: SlideInTextLayer,
+  baseLabel: string,
+  width: number,
+  height: number,
+  duration: number,
+): string {
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.color ?? layer.textColor ?? "white";
+  const fontSize = layer.fontSize ?? Math.round(Math.min(width, height) * 0.08);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, duration);
+
+  const pos = layer.position ?? "center";
+  let yExpr = "(h-text_h)/2";
+  if (typeof pos === "string") {
+    if (pos.includes("top")) yExpr = "h*0.2";
+    if (pos.includes("bottom")) yExpr = "h*0.8-text_h";
+  }
+
+  const slideInFrames = Math.round(duration * 30 * 0.3);
+  const xExpr = `if(lt(t\\,${slideInFrames}/30)\\,-text_w+(w/2+text_w/2)*t/(${slideInFrames}/30)\\,(w-text_w)/2)`;
+
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x='${xExpr}':y=${yExpr}${fontFile}${fontFamily}${enable}`;
 }
 
 export function processLayer(
@@ -220,7 +682,7 @@ export function processLayer(
 ): LayerFilter | null {
   switch (layer.type) {
     case "video":
-      return getVideoFilter(layer, index, width, height, isOverlay);
+      return getVideoFilter(layer, index, width, height, duration, isOverlay);
     case "image":
       return getImageFilter(layer, index, width, height, duration);
     case "fill-color":
@@ -236,6 +698,22 @@ export function processLayer(
     case "linear-gradient":
       return getGradientFilter(
         layer as RadialGradientLayer | LinearGradientLayer,
+        index,
+        width,
+        height,
+        duration,
+      );
+    case "title-background":
+      return getTitleBackgroundFilter(
+        layer as TitleBackgroundLayer,
+        index,
+        width,
+        height,
+        duration,
+      );
+    case "rainbow-colors":
+      return getRainbowColorsFilter(
+        layer as RainbowColorsLayer,
         index,
         width,
         height,
