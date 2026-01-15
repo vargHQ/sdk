@@ -5,6 +5,7 @@ import type {
   ImageProps,
   MusicProps,
   PackshotProps,
+  RenderProps,
   SliderProps,
   SpeechProps,
   SplitProps,
@@ -37,9 +38,9 @@ function createElement<T extends VargElement["type"]>(
   };
 }
 
-export function Video(props: VideoProps): VargElement<"video"> {
+export function Render(props: RenderProps): VargElement<"render"> {
   return createElement(
-    "video",
+    "render",
     props as Record<string, unknown>,
     props.children,
   );
@@ -55,6 +56,10 @@ export function Clip(props: ClipProps): VargElement<"clip"> {
 
 export function Image(props: ImageProps): VargElement<"image"> {
   return createElement("image", props as Record<string, unknown>, undefined);
+}
+
+export function Video(props: VideoProps): VargElement<"video"> {
+  return createElement("video", props as Record<string, unknown>, undefined);
 }
 
 export function Animate(props: AnimateProps): VargElement<"animate"> {
