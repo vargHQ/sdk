@@ -1,11 +1,11 @@
 import { fal } from "../fal-provider";
-import { Clip, Image, render, Title, Video } from "../react";
+import { Clip, Image, Render, render, Title } from "../react";
 
 async function main() {
   console.log("rendering varg-react video...\n");
 
   const video = (
-    <Video width={720} height={720} fps={30}>
+    <Render width={720} height={720} fps={30}>
       <Clip duration={3}>
         <Image
           prompt="fat tiger lying on couch, cute, pixar style"
@@ -27,7 +27,7 @@ async function main() {
           DAY 365
         </Title>
       </Clip>
-    </Video>
+    </Render>
   );
 
   console.log("video tree:", JSON.stringify(video, null, 2));

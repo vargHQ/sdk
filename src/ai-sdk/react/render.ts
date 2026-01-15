@@ -1,15 +1,15 @@
-import { renderVideo } from "./renderers";
+import { renderRoot } from "./renderers";
 import type { RenderOptions, VargElement } from "./types";
 
 export async function render(
   element: VargElement,
   options: RenderOptions = {},
 ): Promise<Uint8Array> {
-  if (element.type !== "video") {
-    throw new Error("Root element must be <Video>");
+  if (element.type !== "render") {
+    throw new Error("Root element must be <Render>");
   }
 
-  return renderVideo(element as VargElement<"video">, options);
+  return renderRoot(element as VargElement<"render">, options);
 }
 
 export const renderStream = {
