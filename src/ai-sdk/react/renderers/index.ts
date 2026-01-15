@@ -3,6 +3,8 @@ export { renderClip } from "./clip";
 export type { RenderContext } from "./context";
 export { renderImage } from "./image";
 export { renderRoot } from "./render";
+export type { SpeechResult } from "./speech";
+export { renderSpeech } from "./speech";
 export { renderTitle } from "./title";
 export { computeCacheKey, getTextContent } from "./utils";
 export { renderVideo } from "./video";

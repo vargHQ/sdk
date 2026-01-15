@@ -3,10 +3,16 @@ import { withCache } from "../../cache";
 import { fileCache } from "../../file-cache";
 import { generateVideo } from "../../generate-video";
 import { editly } from "../../providers/editly";
-import type { Clip } from "../../providers/editly/types";
-import type { RenderOptions, RenderProps, VargElement } from "../types";
+import type { AudioTrack, Clip } from "../../providers/editly/types";
+import type {
+  RenderOptions,
+  RenderProps,
+  SpeechProps,
+  VargElement,
+} from "../types";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
+import { renderSpeech } from "./speech";
 
 export async function renderRoot(
   element: VargElement<"render">,
@@ -29,6 +35,7 @@ export async function renderRoot(
   };
 
   const clips: Clip[] = [];
+  const audioTracks: AudioTrack[] = [];
 
   for (const child of element.children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
@@ -37,6 +44,16 @@ export async function renderRoot(
 
     if (childElement.type === "clip") {
       clips.push(await renderClip(childElement as VargElement<"clip">, ctx));
+    } else if (childElement.type === "speech") {
+      const result = await renderSpeech(
+        childElement as VargElement<"speech">,
+        ctx,
+      );
+      const speechProps = childElement.props as SpeechProps;
+      audioTracks.push({
+        path: result.path,
+        mixVolume: speechProps.volume ?? 1,
+      });
     }
   }
 
@@ -48,6 +65,7 @@ export async function renderRoot(
     height: ctx.height,
     fps: ctx.fps,
     clips,
+    audioTracks: audioTracks.length > 0 ? audioTracks : undefined,
   });
 
   const result = await Bun.file(outPath).arrayBuffer();
