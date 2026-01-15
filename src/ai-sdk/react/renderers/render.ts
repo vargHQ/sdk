@@ -5,6 +5,7 @@ import { generateVideo } from "../../generate-video";
 import { editly } from "../../providers/editly";
 import type { AudioTrack, Clip } from "../../providers/editly/types";
 import type {
+  MusicProps,
   RenderOptions,
   RenderProps,
   SpeechProps,
@@ -54,6 +55,14 @@ export async function renderRoot(
         path: result.path,
         mixVolume: speechProps.volume ?? 1,
       });
+    } else if (childElement.type === "music") {
+      const musicProps = childElement.props as MusicProps;
+      if (musicProps.src) {
+        audioTracks.push({
+          path: musicProps.src,
+          mixVolume: musicProps.volume ?? 1,
+        });
+      }
     }
   }
 
