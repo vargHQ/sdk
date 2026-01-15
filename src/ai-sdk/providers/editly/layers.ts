@@ -15,6 +15,15 @@ import type {
   VideoLayer,
 } from "./types";
 
+function escapeDrawText(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "'\\''")
+    .replace(/:/g, "\\:")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]");
+}
+
 export interface FilterInput {
   label: string;
   path?: string;
@@ -508,7 +517,7 @@ export function getTitleFilter(
   height: number,
   clipDuration?: number,
 ): string {
-  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const text = escapeDrawText(layer.text);
   const color = layer.textColor ?? "white";
   const fontSize = Math.round(Math.min(width, height) * 0.08);
 
@@ -524,7 +533,7 @@ export function getTitleFilter(
   }
 
   const fontFile = layer.fontPath
-    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    ? `:fontfile='${escapeDrawText(layer.fontPath)}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
   const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
@@ -539,14 +548,14 @@ export function getSubtitleFilter(
   height: number,
   clipDuration?: number,
 ): string {
-  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const text = escapeDrawText(layer.text);
   const textColor = layer.textColor ?? "white";
   const bgColor = layer.backgroundColor ?? "black@0.7";
   const fontSize = Math.round(Math.min(width, height) * 0.05);
   const boxPadding = Math.round(fontSize * 0.4);
 
   const fontFile = layer.fontPath
-    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    ? `:fontfile='${escapeDrawText(layer.fontPath)}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
   const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
@@ -579,12 +588,12 @@ export function getTitleBackgroundFilter(
     );
   }
 
-  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const text = escapeDrawText(layer.text);
   const textColor = layer.textColor ?? "white";
   const fontSize = Math.round(Math.min(width, height) * 0.1);
 
   const fontFile = layer.fontPath
-    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    ? `:fontfile='${escapeDrawText(layer.fontPath)}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
 
@@ -622,7 +631,7 @@ export function getNewsTitleFilter(
   height: number,
   clipDuration?: number,
 ): string {
-  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const text = escapeDrawText(layer.text);
   const textColor = layer.textColor ?? "white";
   const bgColor = layer.backgroundColor ?? "red";
   const fontSize = Math.round(Math.min(width, height) * 0.05);
@@ -630,7 +639,7 @@ export function getNewsTitleFilter(
   const padding = Math.round(fontSize * 0.5);
 
   const fontFile = layer.fontPath
-    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    ? `:fontfile='${escapeDrawText(layer.fontPath)}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
   const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
@@ -649,12 +658,12 @@ export function getSlideInTextFilter(
   height: number,
   duration: number,
 ): string {
-  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const text = escapeDrawText(layer.text);
   const textColor = layer.color ?? layer.textColor ?? "white";
   const fontSize = layer.fontSize ?? Math.round(Math.min(width, height) * 0.08);
 
   const fontFile = layer.fontPath
-    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    ? `:fontfile='${escapeDrawText(layer.fontPath)}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
   const enable = getEnableExpr(layer.start, layer.stop, duration);
