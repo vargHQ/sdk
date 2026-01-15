@@ -69,6 +69,7 @@ export interface TitleLayer extends BaseLayer {
   text: string;
   textColor?: string;
   fontPath?: string;
+  fontFamily?: string;
   position?: Position;
   zoomDirection?: "in" | "out" | null;
   zoomAmount?: number;

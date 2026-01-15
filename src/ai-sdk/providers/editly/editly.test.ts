@@ -306,4 +306,34 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("title with custom font", async () => {
+    const outPath = "output/editly-test-title-font.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            {
+              type: "title",
+              text: "Custom Font Test",
+              textColor: "#ffffff",
+              fontPath:
+                "/System/Library/Fonts/Supplemental/Comic Sans MS Bold.ttf",
+              position: "center",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

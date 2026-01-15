@@ -300,6 +300,7 @@ export function getTitleFilter(
   width: number,
   height: number,
 ): string {
+  // ffmpeg drawtext escaping: single quotes and colons must be escaped
   const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
   const color = layer.textColor ?? "white";
   const fontSize = Math.round(Math.min(width, height) * 0.08);
@@ -315,7 +316,15 @@ export function getTitleFilter(
     if (pos.includes("bottom")) y = "h*0.9-text_h";
   }
 
-  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}`;
+  // fontfile: path to .ttf/.otf file (must escape colons for Windows paths)
+  // fontFamily: system font name (e.g. "Helvetica Neue Bold") - use this for .ttc collections
+  // if both specified, fontfile takes precedence
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}${fontFile}${fontFamily}`;
 }
 
 export function processLayer(
