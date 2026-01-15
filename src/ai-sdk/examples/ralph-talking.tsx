@@ -23,9 +23,10 @@ const TalkingHead = ({
 }) => (
   <>
     <Animate
-      image={
-        <Image prompt={character} model={fal.imageModel("flux-schnell")} /> as VargElement<"image">
-      }
+      image={Image({
+        prompt: character,
+        model: fal.imageModel("flux-schnell"),
+      })}
       model={fal.videoModel("wan-2.5")}
       motion="subtle head movements, blinking, mouth moving"
     />
