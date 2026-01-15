@@ -4,11 +4,18 @@ import type {
   Layer,
   VideoLayer,
 } from "../../providers/editly/types";
-import type { ClipProps, ImageProps, VargElement, VargNode } from "../types";
+import type {
+  ClipProps,
+  ImageProps,
+  VargElement,
+  VargNode,
+  VideoProps,
+} from "../types";
 import { renderAnimate } from "./animate";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderTitle } from "./title";
+import { renderVideo } from "./video";
 
 async function renderClipLayers(
   children: VargNode[],
@@ -31,6 +38,20 @@ async function renderClipLayers(
           resizeMode: props.resize,
           zoomDirection: props.zoom,
         } as ImageLayer);
+        break;
+      }
+
+      case "video": {
+        const path = await renderVideo(element as VargElement<"video">, ctx);
+        const props = element.props as VideoProps;
+        layers.push({
+          type: "video",
+          path,
+          resizeMode: props.resize,
+          cutFrom: props.cutFrom,
+          cutTo: props.cutTo,
+          mixVolume: props.keepAudio ? props.volume : 0,
+        } as VideoLayer);
         break;
       }
 
