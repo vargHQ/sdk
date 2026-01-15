@@ -82,7 +82,8 @@ export interface VideoProps extends BaseProps {
 
 // Image-to-video animation
 export interface AnimateProps extends BaseProps {
-  image?: VargElement<"image">;
+  /** Accepts <Image /> element. JSX returns VargElement so we accept both for ergonomics. */
+  image?: VargElement<"image"> | VargElement;
   src?: string;
   model?: VideoModelV3;
   motion?: string;
