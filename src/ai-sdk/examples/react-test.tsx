@@ -27,6 +27,15 @@ async function main() {
           model={fal.imageModel("flux-schnell")}
           zoom="in"
         />
+        <Image
+          prompt="logo of varg.ai in helvetica"
+          model={fal.imageModel("flux-schnell")}
+          top={20}
+          left={20}
+          width={100}
+          height={100}
+        />
+
         <Title position="bottom" color="#ffffff">
           DAY 365
         </Title>
