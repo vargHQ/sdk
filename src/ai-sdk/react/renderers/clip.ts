@@ -1,4 +1,5 @@
 import type {
+  AudioLayer,
   Clip,
   ImageLayer,
   Layer,
@@ -7,6 +8,7 @@ import type {
 import type {
   ClipProps,
   ImageProps,
+  SpeechProps,
   VargElement,
   VargNode,
   VideoProps,
@@ -14,6 +16,7 @@ import type {
 import { renderAnimate } from "./animate";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { renderSpeech } from "./speech";
 import { renderTitle } from "./title";
 import { renderVideo } from "./video";
 
@@ -69,6 +72,20 @@ async function renderClipLayers(
 
       case "title": {
         layers.push(renderTitle(element as VargElement<"title">));
+        break;
+      }
+
+      case "speech": {
+        const result = await renderSpeech(
+          element as VargElement<"speech">,
+          ctx,
+        );
+        const props = element.props as SpeechProps;
+        layers.push({
+          type: "audio",
+          path: result.path,
+          mixVolume: props.volume ?? 1,
+        } as AudioLayer);
         break;
       }
     }
