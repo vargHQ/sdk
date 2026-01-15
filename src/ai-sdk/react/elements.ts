@@ -4,6 +4,7 @@ import type {
   ClipProps,
   ImageProps,
   MusicProps,
+  OverlayProps,
   PackshotProps,
   RenderProps,
   SliderProps,
@@ -49,6 +50,14 @@ export function Render(props: RenderProps): VargElement<"render"> {
 export function Clip(props: ClipProps): VargElement<"clip"> {
   return createElement(
     "clip",
+    props as Record<string, unknown>,
+    props.children,
+  );
+}
+
+export function Overlay(props: OverlayProps): VargElement<"overlay"> {
+  return createElement(
+    "overlay",
     props as Record<string, unknown>,
     props.children,
   );
