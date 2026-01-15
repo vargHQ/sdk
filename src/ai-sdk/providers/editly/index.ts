@@ -1,6 +1,8 @@
 import { $ } from "bun";
 import { ffprobe, multipleOf2 } from "./ffmpeg";
 import {
+  getImageOverlayFilter,
+  getImageOverlayPositionFilter,
   getOverlayFilter,
   getTitleFilter,
   getVideoFilterWithTrim,
@@ -10,6 +12,7 @@ import type {
   AudioTrack,
   Clip,
   EditlyConfig,
+  ImageOverlayLayer,
   Layer,
   ProcessedClip,
   TitleLayer,
@@ -97,7 +100,7 @@ async function processClips(
   return processed;
 }
 
-function isOverlayLayer(layer: Layer): boolean {
+function isVideoOverlayLayer(layer: Layer): boolean {
   if (layer.type !== "video") return false;
   const v = layer as VideoLayer;
   return (
@@ -106,6 +109,14 @@ function isOverlayLayer(layer: Layer): boolean {
     v.left !== undefined ||
     v.top !== undefined
   );
+}
+
+function isImageOverlayLayer(layer: Layer): boolean {
+  return layer.type === "image-overlay";
+}
+
+function isOverlayLayer(layer: Layer): boolean {
+  return isVideoOverlayLayer(layer) || isImageOverlayLayer(layer);
 }
 
 function buildBaseClipFilter(
@@ -180,7 +191,7 @@ interface ContinuousOverlay {
   totalDuration: number;
 }
 
-function collectContinuousOverlays(
+function collectContinuousVideoOverlays(
   clips: ProcessedClip[],
 ): Map<string, { layer: VideoLayer; totalDuration: number }> {
   const overlays = new Map<
@@ -190,7 +201,7 @@ function collectContinuousOverlays(
 
   for (const clip of clips) {
     for (const layer of clip.layers) {
-      if (layer && isOverlayLayer(layer) && layer.type === "video") {
+      if (layer && isVideoOverlayLayer(layer)) {
         const videoLayer = layer as VideoLayer;
         const existing = overlays.get(videoLayer.path);
         if (existing) {
@@ -198,6 +209,34 @@ function collectContinuousOverlays(
         } else {
           overlays.set(videoLayer.path, {
             layer: videoLayer,
+            totalDuration: clip.duration,
+          });
+        }
+      }
+    }
+  }
+
+  return overlays;
+}
+
+function collectImageOverlays(
+  clips: ProcessedClip[],
+): Map<string, { layer: ImageOverlayLayer; totalDuration: number }> {
+  const overlays = new Map<
+    string,
+    { layer: ImageOverlayLayer; totalDuration: number }
+  >();
+
+  for (const clip of clips) {
+    for (const layer of clip.layers) {
+      if (layer && isImageOverlayLayer(layer)) {
+        const imgLayer = layer as ImageOverlayLayer;
+        const existing = overlays.get(imgLayer.path);
+        if (existing) {
+          existing.totalDuration += clip.duration;
+        } else {
+          overlays.set(imgLayer.path, {
+            layer: imgLayer,
             totalDuration: clip.duration,
           });
         }
@@ -305,12 +344,19 @@ export async function editly(config: EditlyConfig): Promise<void> {
 
   const clips = await processClips(clipsIn, defaults);
 
-  const continuousOverlays = collectContinuousOverlays(clips);
+  const continuousVideoOverlays = collectContinuousVideoOverlays(clips);
+  const imageOverlays = collectImageOverlays(clips);
   const overlayInputs: string[] = [];
-  const overlayInputMap = new Map<string, number>();
+  const videoOverlayInputMap = new Map<string, number>();
+  const imageOverlayInputMap = new Map<string, number>();
 
-  for (const [path] of continuousOverlays) {
-    overlayInputMap.set(path, overlayInputs.length);
+  for (const [path] of continuousVideoOverlays) {
+    videoOverlayInputMap.set(path, overlayInputs.length);
+    overlayInputs.push(path);
+  }
+
+  for (const [path] of imageOverlays) {
+    imageOverlayInputMap.set(path, overlayInputs.length);
     overlayInputs.push(path);
   }
 
@@ -362,23 +408,23 @@ export async function editly(config: EditlyConfig): Promise<void> {
     finalVideoLabel = "vfinal";
   }
 
-  if (continuousOverlays.size > 0) {
-    let totalDuration = 0;
-    for (const clip of clips) {
-      totalDuration += clip.duration;
+  let totalDuration = 0;
+  for (const clip of clips) {
+    totalDuration += clip.duration;
+  }
+  for (let i = 0; i < clips.length - 1; i++) {
+    const clip = clips[i];
+    if (clip) {
+      totalDuration -= clip.transition.duration;
     }
-    for (let i = 0; i < clips.length - 1; i++) {
-      const clip = clips[i];
-      if (clip) {
-        totalDuration -= clip.transition.duration;
-      }
-    }
+  }
 
+  if (continuousVideoOverlays.size > 0) {
     let currentBase = finalVideoLabel;
     let overlayIdx = 0;
 
-    for (const [path, { layer }] of continuousOverlays) {
-      const inputIndex = overlayInputMap.get(path);
+    for (const [path, { layer }] of continuousVideoOverlays) {
+      const inputIndex = videoOverlayInputMap.get(path);
       if (inputIndex === undefined) continue;
 
       const trimmedLabel = `ovfinal${overlayIdx}`;
@@ -407,6 +453,41 @@ export async function editly(config: EditlyConfig): Promise<void> {
 
       currentBase = outputLabel;
       overlayIdx++;
+    }
+
+    finalVideoLabel = currentBase;
+  }
+
+  if (imageOverlays.size > 0) {
+    let currentBase = finalVideoLabel;
+    let imgOverlayIdx = 0;
+
+    for (const [path, { layer }] of imageOverlays) {
+      const inputIndex = imageOverlayInputMap.get(path);
+      if (inputIndex === undefined) continue;
+
+      const imgFilter = getImageOverlayFilter(
+        layer,
+        inputIndex,
+        width,
+        height,
+        totalDuration,
+      );
+      allFilters.push(imgFilter.filterComplex);
+
+      const outputLabel = `vwithimgov${imgOverlayIdx}`;
+      const positionFilter = getImageOverlayPositionFilter(
+        currentBase,
+        imgFilter.outputLabel,
+        layer,
+        width,
+        height,
+        outputLabel,
+      );
+      allFilters.push(positionFilter);
+
+      currentBase = outputLabel;
+      imgOverlayIdx++;
     }
 
     finalVideoLabel = currentBase;

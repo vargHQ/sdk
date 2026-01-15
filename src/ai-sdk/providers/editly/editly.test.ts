@@ -336,4 +336,93 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("image-overlay with position presets", async () => {
+    const outPath = "output/editly-test-image-overlay.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "video", path: VIDEO_1 },
+            {
+              type: "image-overlay",
+              path: IMAGE_SQUARE,
+              position: "bottom-right",
+              width: 0.2,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("image-overlay with ken burns zoom", async () => {
+    const outPath = "output/editly-test-image-overlay-zoom.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            {
+              type: "image-overlay",
+              path: IMAGE_SQUARE,
+              position: "center",
+              width: 0.4,
+              zoomDirection: "in",
+              zoomAmount: 0.15,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("image-overlay continuous across clips", async () => {
+    const outPath = "output/editly-test-image-overlay-continuous.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    const colors = ["#ff6b6b", "#4ecdc4", "#45b7d1"];
+    const clips = colors.map((color, i) => ({
+      duration: 2,
+      layers: [
+        { type: "fill-color" as const, color },
+        {
+          type: "image-overlay" as const,
+          path: IMAGE_SQUARE,
+          position: "top-right" as const,
+          width: 0.2,
+        },
+      ],
+      transition:
+        i < colors.length - 1 ? { name: "fade", duration: 0.3 } : undefined,
+    }));
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips,
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

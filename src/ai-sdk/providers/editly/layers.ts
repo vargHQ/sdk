@@ -1,8 +1,10 @@
 import type {
   FillColorLayer,
   ImageLayer,
+  ImageOverlayLayer,
   Layer,
   LinearGradientLayer,
+  Position,
   RadialGradientLayer,
   TitleLayer,
   VideoLayer,
@@ -292,6 +294,139 @@ export function getGradientFilter(
     filterComplex: `gradients=s=${width}x${height}:c0=${c0}:c1=${c1}:d=${duration}:r=30[${outputLabel}]`,
     outputLabel,
   };
+}
+
+// IMAGE-OVERLAY IMPLEMENTATION NOTES:
+// Unlike full-screen image layer, image-overlay:
+// 1. Has position/width/height like video overlay
+// 2. Supports Ken Burns (zoom/pan) effects
+// 3. Gets composited on top of base layers (not as base layer)
+// 4. Uses overlay filter for positioning instead of pad filter
+
+function resolvePositionForOverlay(
+  position: Position | undefined,
+  width: number,
+  height: number,
+): { x: string; y: string } {
+  if (!position) {
+    return { x: "(W-w)/2", y: "(H-h)/2" };
+  }
+
+  if (typeof position === "object") {
+    const baseX = Math.round(position.x * width);
+    const baseY = Math.round(position.y * height);
+
+    let xExpr = String(baseX);
+    let yExpr = String(baseY);
+
+    if (position.originX === "center") {
+      xExpr = `${baseX}-overlay_w/2`;
+    } else if (position.originX === "right") {
+      xExpr = `${baseX}-overlay_w`;
+    }
+
+    if (position.originY === "center") {
+      yExpr = `${baseY}-overlay_h/2`;
+    } else if (position.originY === "bottom") {
+      yExpr = `${baseY}-overlay_h`;
+    }
+
+    return { x: xExpr, y: yExpr };
+  }
+
+  const posMap: Record<string, { x: string; y: string }> = {
+    "top-left": { x: "W*0.1", y: "H*0.1" },
+    top: { x: "(W-w)/2", y: "H*0.1" },
+    "top-right": { x: "W*0.9-w", y: "H*0.1" },
+    "center-left": { x: "W*0.1", y: "(H-h)/2" },
+    center: { x: "(W-w)/2", y: "(H-h)/2" },
+    "center-right": { x: "W*0.9-w", y: "(H-h)/2" },
+    "bottom-left": { x: "W*0.1", y: "H*0.9-h" },
+    bottom: { x: "(W-w)/2", y: "H*0.9-h" },
+    "bottom-right": { x: "W*0.9-w", y: "H*0.9-h" },
+  };
+
+  return posMap[position] ?? { x: "(W-w)/2", y: "(H-h)/2" };
+}
+
+export function getImageOverlayFilter(
+  layer: ImageOverlayLayer,
+  index: number,
+  width: number,
+  height: number,
+  duration: number,
+): LayerFilter {
+  const inputLabel = `${index}:v`;
+  const outputLabel = `imgovout${index}`;
+  const filters: string[] = [];
+
+  // -2 preserves aspect ratio and ensures even number (required for most codecs)
+  const targetWidth = layer.width
+    ? Math.round(layer.width * width)
+    : Math.round(width * 0.3);
+  const scaleExpr = layer.height
+    ? `scale=${targetWidth}:${Math.round(layer.height * height)}`
+    : `scale=${targetWidth}:-2`;
+
+  const zoomDir = layer.zoomDirection ?? null;
+  const zoomAmt = layer.zoomAmount ?? 0.1;
+  const totalFrames = Math.ceil(duration * 30);
+
+  if (zoomDir) {
+    let zoomExpr: string;
+    let xExpr: string;
+    let yExpr: string;
+
+    if (zoomDir === "left" || zoomDir === "right") {
+      const zoom = 1 + zoomAmt;
+      zoomExpr = String(zoom);
+      yExpr = "trunc((ih-ih/zoom)/2)";
+      if (zoomDir === "left") {
+        xExpr = `trunc((iw-iw/zoom)*(1-on/${totalFrames}))`;
+      } else {
+        xExpr = `trunc((iw-iw/zoom)*on/${totalFrames})`;
+      }
+    } else {
+      const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
+      const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
+      zoomExpr = `${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}`;
+      xExpr = "trunc((iw-iw/zoom)/2)";
+      yExpr = "trunc((ih-ih/zoom)/2)";
+    }
+
+    // Upscale, zoompan at high res, then scale to target preserving aspect ratio
+    filters.push("scale=4000:-2");
+    filters.push(
+      `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=4000x4000:fps=30`,
+    );
+    filters.push(scaleExpr);
+  } else {
+    filters.push(scaleExpr);
+    filters.push("loop=loop=-1:size=1:start=0");
+    filters.push("fps=30");
+    filters.push(`trim=duration=${duration}`);
+  }
+
+  filters.push("setsar=1");
+  filters.push("settb=1/30");
+
+  return {
+    inputs: [{ label: inputLabel, path: layer.path }],
+    filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
+export function getImageOverlayPositionFilter(
+  baseLabel: string,
+  overlayLabel: string,
+  layer: ImageOverlayLayer,
+  width: number,
+  height: number,
+  outputLabel: string,
+): string {
+  const { x, y } = resolvePositionForOverlay(layer.position, width, height);
+  return `[${baseLabel}][${overlayLabel}]overlay=${x}:${y}:shortest=1[${outputLabel}]`;
 }
 
 export function getTitleFilter(

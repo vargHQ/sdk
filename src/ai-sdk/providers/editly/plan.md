@@ -23,7 +23,7 @@ implement features one by one. check with user and show examples before moving o
 |-------|--------|-------|
 | video | ⚠️ partial | missing: originX/originY |
 | image | ⚠️ partial | missing: zoomDirection left/right |
-| image-overlay | ❌ not implemented | need to implement |
+| image-overlay | ✅ done | position presets, PositionObject, Ken Burns zoom/pan |
 | title | ⚠️ partial | missing: fontPath, fontFamily, ken burns |
 | subtitle | ❌ not implemented | need to implement |
 | title-background | ❌ not implemented | need to implement |
@@ -80,7 +80,7 @@ implement features one by one. check with user and show examples before moving o
 3. [x] title: add fontPath/fontFamily support ✅
 
 ### phase 2: missing layer types
-4. [ ] image-overlay layer
+4. [x] image-overlay layer ✅
 5. [ ] subtitle layer
 6. [ ] title-background layer
 7. [ ] rainbow-colors layer
