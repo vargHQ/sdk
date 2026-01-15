@@ -1,5 +1,5 @@
 import { fal } from "../fal-provider";
-import { Clip, Image, render, Title, Video } from "../react";
+import { Clip, Image, Render, render, Title } from "../react";
 
 const script = `Hi, I'm Ralph! My cat's breath smells like cat food. 
 Also I invested my lunch money in dogecoin. 
@@ -10,7 +10,7 @@ async function main() {
   console.log("rendering ralph crypto video...\n");
 
   const video = (
-    <Video width={1080} height={1920}>
+    <Render width={1080} height={1920}>
       <Clip duration={4}>
         <Image
           prompt="ralph wiggum, simpsons style, innocent smile, slightly confused, holding phone showing crypto chart going down"
@@ -43,7 +43,7 @@ async function main() {
           @RalphInvests
         </Title>
       </Clip>
-    </Video>
+    </Render>
   );
 
   console.log("script:", script);

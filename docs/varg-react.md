@@ -9,15 +9,15 @@ bun install @vargai/react
 ```
 
 ```tsx
-import { render, Video, Clip, Image, Title } from "@vargai/react";
+import { render, Render, Clip, Image, Title } from "@vargai/react";
 
 await render(
-  <Video width={1280} height={720}>
+  <Render width={1280} height={720}>
     <Clip duration={5}>
       <Image prompt="sunset over ocean, cinematic" />
       <Title position="bottom">beautiful sunset</Title>
     </Clip>
-  </Video>,
+  </Render>,
   { output: "output/sunset.mp4" }
 );
 ```
@@ -46,7 +46,7 @@ change any prop and it regenerates:
 clips are sequential. layers within a clip are stacked.
 
 ```tsx
-<Video width={1080} height={1920} fps={30}>
+<Render width={1080} height={1920} fps={30}>
   {/* first clip */}
   <Clip duration={5}>
     <Image prompt="coffee shop interior" />
@@ -56,7 +56,7 @@ clips are sequential. layers within a clip are stacked.
   <Clip duration={3} transition={{ name: "fade", duration: 0.5 }}>
     <Image prompt="park with autumn leaves" />
   </Clip>
-</Video>
+</Render>
 ```
 
 ### transitions
@@ -105,6 +105,23 @@ import { Image } from "@vargai/react";
 ```
 
 ## rendering video
+
+### text-to-video generation
+
+```tsx
+import { Video } from "@vargai/react";
+
+// generate video from prompt
+<Video prompt="ocean waves crashing on beach, cinematic" model={fal.videoModel("wan-2.5")} />
+
+// use existing video file
+<Video src="./interview.mp4" />
+
+// with audio and trimming
+<Video src="./clip.mp4" keepAudio volume={0.8} cutFrom={5} cutTo={15} />
+```
+
+### image-to-video animation
 
 ```tsx
 import { Animate } from "@vargai/react";
@@ -383,7 +400,7 @@ import { Packshot } from "@vargai/react";
 ### background music
 
 ```tsx
-<Video>
+<Render>
   {/* loops to match video duration */}
   <Music prompt="epic orchestral, hero music" loop />
   
@@ -394,7 +411,7 @@ import { Packshot } from "@vargai/react";
   <Clip duration={5}>
     <Image prompt="luigi wheelchair racing final lap" />
   </Clip>
-</Video>
+</Render>
 ```
 
 ### preserve source audio
@@ -421,7 +438,7 @@ import { Packshot } from "@vargai/react";
 automatically lower music when speech plays:
 
 ```tsx
-<Video>
+<Render>
   <Music prompt="dramatic documentary music" loop ducking />
   
   <Clip duration={5}>
@@ -434,13 +451,13 @@ automatically lower music when speech plays:
       This is ralph. He doesn't know where he is. Neither do we.
     </Speech>
   </Clip>
-</Video>
+</Render>
 ```
 
 ### audio normalization
 
 ```tsx
-<Video normalize>
+<Render normalize>
   {/* all audio levels balanced automatically */}
   <Clip>
     <Video src="./loud-clip.mp4" keepAudio />
@@ -448,7 +465,7 @@ automatically lower music when speech plays:
   <Clip>
     <Video src="./quiet-clip.mp4" keepAudio />
   </Clip>
-</Video>
+</Render>
 ```
 
 ## character consistency
@@ -458,7 +475,7 @@ reuse the same image reference for consistency:
 ```tsx
 const luigi = <Image prompt="luigi in wheelchair, determined face, mario kart style" />;
 
-<Video>
+<Render>
   <Clip duration={3}>
     {luigi}
     <Title>ORIGIN STORY</Title>
@@ -472,7 +489,7 @@ const luigi = <Image prompt="luigi in wheelchair, determined face, mario kart st
     {luigi}
     <Title>HE NEVER RECOVERED</Title>
   </Clip>
-</Video>
+</Render>
 ```
 
 same `luigi` reference = same cache key = same generated image.
@@ -515,7 +532,7 @@ const SCENES = [
 
 const character = "fat tiger, chubby, adorable";
 
-<Video width={1280} height={720}>
+<Render width={1280} height={720}>
   <Music prompt="motivational gym music, ironic" loop />
   
   {SCENES.map((scene, i) => (
@@ -523,7 +540,7 @@ const character = "fat tiger, chubby, adorable";
       <Image prompt={`${character}, ${scene}`} zoom="in" />
     </Clip>
   ))}
-</Video>
+</Render>
 ```
 
 ## character grid
@@ -536,14 +553,14 @@ const CHARACTERS = [
   { name: "The Smile", prompt: "white-teeth black athletic guy, perfect smile, shiny" },
 ];
 
-<Video width={720} height={720}>
+<Render width={720} height={720}>
   {CHARACTERS.map(({ name, prompt }) => (
     <Clip key={name} duration={2} transition={{ name: "fade", duration: 0.3 }}>
       <Image prompt={`${prompt}, portrait, meme style`} aspectRatio="1:1" />
       <Title position="bottom" color="#ffffff">{name}</Title>
     </Clip>
   ))}
-</Video>
+</Render>
 ```
 
 ## conditional rendering
@@ -551,7 +568,7 @@ const CHARACTERS = [
 standard jsx conditionals:
 
 ```tsx
-<Video>
+<Render>
   <Clip duration={5}>
     <Image prompt="south park cartman main scene" />
   </Clip>
@@ -569,7 +586,7 @@ standard jsx conditionals:
       <Speech voice="adam">{sponsor.script}</Speech>
     </Clip>
   )}
-</Video>
+</Render>
 ```
 
 ## render options
@@ -578,22 +595,22 @@ standard jsx conditionals:
 import { render } from "@vargai/react";
 
 // save to file
-await render(<Video>...</Video>, { 
+await render(<Render>...</Render>, { 
   output: "output/video.mp4" 
 });
 
 // with cache directory
-await render(<Video>...</Video>, { 
+await render(<Render>...</Render>, { 
   output: "output/video.mp4",
   cache: ".cache/ai"
 });
 
 // get buffer
-const buffer = await render(<Video>...</Video>);
+const buffer = await render(<Render>...</Render>);
 await Bun.write("video.mp4", buffer);
 
 // stream progress
-const stream = render.stream(<Video>...</Video>);
+const stream = render.stream(<Render>...</Render>);
 for await (const event of stream) {
   console.log(`${event.type}: ${event.progress}%`);
   // "generating image: 45%"
@@ -605,7 +622,7 @@ for await (const event of stream) {
 ## full example: ralph explains crypto
 
 ```tsx
-import { render, Video, Clip, TalkingHead, Title, Image } from "@vargai/react";
+import { render, Render, Clip, TalkingHead, Title, Image } from "@vargai/react";
 
 const script = `Hi, I'm Ralph! My cat's breath smells like cat food. 
 Also I invested my lunch money in dogecoin. 
@@ -613,7 +630,7 @@ Now I live in a box. But it's a nice box!
 It has a window. The window is a hole.`;
 
 await render(
-  <Video width={1080} height={1920}>
+  <Render width={1080} height={1920}>
     <Clip>
       <TalkingHead
         character="ralph wiggum, simpsons style, innocent smile, slightly confused"
@@ -627,7 +644,7 @@ await render(
       <Image prompt="ralph wiggum in cardboard box, happy, simpsons style" />
       <Title>@RalphInvests</Title>
     </Clip>
-  </Video>,
+  </Render>,
   { 
     output: "output/ralph-crypto.mp4",
     cache: ".cache/ai"
@@ -638,12 +655,12 @@ await render(
 ## full example: wheelchair racing promo
 
 ```tsx
-import { render, Video, Clip, Image, Animate, Title, Subtitle, Music } from "@vargai/react";
+import { render, Render, Clip, Image, Animate, Title, Subtitle, Music } from "@vargai/react";
 
 const luigi = <Image prompt="luigi in racing wheelchair, determined, mario kart style" />;
 
 await render(
-  <Video width={1080} height={1920}>
+  <Render width={1080} height={1920}>
     <Music prompt="epic racing music, fast drums, intense" loop />
     
     <Clip duration={3}>
@@ -664,7 +681,7 @@ await render(
       <Title>LUIGI KART: WHEELCHAIR EDITION</Title>
       <Subtitle>He can't walk but he can win</Subtitle>
     </Clip>
-  </Video>,
+  </Render>,
   { output: "output/luigi-promo.mp4" }
 );
 ```
@@ -672,7 +689,7 @@ await render(
 ## full example: fat tiger's fitness journey
 
 ```tsx
-import { render, Video, Clip, Image, Animate, Split, Title } from "@vargai/react";
+import { render, Render, Clip, Image, Animate, Split, Title } from "@vargai/react";
 
 const tiger = "fat tiger, orange stripes, cute, pixar style";
 
@@ -680,7 +697,7 @@ const before = <Image prompt={`${tiger}, extremely chubby, on couch, pizza boxes
 const after = <Image prompt={`${tiger}, slightly less chubby, still on couch, salad nearby unopened`} aspectRatio="3:4" />;
 
 await render(
-  <Video width={1280} height={720}>
+  <Render width={1280} height={720}>
     <Clip duration={5}>
       <Split direction="horizontal">
         <Animate image={before} motion="breathing heavily, belly jiggles" />
@@ -690,7 +707,7 @@ await render(
         DAY 1                    DAY 365
       </Title>
     </Clip>
-  </Video>,
+  </Render>,
   { output: "output/tiger-transformation.mp4" }
 );
 ```
@@ -734,7 +751,7 @@ import { fal, openai, replicate, elevenlabs, higgsfield } from "@vargai/sdk";
 for consistent character animation:
 
 ```tsx
-<Video>
+<Render>
   <Clip duration={5}>
     <Animate
       model={higgsfield.videoModel("soul")}
@@ -750,7 +767,7 @@ for consistent character animation:
       motion="pointing at camera, smile intensifies"
     />
   </Clip>
-</Video>
+</Render>
 ```
 
 same `character` id = consistent appearance across clips.
