@@ -78,11 +78,18 @@ async function processClips(
       duration,
       transition:
         clip.transition === null
-          ? { name: "none", duration: 0 }
+          ? {
+              name: "none",
+              duration: 0,
+              audioOutCurve: "tri",
+              audioInCurve: "tri",
+            }
           : {
               name: clip.transition?.name ?? defaultTransition.name ?? "fade",
               duration:
                 clip.transition?.duration ?? defaultTransition.duration ?? 0.5,
+              audioOutCurve: clip.transition?.audioOutCurve ?? "tri",
+              audioInCurve: clip.transition?.audioInCurve ?? "tri",
             },
     });
   }
