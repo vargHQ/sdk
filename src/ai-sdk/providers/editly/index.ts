@@ -15,6 +15,7 @@ import type {
   AudioLayer,
   AudioTrack,
   Clip,
+  DetachedAudioLayer,
   EditlyConfig,
   ImageOverlayLayer,
   Layer,
@@ -293,8 +294,11 @@ function collectImageOverlays(
 
 function collectAudioLayers(
   clips: ProcessedClip[],
-): { layer: AudioLayer; clipStartTime: number }[] {
-  const audioLayers: { layer: AudioLayer; clipStartTime: number }[] = [];
+): { layer: AudioLayer | DetachedAudioLayer; clipStartTime: number }[] {
+  const audioLayers: {
+    layer: AudioLayer | DetachedAudioLayer;
+    clipStartTime: number;
+  }[] = [];
   let currentTime = 0;
 
   for (let i = 0; i < clips.length; i++) {
@@ -306,6 +310,13 @@ function collectAudioLayers(
         audioLayers.push({
           layer: layer as AudioLayer,
           clipStartTime: currentTime,
+        });
+      }
+      if (layer && layer.type === "detached-audio") {
+        const detached = layer as DetachedAudioLayer;
+        audioLayers.push({
+          layer: detached,
+          clipStartTime: currentTime + (detached.start ?? 0),
         });
       }
     }
@@ -337,7 +348,10 @@ function buildTransitionFilter(
 function buildAudioFilter(
   videoInputCount: number,
   audioTracks: AudioTrack[],
-  clipAudioLayers: { layer: AudioLayer; clipStartTime: number }[],
+  clipAudioLayers: {
+    layer: AudioLayer | DetachedAudioLayer;
+    clipStartTime: number;
+  }[],
   totalDuration: number,
   audioFilePath?: string,
   keepSourceAudio?: boolean,

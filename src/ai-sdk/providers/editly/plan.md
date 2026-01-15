@@ -35,7 +35,7 @@ implement features one by one. check with user and show examples before moving o
 | linear-gradient | ✅ done | |
 | rainbow-colors | ✅ done | animated hue rotation |
 | audio | ✅ done | works as clip layer with cutFrom/cutTo/mixVolume |
-| detached-audio | ❌ not implemented | clip-relative timing |
+| detached-audio | ✅ done | clip-relative timing with start offset |
 | canvas | 🚫 skip | requires dependencies |
 | fabric | 🚫 skip | requires dependencies |
 | gl | 🚫 skip | requires dependencies |
@@ -89,7 +89,7 @@ implement features one by one. check with user and show examples before moving o
 
 ### phase 3: audio features
 10. [x] audio layer (as clip layer, not just audioTracks) ✅
-11. [ ] detached-audio layer
+11. [x] detached-audio layer ✅
 12. [ ] loopAudio
 13. [ ] keepSourceAudio
 14. [ ] clipsAudioVolume

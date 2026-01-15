@@ -656,4 +656,32 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("detached-audio layer with start offset", async () => {
+    const outPath = "output/editly-test-detached-audio.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 640,
+      height: 480,
+      fps: 30,
+      clips: [
+        {
+          duration: 5,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            { type: "title", text: "Audio starts at 2s" },
+            {
+              type: "detached-audio",
+              path: "media/kirill-voice.mp3",
+              start: 2,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });
