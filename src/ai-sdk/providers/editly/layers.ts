@@ -166,26 +166,50 @@ export function getImageFilter(
   // 2. MUST use trunc() for x/y positioning - avoids fractional pixel rounding errors
   // 3. For "contain" mode (default): zoompan at 8000x8000, then scale+pad to preserve aspect ratio
   // 4. For "cover"/"stretch": zoompan directly to output size (fills frame)
+  // 5. "left"/"right" pan horizontally while slightly zoomed in (no zoom animation, just pan)
   if (zoomDir && zoomDir !== null) {
-    const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
-    const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
+    let zoomExpr: string;
+    let xExpr: string;
+    let yExpr: string;
+
+    if (zoomDir === "left" || zoomDir === "right") {
+      // Pan horizontally while zoomed in slightly - creates cinematic pan effect
+      // Zoom is constant, x position animates from one side to other
+      const zoom = 1 + zoomAmt;
+      zoomExpr = String(zoom);
+      yExpr = "trunc((ih-ih/zoom)/2)";
+      if (zoomDir === "left") {
+        // Start right, pan left (x decreases)
+        xExpr = `trunc((iw-iw/zoom)*(1-on/${totalFrames}))`;
+      } else {
+        // Start left, pan right (x increases)
+        xExpr = `trunc((iw-iw/zoom)*on/${totalFrames})`;
+      }
+    } else {
+      // in/out: zoom animation, centered
+      const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
+      const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
+      zoomExpr = `${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}`;
+      xExpr = "trunc((iw-iw/zoom)/2)";
+      yExpr = "trunc((ih-ih/zoom)/2)";
+    }
 
     if (layer.resizeMode === "cover") {
       filters.push(`scale=8000:-1`);
       filters.push(
-        `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
       );
     } else if (layer.resizeMode === "stretch") {
       filters.push(`scale=8000:-1`);
       filters.push(
-        `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
       );
     } else {
       // Default "contain" mode: preserve aspect ratio with letterboxing
       // Zoompan at high res square, then scale down preserving aspect, then pad
       filters.push(`scale=8000:8000:force_original_aspect_ratio=increase`);
       filters.push(
-        `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=8000x8000:fps=30`,
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=8000x8000:fps=30`,
       );
       filters.push(
         `scale=${width}:${height}:force_original_aspect_ratio=decrease`,

@@ -267,4 +267,43 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("image pan left/right", async () => {
+    const outPath = "output/editly-test-image-pan.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "image",
+              path: "media/cyberpunk-street.png",
+              zoomDirection: "left",
+              zoomAmount: 0.15,
+            },
+          ],
+          transition: { name: "fade", duration: 0.5 },
+        },
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "image",
+              path: "media/cyberpunk-street.png",
+              zoomDirection: "right",
+              zoomAmount: 0.15,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

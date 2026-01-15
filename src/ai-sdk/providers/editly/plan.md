@@ -76,7 +76,7 @@ implement features one by one. check with user and show examples before moving o
 
 ### phase 1: complete existing layers
 1. [x] video: add originX/originY ✅
-2. [ ] image: add zoomDirection left/right
+2. [x] image: add zoomDirection left/right ✅
 3. [ ] title: add fontPath support
 
 ### phase 2: missing layer types
