@@ -41,6 +41,7 @@
     "cli",
     "service",
     "utilities",
-    "pipeline"
+    "pipeline",
+    "src/cli"
   ]
 }
