@@ -8,6 +8,7 @@ import type {
   Position,
   RadialGradientLayer,
   RainbowColorsLayer,
+  SlideInTextLayer,
   SubtitleLayer,
   TitleBackgroundLayer,
   TitleLayer,
@@ -570,6 +571,35 @@ export function getNewsTitleFilter(
   const yText = pos === "top" ? padding : height - barHeight + padding;
 
   return `[${baseLabel}]drawbox=x=0:y=${yBar}:w=iw:h=${barHeight}:color=${bgColor}:t=fill,drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=${padding}:y=${yText}${fontFile}${fontFamily}`;
+}
+
+export function getSlideInTextFilter(
+  layer: SlideInTextLayer,
+  baseLabel: string,
+  width: number,
+  height: number,
+  duration: number,
+): string {
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.color ?? layer.textColor ?? "white";
+  const fontSize = layer.fontSize ?? Math.round(Math.min(width, height) * 0.08);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+
+  const pos = layer.position ?? "center";
+  let yExpr = "(h-text_h)/2";
+  if (typeof pos === "string") {
+    if (pos.includes("top")) yExpr = "h*0.2";
+    if (pos.includes("bottom")) yExpr = "h*0.8-text_h";
+  }
+
+  const slideInFrames = Math.round(duration * 30 * 0.3);
+  const xExpr = `if(lt(t\\,${slideInFrames}/30)\\,-text_w+(w/2+text_w/2)*t/(${slideInFrames}/30)\\,(w-text_w)/2)`;
+
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x='${xExpr}':y=${yExpr}${fontFile}${fontFamily}`;
 }
 
 export function processLayer(

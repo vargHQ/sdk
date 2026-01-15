@@ -5,6 +5,7 @@ import {
   getImageOverlayPositionFilter,
   getNewsTitleFilter,
   getOverlayFilter,
+  getSlideInTextFilter,
   getSubtitleFilter,
   getTitleFilter,
   getVideoFilterWithTrim,
@@ -18,6 +19,7 @@ import type {
   Layer,
   NewsTitleLayer,
   ProcessedClip,
+  SlideInTextLayer,
   SubtitleLayer,
   TitleLayer,
   VideoLayer,
@@ -201,6 +203,19 @@ function buildBaseClipFilter(
       );
       const newLabel = `news${clipIndex}_${i}`;
       filters.push(`${newsFilter}[${newLabel}]`);
+      baseLabel = newLabel;
+    }
+
+    if (layer.type === "slide-in-text") {
+      const slideFilter = getSlideInTextFilter(
+        layer as SlideInTextLayer,
+        baseLabel,
+        width,
+        height,
+        clip.duration,
+      );
+      const newLabel = `slide${clipIndex}_${i}`;
+      filters.push(`${slideFilter}[${newLabel}]`);
       baseLabel = newLabel;
     }
   }

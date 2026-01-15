@@ -28,7 +28,7 @@ implement features one by one. check with user and show examples before moving o
 | subtitle | ✅ done | centered bottom, background box, custom colors |
 | title-background | ✅ done | title with gradient/color background |
 | news-title | ✅ done | colored bar with text, top/bottom position |
-| slide-in-text | ❌ not implemented | need to implement |
+| slide-in-text | ✅ done | animated text sliding from left |
 | fill-color | ✅ done | |
 | pause | ✅ done | aliased to fill-color |
 | radial-gradient | ✅ done | |
@@ -85,7 +85,7 @@ implement features one by one. check with user and show examples before moving o
 6. [x] title-background layer ✅
 7. [x] rainbow-colors layer ✅
 8. [x] news-title layer ✅
-9. [ ] slide-in-text layer (if feasible with ffmpeg)
+9. [x] slide-in-text layer ✅
 
 ### phase 3: audio features
 10. [ ] audio layer (as clip layer, not just audioTracks)

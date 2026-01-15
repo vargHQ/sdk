@@ -566,4 +566,31 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("slide-in-text layer", async () => {
+    const outPath = "output/editly-test-slide-in.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            {
+              type: "slide-in-text",
+              text: "Sliding In!",
+              color: "white",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });
