@@ -7,9 +7,10 @@ import type {
 import type { VideoModelV3 } from "../video-model";
 
 export type VargElementType =
-  | "video"
+  | "render"
   | "clip"
   | "image"
+  | "video"
   | "animate"
   | "speech"
   | "talking-head"
@@ -40,7 +41,8 @@ export interface BaseProps {
   key?: string | number;
 }
 
-export interface VideoProps extends BaseProps {
+// Root container - sets dimensions, fps, contains clips
+export interface RenderProps extends BaseProps {
   width?: number;
   height?: number;
   fps?: number;
@@ -66,6 +68,19 @@ export interface ImageProps extends BaseProps {
   removeBackground?: boolean;
 }
 
+// Video layer - t2v generation or existing file
+export interface VideoProps extends BaseProps {
+  prompt?: string;
+  src?: string;
+  model?: VideoModelV3;
+  resize?: ResizeMode;
+  cutFrom?: number;
+  cutTo?: number;
+  volume?: number;
+  keepAudio?: boolean;
+}
+
+// Image-to-video animation
 export interface AnimateProps extends BaseProps {
   image?: VargElement<"image">;
   src?: string;
@@ -154,9 +169,10 @@ export interface RenderOptions {
 }
 
 export interface ElementPropsMap {
-  video: VideoProps;
+  render: RenderProps;
   clip: ClipProps;
   image: ImageProps;
+  video: VideoProps;
   animate: AnimateProps;
   speech: SpeechProps;
   "talking-head": TalkingHeadProps;
