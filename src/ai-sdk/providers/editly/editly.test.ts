@@ -593,4 +593,43 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("subtitle continuous across clips", async () => {
+    const outPath = "output/editly-test-subtitle-continuous.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 2,
+          layers: [
+            { type: "video", path: VIDEO_1 },
+            { type: "subtitle", text: "Continuous subtitle test" },
+          ],
+          transition: { name: "fade", duration: 0.5 },
+        },
+        {
+          duration: 2,
+          layers: [
+            { type: "video", path: VIDEO_2 },
+            { type: "subtitle", text: "Continuous subtitle test" },
+          ],
+          transition: { name: "fade", duration: 0.5 },
+        },
+        {
+          duration: 2,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            { type: "subtitle", text: "Continuous subtitle test" },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });
