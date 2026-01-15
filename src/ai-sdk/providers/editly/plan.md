@@ -46,7 +46,7 @@ implement features one by one. check with user and show examples before moving o
 |---------|--------|-------|
 | ffmpeg xfade | ✅ working | ~40 transitions available |
 | gl-transitions | 🚫 skip | requires headless-gl |
-| audio crossfade | ❌ not implemented | need acrossfade filter |
+| audio crossfade | ✅ done | afade in/out during transitions |
 
 ## audio
 
@@ -64,11 +64,11 @@ implement features one by one. check with user and show examples before moving o
 
 | option | status | notes |
 |--------|--------|-------|
-| defaults.layer | ❌ not implemented | |
-| defaults.layerType | ❌ not implemented | |
-| layer start/stop timing | ❌ not implemented | |
-| contain-blur resize | ❌ not implemented | |
-| custom fonts | ❌ not implemented | |
+| defaults.layer | ✅ done | applies common props to all layers |
+| defaults.layerType | ✅ done | applies type-specific defaults |
+| layer start/stop timing | ✅ done | enable expression for text layers |
+| contain-blur resize | ✅ done | blurred background instead of black bars |
+| custom fonts | ✅ done | fontPath and fontFamily support |
 
 ---
 
@@ -97,10 +97,10 @@ implement features one by one. check with user and show examples before moving o
 16. [x] audioTracks cutFrom/cutTo/start ✅
 
 ### phase 4: advanced features
-17. [ ] layer start/stop timing
-18. [ ] contain-blur resize mode
-19. [ ] defaults.layer / defaults.layerType
-20. [ ] audio crossfade during transitions
+17. [x] layer start/stop timing ✅
+18. [x] contain-blur resize mode ✅
+19. [x] defaults.layer / defaults.layerType ✅
+20. [x] audio crossfade during transitions ✅
 
 ---
 
