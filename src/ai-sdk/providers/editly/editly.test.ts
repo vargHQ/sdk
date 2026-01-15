@@ -6,6 +6,7 @@ import { editly } from "./index";
 const VIDEO_1 = "output/sora-landscape.mp4";
 const VIDEO_2 = "output/simpsons-scene.mp4";
 const VIDEO_TALKING = "output/workflow-talking-synced.mp4";
+const IMAGE_SQUARE = "media/replicate-forest.png";
 
 describe("editly", () => {
   test("requires outPath", async () => {
@@ -238,5 +239,32 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
     const info = await ffprobe(outPath);
     expect(info.duration).toBeGreaterThan(3);
+  });
+
+  test("image ken burns preserves aspect ratio", async () => {
+    const outPath = "output/editly-test-image-aspect.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "image",
+              path: IMAGE_SQUARE,
+              zoomDirection: "in",
+              zoomAmount: 0.1,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
   });
 });

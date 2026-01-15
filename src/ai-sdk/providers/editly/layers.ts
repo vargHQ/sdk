@@ -161,17 +161,38 @@ export function getImageFilter(
   const zoomAmt = layer.zoomAmount ?? 0.1;
   const totalFrames = Math.ceil(duration * 30);
 
-  // zoompan takes a single image and produces video frames
-  // upscale first to prevent subpixel jitter from rounding errors
+  // ZOOMPAN IMPLEMENTATION NOTES:
+  // 1. MUST upscale to 8000px first - prevents subpixel jitter/shaking during zoom
+  // 2. MUST use trunc() for x/y positioning - avoids fractional pixel rounding errors
+  // 3. For "contain" mode (default): zoompan at 8000x8000, then scale+pad to preserve aspect ratio
+  // 4. For "cover"/"stretch": zoompan directly to output size (fills frame)
   if (zoomDir && zoomDir !== null) {
     const startZoom = zoomDir === "in" ? 1 : 1 + zoomAmt;
     const endZoom = zoomDir === "in" ? 1 + zoomAmt : 1;
-    filters.push(`scale=8000:-1`);
-    filters.push(
-      `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
-    );
+
+    if (layer.resizeMode === "cover") {
+      filters.push(`scale=8000:-1`);
+      filters.push(
+        `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
+      );
+    } else if (layer.resizeMode === "stretch") {
+      filters.push(`scale=8000:-1`);
+      filters.push(
+        `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=${width}x${height}:fps=30`,
+      );
+    } else {
+      // Default "contain" mode: preserve aspect ratio with letterboxing
+      // Zoompan at high res square, then scale down preserving aspect, then pad
+      filters.push(`scale=8000:8000:force_original_aspect_ratio=increase`);
+      filters.push(
+        `zoompan=z='${startZoom}+(${endZoom}-${startZoom})*on/${totalFrames}':x='trunc((iw-iw/zoom)/2)':y='trunc((ih-ih/zoom)/2)':d=${totalFrames}:s=8000x8000:fps=30`,
+      );
+      filters.push(
+        `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
+      );
+      filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
+    }
   } else {
-    // no zoom - use loop to create video from image
     filters.push(`loop=loop=-1:size=1:start=0`);
     filters.push(`fps=30`);
     filters.push(`trim=duration=${duration}`);
