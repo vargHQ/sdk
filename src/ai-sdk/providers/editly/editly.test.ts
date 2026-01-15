@@ -788,4 +788,80 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("clipsAudioVolume controls source video audio level", async () => {
+    const outPath = "output/editly-test-clips-audio-volume.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      keepSourceAudio: true,
+      clipsAudioVolume: 0.3,
+      clips: [
+        {
+          duration: 4,
+          layers: [{ type: "video", path: VIDEO_TALKING }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("audioNorm normalizes audio levels", async () => {
+    const outPath = "output/editly-test-audio-norm.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      keepSourceAudio: true,
+      audioNorm: { enable: true, gaussSize: 5, maxGain: 25 },
+      clips: [
+        {
+          duration: 4,
+          layers: [{ type: "video", path: VIDEO_TALKING }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("audioTracks with cutFrom/cutTo/start", async () => {
+    const outPath = "output/editly-test-audio-tracks-advanced.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 640,
+      height: 480,
+      fps: 30,
+      audioTracks: [
+        {
+          path: "media/kirill-voice.mp3",
+          cutFrom: 0,
+          cutTo: 2,
+          start: 1,
+          mixVolume: 0.8,
+        },
+      ],
+      clips: [
+        {
+          duration: 5,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            { type: "title", text: "Audio starts at 1s" },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

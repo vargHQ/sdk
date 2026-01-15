@@ -13,6 +13,7 @@ import {
 } from "./layers";
 import type {
   AudioLayer,
+  AudioNormalizationOptions,
   AudioTrack,
   Clip,
   DetachedAudioLayer,
@@ -377,6 +378,8 @@ function buildAudioFilter(
   keepSourceAudio?: boolean,
   outputVolume?: number | string,
   videoSourceAudio?: VideoSourceAudio[],
+  clipsAudioVolume?: number | string,
+  audioNorm?: AudioNormalizationOptions,
 ): { inputs: string[]; filter: string; outputLabel: string } | null {
   const audioInputs: string[] = [];
   const filterParts: string[] = [];
@@ -389,6 +392,9 @@ function buildAudioFilter(
       const label = `vsrc${i}`;
       let audioFilter = `[${inputIndex}:a]`;
       audioFilter += `atrim=${cutFrom}:${cutFrom + duration},asetpts=PTS-STARTPTS,`;
+      if (clipsAudioVolume !== undefined) {
+        audioFilter += `volume=${clipsAudioVolume},`;
+      }
       audioFilter += `adelay=${Math.round(startTime * 1000)}|${Math.round(startTime * 1000)}`;
       audioFilter += `[${label}]`;
       filterParts.push(audioFilter);
@@ -410,10 +416,25 @@ function buildAudioFilter(
     inputIdx++;
   }
 
-  for (const track of audioTracks) {
+  for (let i = 0; i < audioTracks.length; i++) {
+    const track = audioTracks[i]!;
     audioInputs.push(track.path);
-    const label = `atrk${inputIdx}`;
-    filterParts.push(`[${inputIdx}:a]anull[${label}]`);
+    const label = `atrk${i}`;
+
+    let audioFilter = `[${inputIdx}:a]`;
+    if (track.cutFrom !== undefined || track.cutTo !== undefined) {
+      const start = track.cutFrom ?? 0;
+      const end = track.cutTo ?? 999999;
+      audioFilter += `atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,`;
+    }
+    if (track.mixVolume !== undefined) {
+      audioFilter += `volume=${track.mixVolume},`;
+    }
+    const startMs = Math.round((track.start ?? 0) * 1000);
+    audioFilter += `adelay=${startMs}|${startMs}`;
+    audioFilter += `[${label}]`;
+
+    filterParts.push(audioFilter);
     mixLabels.push(label);
     inputIdx++;
   }
@@ -444,11 +465,20 @@ function buildAudioFilter(
     return null;
   }
 
-  const volumeFilter = outputVolume ? `,volume=${outputVolume}` : "";
+  let postFilters = "";
+  if (audioNorm?.enable !== false && audioNorm) {
+    const gaussSize = audioNorm.gaussSize ?? 5;
+    const maxGain = audioNorm.maxGain ?? 25;
+    postFilters += `,dynaudnorm=g=${gaussSize}:maxgain=${maxGain}`;
+  }
+  if (outputVolume) {
+    postFilters += `,volume=${outputVolume}`;
+  }
+
   if (mixLabels.length === 1) {
     return {
       inputs: audioInputs,
-      filter: `${filterParts.join(";")};[${mixLabels[0]}]anull${volumeFilter}[aout]`,
+      filter: `${filterParts.join(";")};[${mixLabels[0]}]anull${postFilters}[aout]`,
       outputLabel: "aout",
     };
   }
@@ -456,7 +486,7 @@ function buildAudioFilter(
   const mixInputs = mixLabels.map((l) => `[${l}]`).join("");
   return {
     inputs: audioInputs,
-    filter: `${filterParts.join(";")};${mixInputs}amix=inputs=${mixLabels.length}:normalize=0${volumeFilter}[aout]`,
+    filter: `${filterParts.join(";")};${mixInputs}amix=inputs=${mixLabels.length}:normalize=0${postFilters}[aout]`,
     outputLabel: "aout",
   };
 }
@@ -470,7 +500,9 @@ export async function editly(config: EditlyConfig): Promise<void> {
     audioTracks = [],
     loopAudio,
     keepSourceAudio,
+    clipsAudioVolume,
     outputVolume,
+    audioNorm,
     customOutputArgs,
     verbose,
     fast,
@@ -677,6 +709,8 @@ export async function editly(config: EditlyConfig): Promise<void> {
     keepSourceAudio,
     outputVolume,
     videoSourceAudio,
+    clipsAudioVolume,
+    audioNorm,
   );
 
   if (audioFilter) {
