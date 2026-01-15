@@ -632,4 +632,28 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("audio layer in clip", async () => {
+    const outPath = "output/editly-test-audio-layer.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 640,
+      height: 480,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            { type: "title", text: "Audio Layer Test" },
+            { type: "audio", path: "media/kirill-voice.mp3" },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

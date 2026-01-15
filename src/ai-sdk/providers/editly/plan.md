@@ -34,7 +34,7 @@ implement features one by one. check with user and show examples before moving o
 | radial-gradient | ✅ done | |
 | linear-gradient | ✅ done | |
 | rainbow-colors | ✅ done | animated hue rotation |
-| audio | ⚠️ partial | works as audioTracks, not as layer |
+| audio | ✅ done | works as clip layer with cutFrom/cutTo/mixVolume |
 | detached-audio | ❌ not implemented | clip-relative timing |
 | canvas | 🚫 skip | requires dependencies |
 | fabric | 🚫 skip | requires dependencies |
@@ -88,7 +88,7 @@ implement features one by one. check with user and show examples before moving o
 9. [x] slide-in-text layer ✅
 
 ### phase 3: audio features
-10. [ ] audio layer (as clip layer, not just audioTracks)
+10. [x] audio layer (as clip layer, not just audioTracks) ✅
 11. [ ] detached-audio layer
 12. [ ] loopAudio
 13. [ ] keepSourceAudio

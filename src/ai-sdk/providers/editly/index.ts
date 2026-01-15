@@ -12,6 +12,7 @@ import {
   processLayer,
 } from "./layers";
 import type {
+  AudioLayer,
   AudioTrack,
   Clip,
   EditlyConfig,
@@ -290,6 +291,34 @@ function collectImageOverlays(
   return overlays;
 }
 
+function collectAudioLayers(
+  clips: ProcessedClip[],
+): { layer: AudioLayer; clipStartTime: number }[] {
+  const audioLayers: { layer: AudioLayer; clipStartTime: number }[] = [];
+  let currentTime = 0;
+
+  for (let i = 0; i < clips.length; i++) {
+    const clip = clips[i];
+    if (!clip) continue;
+
+    for (const layer of clip.layers) {
+      if (layer && layer.type === "audio") {
+        audioLayers.push({
+          layer: layer as AudioLayer,
+          clipStartTime: currentTime,
+        });
+      }
+    }
+
+    currentTime += clip.duration;
+    if (i < clips.length - 1) {
+      currentTime -= clip.transition.duration;
+    }
+  }
+
+  return audioLayers;
+}
+
 function buildTransitionFilter(
   fromLabel: string,
   toLabel: string,
@@ -308,43 +337,72 @@ function buildTransitionFilter(
 function buildAudioFilter(
   videoInputCount: number,
   audioTracks: AudioTrack[],
+  clipAudioLayers: { layer: AudioLayer; clipStartTime: number }[],
+  totalDuration: number,
   audioFilePath?: string,
   keepSourceAudio?: boolean,
   outputVolume?: number | string,
 ): { inputs: string[]; filter: string; outputLabel: string } | null {
   const audioInputs: string[] = [];
-  const audioStreamRefs: string[] = [];
+  const filterParts: string[] = [];
+  const mixLabels: string[] = [];
   let inputIdx = videoInputCount;
 
   if (audioFilePath) {
     audioInputs.push(audioFilePath);
-    audioStreamRefs.push(`${inputIdx}:a`);
+    const label = `abg${inputIdx}`;
+    filterParts.push(`[${inputIdx}:a]anull[${label}]`);
+    mixLabels.push(label);
     inputIdx++;
   }
 
   for (const track of audioTracks) {
     audioInputs.push(track.path);
-    audioStreamRefs.push(`${inputIdx}:a`);
+    const label = `atrk${inputIdx}`;
+    filterParts.push(`[${inputIdx}:a]anull[${label}]`);
+    mixLabels.push(label);
     inputIdx++;
   }
 
-  if (audioStreamRefs.length === 0) {
+  for (let i = 0; i < clipAudioLayers.length; i++) {
+    const { layer, clipStartTime } = clipAudioLayers[i]!;
+    audioInputs.push(layer.path);
+    const label = `aclip${i}`;
+
+    let audioFilter = `[${inputIdx}:a]`;
+    if (layer.cutFrom !== undefined || layer.cutTo !== undefined) {
+      const start = layer.cutFrom ?? 0;
+      const end = layer.cutTo ?? 999999;
+      audioFilter += `atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,`;
+    }
+    if (layer.mixVolume !== undefined) {
+      audioFilter += `volume=${layer.mixVolume},`;
+    }
+    audioFilter += `adelay=${Math.round(clipStartTime * 1000)}|${Math.round(clipStartTime * 1000)}`;
+    audioFilter += `[${label}]`;
+
+    filterParts.push(audioFilter);
+    mixLabels.push(label);
+    inputIdx++;
+  }
+
+  if (mixLabels.length === 0) {
     return null;
   }
 
   const volumeFilter = outputVolume ? `,volume=${outputVolume}` : "";
-  if (audioStreamRefs.length === 1) {
+  if (mixLabels.length === 1) {
     return {
       inputs: audioInputs,
-      filter: `[${audioStreamRefs[0]}]anull${volumeFilter}[aout]`,
+      filter: `${filterParts.join(";")};[${mixLabels[0]}]anull${volumeFilter}[aout]`,
       outputLabel: "aout",
     };
   }
 
-  const mixInputs = audioStreamRefs.map((l) => `[${l}]`).join("");
+  const mixInputs = mixLabels.map((l) => `[${l}]`).join("");
   return {
     inputs: audioInputs,
-    filter: `${mixInputs}amix=inputs=${audioStreamRefs.length}${volumeFilter}[aout]`,
+    filter: `${filterParts.join(";")};${mixInputs}amix=inputs=${mixLabels.length}:normalize=0${volumeFilter}[aout]`,
     outputLabel: "aout",
   };
 }
@@ -536,10 +594,13 @@ export async function editly(config: EditlyConfig): Promise<void> {
     finalVideoLabel = currentBase;
   }
 
+  const clipAudioLayers = collectAudioLayers(clips);
   const videoInputCount = allInputs.length;
   const audioFilter = buildAudioFilter(
     videoInputCount,
     audioTracks,
+    clipAudioLayers,
+    totalDuration,
     audioFilePath,
     keepSourceAudio,
     outputVolume,
