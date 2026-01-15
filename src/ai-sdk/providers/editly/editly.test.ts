@@ -864,4 +864,39 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("layer start/stop timing", async () => {
+    const outPath = "output/editly-test-layer-timing.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 6,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            { type: "title", text: "Always visible", position: "top" },
+            {
+              type: "subtitle",
+              text: "Appears at 1s, disappears at 4s",
+              start: 1,
+              stop: 4,
+            },
+            {
+              type: "news-title",
+              text: "NEWS: Visible 2s-5s",
+              start: 2,
+              stop: 5,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

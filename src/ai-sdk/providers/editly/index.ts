@@ -190,6 +190,7 @@ function buildBaseClipFilter(
         baseLabel,
         width,
         height,
+        clip.duration,
       );
       const newLabel = `title${clipIndex}_${i}`;
       filters.push(`${titleFilter}[${newLabel}]`);
@@ -202,6 +203,7 @@ function buildBaseClipFilter(
         baseLabel,
         width,
         height,
+        clip.duration,
       );
       const newLabel = `sub${clipIndex}_${i}`;
       filters.push(`${subtitleFilter}[${newLabel}]`);
@@ -214,6 +216,7 @@ function buildBaseClipFilter(
         baseLabel,
         width,
         height,
+        clip.duration,
       );
       const newLabel = `news${clipIndex}_${i}`;
       filters.push(`${newsFilter}[${newLabel}]`);

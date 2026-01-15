@@ -440,13 +440,24 @@ export function getImageOverlayPositionFilter(
   return `[${baseLabel}][${overlayLabel}]overlay=${x}:${y}:shortest=1[${outputLabel}]`;
 }
 
+function getEnableExpr(
+  start: number | undefined,
+  stop: number | undefined,
+  clipDuration: number,
+): string {
+  if (start === undefined && stop === undefined) return "";
+  const s = start ?? 0;
+  const e = stop ?? clipDuration;
+  return `:enable='between(t,${s},${e})'`;
+}
+
 export function getTitleFilter(
   layer: TitleLayer,
   baseLabel: string,
   width: number,
   height: number,
+  clipDuration?: number,
 ): string {
-  // ffmpeg drawtext escaping: single quotes and colons must be escaped
   const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
   const color = layer.textColor ?? "white";
   const fontSize = Math.round(Math.min(width, height) * 0.08);
@@ -462,15 +473,13 @@ export function getTitleFilter(
     if (pos.includes("bottom")) y = "h*0.9-text_h";
   }
 
-  // fontfile: path to .ttf/.otf file (must escape colons for Windows paths)
-  // fontFamily: system font name (e.g. "Helvetica Neue Bold") - use this for .ttc collections
-  // if both specified, fontfile takes precedence
   const fontFile = layer.fontPath
     ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
 
-  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}${fontFile}${fontFamily}`;
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}${fontFile}${fontFamily}${enable}`;
 }
 
 export function getSubtitleFilter(
@@ -478,6 +487,7 @@ export function getSubtitleFilter(
   baseLabel: string,
   width: number,
   height: number,
+  clipDuration?: number,
 ): string {
   const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
   const textColor = layer.textColor ?? "white";
@@ -489,8 +499,9 @@ export function getSubtitleFilter(
     ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
 
-  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=(w-text_w)/2:y=h*0.85-text_h/2:box=1:boxcolor=${bgColor}:boxborderw=${boxPadding}${fontFile}${fontFamily}`;
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=(w-text_w)/2:y=h*0.85-text_h/2:box=1:boxcolor=${bgColor}:boxborderw=${boxPadding}${fontFile}${fontFamily}${enable}`;
 }
 
 export function getTitleBackgroundFilter(
@@ -559,6 +570,7 @@ export function getNewsTitleFilter(
   baseLabel: string,
   width: number,
   height: number,
+  clipDuration?: number,
 ): string {
   const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
   const textColor = layer.textColor ?? "white";
@@ -571,12 +583,13 @@ export function getNewsTitleFilter(
     ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
 
   const pos = layer.position ?? "bottom";
   const yBar = pos === "top" ? 0 : height - barHeight;
   const yText = pos === "top" ? padding : height - barHeight + padding;
 
-  return `[${baseLabel}]drawbox=x=0:y=${yBar}:w=iw:h=${barHeight}:color=${bgColor}:t=fill,drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=${padding}:y=${yText}${fontFile}${fontFamily}`;
+  return `[${baseLabel}]drawbox=x=0:y=${yBar}:w=iw:h=${barHeight}:color=${bgColor}:t=fill${enable},drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=${padding}:y=${yText}${fontFile}${fontFamily}${enable}`;
 }
 
 export function getSlideInTextFilter(
@@ -594,6 +607,7 @@ export function getSlideInTextFilter(
     ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const enable = getEnableExpr(layer.start, layer.stop, duration);
 
   const pos = layer.position ?? "center";
   let yExpr = "(h-text_h)/2";
@@ -605,7 +619,7 @@ export function getSlideInTextFilter(
   const slideInFrames = Math.round(duration * 30 * 0.3);
   const xExpr = `if(lt(t\\,${slideInFrames}/30)\\,-text_w+(w/2+text_w/2)*t/(${slideInFrames}/30)\\,(w-text_w)/2)`;
 
-  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x='${xExpr}':y=${yExpr}${fontFile}${fontFamily}`;
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x='${xExpr}':y=${yExpr}${fontFile}${fontFamily}${enable}`;
 }
 
 export function processLayer(
