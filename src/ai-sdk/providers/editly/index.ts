@@ -3,6 +3,7 @@ import { ffprobe, multipleOf2 } from "./ffmpeg";
 import {
   getImageOverlayFilter,
   getImageOverlayPositionFilter,
+  getNewsTitleFilter,
   getOverlayFilter,
   getSubtitleFilter,
   getTitleFilter,
@@ -15,6 +16,7 @@ import type {
   EditlyConfig,
   ImageOverlayLayer,
   Layer,
+  NewsTitleLayer,
   ProcessedClip,
   SubtitleLayer,
   TitleLayer,
@@ -187,6 +189,18 @@ function buildBaseClipFilter(
       );
       const newLabel = `sub${clipIndex}_${i}`;
       filters.push(`${subtitleFilter}[${newLabel}]`);
+      baseLabel = newLabel;
+    }
+
+    if (layer.type === "news-title") {
+      const newsFilter = getNewsTitleFilter(
+        layer as NewsTitleLayer,
+        baseLabel,
+        width,
+        height,
+      );
+      const newLabel = `news${clipIndex}_${i}`;
+      filters.push(`${newsFilter}[${newLabel}]`);
       baseLabel = newLabel;
     }
   }

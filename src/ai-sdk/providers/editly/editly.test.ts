@@ -527,4 +527,43 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("news-title layer", async () => {
+    const outPath = "output/editly-test-news-title.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "video", path: VIDEO_1 },
+            {
+              type: "news-title",
+              text: "BREAKING NEWS: Something important happened",
+              backgroundColor: "red",
+            },
+          ],
+        },
+        {
+          duration: 3,
+          layers: [
+            { type: "video", path: VIDEO_2 },
+            {
+              type: "news-title",
+              text: "TOP STORY",
+              backgroundColor: "blue",
+              position: "top",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

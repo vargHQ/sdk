@@ -27,7 +27,7 @@ implement features one by one. check with user and show examples before moving o
 | title | ⚠️ partial | missing: fontPath, fontFamily, ken burns |
 | subtitle | ✅ done | centered bottom, background box, custom colors |
 | title-background | ✅ done | title with gradient/color background |
-| news-title | ❌ not implemented | need to implement |
+| news-title | ✅ done | colored bar with text, top/bottom position |
 | slide-in-text | ❌ not implemented | need to implement |
 | fill-color | ✅ done | |
 | pause | ✅ done | aliased to fill-color |
@@ -84,7 +84,7 @@ implement features one by one. check with user and show examples before moving o
 5. [x] subtitle layer ✅
 6. [x] title-background layer ✅
 7. [x] rainbow-colors layer ✅
-8. [ ] news-title layer (if feasible with ffmpeg)
+8. [x] news-title layer ✅
 9. [ ] slide-in-text layer (if feasible with ffmpeg)
 
 ### phase 3: audio features

@@ -4,6 +4,7 @@ import type {
   ImageOverlayLayer,
   Layer,
   LinearGradientLayer,
+  NewsTitleLayer,
   Position,
   RadialGradientLayer,
   RainbowColorsLayer,
@@ -544,6 +545,31 @@ export function getRainbowColorsFilter(
     filterComplex: `color=c=red:s=${width}x${height}:d=${duration}:r=${fps},hue=h=t*60[${outputLabel}]`,
     outputLabel,
   };
+}
+
+export function getNewsTitleFilter(
+  layer: NewsTitleLayer,
+  baseLabel: string,
+  width: number,
+  height: number,
+): string {
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.textColor ?? "white";
+  const bgColor = layer.backgroundColor ?? "red";
+  const fontSize = Math.round(Math.min(width, height) * 0.05);
+  const barHeight = Math.round(fontSize * 2.5);
+  const padding = Math.round(fontSize * 0.5);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+
+  const pos = layer.position ?? "bottom";
+  const yBar = pos === "top" ? 0 : height - barHeight;
+  const yText = pos === "top" ? padding : height - barHeight + padding;
+
+  return `[${baseLabel}]drawbox=x=0:y=${yBar}:w=iw:h=${barHeight}:color=${bgColor}:t=fill,drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=${padding}:y=${yText}${fontFile}${fontFamily}`;
 }
 
 export function processLayer(
