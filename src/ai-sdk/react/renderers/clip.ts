@@ -1,6 +1,7 @@
 import type {
   AudioLayer,
   Clip,
+  FillColorLayer,
   ImageLayer,
   ImageOverlayLayer,
   Layer,
@@ -128,6 +129,14 @@ export async function renderClip(
 ): Promise<Clip> {
   const props = element.props as ClipProps;
   const layers = await renderClipLayers(element.children, ctx);
+
+  const hasBaseLayer = layers.some(
+    (l) => l.type === "image" || l.type === "video" || l.type === "fill-color",
+  );
+
+  if (!hasBaseLayer && layers.length > 0) {
+    layers.unshift({ type: "fill-color", color: "#000000" } as FillColorLayer);
+  }
 
   return {
     layers,
