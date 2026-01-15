@@ -53,12 +53,12 @@ implement features one by one. check with user and show examples before moving o
 | feature | status | notes |
 |---------|--------|-------|
 | audioFilePath | ✅ done | |
-| audioTracks | ⚠️ partial | missing: cutFrom/cutTo, start |
+| audioTracks | ✅ done | cutFrom/cutTo/start/mixVolume |
 | loopAudio | ✅ done | loops background audio to match video duration |
-| keepSourceAudio | ❌ not implemented | |
-| clipsAudioVolume | ❌ not implemented | |
+| keepSourceAudio | ✅ done | extracts audio from video clips, syncs with cutFrom |
+| clipsAudioVolume | ✅ done | controls volume of source video audio |
 | outputVolume | ✅ done | |
-| audioNorm | ❌ not implemented | |
+| audioNorm | ✅ done | dynaudnorm filter with gaussSize/maxGain |
 
 ## config
 
@@ -91,10 +91,10 @@ implement features one by one. check with user and show examples before moving o
 10. [x] audio layer (as clip layer, not just audioTracks) ✅
 11. [x] detached-audio layer ✅
 12. [x] loopAudio ✅
-13. [ ] keepSourceAudio
-14. [ ] clipsAudioVolume
-15. [ ] audioNorm
-16. [ ] audioTracks cutFrom/cutTo/start
+13. [x] keepSourceAudio ✅
+14. [x] clipsAudioVolume ✅
+15. [x] audioNorm ✅
+16. [x] audioTracks cutFrom/cutTo/start ✅
 
 ### phase 4: advanced features
 17. [ ] layer start/stop timing
