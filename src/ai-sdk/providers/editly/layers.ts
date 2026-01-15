@@ -6,6 +6,7 @@ import type {
   LinearGradientLayer,
   Position,
   RadialGradientLayer,
+  SubtitleLayer,
   TitleLayer,
   VideoLayer,
 } from "./types";
@@ -460,6 +461,26 @@ export function getTitleFilter(
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
 
   return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}${fontFile}${fontFamily}`;
+}
+
+export function getSubtitleFilter(
+  layer: SubtitleLayer,
+  baseLabel: string,
+  width: number,
+  height: number,
+): string {
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.textColor ?? "white";
+  const bgColor = layer.backgroundColor ?? "black@0.7";
+  const fontSize = Math.round(Math.min(width, height) * 0.05);
+  const boxPadding = Math.round(fontSize * 0.4);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=(w-text_w)/2:y=h*0.85-text_h/2:box=1:boxcolor=${bgColor}:boxborderw=${boxPadding}${fontFile}${fontFamily}`;
 }
 
 export function processLayer(

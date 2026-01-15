@@ -4,6 +4,7 @@ import {
   getImageOverlayFilter,
   getImageOverlayPositionFilter,
   getOverlayFilter,
+  getSubtitleFilter,
   getTitleFilter,
   getVideoFilterWithTrim,
   processLayer,
@@ -15,6 +16,7 @@ import type {
   ImageOverlayLayer,
   Layer,
   ProcessedClip,
+  SubtitleLayer,
   TitleLayer,
   VideoLayer,
 } from "./types";
@@ -173,6 +175,18 @@ function buildBaseClipFilter(
       );
       const newLabel = `title${clipIndex}_${i}`;
       filters.push(`${titleFilter}[${newLabel}]`);
+      baseLabel = newLabel;
+    }
+
+    if (layer.type === "subtitle") {
+      const subtitleFilter = getSubtitleFilter(
+        layer as SubtitleLayer,
+        baseLabel,
+        width,
+        height,
+      );
+      const newLabel = `sub${clipIndex}_${i}`;
+      filters.push(`${subtitleFilter}[${newLabel}]`);
       baseLabel = newLabel;
     }
   }

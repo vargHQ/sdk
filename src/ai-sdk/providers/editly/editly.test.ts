@@ -425,4 +425,42 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("subtitle layer", async () => {
+    const outPath = "output/editly-test-subtitle.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "video", path: VIDEO_1 },
+            {
+              type: "subtitle",
+              text: "This is a subtitle at the bottom",
+            },
+          ],
+        },
+        {
+          duration: 3,
+          layers: [
+            { type: "video", path: VIDEO_2 },
+            {
+              type: "subtitle",
+              text: "Another subtitle with custom colors",
+              textColor: "yellow",
+              backgroundColor: "blue@0.8",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });
