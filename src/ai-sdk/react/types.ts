@@ -1,4 +1,4 @@
-import type { ImageModelV3 } from "@ai-sdk/provider";
+import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
 import type {
   Position,
   ResizeMode,
@@ -91,6 +91,7 @@ export interface AnimateProps extends BaseProps {
 
 export interface SpeechProps extends BaseProps {
   voice?: string;
+  model?: SpeechModelV3;
   id?: string;
   volume?: number;
   children?: string;
