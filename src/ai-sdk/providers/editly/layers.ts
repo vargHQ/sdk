@@ -54,20 +54,58 @@ export function getVideoFilter(
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
-  } else {
-    let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
-    if (layer.resizeMode === "cover") {
-      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
-    } else if (layer.resizeMode === "stretch") {
-      scaleFilter = `scale=${width}:${height}`;
-    }
-
-    filters.push(scaleFilter);
-    filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`);
-    filters.push("setsar=1");
-    filters.push("fps=30");
-    filters.push("settb=1/30");
+    return {
+      inputs: [
+        {
+          label: inputLabel,
+          path: layer.path,
+          duration: layer.cutTo
+            ? layer.cutTo - (layer.cutFrom ?? 0)
+            : undefined,
+        },
+      ],
+      filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
+      outputLabel,
+    };
   }
+
+  if (layer.resizeMode === "contain-blur") {
+    const baseFilters = filters.join(",");
+    const blurLabel = `vblur${index}`;
+    const fgLabel = `vfg${index}`;
+    const filterComplex = [
+      `[${inputLabel}]${baseFilters},split[${blurLabel}][${fgLabel}]`,
+      `[${blurLabel}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=20:5,setsar=1[${blurLabel}bg]`,
+      `[${fgLabel}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[${fgLabel}fg]`,
+      `[${blurLabel}bg][${fgLabel}fg]overlay=(W-w)/2:(H-h)/2,fps=30,settb=1/30[${outputLabel}]`,
+    ].join(";");
+    return {
+      inputs: [
+        {
+          label: inputLabel,
+          path: layer.path,
+          duration: layer.cutTo
+            ? layer.cutTo - (layer.cutFrom ?? 0)
+            : undefined,
+        },
+      ],
+      filterComplex,
+      outputLabel,
+    };
+  }
+
+  let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
+  if (layer.resizeMode === "cover") {
+    scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+  } else if (layer.resizeMode === "stretch") {
+    scaleFilter = `scale=${width}:${height}`;
+  }
+
+  filters.push(scaleFilter);
+  filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`);
+  filters.push("setsar=1");
+  filters.push("fps=30");
+  filters.push("settb=1/30");
 
   return {
     inputs: [
@@ -170,17 +208,12 @@ export function getImageFilter(
   const outputLabel = `imgout${index}`;
   const filters: string[] = [];
 
-  const zoomDir = layer.zoomDirection ?? "in";
+  const zoomDir =
+    layer.zoomDirection === null ? null : (layer.zoomDirection ?? "in");
   const zoomAmt = layer.zoomAmount ?? 0.1;
   const totalFrames = Math.ceil(duration * 30);
 
-  // ZOOMPAN IMPLEMENTATION NOTES:
-  // 1. MUST upscale to 8000px first - prevents subpixel jitter/shaking during zoom
-  // 2. MUST use trunc() for x/y positioning - avoids fractional pixel rounding errors
-  // 3. For "contain" mode (default): zoompan at 8000x8000, then scale+pad to preserve aspect ratio
-  // 4. For "cover"/"stretch": zoompan directly to output size (fills frame)
-  // 5. "left"/"right" pan horizontally while slightly zoomed in (no zoom animation, just pan)
-  if (zoomDir && zoomDir !== null) {
+  if (zoomDir !== null) {
     let zoomExpr: string;
     let xExpr: string;
     let yExpr: string;
@@ -233,6 +266,23 @@ export function getImageFilter(
     filters.push(`loop=loop=-1:size=1:start=0`);
     filters.push(`fps=30`);
     filters.push(`trim=duration=${duration}`);
+
+    if (layer.resizeMode === "contain-blur") {
+      const blurLabel = `imgblur${index}`;
+      const fgLabel = `imgfg${index}`;
+      const baseFilters = filters.join(",");
+      const filterComplex = [
+        `[${inputLabel}]${baseFilters},split[${blurLabel}][${fgLabel}]`,
+        `[${blurLabel}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=20:5,setsar=1[${blurLabel}bg]`,
+        `[${fgLabel}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[${fgLabel}fg]`,
+        `[${blurLabel}bg][${fgLabel}fg]overlay=(W-w)/2:(H-h)/2,settb=1/30[${outputLabel}]`,
+      ].join(";");
+      return {
+        inputs: [{ label: inputLabel, path: layer.path }],
+        filterComplex,
+        outputLabel,
+      };
+    }
 
     let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
     if (layer.resizeMode === "cover") {

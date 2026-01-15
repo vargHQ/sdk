@@ -899,4 +899,53 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("contain-blur resize mode for video", async () => {
+    const outPath = "output/editly-test-contain-blur-video.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "video", path: VIDEO_1, resizeMode: "contain-blur" },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("contain-blur resize mode for image", async () => {
+    const outPath = "output/editly-test-contain-blur-image.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "image",
+              path: IMAGE_SQUARE,
+              resizeMode: "contain-blur",
+              zoomDirection: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });
