@@ -6,6 +6,7 @@ import type {
   LinearGradientLayer,
   Position,
   RadialGradientLayer,
+  RainbowColorsLayer,
   SubtitleLayer,
   TitleBackgroundLayer,
   TitleLayer,
@@ -528,6 +529,23 @@ export function getTitleBackgroundFilter(
   };
 }
 
+export function getRainbowColorsFilter(
+  layer: RainbowColorsLayer,
+  index: number,
+  width: number,
+  height: number,
+  duration: number,
+): LayerFilter {
+  const outputLabel = `rainbow${index}`;
+  const fps = 30;
+
+  return {
+    inputs: [],
+    filterComplex: `color=c=red:s=${width}x${height}:d=${duration}:r=${fps},hue=h=t*60[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
 export function processLayer(
   layer: Layer,
   index: number,
@@ -562,6 +580,14 @@ export function processLayer(
     case "title-background":
       return getTitleBackgroundFilter(
         layer as TitleBackgroundLayer,
+        index,
+        width,
+        height,
+        duration,
+      );
+    case "rainbow-colors":
+      return getRainbowColorsFilter(
+        layer as RainbowColorsLayer,
         index,
         width,
         height,

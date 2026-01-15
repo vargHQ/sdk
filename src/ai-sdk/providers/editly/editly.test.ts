@@ -507,4 +507,24 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("rainbow-colors layer", async () => {
+    const outPath = "output/editly-test-rainbow.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 640,
+      height: 480,
+      fps: 30,
+      clips: [
+        {
+          duration: 4,
+          layers: [{ type: "rainbow-colors" }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

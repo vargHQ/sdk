@@ -33,7 +33,7 @@ implement features one by one. check with user and show examples before moving o
 | pause | ✅ done | aliased to fill-color |
 | radial-gradient | ✅ done | |
 | linear-gradient | ✅ done | |
-| rainbow-colors | ❌ not implemented | can do with ffmpeg hue filter |
+| rainbow-colors | ✅ done | animated hue rotation |
 | audio | ⚠️ partial | works as audioTracks, not as layer |
 | detached-audio | ❌ not implemented | clip-relative timing |
 | canvas | 🚫 skip | requires dependencies |
@@ -83,7 +83,7 @@ implement features one by one. check with user and show examples before moving o
 4. [x] image-overlay layer ✅
 5. [x] subtitle layer ✅
 6. [x] title-background layer ✅
-7. [ ] rainbow-colors layer
+7. [x] rainbow-colors layer ✅
 8. [ ] news-title layer (if feasible with ffmpeg)
 9. [ ] slide-in-text layer (if feasible with ffmpeg)
 
