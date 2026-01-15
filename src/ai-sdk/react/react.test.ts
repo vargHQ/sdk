@@ -1,20 +1,30 @@
 import { describe, expect, test } from "bun:test";
 import { fal } from "../fal-provider";
-import { Animate, Clip, Image, render, Title, Video } from "./index";
+import { Animate, Clip, Image, Render, render, Title, Video } from "./index";
 
 describe("varg-react elements", () => {
-  test("Video creates correct element structure", () => {
-    const element = Video({
+  test("Render creates correct element structure", () => {
+    const element = Render({
       width: 1280,
       height: 720,
       fps: 30,
       children: [],
     });
 
-    expect(element.type).toBe("video");
+    expect(element.type).toBe("render");
     expect(element.props.width).toBe(1280);
     expect(element.props.height).toBe(720);
     expect(element.props.fps).toBe(30);
+  });
+
+  test("Video creates correct element structure", () => {
+    const element = Video({
+      prompt: "ocean waves",
+      model: fal.videoModel("wan-2.5"),
+    });
+
+    expect(element.type).toBe("video");
+    expect(element.props.prompt).toBe("ocean waves");
   });
 
   test("Clip creates correct element structure", () => {
@@ -72,7 +82,7 @@ describe("varg-react elements", () => {
   });
 
   test("nested composition builds correct tree", () => {
-    const video = Video({
+    const root = Render({
       width: 1080,
       height: 1920,
       children: [
@@ -99,28 +109,28 @@ describe("varg-react elements", () => {
       ],
     });
 
-    expect(video.type).toBe("video");
-    expect(video.children.length).toBe(2);
+    expect(root.type).toBe("render");
+    expect(root.children.length).toBe(2);
 
-    const clip1 = video.children[0] as ReturnType<typeof Clip>;
+    const clip1 = root.children[0] as ReturnType<typeof Clip>;
     expect(clip1.type).toBe("clip");
     expect(clip1.children.length).toBe(2);
 
-    const clip2 = video.children[1] as ReturnType<typeof Clip>;
+    const clip2 = root.children[1] as ReturnType<typeof Clip>;
     expect(clip2.type).toBe("clip");
     expect(clip2.props.transition).toEqual({ name: "fade", duration: 0.3 });
   });
 });
 
 describe("varg-react render", () => {
-  test("render throws on non-video root", async () => {
+  test("render throws on non-render root", async () => {
     const clip = Clip({ duration: 5, children: [] });
 
-    expect(render(clip)).rejects.toThrow("Root element must be <Video>");
+    expect(render(clip)).rejects.toThrow("Root element must be <Render>");
   });
 
   test("render requires model prop for image with prompt", async () => {
-    const video = Video({
+    const root = Render({
       width: 720,
       height: 720,
       children: [
@@ -131,6 +141,6 @@ describe("varg-react render", () => {
       ],
     });
 
-    expect(render(video)).rejects.toThrow("model");
+    expect(render(root)).rejects.toThrow("model");
   });
 });
