@@ -9,6 +9,7 @@ import type { VideoModelV3 } from "../video-model";
 export type VargElementType =
   | "render"
   | "clip"
+  | "overlay"
   | "image"
   | "video"
   | "animate"
@@ -48,6 +49,14 @@ export interface PositionProps {
   height?: number;
 }
 
+export interface VolumeProps {
+  volume?: number;
+}
+
+export interface AudioProps extends VolumeProps {
+  keepAudio?: boolean;
+}
+
 // Root container - sets dimensions, fps, contains clips
 export interface RenderProps extends BaseProps {
   width?: number;
@@ -60,6 +69,10 @@ export interface RenderProps extends BaseProps {
 export interface ClipProps extends BaseProps {
   duration?: number | "auto";
   transition?: TransitionOptions;
+  children?: VargNode;
+}
+
+export interface OverlayProps extends BaseProps, PositionProps, AudioProps {
   children?: VargNode;
 }
 
@@ -76,15 +89,13 @@ export interface ImageProps extends BaseProps, PositionProps {
 }
 
 // Video layer - t2v generation or existing file
-export interface VideoProps extends BaseProps, PositionProps {
+export interface VideoProps extends BaseProps, PositionProps, AudioProps {
   prompt?: string;
   src?: string;
   model?: VideoModelV3;
   resize?: ResizeMode;
   cutFrom?: number;
   cutTo?: number;
-  volume?: number;
-  keepAudio?: boolean;
 }
 
 // Image-to-video animation
@@ -96,11 +107,10 @@ export interface AnimateProps extends BaseProps, PositionProps {
   duration?: number;
 }
 
-export interface SpeechProps extends BaseProps {
+export interface SpeechProps extends BaseProps, VolumeProps {
   voice?: string;
   model?: SpeechModelV3;
   id?: string;
-  volume?: number;
   children?: string;
 }
 
@@ -130,12 +140,11 @@ export interface SubtitleProps extends BaseProps {
   children?: string;
 }
 
-export interface MusicProps extends BaseProps {
+export interface MusicProps extends BaseProps, VolumeProps {
   prompt?: string;
   src?: string;
   loop?: boolean;
   ducking?: boolean;
-  volume?: number;
 }
 
 export interface CaptionsProps extends BaseProps {
@@ -179,6 +188,7 @@ export interface RenderOptions {
 export interface ElementPropsMap {
   render: RenderProps;
   clip: ClipProps;
+  overlay: OverlayProps;
   image: ImageProps;
   video: VideoProps;
   animate: AnimateProps;
