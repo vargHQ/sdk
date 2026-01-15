@@ -986,4 +986,30 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("audio crossfade during transitions", async () => {
+    const outPath = "output/editly-test-audio-crossfade.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      keepSourceAudio: true,
+      clips: [
+        {
+          duration: 4,
+          layers: [{ type: "video", path: VIDEO_1 }],
+          transition: { name: "fade", duration: 1 },
+        },
+        {
+          duration: 4,
+          layers: [{ type: "video", path: "output/duet-mixed.mp4" }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

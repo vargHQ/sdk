@@ -381,6 +381,10 @@ interface VideoSourceAudio {
   startTime: number;
   duration: number;
   cutFrom: number;
+  fadeOutDuration?: number;
+  fadeOutCurve?: string;
+  fadeInDuration?: number;
+  fadeInCurve?: string;
 }
 
 function buildAudioFilter(
@@ -406,12 +410,20 @@ function buildAudioFilter(
 
   if (keepSourceAudio && videoSourceAudio && videoSourceAudio.length > 0) {
     for (let i = 0; i < videoSourceAudio.length; i++) {
-      const { inputIndex, startTime, duration, cutFrom } = videoSourceAudio[i]!;
+      const src = videoSourceAudio[i]!;
+      const { inputIndex, startTime, duration, cutFrom } = src;
       const label = `vsrc${i}`;
       let audioFilter = `[${inputIndex}:a]`;
       audioFilter += `atrim=${cutFrom}:${cutFrom + duration},asetpts=PTS-STARTPTS,`;
       if (clipsAudioVolume !== undefined) {
         audioFilter += `volume=${clipsAudioVolume},`;
+      }
+      if (src.fadeInDuration) {
+        audioFilter += `afade=t=in:st=0:d=${src.fadeInDuration}:curve=${src.fadeInCurve ?? "tri"},`;
+      }
+      if (src.fadeOutDuration) {
+        const fadeOutStart = duration - src.fadeOutDuration;
+        audioFilter += `afade=t=out:st=${fadeOutStart}:d=${src.fadeOutDuration}:curve=${src.fadeOutCurve ?? "tri"},`;
       }
       audioFilter += `adelay=${Math.round(startTime * 1000)}|${Math.round(startTime * 1000)}`;
       audioFilter += `[${label}]`;
@@ -581,11 +593,21 @@ export async function editly(config: EditlyConfig): Promise<void> {
     clipOutputLabels.push(result.outputLabel);
 
     for (const { inputIndex, cutFrom } of result.videoSources) {
+      const prevClip = i > 0 ? clips[i - 1] : null;
+      const fadeInDuration = prevClip ? prevClip.transition.duration : 0;
+      const fadeInCurve = prevClip?.transition.audioInCurve ?? "tri";
+      const fadeOutDuration = clip.transition.duration;
+      const fadeOutCurve = clip.transition.audioOutCurve ?? "tri";
+
       videoSourceAudio.push({
         inputIndex,
         startTime: currentClipTime,
         duration: clip.duration,
         cutFrom,
+        fadeInDuration: fadeInDuration > 0 ? fadeInDuration : undefined,
+        fadeInCurve,
+        fadeOutDuration: fadeOutDuration > 0 ? fadeOutDuration : undefined,
+        fadeOutCurve,
       });
     }
 
