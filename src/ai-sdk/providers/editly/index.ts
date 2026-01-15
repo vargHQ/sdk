@@ -63,6 +63,18 @@ async function getFirstVideoInfo(clips: Clip[]): Promise<{
   return {};
 }
 
+function applyLayerDefaults(
+  layer: Layer,
+  defaults: EditlyConfig["defaults"],
+): Layer {
+  if (!defaults) return layer;
+
+  const layerDefaults = defaults.layer ?? {};
+  const typeDefaults = defaults.layerType?.[layer.type] ?? {};
+
+  return { ...layerDefaults, ...typeDefaults, ...layer } as Layer;
+}
+
 async function processClips(
   clips: Clip[],
   defaults: EditlyConfig["defaults"],
@@ -72,9 +84,12 @@ async function processClips(
   const defaultTransition = defaults?.transition ?? DEFAULT_TRANSITION;
 
   for (const clip of clips) {
+    const layers = clip.layers.map((layer) =>
+      applyLayerDefaults(layer, defaults),
+    );
     let duration = clip.duration ?? defaultDuration;
 
-    for (const layer of clip.layers) {
+    for (const layer of layers) {
       if (layer.type === "video" && !clip.duration) {
         const videoLayer = layer as VideoLayer;
         const videoDuration = await getVideoDuration(videoLayer.path);
@@ -86,7 +101,7 @@ async function processClips(
     }
 
     processed.push({
-      layers: clip.layers,
+      layers,
       duration,
       transition:
         clip.transition === null

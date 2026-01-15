@@ -948,4 +948,42 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("defaults.layer and defaults.layerType", async () => {
+    const outPath = "output/editly-test-defaults.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      defaults: {
+        layer: {
+          fontPath: "/System/Library/Fonts/Helvetica.ttc",
+        },
+        layerType: {
+          title: {
+            textColor: "yellow",
+          },
+          subtitle: {
+            textColor: "cyan",
+            backgroundColor: "black@0.9",
+          },
+        },
+      },
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            { type: "title", text: "Yellow from defaults" },
+            { type: "subtitle", text: "Cyan from defaults" },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });
