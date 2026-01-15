@@ -463,4 +463,48 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("title-background layer", async () => {
+    const outPath = "output/editly-test-title-background.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "title-background",
+              text: "Welcome",
+              textColor: "white",
+              background: {
+                type: "radial-gradient",
+                colors: ["#667eea", "#764ba2"],
+              },
+            },
+          ],
+        },
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "title-background",
+              text: "Goodbye",
+              textColor: "#ffff00",
+              background: {
+                type: "linear-gradient",
+                colors: ["#11998e", "#38ef7d"],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

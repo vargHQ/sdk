@@ -26,7 +26,7 @@ implement features one by one. check with user and show examples before moving o
 | image-overlay | ✅ done | position presets, PositionObject, Ken Burns zoom/pan |
 | title | ⚠️ partial | missing: fontPath, fontFamily, ken burns |
 | subtitle | ✅ done | centered bottom, background box, custom colors |
-| title-background | ❌ not implemented | need to implement |
+| title-background | ✅ done | title with gradient/color background |
 | news-title | ❌ not implemented | need to implement |
 | slide-in-text | ❌ not implemented | need to implement |
 | fill-color | ✅ done | |
@@ -82,7 +82,7 @@ implement features one by one. check with user and show examples before moving o
 ### phase 2: missing layer types
 4. [x] image-overlay layer ✅
 5. [x] subtitle layer ✅
-6. [ ] title-background layer
+6. [x] title-background layer ✅
 7. [ ] rainbow-colors layer
 8. [ ] news-title layer (if feasible with ffmpeg)
 9. [ ] slide-in-text layer (if feasible with ffmpeg)

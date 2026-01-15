@@ -7,6 +7,7 @@ import type {
   Position,
   RadialGradientLayer,
   SubtitleLayer,
+  TitleBackgroundLayer,
   TitleLayer,
   VideoLayer,
 } from "./types";
@@ -483,6 +484,50 @@ export function getSubtitleFilter(
   return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=(w-text_w)/2:y=h*0.85-text_h/2:box=1:boxcolor=${bgColor}:boxborderw=${boxPadding}${fontFile}${fontFamily}`;
 }
 
+export function getTitleBackgroundFilter(
+  layer: TitleBackgroundLayer,
+  index: number,
+  width: number,
+  height: number,
+  duration: number,
+): LayerFilter {
+  const bg = layer.background ?? {
+    type: "fill-color" as const,
+    color: "#000000",
+  };
+  let bgFilter: LayerFilter;
+
+  if (bg.type === "radial-gradient" || bg.type === "linear-gradient") {
+    bgFilter = getGradientFilter(bg, index, width, height, duration);
+  } else {
+    bgFilter = getFillColorFilter(
+      bg as FillColorLayer,
+      index,
+      width,
+      height,
+      duration,
+    );
+  }
+
+  const text = layer.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+  const textColor = layer.textColor ?? "white";
+  const fontSize = Math.round(Math.min(width, height) * 0.1);
+
+  const fontFile = layer.fontPath
+    ? `:fontfile='${layer.fontPath.replace(/:/g, "\\:")}'`
+    : "";
+  const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+
+  const outputLabel = `titlebg${index}`;
+  const drawText = `drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${textColor}:x=(w-text_w)/2:y=(h-text_h)/2${fontFile}${fontFamily}`;
+
+  return {
+    inputs: bgFilter.inputs,
+    filterComplex: `${bgFilter.filterComplex};[${bgFilter.outputLabel}]${drawText}[${outputLabel}]`,
+    outputLabel,
+  };
+}
+
 export function processLayer(
   layer: Layer,
   index: number,
@@ -509,6 +554,14 @@ export function processLayer(
     case "linear-gradient":
       return getGradientFilter(
         layer as RadialGradientLayer | LinearGradientLayer,
+        index,
+        width,
+        height,
+        duration,
+      );
+    case "title-background":
+      return getTitleBackgroundFilter(
+        layer as TitleBackgroundLayer,
         index,
         width,
         height,
