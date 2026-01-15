@@ -354,6 +354,7 @@ function buildAudioFilter(
   }[],
   totalDuration: number,
   audioFilePath?: string,
+  loopAudio?: boolean,
   keepSourceAudio?: boolean,
   outputVolume?: number | string,
 ): { inputs: string[]; filter: string; outputLabel: string } | null {
@@ -365,7 +366,13 @@ function buildAudioFilter(
   if (audioFilePath) {
     audioInputs.push(audioFilePath);
     const label = `abg${inputIdx}`;
-    filterParts.push(`[${inputIdx}:a]anull[${label}]`);
+    if (loopAudio) {
+      filterParts.push(
+        `[${inputIdx}:a]aloop=loop=-1:size=2e9,atrim=0:${totalDuration}[${label}]`,
+      );
+    } else {
+      filterParts.push(`[${inputIdx}:a]anull[${label}]`);
+    }
     mixLabels.push(label);
     inputIdx++;
   }
@@ -428,6 +435,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
     defaults,
     audioFilePath,
     audioTracks = [],
+    loopAudio,
     keepSourceAudio,
     outputVolume,
     customOutputArgs,
@@ -616,6 +624,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
     clipAudioLayers,
     totalDuration,
     audioFilePath,
+    loopAudio,
     keepSourceAudio,
     outputVolume,
   );
