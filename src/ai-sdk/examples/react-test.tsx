@@ -1,11 +1,15 @@
+import { elevenlabs } from "../elevenlabs-provider";
 import { fal } from "../fal-provider";
-import { Clip, Image, Render, render, Title } from "../react";
+import { Clip, Image, Render, render, Speech, Title } from "../react";
 
 async function main() {
   console.log("rendering varg-react video...\n");
 
   const video = (
     <Render width={720} height={720} fps={30}>
+      <Speech model={elevenlabs.speechModel("turbo")} voice="adam">
+        I was so hungry today. So I ate a whole pizza.
+      </Speech>
       <Clip duration={3}>
         <Image
           prompt="fat tiger lying on couch, cute, pixar style"
