@@ -32,11 +32,17 @@ export function getVideoFilter(
   index: number,
   width: number,
   height: number,
+  clipDuration: number,
   isOverlay = false,
 ): LayerFilter {
   const inputLabel = `${index}:v`;
   const outputLabel = `vout${index}`;
   const filters: string[] = [];
+
+  const start = layer.cutFrom ?? 0;
+  const end = layer.cutTo ?? start + clipDuration;
+  filters.push(`trim=start=${start}:end=${end}`);
+  filters.push("setpts=PTS-STARTPTS");
 
   const layerWidth = layer.width ? Math.round(layer.width * width) : width;
   const layerHeight = layer.height ? Math.round(layer.height * height) : height;
@@ -612,7 +618,7 @@ export function processLayer(
 ): LayerFilter | null {
   switch (layer.type) {
     case "video":
-      return getVideoFilter(layer, index, width, height, isOverlay);
+      return getVideoFilter(layer, index, width, height, duration, isOverlay);
     case "image":
       return getImageFilter(layer, index, width, height, duration);
     case "fill-color":

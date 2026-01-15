@@ -709,4 +709,83 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("keepSourceAudio preserves original video audio", async () => {
+    const outPath = "output/editly-test-keep-source-audio.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      keepSourceAudio: true,
+      clips: [
+        {
+          layers: [
+            { type: "video", path: VIDEO_TALKING },
+            { type: "subtitle", text: "Original audio should play" },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("keepSourceAudio with multiple clips and transitions", async () => {
+    const outPath = "output/editly-test-keep-source-audio-multi.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      keepSourceAudio: true,
+      clips: [
+        {
+          duration: 3,
+          layers: [{ type: "video", path: VIDEO_TALKING }],
+          transition: { name: "fade", duration: 0.5 },
+        },
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            { type: "title", text: "No audio clip" },
+          ],
+          transition: { name: "fade", duration: 0.5 },
+        },
+        {
+          duration: 3,
+          layers: [{ type: "video", path: VIDEO_TALKING }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
+
+  test("keepSourceAudio with cutFrom stays in sync", async () => {
+    const outPath = "output/editly-test-keep-source-audio-cutfrom.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      keepSourceAudio: true,
+      clips: [
+        {
+          layers: [
+            { type: "video", path: VIDEO_TALKING, cutFrom: 2, cutTo: 6 },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+  });
 });

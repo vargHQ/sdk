@@ -138,9 +138,11 @@ function buildBaseClipFilter(
   inputs: string[];
   outputLabel: string;
   nextInputOffset: number;
+  videoSources: { inputIndex: number; cutFrom: number }[];
 } {
   const filters: string[] = [];
   const inputs: string[] = [];
+  const videoSources: { inputIndex: number; cutFrom: number }[] = [];
   let baseLabel = "";
   let inputIdx = inputOffset;
 
@@ -169,7 +171,16 @@ function buildBaseClipFilter(
       }
       filters.push(layerFilter.filterComplex);
       baseLabel = layerFilter.outputLabel;
-      if (hasFileInput) inputIdx++;
+      if (hasFileInput) {
+        if (layer.type === "video" && !isVideoOverlayLayer(layer)) {
+          const videoLayer = layer as VideoLayer;
+          videoSources.push({
+            inputIndex: inputIdx,
+            cutFrom: videoLayer.cutFrom ?? 0,
+          });
+        }
+        inputIdx++;
+      }
     }
 
     if (layer.type === "title") {
@@ -227,6 +238,7 @@ function buildBaseClipFilter(
     inputs,
     outputLabel: baseLabel,
     nextInputOffset: inputIdx,
+    videoSources,
   };
 }
 
@@ -345,6 +357,13 @@ function buildTransitionFilter(
   return `[${fromLabel}][${toLabel}]xfade=transition=${transitionName}:duration=${transitionDuration}:offset=${offset}[${outputLabel}]`;
 }
 
+interface VideoSourceAudio {
+  inputIndex: number;
+  startTime: number;
+  duration: number;
+  cutFrom: number;
+}
+
 function buildAudioFilter(
   videoInputCount: number,
   audioTracks: AudioTrack[],
@@ -357,11 +376,25 @@ function buildAudioFilter(
   loopAudio?: boolean,
   keepSourceAudio?: boolean,
   outputVolume?: number | string,
+  videoSourceAudio?: VideoSourceAudio[],
 ): { inputs: string[]; filter: string; outputLabel: string } | null {
   const audioInputs: string[] = [];
   const filterParts: string[] = [];
   const mixLabels: string[] = [];
   let inputIdx = videoInputCount;
+
+  if (keepSourceAudio && videoSourceAudio && videoSourceAudio.length > 0) {
+    for (let i = 0; i < videoSourceAudio.length; i++) {
+      const { inputIndex, startTime, duration, cutFrom } = videoSourceAudio[i]!;
+      const label = `vsrc${i}`;
+      let audioFilter = `[${inputIndex}:a]`;
+      audioFilter += `atrim=${cutFrom}:${cutFrom + duration},asetpts=PTS-STARTPTS,`;
+      audioFilter += `adelay=${Math.round(startTime * 1000)}|${Math.round(startTime * 1000)}`;
+      audioFilter += `[${label}]`;
+      filterParts.push(audioFilter);
+      mixLabels.push(label);
+    }
+  }
 
   if (audioFilePath) {
     audioInputs.push(audioFilePath);
@@ -486,7 +519,9 @@ export async function editly(config: EditlyConfig): Promise<void> {
   const allFilters: string[] = [];
   const allInputs: string[] = [...overlayInputs];
   const clipOutputLabels: string[] = [];
+  const videoSourceAudio: VideoSourceAudio[] = [];
   let inputOffset = overlayInputs.length;
+  let currentClipTime = 0;
 
   for (const [i, clip] of clips.entries()) {
     const result = buildBaseClipFilter(clip, i, width, height, inputOffset);
@@ -494,7 +529,21 @@ export async function editly(config: EditlyConfig): Promise<void> {
     allFilters.push(...result.filters);
     allInputs.push(...result.inputs);
     clipOutputLabels.push(result.outputLabel);
+
+    for (const { inputIndex, cutFrom } of result.videoSources) {
+      videoSourceAudio.push({
+        inputIndex,
+        startTime: currentClipTime,
+        duration: clip.duration,
+        cutFrom,
+      });
+    }
+
     inputOffset = result.nextInputOffset;
+    currentClipTime += clip.duration;
+    if (i < clips.length - 1) {
+      currentClipTime -= clip.transition.duration;
+    }
   }
 
   let finalVideoLabel = clipOutputLabels[0] ?? "v0";
@@ -627,6 +676,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
     loopAudio,
     keepSourceAudio,
     outputVolume,
+    videoSourceAudio,
   );
 
   if (audioFilter) {
