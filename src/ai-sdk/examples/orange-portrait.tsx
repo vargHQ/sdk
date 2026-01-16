@@ -10,7 +10,7 @@ export default (
     <Clip duration={5}>
       <Video
         prompt={{
-          text: "Woman with short dark bob slowly steps backward, camera reveals her full body. Dramatic orange rim light glows behind her, casting warm edge highlights on her hair and shoulders. Deep black void background. She maintains confident eye contact, slight knowing smile. Cinematic slow reveal. Camera locked off, no movement.",
+          text: "She steps back, camera reveals more of her body until she appears fully in frame. Studio lighting, authentic confident slightly playful atmosphere. Camera static. She poses naturally, first looking straight at camera, then turning slightly to the side to show her figure in profile. Intense orange lighting.",
           images: [
             Image({
               prompt: {
