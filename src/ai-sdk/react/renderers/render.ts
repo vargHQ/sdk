@@ -23,6 +23,7 @@ import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderSpeech } from "./speech";
+import { resolvePath } from "./utils";
 import { renderVideo } from "./video";
 
 interface RenderedOverlay {
@@ -78,14 +79,13 @@ export async function renderRoot(
       const musicProps = childElement.props as MusicProps;
       if (musicProps.src) {
         const cutFrom = musicProps.cutFrom;
-        // cutTo takes priority, then duration (relative to cutFrom)
         const cutTo =
           musicProps.cutTo ??
           (musicProps.duration !== undefined
             ? (cutFrom ?? 0) + musicProps.duration
             : undefined);
         audioTracks.push({
-          path: musicProps.src,
+          path: resolvePath(musicProps.src),
           mixVolume: musicProps.volume ?? 1,
           cutFrom,
           cutTo,
