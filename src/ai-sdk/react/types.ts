@@ -57,6 +57,10 @@ export interface AudioProps extends VolumeProps {
   keepAudio?: boolean;
 }
 
+export type TrimProps =
+  | { cutFrom?: number; cutTo?: number; duration?: never }
+  | { cutFrom?: number; cutTo?: never; duration?: number };
+
 // Root container - sets dimensions, fps, contains clips
 export interface RenderProps extends BaseProps {
   width?: number;
@@ -100,14 +104,15 @@ export type VideoPrompt =
       video?: Uint8Array | string;
     };
 
-export interface VideoProps extends BaseProps, PositionProps, AudioProps {
-  prompt?: VideoPrompt;
-  src?: string;
-  model?: VideoModelV3;
-  resize?: ResizeMode;
-  cutFrom?: number;
-  cutTo?: number;
-}
+export type VideoProps = BaseProps &
+  PositionProps &
+  AudioProps &
+  TrimProps & {
+    prompt?: VideoPrompt;
+    src?: string;
+    model?: VideoModelV3;
+    resize?: ResizeMode;
+  };
 
 // Image-to-video animation
 export interface AnimateProps extends BaseProps, PositionProps {
@@ -151,12 +156,14 @@ export interface SubtitleProps extends BaseProps {
   children?: string;
 }
 
-export interface MusicProps extends BaseProps, VolumeProps {
-  prompt?: string;
-  src?: string;
-  loop?: boolean;
-  ducking?: boolean;
-}
+export type MusicProps = BaseProps &
+  VolumeProps &
+  TrimProps & {
+    prompt?: string;
+    src?: string;
+    loop?: boolean;
+    ducking?: boolean;
+  };
 
 export interface CaptionsProps extends BaseProps {
   src?: string | VargElement<"speech">;
