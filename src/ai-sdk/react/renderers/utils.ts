@@ -1,4 +1,19 @@
+import { resolve } from "node:path";
 import type { VargElement, VargNode } from "../types";
+
+export function resolvePath(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  return resolve(process.cwd(), path);
+}
+
+export function toFileUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  return `file://${resolvePath(path)}`;
+}
 
 type CacheKeyPart = string | number | boolean | null | undefined;
 
