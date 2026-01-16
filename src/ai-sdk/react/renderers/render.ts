@@ -77,9 +77,18 @@ export async function renderRoot(
     } else if (childElement.type === "music") {
       const musicProps = childElement.props as MusicProps;
       if (musicProps.src) {
+        const cutFrom = musicProps.cutFrom;
+        // cutTo takes priority, then duration (relative to cutFrom)
+        const cutTo =
+          musicProps.cutTo ??
+          (musicProps.duration !== undefined
+            ? (cutFrom ?? 0) + musicProps.duration
+            : undefined);
         audioTracks.push({
           path: musicProps.src,
           mixVolume: musicProps.volume ?? 1,
+          cutFrom,
+          cutTo,
         });
       }
     }
