@@ -1,9 +1,19 @@
 import type { VargElement, VargNode } from "../types";
 
-export function computeCacheKey(
-  element: VargElement,
-): (string | number | boolean | null | undefined)[] {
-  const key: (string | number | boolean | null | undefined)[] = [element.type];
+type CacheKeyPart = string | number | boolean | null | undefined;
+
+function isVargElement(v: unknown): v is VargElement {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "type" in v &&
+    "props" in v &&
+    "children" in v
+  );
+}
+
+export function computeCacheKey(element: VargElement): CacheKeyPart[] {
+  const key: CacheKeyPart[] = [element.type];
 
   for (const [k, v] of Object.entries(element.props)) {
     if (k === "model" || k === "children") continue;
@@ -15,6 +25,10 @@ export function computeCacheKey(
       key.push(k, v);
     } else if (v === null || v === undefined) {
       key.push(k, v);
+    } else if (isVargElement(v)) {
+      key.push(k, ...computeCacheKey(v));
+    } else if (typeof v === "object") {
+      key.push(k, JSON.stringify(v));
     }
   }
 
@@ -23,6 +37,8 @@ export function computeCacheKey(
       key.push("text", child);
     } else if (typeof child === "number") {
       key.push("num", child);
+    } else if (isVargElement(child)) {
+      key.push("child", ...computeCacheKey(child));
     }
   }
 
