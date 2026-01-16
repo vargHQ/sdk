@@ -14,7 +14,7 @@ export default (
           images: [
             Image({
               prompt: {
-                text: `Using the attached reference images, generate a photorealistic close-up editorial portrait of the exact same character — maintain identical face, hairstyle, and proportions from Image 1.
+                text: `Using the attached reference images, generate a photorealistic Three-quarter editorial portrait of the exact same character — maintain identical face, hairstyle, and proportions from Image 1.
 
                 Framing: Head and shoulders, cropped at upper chest. Direct eye contact with camera.
 
