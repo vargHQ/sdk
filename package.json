@@ -10,7 +10,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "type-check": "tsc --noEmit",
-    "prepare": "husky install",
+    "prepare": "husky || true",
     "size": "size-limit"
   },
   "lint-staged": {
