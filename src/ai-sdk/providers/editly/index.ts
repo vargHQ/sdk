@@ -154,11 +154,19 @@ function buildBaseClipFilter(
   inputs: string[];
   outputLabel: string;
   nextInputOffset: number;
-  videoSources: { inputIndex: number; cutFrom: number }[];
+  videoSources: {
+    inputIndex: number;
+    cutFrom: number;
+    mixVolume?: number | string;
+  }[];
 } {
   const filters: string[] = [];
   const inputs: string[] = [];
-  const videoSources: { inputIndex: number; cutFrom: number }[] = [];
+  const videoSources: {
+    inputIndex: number;
+    cutFrom: number;
+    mixVolume?: number | string;
+  }[] = [];
   let baseLabel = "";
   let inputIdx = inputOffset;
 
@@ -193,6 +201,7 @@ function buildBaseClipFilter(
           videoSources.push({
             inputIndex: inputIdx,
             cutFrom: videoLayer.cutFrom ?? 0,
+            mixVolume: videoLayer.mixVolume,
           });
         }
         inputIdx++;
@@ -382,6 +391,7 @@ interface VideoSourceAudio {
   startTime: number;
   duration: number;
   cutFrom: number;
+  mixVolume?: number | string;
   fadeOutDuration?: number;
   fadeOutCurve?: string;
   fadeInDuration?: number;
@@ -409,15 +419,22 @@ function buildAudioFilter(
   const mixLabels: string[] = [];
   let inputIdx = videoInputCount;
 
-  if (keepSourceAudio && videoSourceAudio && videoSourceAudio.length > 0) {
+  if (videoSourceAudio && videoSourceAudio.length > 0) {
     for (let i = 0; i < videoSourceAudio.length; i++) {
       const src = videoSourceAudio[i]!;
-      const { inputIndex, startTime, duration, cutFrom } = src;
+      const { inputIndex, startTime, duration, cutFrom, mixVolume } = src;
+
+      const shouldInclude =
+        keepSourceAudio || (mixVolume !== undefined && mixVolume !== 0);
+      if (!shouldInclude) continue;
+
       const label = `vsrc${i}`;
       let audioFilter = `[${inputIndex}:a]`;
       audioFilter += `atrim=${cutFrom}:${cutFrom + duration},asetpts=PTS-STARTPTS,`;
-      if (clipsAudioVolume !== undefined) {
-        audioFilter += `volume=${clipsAudioVolume},`;
+
+      const volume = mixVolume ?? clipsAudioVolume;
+      if (volume !== undefined) {
+        audioFilter += `volume=${volume},`;
       }
       if (src.fadeInDuration) {
         audioFilter += `afade=t=in:st=0:d=${src.fadeInDuration}:curve=${src.fadeInCurve ?? "tri"},`;
@@ -593,7 +610,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
     allInputs.push(...result.inputs);
     clipOutputLabels.push(result.outputLabel);
 
-    for (const { inputIndex, cutFrom } of result.videoSources) {
+    for (const { inputIndex, cutFrom, mixVolume } of result.videoSources) {
       const prevClip = i > 0 ? clips[i - 1] : null;
       const fadeInDuration = prevClip ? prevClip.transition.duration : 0;
       const fadeInCurve = prevClip?.transition.audioInCurve ?? "tri";
@@ -605,6 +622,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
         startTime: currentClipTime,
         duration: clip.duration,
         cutFrom,
+        mixVolume,
         fadeInDuration: fadeInDuration > 0 ? fadeInDuration : undefined,
         fadeInCurve,
         fadeOutDuration: fadeOutDuration > 0 ? fadeOutDuration : undefined,
