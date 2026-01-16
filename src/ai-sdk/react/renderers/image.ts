@@ -1,8 +1,44 @@
 import type { generateImage } from "ai";
 import { File } from "../../file";
-import type { ImageProps, VargElement } from "../types";
+import type {
+  ImageInput,
+  ImagePrompt,
+  ImageProps,
+  VargElement,
+} from "../types";
 import type { RenderContext } from "./context";
 import { computeCacheKey } from "./utils";
+
+async function resolveImageInput(
+  input: ImageInput,
+  ctx: RenderContext,
+): Promise<Uint8Array> {
+  if (input instanceof Uint8Array) {
+    return input;
+  }
+  if (typeof input === "string") {
+    const response = await fetch(input);
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  const path = await renderImage(input, ctx);
+  const response = await fetch(
+    path.startsWith("http") ? path : `file://${path}`,
+  );
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function resolvePrompt(
+  prompt: ImagePrompt,
+  ctx: RenderContext,
+): Promise<string | { text?: string; images: Uint8Array[] }> {
+  if (typeof prompt === "string") {
+    return prompt;
+  }
+  const resolvedImages = await Promise.all(
+    prompt.images.map((img) => resolveImageInput(img, ctx)),
+  );
+  return { text: prompt.text, images: resolvedImages };
+}
 
 export async function renderImage(
   element: VargElement<"image">,
@@ -24,10 +60,11 @@ export async function renderImage(
   }
 
   const cacheKey = computeCacheKey(element);
+  const resolvedPrompt = await resolvePrompt(props.prompt, ctx);
 
   const { images } = await ctx.generateImage({
     model,
-    prompt: props.prompt,
+    prompt: resolvedPrompt,
     aspectRatio: props.aspectRatio,
     n: 1,
     cacheKey,

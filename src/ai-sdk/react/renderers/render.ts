@@ -117,12 +117,19 @@ export async function renderRoot(
     }
   }
 
+  const renderedClips = await Promise.all(
+    clipElements.map((clipElement) => renderClip(clipElement, ctx)),
+  );
+
   const clips: Clip[] = [];
   let currentTime = 0;
 
   for (let i = 0; i < clipElements.length; i++) {
-    const clipElement = clipElements[i]!;
-    const clip = await renderClip(clipElement, ctx);
+    const clipElement = clipElements[i];
+    const clip = renderedClips[i];
+    if (!clipElement || !clip) {
+      throw new Error(`Missing clip data at index ${i}`);
+    }
     const clipProps = clipElement.props as ClipProps;
     const clipDuration =
       typeof clipProps.duration === "number" ? clipProps.duration : 3;
