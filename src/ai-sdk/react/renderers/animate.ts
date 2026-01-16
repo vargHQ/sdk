@@ -33,6 +33,8 @@ export async function renderAnimate(
   const imageData = await Bun.file(imagePath).arrayBuffer();
   const cacheKey = computeCacheKey(element);
 
+  console.log("[animate] imagePath:", imagePath, "size:", imageData.byteLength);
+
   const { video } = await ctx.generateVideo({
     model,
     prompt: {
