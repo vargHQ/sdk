@@ -20,6 +20,7 @@ import { renderAnimate } from "./animate";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderSpeech } from "./speech";
+import { renderSubtitle } from "./subtitle";
 import { renderTitle } from "./title";
 import { renderVideo } from "./video";
 
@@ -117,6 +118,14 @@ async function renderClipLayers(
         pending.push({
           type: "sync",
           layer: renderTitle(element as VargElement<"title">),
+        });
+        break;
+      }
+
+      case "subtitle": {
+        pending.push({
+          type: "sync",
+          layer: renderSubtitle(element as VargElement<"subtitle">),
         });
         break;
       }
