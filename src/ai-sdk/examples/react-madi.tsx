@@ -28,7 +28,10 @@ async function main() {
 
   const video = (
     <Render width={1080} height={1920}>
-      <Music src="https://s3.varg.ai/fellowers/madi/voice_samples/4_sarah_test.mp3" />
+      <Music
+        src="https://s3.varg.ai/fellowers/madi/voice_samples/4_sarah_test.mp3"
+        duration={4 * 2}
+      />
 
       {SCENES.map((scene, i) => (
         <Clip key={i} duration={2} transition={{ name: "fade", duration: 0.3 }}>
