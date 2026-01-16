@@ -76,8 +76,11 @@ export interface OverlayProps extends BaseProps, PositionProps, AudioProps {
   children?: VargNode;
 }
 
+export type ImageInput = Uint8Array | string | VargElement<"image">;
+export type ImagePrompt = string | { text?: string; images: ImageInput[] };
+
 export interface ImageProps extends BaseProps, PositionProps {
-  prompt?: string;
+  prompt?: ImagePrompt;
   src?: string;
   model?: ImageModelV3;
   aspectRatio?: `${number}:${number}`;
@@ -88,9 +91,17 @@ export interface ImageProps extends BaseProps, PositionProps {
   removeBackground?: boolean;
 }
 
-// Video layer - t2v generation or existing file
+export type VideoPrompt =
+  | string
+  | {
+      text?: string;
+      images?: ImageInput[];
+      audio?: Uint8Array | string;
+      video?: Uint8Array | string;
+    };
+
 export interface VideoProps extends BaseProps, PositionProps, AudioProps {
-  prompt?: string;
+  prompt?: VideoPrompt;
   src?: string;
   model?: VideoModelV3;
   resize?: ResizeMode;
