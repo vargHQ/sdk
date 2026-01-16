@@ -3,7 +3,7 @@ import type { generateVideo } from "../../generate-video";
 import type { AnimateProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
-import { computeCacheKey } from "./utils";
+import { computeCacheKey, resolvePath } from "./utils";
 
 export async function renderAnimate(
   element: VargElement<"animate">,
@@ -30,7 +30,7 @@ export async function renderAnimate(
     throw new Error("Animate element requires 'model' prop");
   }
 
-  const imageData = await Bun.file(imagePath).arrayBuffer();
+  const imageData = await Bun.file(resolvePath(imagePath)).arrayBuffer();
   const cacheKey = computeCacheKey(element);
 
   console.log("[animate] imagePath:", imagePath, "size:", imageData.byteLength);

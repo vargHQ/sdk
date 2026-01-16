@@ -7,7 +7,7 @@ import type {
   VargElement,
 } from "../types";
 import type { RenderContext } from "./context";
-import { computeCacheKey } from "./utils";
+import { computeCacheKey, toFileUrl } from "./utils";
 
 async function resolveImageInput(
   input: ImageInput,
@@ -17,13 +17,11 @@ async function resolveImageInput(
     return input;
   }
   if (typeof input === "string") {
-    const response = await fetch(input);
+    const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
   }
   const path = await renderImage(input, ctx);
-  const response = await fetch(
-    path.startsWith("http") ? path : `file://${path}`,
-  );
+  const response = await fetch(toFileUrl(path));
   return new Uint8Array(await response.arrayBuffer());
 }
 
