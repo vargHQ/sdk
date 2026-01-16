@@ -16,7 +16,12 @@ export function computeCacheKey(element: VargElement): CacheKeyPart[] {
   const key: CacheKeyPart[] = [element.type];
 
   for (const [k, v] of Object.entries(element.props)) {
-    if (k === "model" || k === "children") continue;
+    if (k === "children") continue;
+    if (k === "model" && v && typeof v === "object" && "modelId" in v) {
+      const model = v as { provider?: string; modelId: string };
+      key.push("model", model.provider ?? "", model.modelId);
+      continue;
+    }
     if (
       typeof v === "string" ||
       typeof v === "number" ||
