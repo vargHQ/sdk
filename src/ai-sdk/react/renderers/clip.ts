@@ -84,7 +84,7 @@ async function renderClipLayers(
                 resizeMode: props.resize,
                 cutFrom: props.cutFrom,
                 cutTo: props.cutTo,
-                mixVolume: props.keepAudio ? props.volume : 0,
+                mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
                 left: props.left,
                 top: props.top,
                 width: props.width,
