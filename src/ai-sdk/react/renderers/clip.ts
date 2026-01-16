@@ -153,8 +153,18 @@ export async function renderClip(
   const props = element.props as ClipProps;
   const layers = await renderClipLayers(element.children, ctx);
 
+  const isOverlayVideo = (l: Layer) =>
+    l.type === "video" &&
+    ((l as VideoLayer).left !== undefined ||
+      (l as VideoLayer).top !== undefined ||
+      (l as VideoLayer).width !== undefined ||
+      (l as VideoLayer).height !== undefined);
+
   const hasBaseLayer = layers.some(
-    (l) => l.type === "image" || l.type === "video" || l.type === "fill-color",
+    (l) =>
+      l.type === "image" ||
+      l.type === "fill-color" ||
+      (l.type === "video" && !isOverlayVideo(l)),
   );
 
   if (!hasBaseLayer && layers.length > 0) {
