@@ -23,11 +23,15 @@ import { renderSpeech } from "./speech";
 import { renderTitle } from "./title";
 import { renderVideo } from "./video";
 
+type PendingLayer =
+  | { type: "sync"; layer: Layer }
+  | { type: "async"; promise: Promise<Layer> };
+
 async function renderClipLayers(
   children: VargNode[],
   ctx: RenderContext,
 ): Promise<Layer[]> {
-  const layers: Layer[] = [];
+  const pending: PendingLayer[] = [];
 
   for (const child of children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
@@ -36,7 +40,6 @@ async function renderClipLayers(
 
     switch (element.type) {
       case "image": {
-        const path = await renderImage(element as VargElement<"image">, ctx);
         const props = element.props as ImageProps;
         const hasPosition =
           props.left !== undefined ||
@@ -44,81 +47,101 @@ async function renderClipLayers(
           props.width !== undefined ||
           props.height !== undefined;
 
-        if (hasPosition) {
-          layers.push({
-            type: "image-overlay",
-            path,
-            zoomDirection: props.zoom,
-            width: props.width,
-            height: props.height,
-            position: { x: props.left ?? 0, y: props.top ?? 0 },
-          } as ImageOverlayLayer);
-        } else {
-          layers.push({
-            type: "image",
-            path,
-            resizeMode: props.resize,
-            zoomDirection: props.zoom,
-          } as ImageLayer);
-        }
+        pending.push({
+          type: "async",
+          promise: renderImage(element as VargElement<"image">, ctx).then(
+            (path) =>
+              hasPosition
+                ? ({
+                    type: "image-overlay",
+                    path,
+                    zoomDirection: props.zoom,
+                    width: props.width,
+                    height: props.height,
+                    position: { x: props.left ?? 0, y: props.top ?? 0 },
+                  } as ImageOverlayLayer)
+                : ({
+                    type: "image",
+                    path,
+                    resizeMode: props.resize,
+                    zoomDirection: props.zoom,
+                  } as ImageLayer),
+          ),
+        });
         break;
       }
 
       case "video": {
-        const path = await renderVideo(element as VargElement<"video">, ctx);
         const props = element.props as VideoProps;
-        layers.push({
-          type: "video",
-          path,
-          resizeMode: props.resize,
-          cutFrom: props.cutFrom,
-          cutTo: props.cutTo,
-          mixVolume: props.keepAudio ? props.volume : 0,
-          left: props.left,
-          top: props.top,
-          width: props.width,
-          height: props.height,
-        } as VideoLayer);
+        pending.push({
+          type: "async",
+          promise: renderVideo(element as VargElement<"video">, ctx).then(
+            (path) =>
+              ({
+                type: "video",
+                path,
+                resizeMode: props.resize,
+                cutFrom: props.cutFrom,
+                cutTo: props.cutTo,
+                mixVolume: props.keepAudio ? props.volume : 0,
+                left: props.left,
+                top: props.top,
+                width: props.width,
+                height: props.height,
+              }) as VideoLayer,
+          ),
+        });
         break;
       }
 
       case "animate": {
-        const path = await renderAnimate(
-          element as VargElement<"animate">,
-          ctx,
-        );
         const props = element.props as AnimateProps;
-        layers.push({
-          type: "video",
-          path,
-          left: props.left,
-          top: props.top,
-          width: props.width,
-          height: props.height,
-        } as VideoLayer);
+        pending.push({
+          type: "async",
+          promise: renderAnimate(element as VargElement<"animate">, ctx).then(
+            (path) =>
+              ({
+                type: "video",
+                path,
+                left: props.left,
+                top: props.top,
+                width: props.width,
+                height: props.height,
+              }) as VideoLayer,
+          ),
+        });
         break;
       }
 
       case "title": {
-        layers.push(renderTitle(element as VargElement<"title">));
+        pending.push({
+          type: "sync",
+          layer: renderTitle(element as VargElement<"title">),
+        });
         break;
       }
 
       case "speech": {
-        const result = await renderSpeech(
-          element as VargElement<"speech">,
-          ctx,
-        );
         const props = element.props as SpeechProps;
-        layers.push({
-          type: "audio",
-          path: result.path,
-          mixVolume: props.volume ?? 1,
-        } as AudioLayer);
+        pending.push({
+          type: "async",
+          promise: renderSpeech(element as VargElement<"speech">, ctx).then(
+            (result) =>
+              ({
+                type: "audio",
+                path: result.path,
+                mixVolume: props.volume ?? 1,
+              }) as AudioLayer,
+          ),
+        });
         break;
       }
     }
   }
+
+  const layers = await Promise.all(
+    pending.map((p) => (p.type === "sync" ? p.layer : p.promise)),
+  );
 
   return layers;
 }
