@@ -119,7 +119,7 @@ function logTaskComplete(task: ProgressTask, cached: boolean): void {
       ? ((task.completedAt - task.startedAt) / 1000).toFixed(1)
       : "?";
   if (cached) {
-    console.log(`⚡ ${task.type} cached (${duration}s)`);
+    console.log(`⚡ ${task.type} from cache`);
   } else {
     console.log(`✓ ${task.type} done (${duration}s)`);
   }
