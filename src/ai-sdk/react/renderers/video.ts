@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { addTask, completeTask, startTask } from "./progress";
 import { computeCacheKey, toFileUrl } from "./utils";
 
 async function resolveImageInput(
@@ -87,12 +88,18 @@ export async function renderVideo(
   const cacheKey = computeCacheKey(element);
   const resolvedPrompt = await resolvePrompt(props.prompt, ctx);
 
+  const modelId = typeof model === "string" ? model : model.modelId;
+  const taskId = ctx.progress ? addTask(ctx.progress, "video", modelId) : null;
+  if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+
   const { video } = await ctx.generateVideo({
     model,
     prompt: resolvedPrompt,
     duration: 5,
     cacheKey,
   } as Parameters<typeof generateVideo>[0]);
+
+  if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
   const tempPath = await File.toTemp(video);
   ctx.tempFiles.push(tempPath);

@@ -3,6 +3,7 @@ import type { generateVideo } from "../../generate-video";
 import type { AnimateProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { addTask, completeTask, startTask } from "./progress";
 import { computeCacheKey, resolvePath } from "./utils";
 
 export async function renderAnimate(
@@ -33,7 +34,11 @@ export async function renderAnimate(
   const imageData = await Bun.file(resolvePath(imagePath)).arrayBuffer();
   const cacheKey = computeCacheKey(element);
 
-  console.log("[animate] imagePath:", imagePath, "size:", imageData.byteLength);
+  const modelId = typeof model === "string" ? model : model.modelId;
+  const taskId = ctx.progress
+    ? addTask(ctx.progress, "animate", modelId)
+    : null;
+  if (taskId && ctx.progress) startTask(ctx.progress, taskId);
 
   const { video } = await ctx.generateVideo({
     model,
@@ -44,6 +49,8 @@ export async function renderAnimate(
     duration: props.duration ?? 5,
     cacheKey,
   } as Parameters<typeof generateVideo>[0]);
+
+  if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
   const tempPath = await File.toTemp(video);
   ctx.tempFiles.push(tempPath);
