@@ -1,31 +1,52 @@
 import { fal } from "../fal-provider";
 import { Clip, Image, Render, render, SplitLayout as Split, Title } from "../react";
 
-async function main() {
-  console.log("creating before/after split screen...\n");
+// Reference images
+const REF_IMAGE_1 = "/Users/aleksandrmalysev/Yandex.Disk.localized/Developer/vargHQ/py-sdk-v02/media/launch_video/showcase/chars/21.png";
+const REF_IMAGE_2 = "/Users/aleksandrmalysev/Yandex.Disk.localized/Developer/vargHQ/py-sdk-v02/media/launch_video/showcase/varg-patterns/main.png";
 
-  const before = Image({
-    prompt: "overweight man sitting on couch, tired expression, pale skin, messy hair, wearing stained t-shirt",
-    model: fal.imageModel("flux-schnell"),
+async function readFile(path: string) {
+  const file = Bun.file(path);
+  return file.arrayBuffer();
+}
+
+async function main() {
+  console.log("creating split screen with nano-banana-pro/edit...\n");
+
+  // Read reference images
+  const ref1Data = await readFile(REF_IMAGE_1);
+  const ref2Data = await readFile(REF_IMAGE_2);
+
+  const basePrompt = "Photorealistic full-length front portrait of the same character from the reference with consistent face, hairstyle, proportions. Clean, minimal studio lighting. Natural relaxed posture, hands by her sides. High detail in clothing texture and stitching.";
+
+  const left = Image({
+    prompt: {
+      text: `${basePrompt} Wearing casual outfit.`,
+      images: [ref1Data],
+    },
+    model: fal.imageModel("nano-banana-pro/edit"),
+    aspectRatio: "9:16",
   });
 
-  const after = Image({
-    prompt: "fit muscular man standing confidently, tanned skin, bright smile, wearing fitted athletic shirt",
-    model: fal.imageModel("flux-schnell"),
+  const right = Image({
+    prompt: {
+      text: `${basePrompt} Wearing elegant evening dress.`,
+      images: [ref2Data],
+    },
+    model: fal.imageModel("nano-banana-pro/edit"),
+    aspectRatio: "9:16",
   });
 
   const video = (
-    <Render width={1920} height={1080}>
+    <Render width={1080} height={1920}>
       <Clip duration={5}>
-        <Split left={before} right={after} />
+        <Split left={left} right={right} />
         <Title position="bottom" color="#ffffff">
-          30 Day Transformation
+          Day to Night
         </Title>
       </Clip>
     </Render>
   );
-
-  console.log("video tree:", JSON.stringify(video, null, 2));
 
   const buffer = await render(video, {
     output: "output/react-split.mp4",

@@ -1,4 +1,4 @@
-import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
+import type { ImageModelV3, ImageModelV3File, SpeechModelV3 } from "@ai-sdk/provider";
 import type {
   Position,
   ResizeMode,
@@ -76,8 +76,10 @@ export interface OverlayProps extends BaseProps, PositionProps, AudioProps {
   children?: VargNode;
 }
 
+export type ImagePrompt = string | { text: string; images: ArrayBuffer[] };
+
 export interface ImageProps extends BaseProps, PositionProps {
-  prompt?: string;
+  prompt?: ImagePrompt;
   src?: string;
   model?: ImageModelV3;
   aspectRatio?: `${number}:${number}`;
