@@ -6,7 +6,7 @@ async function main() {
 
   const video = (
     <Render width={1280} height={720} fps={30}>
-      <Overlay left={0.73} top={0.73} width={0.25} height={0.25} keepAudio>
+      <Overlay left="73%" top="73%" width="25%" height="25%" keepAudio>
         <Video src="./output/workflow-talking-synced.mp4" keepAudio />
       </Overlay>
 

@@ -24,6 +24,18 @@ function escapeDrawText(text: string): string {
     .replace(/\]/g, "\\]");
 }
 
+function parseSize(val: number | string | undefined, base: number): number {
+  if (val === undefined) return base;
+  if (typeof val === "number") return Math.round(val);
+  if (val.endsWith("%")) {
+    return Math.round((parseFloat(val) / 100) * base);
+  }
+  if (val.endsWith("px")) {
+    return Math.round(parseFloat(val));
+  }
+  return Math.round(parseFloat(val));
+}
+
 export interface FilterInput {
   label: string;
   path?: string;
@@ -53,13 +65,8 @@ export function getVideoFilter(
   filters.push(`trim=start=${start}:end=${end}`);
   filters.push("setpts=PTS-STARTPTS");
 
-  // Values > 1 are pixels, <= 1 are fractions of canvas size.
-  // Without this, width: 100 on a 720p canvas becomes 100 * 720 = 72000px,
-  // causing ffmpeg error: "Picture size 72000x72000 is invalid"
-  const toPixels = (val: number, base: number) =>
-    val > 1 ? Math.round(val) : Math.round(val * base);
-  const layerWidth = layer.width ? toPixels(layer.width, width) : width;
-  const layerHeight = layer.height ? toPixels(layer.height, height) : height;
+  const layerWidth = parseSize(layer.width, width);
+  const layerHeight = parseSize(layer.height, height);
 
   if (isOverlay) {
     filters.push(
@@ -150,13 +157,8 @@ export function getVideoFilterWithTrim(
   filters.push(`trim=start=${trimStart}:end=${trimEnd}`);
   filters.push("setpts=PTS-STARTPTS");
 
-  // Values > 1 are pixels, <= 1 are fractions of canvas size.
-  // Without this, width: 100 on a 720p canvas becomes 100 * 720 = 72000px,
-  // causing ffmpeg error: "Picture size 72000x72000 is invalid"
-  const toPixels = (val: number, base: number) =>
-    val > 1 ? Math.round(val) : Math.round(val * base);
-  const layerWidth = layer.width ? toPixels(layer.width, width) : width;
-  const layerHeight = layer.height ? toPixels(layer.height, height) : height;
+  const layerWidth = parseSize(layer.width, width);
+  const layerHeight = parseSize(layer.height, height);
 
   if (isOverlay) {
     filters.push(
@@ -195,12 +197,8 @@ export function getOverlayFilter(
   height: number,
   outputLabel: string,
 ): string {
-  // Values > 1 are pixels, <= 1 are fractions of canvas size.
-  // Without this, left: 20 on a 720p canvas becomes 20 * 720 = 14400px.
-  const toPixels = (val: number, base: number) =>
-    val > 1 ? Math.round(val) : Math.round(val * base);
-  const baseX = layer.left !== undefined ? toPixels(layer.left, width) : 0;
-  const baseY = layer.top !== undefined ? toPixels(layer.top, height) : 0;
+  const baseX = layer.left !== undefined ? parseSize(layer.left, width) : 0;
+  const baseY = layer.top !== undefined ? parseSize(layer.top, height) : 0;
 
   let xExpr = String(baseX);
   let yExpr = String(baseY);
@@ -397,11 +395,8 @@ function resolvePositionForOverlay(
   }
 
   if (typeof position === "object") {
-    // Values > 1 are pixels, <= 1 are fractions of canvas size.
-    const toPixels = (val: number, base: number) =>
-      val > 1 ? Math.round(val) : Math.round(val * base);
-    const baseX = toPixels(position.x, width);
-    const baseY = toPixels(position.y, height);
+    const baseX = parseSize(position.x, width);
+    const baseY = parseSize(position.y, height);
 
     let xExpr = String(baseX);
     let yExpr = String(baseY);
@@ -447,15 +442,11 @@ export function getImageOverlayFilter(
   const outputLabel = `imgovout${index}`;
   const filters: string[] = [];
 
-  // Values > 1 are pixels, <= 1 are fractions of canvas size.
-  const toPixels = (val: number, base: number) =>
-    val > 1 ? Math.round(val) : Math.round(val * base);
-
   const targetWidth = layer.width
-    ? toPixels(layer.width, width)
+    ? parseSize(layer.width, width)
     : Math.round(width * 0.3);
   const scaleExpr = layer.height
-    ? `scale=${targetWidth}:${toPixels(layer.height, height)}`
+    ? `scale=${targetWidth}:${parseSize(layer.height, height)}`
     : `scale=${targetWidth}:-2`;
 
   const zoomDir = layer.zoomDirection ?? null;
