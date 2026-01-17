@@ -85,24 +85,42 @@ export async function renderVideo(
     throw new Error("Video element requires 'model' prop when using prompt");
   }
 
+  // Compute cache key for deduplication
   const cacheKey = computeCacheKey(element);
-  const resolvedPrompt = await resolvePrompt(props.prompt, ctx);
+  const cacheKeyStr = JSON.stringify(cacheKey);
 
-  const modelId = typeof model === "string" ? model : model.modelId;
-  const taskId = ctx.progress ? addTask(ctx.progress, "video", modelId) : null;
-  if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+  // Check if this element is already being rendered (deduplication)
+  const pendingRender = ctx.pending.get(cacheKeyStr);
+  if (pendingRender) {
+    return pendingRender;
+  }
 
-  const { video } = await ctx.generateVideo({
-    model,
-    prompt: resolvedPrompt,
-    duration: 5,
-    cacheKey,
-  } as Parameters<typeof generateVideo>[0]);
+  // Create the render promise and store it for deduplication
+  const renderPromise = (async () => {
+    const resolvedPrompt = await resolvePrompt(props.prompt!, ctx);
 
-  if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+    const modelId = typeof model === "string" ? model : model.modelId;
+    const taskId = ctx.progress
+      ? addTask(ctx.progress, "video", modelId)
+      : null;
+    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
 
-  const tempPath = await File.toTemp(video);
-  ctx.tempFiles.push(tempPath);
+    const { video } = await ctx.generateVideo({
+      model,
+      prompt: resolvedPrompt,
+      duration: 5,
+      cacheKey,
+    } as Parameters<typeof generateVideo>[0]);
 
-  return tempPath;
+    if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+
+    const tempPath = await File.toTemp(video);
+    ctx.tempFiles.push(tempPath);
+
+    return tempPath;
+  })();
+
+  ctx.pending.set(cacheKeyStr, renderPromise);
+
+  return renderPromise;
 }
