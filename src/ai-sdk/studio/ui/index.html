@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>varg studio</title>
+  <link rel="stylesheet" href="https://unpkg.com/drawflow@0.0.60/dist/drawflow.min.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -480,6 +481,185 @@
       font-size: 0.8rem;
       color: var(--error);
     }
+
+    /* Editor pane header with view toggle */
+    .editor-pane-header {
+      height: 36px;
+      padding: 0 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .view-toggle {
+      display: flex;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      overflow: hidden;
+    }
+    .view-toggle-btn {
+      padding: 0.25rem 0.625rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .view-toggle-btn:hover { color: var(--text); }
+    .view-toggle-btn.active {
+      background: var(--accent);
+      color: var(--text);
+    }
+    .view-toggle-btn:first-child {
+      border-right: 1px solid var(--border);
+    }
+    .editor-pane-content {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #editor-container, #nodes-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+    #nodes-container {
+      display: none;
+      background: var(--bg);
+    }
+    #nodes-container.active { display: block; }
+    #editor-container.hidden { display: none; }
+
+    /* Drawflow dark theme */
+    #drawflow {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      background-size: 20px 20px;
+      background-image:
+        linear-gradient(to right, #1a1a1a 1px, transparent 1px),
+        linear-gradient(to bottom, #1a1a1a 1px, transparent 1px);
+    }
+    .drawflow .drawflow-node {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-width: 160px;
+      color: var(--text);
+      font-size: 0.8rem;
+    }
+    .drawflow .drawflow-node.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+    }
+    .drawflow .drawflow-node .inputs, .drawflow .drawflow-node .outputs {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .drawflow .drawflow-node .input, .drawflow .drawflow-node .output {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--bg);
+    }
+    .drawflow .drawflow-node .input:hover, .drawflow .drawflow-node .output:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .drawflow .connection .main-path {
+      stroke: var(--accent);
+      stroke-width: 2px;
+    }
+    .drawflow .connection .main-path:hover {
+      stroke-width: 3px;
+    }
+
+    /* Custom node styles */
+    .node-title {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 7px 7px 0 0;
+    }
+    .node-title-icon { font-size: 1rem; }
+    .node-content {
+      padding: 8px;
+    }
+    .node-preview {
+      width: 100%;
+      max-height: 120px;
+      object-fit: contain;
+      border-radius: 4px;
+      background: #000;
+    }
+    .node-preview-placeholder {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+    .node-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .node-status {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      margin-top: 4px;
+      letter-spacing: 0.03em;
+    }
+    .node-status.pending { color: var(--text-muted); }
+    .node-status.running { color: var(--accent); }
+    .node-status.complete { color: var(--success); }
+    .node-status.error { color: var(--error); }
+    .node-btn {
+      margin-top: 8px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.65rem;
+      cursor: pointer;
+      width: 100%;
+    }
+    .node-btn:hover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .node-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .drawflow-node.complete { border-color: var(--success); }
+    .drawflow-node.running {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .drawflow-node.error { border-color: var(--error); }
   </style>
 </head>
 <body>
@@ -500,7 +680,25 @@
   
   <main class="main">
     <div class="editor-pane">
-      <div id="editor-container"></div>
+      <div class="editor-pane-header">
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" id="view-code-btn" title="Code view">
+            <span>{ }</span> code
+          </button>
+          <button class="view-toggle-btn" id="view-nodes-btn" title="Node view">
+            <span>◎</span> nodes
+          </button>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted);">
+          <span id="view-hint">cmd+enter to run</span>
+        </div>
+      </div>
+      <div class="editor-pane-content">
+        <div id="editor-container"></div>
+        <div id="nodes-container">
+          <div id="drawflow"></div>
+        </div>
+      </div>
     </div>
     
     <div class="preview-pane">
@@ -562,6 +760,7 @@
     </div>
   </main>
 
+  <script src="https://unpkg.com/drawflow@0.0.60/dist/drawflow.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <script>
     const DEFAULT_CODE = `import { fal } from "../fal-provider";
@@ -600,6 +799,255 @@ export default (
     let stages = [];
     let currentStageIndex = -1;
     let selectedStageId = null;
+
+    // View mode state
+    let currentView = 'code';
+    let drawflowEditor = null;
+
+    // Initialize Drawflow
+    function initDrawflow() {
+      const container = document.getElementById('drawflow');
+      drawflowEditor = new Drawflow(container);
+      drawflowEditor.reroute = true;
+      drawflowEditor.start();
+
+      drawflowEditor.on('nodeSelected', (nodeId) => {
+        const stage = stages.find(s => s.nodeId === nodeId);
+        if (stage && stage.status === 'complete') {
+          selectedStageId = stage.id;
+          renderStageTimeline();
+          if (stage.result) {
+            showStagePreview({ result: stage.result });
+          }
+        }
+      });
+    }
+
+    async function setView(view) {
+      currentView = view;
+      document.getElementById('view-code-btn').classList.toggle('active', view === 'code');
+      document.getElementById('view-nodes-btn').classList.toggle('active', view === 'nodes');
+      document.getElementById('editor-container').classList.toggle('hidden', view === 'nodes');
+      document.getElementById('nodes-container').classList.toggle('active', view === 'nodes');
+
+      if (view === 'nodes') {
+        document.getElementById('view-hint').textContent = 'click node to preview';
+        if (stages.length > 0) {
+          renderNodeGraph();
+        } else {
+          // Auto-parse stages when switching to nodes view
+          await parseStagesForNodeView();
+        }
+      } else {
+        document.getElementById('view-hint').textContent = 'cmd+enter to run';
+      }
+    }
+
+    async function parseStagesForNodeView() {
+      if (!drawflowEditor) {
+        showEmptyNodeGraph();
+        return;
+      }
+
+      const code = editor.getValue();
+      try {
+        const res = await fetch('/api/step/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to parse stages');
+        }
+
+        const data = await res.json();
+        stepSession = data;
+        stages = data.stages.map(s => ({ ...s, status: 'pending' }));
+        currentStageIndex = -1;
+        selectedStageId = null;
+
+        renderNodeGraph();
+        renderStageTimeline();
+
+      } catch (err) {
+        console.error('Failed to parse stages:', err);
+        showParseErrorNode(err.message);
+      }
+    }
+
+    function showParseErrorNode(message) {
+      if (!drawflowEditor) return;
+      drawflowEditor.clear();
+      const html = `
+        <div class="node-title" style="background: rgba(239,68,68,0.1);">
+          <span class="node-title-icon">⚠️</span>
+          <span>parse error</span>
+        </div>
+        <div class="node-content">
+          <div class="node-label" style="color: var(--error); white-space: normal;">${message}</div>
+          <button class="node-btn" onclick="setView('code')">← back to code</button>
+        </div>
+      `;
+      drawflowEditor.addNode('error', 0, 0, 200, 150, 'error', {}, html);
+    }
+
+    function showEmptyNodeGraph() {
+      if (!drawflowEditor) return;
+      drawflowEditor.clear();
+      const html = `
+        <div class="node-title">
+          <span class="node-title-icon">💡</span>
+          <span>no stages</span>
+        </div>
+        <div class="node-content">
+          <div class="node-preview-placeholder">run in step mode first</div>
+        </div>
+      `;
+      drawflowEditor.addNode('empty', 0, 0, 200, 150, 'empty-node', {}, html);
+    }
+
+    function renderNodeGraph() {
+      if (!drawflowEditor || stages.length === 0) return;
+
+      drawflowEditor.clear();
+
+      const nodeWidth = 180;
+      const nodeHeight = 160;
+      const gapX = 80;
+      const gapY = 40;
+      const startX = 50;
+      const startY = 50;
+
+      const nodeIds = [];
+      const cols = Math.ceil(Math.sqrt(stages.length));
+
+      stages.forEach((stage, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        const x = startX + col * (nodeWidth + gapX);
+        const y = startY + row * (nodeHeight + gapY);
+
+        const icon = getStageIcon(stage.type);
+        const statusClass = stage.status;
+        const hasPreview = stage.result?.previewUrl;
+
+        let previewHtml = '';
+        if (hasPreview) {
+          const url = stage.result.previewUrl;
+          if (stage.result.mimeType?.startsWith('image/') || stage.type === 'image') {
+            previewHtml = `<img class="node-preview" src="${url}" alt="preview">`;
+          } else if (stage.result.mimeType?.startsWith('video/') || stage.type === 'video' || stage.type === 'animate') {
+            previewHtml = `<video class="node-preview" src="${url}" muted loop></video>`;
+          } else if (stage.result.mimeType?.startsWith('audio/') || stage.type === 'speech' || stage.type === 'music') {
+            previewHtml = `<div class="node-preview-placeholder">🎵 audio</div>`;
+          }
+        } else {
+          previewHtml = `<div class="node-preview-placeholder">click to generate</div>`;
+        }
+
+        const btnHtml = stage.status === 'pending' 
+          ? `<button class="node-btn" onclick="event.stopPropagation(); generateNodeStage('${stage.id}')">▶ generate</button>`
+          : '';
+
+        const html = `
+          <div class="node-title">
+            <span class="node-title-icon">${icon}</span>
+            <span>${stage.type}</span>
+          </div>
+          <div class="node-content">
+            ${previewHtml}
+            <div class="node-label" title="${stage.label}">${stage.label}</div>
+            <div class="node-status ${statusClass}">${stage.status}</div>
+            ${btnHtml}
+          </div>
+        `;
+
+        const inputs = index > 0 ? 1 : 0;
+        const outputs = index < stages.length - 1 ? 1 : 0;
+
+        const nodeId = drawflowEditor.addNode(
+          stage.type,
+          inputs,
+          outputs,
+          x,
+          y,
+          statusClass,
+          { stageId: stage.id },
+          html
+        );
+
+        stage.nodeId = nodeId;
+        nodeIds.push(nodeId);
+      });
+
+      for (let i = 0; i < nodeIds.length - 1; i++) {
+        drawflowEditor.addConnection(nodeIds[i], nodeIds[i + 1], 'output_1', 'input_1');
+      }
+
+      // Play videos on hover
+      document.querySelectorAll('.node-preview').forEach(el => {
+        if (el.tagName === 'VIDEO') {
+          el.addEventListener('mouseenter', () => el.play());
+          el.addEventListener('mouseleave', () => { el.pause(); el.currentTime = 0; });
+        }
+      });
+    }
+
+    async function generateNodeStage(stageId) {
+      if (!stepSession || isRendering) return;
+
+      const stageIndex = stages.findIndex(s => s.id === stageId);
+      if (stageIndex === -1) return;
+
+      // Check if previous stages are complete
+      for (let i = 0; i < stageIndex; i++) {
+        if (stages[i].status !== 'complete') {
+          alert(`Complete stage "${stages[i].label}" first`);
+          return;
+        }
+      }
+
+      isRendering = true;
+      stages[stageIndex].status = 'running';
+      renderNodeGraph();
+      renderStageTimeline();
+
+      try {
+        const res = await fetch('/api/step/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: stepSession.sessionId, stageId }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Stage execution failed');
+        }
+
+        const data = await res.json();
+        stages[stageIndex].status = 'complete';
+        stages[stageIndex].result = data.result;
+        currentStageIndex = Math.max(currentStageIndex, stageIndex);
+
+        selectedStageId = stageId;
+        renderNodeGraph();
+        renderStageTimeline();
+        showStagePreview(data);
+
+      } catch (err) {
+        stages[stageIndex].status = 'error';
+        renderNodeGraph();
+        renderStageTimeline();
+        showError(err.message);
+      }
+
+      isRendering = false;
+    }
+
+    document.getElementById('view-code-btn').addEventListener('click', () => setView('code'));
+    document.getElementById('view-nodes-btn').addEventListener('click', () => setView('nodes'));
 
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
 
@@ -769,11 +1217,16 @@ export default (
       if (stages.length === 0) {
         timeline.classList.remove('active');
         track.innerHTML = '';
+        if (currentView === 'nodes') showEmptyNodeGraph();
         return;
       }
       
       if (stepMode) {
         timeline.classList.add('active');
+      }
+
+      if (currentView === 'nodes') {
+        renderNodeGraph();
       }
       
       let html = '';
@@ -1146,6 +1599,13 @@ export default (
     loadTemplates();
     renderHistory();
     setTimeout(loadSharedCode, 500);
+    
+    // Init drawflow after DOM is ready
+    if (typeof Drawflow !== 'undefined') {
+      initDrawflow();
+    } else {
+      console.error('Drawflow not available');
+    }
   </script>
 </body>
 </html>
