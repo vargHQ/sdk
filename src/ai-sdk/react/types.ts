@@ -1,4 +1,5 @@
 import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
+import type { MusicModelV3 } from "../music-model";
 import type {
   Position,
   ResizeMode,
@@ -160,6 +161,7 @@ export type MusicProps = BaseProps &
   VolumeProps &
   TrimProps & {
     prompt?: string;
+    model?: MusicModelV3;
     src?: string;
     loop?: boolean;
     ducking?: boolean;
