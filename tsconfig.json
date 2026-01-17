@@ -6,6 +6,7 @@
     "module": "ESNext",
     "moduleDetection": "force",
     "jsx": "react-jsx",
+    "jsxImportSource": "@/ai-sdk/react",
     "allowJs": true,
 
     // Bundler mode
@@ -40,6 +41,7 @@
     "cli",
     "service",
     "utilities",
-    "pipeline"
+    "pipeline",
+    "src/cli"
   ]
 }

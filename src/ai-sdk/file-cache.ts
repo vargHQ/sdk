@@ -56,8 +56,11 @@ export function fileCache(options: { dir: string }): CacheStorage {
   };
 
   const keyToPath = (key: string): string => {
-    // sanitize key for filesystem
     const safe = key.replace(/[^a-zA-Z0-9_-]/g, "_");
+    if (safe.length > 200) {
+      const hash = Bun.hash(key).toString(16);
+      return `${dir}/${safe.slice(0, 100)}_${hash}.json`;
+    }
     return `${dir}/${safe}.json`;
   };
 

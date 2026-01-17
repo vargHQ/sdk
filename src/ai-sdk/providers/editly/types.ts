@@ -3,6 +3,7 @@
 
 export type OriginX = "left" | "center" | "right";
 export type OriginY = "top" | "center" | "bottom";
+export type SizeValue = number | `${number}%` | `${number}px`;
 
 /**
  * How to fit image to screen. Can be one of:
@@ -15,12 +16,9 @@ export type OriginY = "top" | "center" | "bottom";
  */
 export type ResizeMode = "contain" | "contain-blur" | "cover" | "stretch";
 
-/**
- * An object, where `{ x: 0, y: 0 }` is the upper left corner of the screen and `{ x: 1, y: 1 }` is the lower right corner.
- */
 export interface PositionObject {
-  x: number;
-  y: number;
+  x: SizeValue;
+  y: SizeValue;
   originX?: OriginX;
   originY?: OriginY;
 }
@@ -99,10 +97,10 @@ export interface VideoLayer extends BaseLayer {
   resizeMode?: ResizeMode;
   cutFrom?: number;
   cutTo?: number;
-  width?: number;
-  height?: number;
-  left?: number;
-  top?: number;
+  width?: SizeValue;
+  height?: SizeValue;
+  left?: SizeValue;
+  top?: SizeValue;
   originX?: OriginX;
   originY?: OriginY;
   mixVolume?: number | string;
@@ -143,8 +141,8 @@ export interface ImageOverlayLayer extends BaseLayer, KenBurns {
   type: "image-overlay";
   path: string;
   position?: Position;
-  width?: number;
-  height?: number;
+  width?: SizeValue;
+  height?: SizeValue;
 }
 
 export interface TitleLayer extends TextLayer, KenBurns {

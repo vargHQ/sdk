@@ -15,6 +15,7 @@ import {
   findCmd,
   helpCmd,
   listCmd,
+  renderCmd,
   runCmd,
   showFindHelp,
   showHelp,
@@ -99,6 +100,7 @@ const main = defineCommand({
   },
   subCommands: {
     run: runCmd,
+    render: renderCmd,
     list: listCmd,
     ls: listCmd,
     find: findCmd,

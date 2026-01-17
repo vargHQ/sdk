@@ -10,8 +10,9 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "type-check": "tsc --noEmit",
-    "prepare": "husky install",
-    "size": "size-limit"
+    "prepare": "husky || true",
+    "size": "size-limit",
+    "studio": "bun run src/ai-sdk/studio/index.ts"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [
@@ -59,9 +60,10 @@
     "replicate": "^1.4.0",
     "zod": "^4.2.1"
   },
-  "version": "0.3.0",
+  "version": "0.4.0-alpha.1",
   "exports": {
     ".": "./src/index.ts",
+    "./ai": "./src/ai-sdk/index.ts",
     "./core": "./src/core/index.ts",
     "./providers": "./src/providers/index.ts",
     "./definitions": "./src/definitions/index.ts"

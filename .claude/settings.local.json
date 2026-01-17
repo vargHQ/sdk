@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": ["Bash(bun run:*)", "WebFetch(domain:fal.ai)"],
+    "deny": [],
+    "ask": []
+  }
+}
