@@ -44,6 +44,7 @@ if (!values.quiet) {
 const buffer = await render(component, {
   output: outputPath,
   cache: values.cache,
+  quiet: values.quiet,
 });
 
 if (!values.quiet) {
