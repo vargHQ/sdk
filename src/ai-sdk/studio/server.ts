@@ -21,6 +21,7 @@ interface StudioConfig {
   cacheDir: string;
   outputDir: string;
   port: number;
+  initialFile?: string;
 }
 
 interface ShareData {
@@ -34,6 +35,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
   const outputDir = resolve(config.outputDir ?? DEFAULT_OUTPUT_DIR);
   const sharesDir = resolve(DEFAULT_SHARES_DIR);
   const port = config.port ?? 8282;
+  const initialFile = config.initialFile;
 
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true });
@@ -150,6 +152,18 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
         return new Response(buffer, {
           headers: { "content-type": media.mimeType },
         });
+      }
+
+      if (url.pathname === "/api/initial-code") {
+        if (!initialFile) {
+          return Response.json({ code: null });
+        }
+        const file = Bun.file(initialFile);
+        if (!(await file.exists())) {
+          return Response.json({ code: null, error: "file not found" });
+        }
+        const code = await file.text();
+        return Response.json({ code, path: initialFile });
       }
 
       if (url.pathname === "/api/templates") {
