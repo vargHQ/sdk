@@ -1,6 +1,7 @@
 import { generateMusic } from "../../generate-music";
 import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
+import { addTask, completeTask, startTask } from "./progress";
 
 export async function renderMusic(
   element: VargElement<"music">,
@@ -19,6 +20,9 @@ export async function renderMusic(
     duration: props.duration,
   });
 
+  const modelId = props.model.modelId;
+  const taskId = ctx.progress ? addTask(ctx.progress, "music", modelId) : null;
+
   const generateFn = async () => {
     const result = await generateMusic({
       model: props.model!,
@@ -35,11 +39,15 @@ export async function renderMusic(
     if (cached) {
       audioData = cached as Uint8Array;
     } else {
+      if (taskId && ctx.progress) startTask(ctx.progress, taskId);
       audioData = await generateFn();
+      if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
       await ctx.cache.set(cacheKey, audioData);
     }
   } else {
+    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
     audioData = await generateFn();
+    if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
   }
 
   const tempPath = `/tmp/varg-music-${Date.now()}.mp3`;
