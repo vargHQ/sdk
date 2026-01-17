@@ -22,11 +22,21 @@ export {
   scene,
 } from "./generate-element";
 export {
+  type GenerateMusicOptions,
+  type GenerateMusicResult,
+  generateMusic,
+} from "./generate-music";
+export {
   type GenerateVideoOptions,
   type GenerateVideoPrompt,
   type GenerateVideoResult,
   generateVideo,
 } from "./generate-video";
+export type {
+  MusicModelV3,
+  MusicModelV3CallOptions,
+  MusicModelV3ProviderMetadata,
+} from "./music-model";
 export {
   type AudioTrack,
   type Clip as EditlyClip,

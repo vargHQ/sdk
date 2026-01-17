@@ -9,6 +9,7 @@ import {
   type SpeechModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import type { MusicModelV3, MusicModelV3CallOptions } from "./music-model";
 
 const VOICES: Record<string, string> = {
   rachel: "21m00Tcm4TlvDq8ikWAM",
@@ -38,6 +39,59 @@ function resolveVoiceId(voice: string): string {
 
 function resolveModelId(modelId: string): string {
   return TTS_MODELS[modelId] ?? modelId;
+}
+
+class ElevenLabsMusicModel implements MusicModelV3 {
+  readonly specificationVersion = "v3" as const;
+  readonly provider = "elevenlabs";
+  readonly modelId: string;
+
+  private client: ElevenLabsClient;
+
+  constructor(modelId: string, client: ElevenLabsClient) {
+    this.modelId = modelId;
+    this.client = client;
+  }
+
+  async doGenerate(options: MusicModelV3CallOptions) {
+    const { prompt, duration, providerOptions } = options;
+    const warnings: SharedV3Warning[] = [];
+
+    const elevenLabsOptions = providerOptions?.elevenlabs ?? {};
+    const audio = await this.client.music.compose({
+      prompt,
+      musicLengthMs: duration ? duration * 1000 : undefined,
+      modelId: this.modelId,
+      ...elevenLabsOptions,
+    } as Parameters<typeof this.client.music.compose>[0]);
+
+    const reader = audio.getReader();
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+    const result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      result.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    return {
+      audio: result,
+      warnings,
+      response: {
+        timestamp: new Date(),
+        modelId: this.modelId,
+        headers: undefined,
+      },
+    };
+  }
 }
 
 class ElevenLabsSpeechModel implements SpeechModelV3 {
@@ -110,6 +164,7 @@ export interface ElevenLabsProviderSettings {
 
 export interface ElevenLabsProvider extends ProviderV3 {
   speechModel(modelId?: string): SpeechModelV3;
+  musicModel(modelId?: string): MusicModelV3;
 }
 
 export function createElevenLabs(
@@ -126,6 +181,9 @@ export function createElevenLabs(
     speechModel(modelId = "eleven_turbo_v2") {
       return new ElevenLabsSpeechModel(modelId, client);
     },
+    musicModel(modelId = "music_v1") {
+      return new ElevenLabsMusicModel(modelId, client);
+    },
     languageModel(modelId: string): LanguageModelV3 {
       throw new NoSuchModelError({ modelId, modelType: "languageModel" });
     },
@@ -140,3 +198,58 @@ export function createElevenLabs(
 
 export const elevenlabs_provider = createElevenLabs();
 export { elevenlabs_provider as elevenlabs, VOICES };
+
+export interface GenerateMusicOptions {
+  prompt: string;
+  durationSeconds?: number;
+  apiKey?: string;
+}
+
+export interface GenerateMusicResult {
+  audio: {
+    uint8Array: Uint8Array;
+    mimeType: string;
+  };
+}
+
+export async function generateMusic(
+  options: GenerateMusicOptions,
+): Promise<GenerateMusicResult> {
+  const { prompt, durationSeconds, apiKey } = options;
+  const key = apiKey ?? process.env.ELEVENLABS_API_KEY;
+  if (!key) {
+    throw new Error("ELEVENLABS_API_KEY not set");
+  }
+
+  const client = new ElevenLabsClient({ apiKey: key });
+
+  const audio = await client.music.compose({
+    prompt,
+    musicLengthMs: durationSeconds ? durationSeconds * 1000 : undefined,
+    modelId: "music_v1",
+  });
+
+  const reader = audio.getReader();
+  const chunks: Uint8Array[] = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+
+  const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return {
+    audio: {
+      uint8Array: result,
+      mimeType: "audio/mpeg",
+    },
+  };
+}
