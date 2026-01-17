@@ -2,6 +2,7 @@ import { experimental_generateSpeech as generateSpeech } from "ai";
 import { File } from "../../file";
 import type { SpeechProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
+import { addTask, completeTask, startTask } from "./progress";
 import { computeCacheKey, getTextContent } from "./utils";
 
 export interface SpeechResult {
@@ -27,12 +28,18 @@ export async function renderSpeech(
 
   const cacheKey = computeCacheKey(element);
 
+  const modelId = typeof model === "string" ? model : model.modelId;
+  const taskId = ctx.progress ? addTask(ctx.progress, "speech", modelId) : null;
+  if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+
   const { audio } = await generateSpeech({
     model,
     text,
     voice: props.voice ?? "adam",
     cacheKey,
   } as Parameters<typeof generateSpeech>[0]);
+
+  if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
   const tempPath = await File.toTemp({
     uint8Array: audio.uint8Array,
