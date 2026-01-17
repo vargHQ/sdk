@@ -392,7 +392,7 @@ const portraitPrompt = imageShot({
   shot: [shot.closeUp, shot.threeQuarter, shot.eyeLevel],
   subject: subject.fromRef("young woman, short dark brown bob, wispy bangs, large dark brown eyes, full lips"),
   pose: [pose.confident, pose.directGaze, "relaxed shoulders"],
-  lighting: [lighting.rim, lighting.orange, lighting.highContrast, "warm edge highlights"],
+  lighting: [lighting.rim, "low contrast lighting", "soft lighting", "warm edge highlights"],
   frame: [frame.centered],
   lens: [lens.mm85, lens.f14],
   expression: expression.confident,
@@ -407,7 +407,7 @@ const portraitPrompt = imageShot({
 });
 
 const videoPrompt = videoShot({
-  motion: [motion.stepsBack, "revealing full body gradually", "then turns slightly to show profile"],
+  motion: [motion.stepsBack, "revealing full body gradually ", "then turns slightly to show profile"],
   camera: camera.static,
   lighting: [lighting.rim, lighting.orange],
   mood: [mood.authentic, mood.playful],
