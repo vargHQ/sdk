@@ -22,6 +22,7 @@ import { renderAnimate } from "./animate";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { renderMusic } from "./music";
 import { renderSpeech } from "./speech";
 import { resolvePath } from "./utils";
 import { renderVideo } from "./video";
@@ -77,20 +78,32 @@ export async function renderRoot(
       });
     } else if (childElement.type === "music") {
       const musicProps = childElement.props as MusicProps;
+      const cutFrom = musicProps.cutFrom;
+      const cutTo =
+        musicProps.cutTo ??
+        (musicProps.duration !== undefined
+          ? (cutFrom ?? 0) + musicProps.duration
+          : undefined);
+
+      let path: string;
       if (musicProps.src) {
-        const cutFrom = musicProps.cutFrom;
-        const cutTo =
-          musicProps.cutTo ??
-          (musicProps.duration !== undefined
-            ? (cutFrom ?? 0) + musicProps.duration
-            : undefined);
-        audioTracks.push({
-          path: resolvePath(musicProps.src),
-          mixVolume: musicProps.volume ?? 1,
-          cutFrom,
-          cutTo,
-        });
+        path = resolvePath(musicProps.src);
+      } else if (musicProps.prompt && musicProps.model) {
+        const result = await renderMusic(
+          childElement as VargElement<"music">,
+          ctx,
+        );
+        path = result.path;
+      } else {
+        throw new Error("Music requires either src or prompt+model");
       }
+
+      audioTracks.push({
+        path,
+        mixVolume: musicProps.volume ?? 1,
+        cutFrom,
+        cutTo,
+      });
     }
   }
 
