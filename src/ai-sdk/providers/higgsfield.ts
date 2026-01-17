@@ -4,36 +4,29 @@ import type {
   SharedV3Warning,
 } from "@ai-sdk/provider";
 
-const IMAGE_MODELS = ["soul", "soul/standard"] as const;
+const IMAGE_MODELS = ["soul"] as const;
 type ImageModelId = (typeof IMAGE_MODELS)[number];
 
 export interface HiggsfieldImageModelSettings {
-  style?: string;
-  strength?: number;
-  quality?: "medium" | "high";
+  styleId?: string;
+  quality?: "720p" | "1080p";
   enhancePrompt?: boolean;
 }
 
-const ASPECT_RATIO_MAP: Record<string, string> = {
-  "1:1": "1:1",
-  "16:9": "16:9",
-  "9:16": "9:16",
-  "4:3": "4:3",
-  "3:4": "3:4",
-};
-
-const SIZE_TO_RESOLUTION: Record<string, string> = {
-  "1280x720": "720p",
-  "1920x1080": "1080p",
-  "720x1280": "720p",
-  "1080x1920": "1080p",
+// Maps aspect ratio to width_and_height for Soul API
+const ASPECT_RATIO_TO_SIZE: Record<string, string> = {
+  "1:1": "1536x1536",
+  "16:9": "2048x1152",
+  "9:16": "1152x2048",
+  "4:3": "2048x1536",
+  "3:4": "1536x2048",
 };
 
 class HiggsfieldImageModel implements ImageModelV3 {
   readonly specificationVersion = "v3" as const;
   readonly provider = "higgsfield";
   readonly modelId: string;
-  readonly maxImagesPerCall = 1;
+  readonly maxImagesPerCall = 4;
 
   private apiKey: string;
   private apiSecret: string;
@@ -53,167 +46,94 @@ class HiggsfieldImageModel implements ImageModelV3 {
     this.apiSecret = options.apiSecret ?? process.env.HIGGSFIELD_SECRET ?? "";
     this.baseURL = options.baseURL ?? "https://platform.higgsfield.ai";
     this.modelSettings = {
-      style: options.style,
-      strength: options.strength,
+      styleId: options.styleId,
       quality: options.quality,
       enhancePrompt: options.enhancePrompt,
     };
   }
 
   async doGenerate(options: ImageModelV3CallOptions) {
-    const { prompt, n, size, aspectRatio, seed, providerOptions, abortSignal } =
-      options;
+    const { prompt, n, aspectRatio, providerOptions, abortSignal } = options;
     const warnings: SharedV3Warning[] = [];
 
-    // resolve endpoint
-    const endpoint = this.resolveEndpoint();
+    // Map aspect ratio to width_and_height
+    const widthAndHeight = aspectRatio
+      ? (ASPECT_RATIO_TO_SIZE[aspectRatio] ?? "1536x1536")
+      : "1536x1536";
 
-    // build request body
-    const body: Record<string, unknown> = {
-      prompt,
-    };
-
-    // aspect ratio
-    if (aspectRatio) {
-      const mappedRatio = ASPECT_RATIO_MAP[aspectRatio];
-      if (mappedRatio) {
-        body.aspect_ratio = mappedRatio;
-      } else {
-        warnings.push({
-          type: "unsupported",
-          feature: "aspectRatio",
-          details: `Aspect ratio ${aspectRatio} not supported. Use 1:1, 16:9, 9:16, 4:3, or 3:4.`,
-        });
-      }
-    }
-
-    // resolution from size
-    if (size) {
-      const resolution = SIZE_TO_RESOLUTION[size];
-      if (resolution) {
-        body.resolution = resolution;
-      } else {
-        warnings.push({
-          type: "unsupported",
-          feature: "size",
-          details: `Size ${size} not directly supported. Using default resolution.`,
-        });
-      }
-    }
-
-    // n (number of images)
-    if (n && n > 1) {
+    if (aspectRatio && !ASPECT_RATIO_TO_SIZE[aspectRatio]) {
       warnings.push({
         type: "unsupported",
-        feature: "n",
-        details: "Higgsfield only generates 1 image per request.",
+        feature: "aspectRatio",
+        details: `Aspect ratio ${aspectRatio} not supported. Using 1:1. Supported: 1:1, 16:9, 9:16, 4:3, 3:4.`,
       });
     }
 
-    if (seed !== undefined) {
-      body.seed = seed;
+    // Build params object - matching working implementation
+    const params: Record<string, unknown> = {
+      prompt,
+      width_and_height: widthAndHeight,
+      enhance_prompt: this.modelSettings.enhancePrompt ?? false,
+      quality: this.modelSettings.quality ?? "1080p",
+      batch_size: n && n <= 4 ? n : 1,
+    };
+
+    // Add optional parameters only if provided
+    if (this.modelSettings.styleId) {
+      params.style_id = this.modelSettings.styleId;
     }
 
-    if (this.modelSettings.style) {
-      body.style = this.modelSettings.style;
-    }
-    if (this.modelSettings.strength !== undefined) {
-      body.strength = this.modelSettings.strength;
-    }
-    if (this.modelSettings.quality) {
-      body.quality = this.modelSettings.quality;
-    }
-    if (this.modelSettings.enhancePrompt !== undefined) {
-      body.enhance_prompt = this.modelSettings.enhancePrompt;
-    }
-
+    // Merge provider options
     const higgsfieldOptions = providerOptions?.higgsfield as
       | Record<string, unknown>
       | undefined;
     if (higgsfieldOptions) {
       for (const [key, value] of Object.entries(higgsfieldOptions)) {
-        if (value !== undefined) {
-          body[key] = value;
+        if (value !== undefined && value !== null) {
+          params[key] = value;
         }
       }
     }
 
-    // make request
-    const response = await fetch(`${this.baseURL}/${endpoint}`, {
+    // Request body wrapped in params
+    const requestBody = { params };
+
+    // Make request to /v1/text2image/soul
+    const response = await fetch(`${this.baseURL}/v1/text2image/soul`, {
       method: "POST",
       headers: {
-        Authorization: `Key ${this.apiKey}:${this.apiSecret}`,
+        "hf-api-key": this.apiKey,
+        "hf-secret": this.apiSecret,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
       signal: abortSignal,
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Higgsfield image generation failed: ${error}`);
+      const errorText = await response.text();
+      throw new Error(
+        `Higgsfield Soul API error (${response.status}): ${errorText}`,
+      );
     }
 
-    const result = (await response.json()) as {
-      request_id?: string;
-      status?: string;
-      output?: { url?: string };
-      url?: string;
-    };
+    const data = (await response.json()) as { id?: string };
+    const jobId = data?.id;
 
-    // handle async response (poll if needed)
-    let imageUrl = result.output?.url ?? result.url;
-
-    if (!imageUrl && result.request_id) {
-      // poll for completion
-      const requestId = result.request_id;
-      let status = result.status;
-
-      while (status === "pending" || status === "processing") {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const statusResponse = await fetch(
-          `${this.baseURL}/requests/${requestId}`,
-          {
-            headers: {
-              Authorization: `Key ${this.apiKey}:${this.apiSecret}`,
-              Accept: "application/json",
-            },
-            signal: abortSignal,
-          },
-        );
-
-        if (!statusResponse.ok) {
-          throw new Error(
-            `Failed to check status: ${await statusResponse.text()}`,
-          );
-        }
-
-        const statusData = (await statusResponse.json()) as {
-          status: string;
-          output?: { url?: string };
-          url?: string;
-        };
-        status = statusData.status;
-        imageUrl = statusData.output?.url ?? statusData.url;
-      }
-
-      if (status === "failed") {
-        throw new Error("Higgsfield image generation failed");
-      }
+    if (!jobId) {
+      throw new Error("No job ID returned from Higgsfield Soul API");
     }
 
-    if (!imageUrl) {
-      throw new Error("No image URL in Higgsfield response");
-    }
+    // Poll for results
+    const imageUrl = await this.pollForResult(jobId, abortSignal);
 
-    // download image
+    // Download image
     const imageResponse = await fetch(imageUrl, { signal: abortSignal });
-    const imageBuffer = await imageResponse.arrayBuffer();
+    const imageBuffer = new Uint8Array(await imageResponse.arrayBuffer());
 
     return {
-      images: [new Uint8Array(imageBuffer)],
+      images: [imageBuffer],
       warnings,
       response: {
         timestamp: new Date(),
@@ -223,14 +143,83 @@ class HiggsfieldImageModel implements ImageModelV3 {
     };
   }
 
-  private resolveEndpoint(): string {
-    if (this.modelId === "soul") {
-      return "higgsfield-ai/soul/standard";
+  private async pollForResult(
+    jobId: string,
+    abortSignal?: AbortSignal,
+  ): Promise<string> {
+    const maxAttempts = 60;
+    const pollInterval = 5000; // 5 seconds
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const response = await fetch(`${this.baseURL}/v1/job-sets/${jobId}`, {
+        method: "GET",
+        headers: {
+          "hf-api-key": this.apiKey,
+          "hf-secret": this.apiSecret,
+          Accept: "application/json",
+        },
+        signal: abortSignal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Higgsfield polling error (${response.status}): ${errorText}`,
+        );
+      }
+
+      const jobSet = (await response.json()) as {
+        jobs?: Array<{
+          status?: string;
+          results?: {
+            min?: { url?: string };
+            raw?: { url?: string };
+          };
+        }>;
+      };
+
+      // Check if jobs array exists and has at least one job
+      if (
+        !jobSet?.jobs ||
+        !Array.isArray(jobSet.jobs) ||
+        jobSet.jobs.length === 0
+      ) {
+        throw new Error("No jobs found in Higgsfield JobSet response");
+      }
+
+      const job = jobSet.jobs[0];
+      const jobStatus = job?.status;
+
+      if (jobStatus === "completed") {
+        const results = job?.results;
+
+        if (results) {
+          // Try to get URL from results object
+          const imageUrl = results.min?.url ?? results.raw?.url;
+
+          if (imageUrl) {
+            return imageUrl;
+          }
+        }
+
+        throw new Error("No result URL found in completed Higgsfield job");
+      }
+
+      if (jobStatus === "failed") {
+        throw new Error("Higgsfield job failed");
+      }
+
+      if (jobStatus === "nsfw") {
+        throw new Error("Higgsfield job rejected due to NSFW content");
+      }
+
+      // Still processing, wait before next poll
+      if (attempt < maxAttempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      }
     }
-    if (this.modelId.startsWith("raw:")) {
-      return this.modelId.slice(4);
-    }
-    return `higgsfield-ai/${this.modelId}`;
+
+    throw new Error("Higgsfield generation timed out after 5 minutes");
   }
 }
 
