@@ -203,6 +203,7 @@ export interface PackshotProps extends BaseProps {
 export interface RenderOptions {
   output?: string;
   cache?: string;
+  quiet?: boolean;
 }
 
 export interface ElementPropsMap {

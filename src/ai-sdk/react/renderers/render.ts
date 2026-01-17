@@ -23,6 +23,12 @@ import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderMusic } from "./music";
+import {
+  addTask,
+  completeTask,
+  createProgressTracker,
+  startTask,
+} from "./progress";
 import { renderSpeech } from "./speech";
 import { resolvePath } from "./utils";
 import { renderVideo } from "./video";
@@ -38,6 +44,7 @@ export async function renderRoot(
   options: RenderOptions,
 ): Promise<Uint8Array> {
   const props = element.props as RenderProps;
+  const progress = createProgressTracker(options.quiet ?? false);
 
   const ctx: RenderContext = {
     width: props.width ?? 1920,
@@ -51,6 +58,7 @@ export async function renderRoot(
       ? withCache(generateVideo, { storage: fileCache({ dir: options.cache }) })
       : generateVideo,
     tempFiles: [],
+    progress,
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -180,6 +188,9 @@ export async function renderRoot(
 
   const outPath = options.output ?? `output/varg-${Date.now()}.mp4`;
 
+  const editlyTaskId = addTask(progress, "editly", "ffmpeg");
+  startTask(progress, editlyTaskId);
+
   await editly({
     outPath,
     width: ctx.width,
@@ -188,6 +199,8 @@ export async function renderRoot(
     clips,
     audioTracks: audioTracks.length > 0 ? audioTracks : undefined,
   });
+
+  completeTask(progress, editlyTaskId);
 
   const result = await Bun.file(outPath).arrayBuffer();
   return new Uint8Array(result);

@@ -7,6 +7,7 @@ import type {
   VargElement,
 } from "../types";
 import type { RenderContext } from "./context";
+import { addTask, completeTask, startTask } from "./progress";
 import { computeCacheKey, toFileUrl } from "./utils";
 
 async function resolveImageInput(
@@ -60,6 +61,10 @@ export async function renderImage(
   const cacheKey = computeCacheKey(element);
   const resolvedPrompt = await resolvePrompt(props.prompt, ctx);
 
+  const modelId = typeof model === "string" ? model : model.modelId;
+  const taskId = ctx.progress ? addTask(ctx.progress, "image", modelId) : null;
+  if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+
   const { images } = await ctx.generateImage({
     model,
     prompt: resolvedPrompt,
@@ -67,6 +72,8 @@ export async function renderImage(
     n: 1,
     cacheKey,
   } as Parameters<typeof generateImage>[0]);
+
+  if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
   const imageData = images[0]!.uint8Array;
   const tempPath = await File.toTemp({
