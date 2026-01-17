@@ -59,6 +59,7 @@ export async function renderRoot(
       : generateVideo,
     tempFiles: [],
     progress,
+    pending: new Map(),
   };
 
   const clipElements: VargElement<"clip">[] = [];

@@ -12,4 +12,6 @@ export interface RenderContext {
   generateVideo: typeof generateVideo;
   tempFiles: string[];
   progress?: ProgressTracker;
+  /** In-memory deduplication for concurrent renders of the same element */
+  pending: Map<string, Promise<string>>;
 }
