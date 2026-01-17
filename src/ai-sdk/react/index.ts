@@ -1,3 +1,4 @@
+export type { SizeValue } from "../providers/editly/types";
 export {
   Animate,
   Captions,
@@ -16,11 +17,8 @@ export {
   Title,
   Video,
 } from "./elements";
-
 export { Grid, Split as SplitLayout } from "./layouts";
-
 export { render, renderStream } from "./render";
-
 export type {
   AnimateProps,
   CaptionsProps,
@@ -29,6 +27,7 @@ export type {
   MusicProps,
   OverlayProps,
   PackshotProps,
+  PositionProps,
   RenderOptions,
   RenderProps,
   SliderProps,
