@@ -1,3 +1,4 @@
+import { elevenlabs } from "../elevenlabs-provider";
 import { fal } from "../fal-provider";
 import { Animate, Clip, Image, Music, Render } from "../react";
 
@@ -33,7 +34,12 @@ const SCENES = [
 
 export default (
   <Render width={1080} height={1920}>
-    <Music src="./output/duet-mixed.mp4" duration={8} />
+    <Music
+      prompt="upbeat electronic pop, energetic female vocal chops, modern tiktok vibe, catchy melody"
+      model={elevenlabs.musicModel()}
+      duration={10}
+      volume={0.6}
+    />
 
     {SCENES.map((scene, i) => (
       <Clip key={i} duration={2}>
