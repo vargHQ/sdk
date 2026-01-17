@@ -3,6 +3,7 @@ import type { MusicModelV3 } from "../music-model";
 import type {
   Position,
   ResizeMode,
+  SizeValue,
   TransitionOptions,
 } from "../providers/editly/types";
 import type { VideoModelV3 } from "../video-model";
@@ -44,10 +45,10 @@ export interface BaseProps {
 }
 
 export interface PositionProps {
-  left?: number;
-  top?: number;
-  width?: number;
-  height?: number;
+  left?: SizeValue;
+  top?: SizeValue;
+  width?: SizeValue;
+  height?: SizeValue;
 }
 
 export interface VolumeProps {
