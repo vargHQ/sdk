@@ -1,3 +1,4 @@
+import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import type { VargElement, VargNode } from "../types";
 
@@ -27,6 +28,41 @@ function isVargElement(v: unknown): v is VargElement {
   );
 }
 
+function isLocalFilePath(v: string): boolean {
+  if (v.startsWith("http://") || v.startsWith("https://")) return false;
+  if (v.startsWith("data:")) return false;
+  const resolved = resolvePath(v);
+  return existsSync(resolved);
+}
+
+function getFileFingerprint(path: string): string {
+  const resolved = resolvePath(path);
+  const stat = statSync(resolved);
+  return `${path}:${stat.mtimeMs}:${stat.size}`;
+}
+
+function serializeValue(v: unknown): string {
+  if (typeof v === "string") {
+    if (isLocalFilePath(v)) {
+      return getFileFingerprint(v);
+    }
+    return v;
+  }
+  if (v instanceof Uint8Array) {
+    return Buffer.from(v).toString("base64");
+  }
+  if (Array.isArray(v)) {
+    return `[${v.map(serializeValue).join(",")}]`;
+  }
+  if (v && typeof v === "object") {
+    const entries = Object.entries(v)
+      .map(([key, val]) => `${key}:${serializeValue(val)}`)
+      .join(",");
+    return `{${entries}}`;
+  }
+  return String(v);
+}
+
 export function computeCacheKey(element: VargElement): CacheKeyPart[] {
   const key: CacheKeyPart[] = [element.type];
 
@@ -37,18 +73,22 @@ export function computeCacheKey(element: VargElement): CacheKeyPart[] {
       key.push("model", model.provider ?? "", model.modelId);
       continue;
     }
-    if (
-      typeof v === "string" ||
-      typeof v === "number" ||
-      typeof v === "boolean"
-    ) {
+    if (typeof v === "string") {
+      if (isLocalFilePath(v)) {
+        key.push(k, getFileFingerprint(v));
+      } else {
+        key.push(k, v);
+      }
+    } else if (typeof v === "number" || typeof v === "boolean") {
       key.push(k, v);
     } else if (v === null || v === undefined) {
       key.push(k, v);
+    } else if (v instanceof Uint8Array) {
+      key.push(k, Buffer.from(v).toString("base64"));
     } else if (isVargElement(v)) {
       key.push(k, ...computeCacheKey(v));
-    } else if (typeof v === "object") {
-      key.push(k, JSON.stringify(v));
+    } else if (Array.isArray(v) || typeof v === "object") {
+      key.push(k, serializeValue(v));
     }
   }
 
