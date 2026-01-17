@@ -1,3 +1,4 @@
+import { elevenlabs } from "../elevenlabs-provider";
 import { fal } from "../fal-provider";
 import { Animate, Clip, Image, Music, Render, render } from "../react";
 
@@ -45,10 +46,14 @@ async function main() {
 
   const video = (
     <Render width={1080} height={1920}>
-      <Music src="./output/duet-mixed.mp4" duration={4 * 1} />
+      <Music
+        prompt="upbeat electronic pop, energetic female vocal chops, modern tiktok vibe, catchy melody"
+        model={elevenlabs.musicModel()}
+        duration={8}
+      />
 
       {SCENES.map((scene, i) => (
-        <Clip key={i} duration={1}>
+        <Clip key={i} duration={2}>
           <Animate
             image={Image({
               prompt: { text: scene.prompt, images: [MADI_REF] },
