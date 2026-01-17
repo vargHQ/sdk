@@ -650,6 +650,8 @@ export default (
           debounceTimer = setTimeout(() => startRender(), 2000);
         }
       });
+
+      loadInitialCode();
     });
 
     async function loadTemplates() {
@@ -662,6 +664,15 @@ export default (
         opt.textContent = t.name;
         select.appendChild(opt);
       });
+    }
+
+    async function loadInitialCode() {
+      const res = await fetch('/api/initial-code');
+      const data = await res.json();
+      if (data.code) {
+        editor.setValue(data.code);
+        localStorage.setItem('varg-code', data.code);
+      }
     }
 
     document.getElementById('template-select').addEventListener('change', async (e) => {
