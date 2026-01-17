@@ -1,6 +1,16 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { getCacheItemMedia, scanCacheFolder } from "./scanner";
+import { extractStages, serializeStages } from "./stages";
+import {
+  createStepSession,
+  deleteSession,
+  executeNextStage,
+  executeStage,
+  getSession,
+  getSessionStatus,
+  getStagePreviewPath,
+} from "./step-renderer";
 import type { CacheItem, RenderProgress, RenderRequest } from "./types";
 
 const DEFAULT_CACHE_DIR = ".cache/ai";
@@ -168,7 +178,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
         const templateFiles: Record<string, string> = {
           "simple-portrait": "orange-portrait.tsx",
           "portrait-cues": "orange-portrait-cues.tsx",
-          "talking-head": "ralph-talking.tsx",
+          "talking-head": "ralph-talking-studio.tsx",
         };
         const file = templateFiles[id];
         if (!file) return new Response("not found", { status: 404 });
@@ -274,6 +284,211 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
           join(import.meta.dir, "ui/index.html"),
         ).text();
         return new Response(html, { headers: { "content-type": "text/html" } });
+      }
+
+      if (url.pathname === "/api/step/stages" && req.method === "POST") {
+        const body = (await req.json()) as { code: string };
+        const tempDir = join(import.meta.dir, "../examples");
+        const tempFile = join(tempDir, `_stages_${Date.now()}.tsx`);
+
+        try {
+          await Bun.write(tempFile, body.code);
+          const mod = await import(tempFile);
+          const element = mod.default;
+
+          if (
+            !element ||
+            typeof element !== "object" ||
+            element.type !== "render"
+          ) {
+            return Response.json(
+              { error: "file must export a <Render> element as default" },
+              { status: 400 },
+            );
+          }
+
+          const extracted = extractStages(element);
+          const serialized = serializeStages(extracted);
+
+          return Response.json(serialized);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 400 });
+        } finally {
+          try {
+            if (await Bun.file(tempFile).exists()) {
+              await Bun.$`rm ${tempFile}`;
+            }
+          } catch {}
+        }
+      }
+
+      if (url.pathname === "/api/step/session" && req.method === "POST") {
+        const body = (await req.json()) as { code: string };
+        const tempDir = join(import.meta.dir, "../examples");
+        const tempFile = join(tempDir, `_session_${Date.now()}.tsx`);
+
+        try {
+          await Bun.write(tempFile, body.code);
+          const mod = await import(tempFile);
+          const element = mod.default;
+
+          if (
+            !element ||
+            typeof element !== "object" ||
+            element.type !== "render"
+          ) {
+            return Response.json(
+              { error: "file must export a <Render> element as default" },
+              { status: 400 },
+            );
+          }
+
+          const session = createStepSession(body.code, element, cacheDir);
+          const status = getSessionStatus(session);
+
+          return Response.json(status);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 400 });
+        } finally {
+          try {
+            if (await Bun.file(tempFile).exists()) {
+              await Bun.$`rm ${tempFile}`;
+            }
+          } catch {}
+        }
+      }
+
+      if (url.pathname === "/api/step/next" && req.method === "POST") {
+        const body = (await req.json()) as { sessionId: string };
+        const session = getSession(body.sessionId);
+
+        if (!session) {
+          return Response.json({ error: "session not found" }, { status: 404 });
+        }
+
+        try {
+          const result = await executeNextStage(session);
+
+          if (!result) {
+            return Response.json({
+              done: true,
+              status: getSessionStatus(session),
+            });
+          }
+
+          return Response.json({
+            done: false,
+            stage: {
+              id: result.stage.id,
+              type: result.stage.type,
+              label: result.stage.label,
+              status: result.stage.status,
+            },
+            result: result.result,
+            isLast: result.isLast,
+            status: getSessionStatus(session),
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json(
+            { error: message, status: getSessionStatus(session) },
+            { status: 500 },
+          );
+        }
+      }
+
+      if (url.pathname === "/api/step/run" && req.method === "POST") {
+        const body = (await req.json()) as {
+          sessionId: string;
+          stageId: string;
+        };
+        const session = getSession(body.sessionId);
+
+        if (!session) {
+          return Response.json({ error: "session not found" }, { status: 404 });
+        }
+
+        try {
+          const result = await executeStage(session, body.stageId);
+          return Response.json({
+            result,
+            status: getSessionStatus(session),
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json(
+            { error: message, status: getSessionStatus(session) },
+            { status: 500 },
+          );
+        }
+      }
+
+      if (
+        url.pathname.match(/^\/api\/step\/preview\/[^/]+\/[^/]+$/) &&
+        req.method === "GET"
+      ) {
+        const parts = url.pathname.split("/");
+        const sessionId = parts[4];
+        const stageId = parts[5];
+
+        if (!sessionId || !stageId) {
+          return new Response("invalid path", { status: 400 });
+        }
+
+        const session = getSession(sessionId);
+        if (!session) {
+          return new Response("session not found", { status: 404 });
+        }
+
+        const previewPath = getStagePreviewPath(session, stageId);
+        if (!previewPath) {
+          return new Response("preview not found", { status: 404 });
+        }
+
+        const file = Bun.file(previewPath);
+        if (!(await file.exists())) {
+          return new Response("file not found", { status: 404 });
+        }
+
+        const mimeType = previewPath.endsWith(".mp4")
+          ? "video/mp4"
+          : previewPath.endsWith(".mp3")
+            ? "audio/mp3"
+            : "image/png";
+
+        return new Response(file, { headers: { "content-type": mimeType } });
+      }
+
+      if (
+        url.pathname.match(/^\/api\/step\/session\/[^/]+$/) &&
+        req.method === "GET"
+      ) {
+        const sessionId = url.pathname.split("/").pop();
+        if (!sessionId) {
+          return new Response("invalid path", { status: 400 });
+        }
+
+        const session = getSession(sessionId);
+        if (!session) {
+          return Response.json({ error: "session not found" }, { status: 404 });
+        }
+
+        return Response.json(getSessionStatus(session));
+      }
+
+      if (
+        url.pathname.match(/^\/api\/step\/session\/[^/]+$/) &&
+        req.method === "DELETE"
+      ) {
+        const sessionId = url.pathname.split("/").pop();
+        if (!sessionId) {
+          return new Response("invalid path", { status: 400 });
+        }
+
+        deleteSession(sessionId);
+        return Response.json({ deleted: true });
       }
 
       return new Response("not found", { status: 404 });

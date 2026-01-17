@@ -106,7 +106,7 @@
       background: #000;
       position: relative;
       overflow: hidden;
-      min-height: 0;
+      min-height: 200px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -243,6 +243,234 @@
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Step mode timeline */
+    .stage-timeline {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      display: none;
+    }
+    .stage-timeline.active {
+      display: block;
+    }
+    .stage-timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .stage-timeline-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .stage-timeline-hint {
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+    .stage-timeline-hint kbd {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.125rem 0.375rem;
+      font-family: inherit;
+      font-size: 0.625rem;
+    }
+    .stage-track {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .stage-track::-webkit-scrollbar {
+      height: 4px;
+    }
+    .stage-track::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .stage-track::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+    .stage-item {
+      flex-shrink: 0;
+      width: 100px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.625rem;
+      cursor: default;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .stage-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: transparent;
+      transition: background 0.2s ease;
+    }
+    .stage-item.pending {
+      opacity: 0.5;
+    }
+    .stage-item.running {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .stage-item.running::before {
+      background: var(--accent);
+      animation: stage-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes stage-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .stage-item.complete {
+      cursor: pointer;
+      border-color: var(--success);
+    }
+    .stage-item.complete::before {
+      background: var(--success);
+    }
+    .stage-item.complete:hover {
+      border-color: var(--success);
+      background: rgba(34, 197, 94, 0.1);
+    }
+    .stage-item.error {
+      border-color: var(--error);
+    }
+    .stage-item.error::before {
+      background: var(--error);
+    }
+    .stage-item.selected {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .stage-icon {
+      font-size: 1.25rem;
+      margin-bottom: 0.375rem;
+    }
+    .stage-label {
+      font-size: 0.7rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.25rem;
+    }
+    .stage-status {
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .stage-item.running .stage-status {
+      color: var(--accent);
+    }
+    .stage-item.complete .stage-status {
+      color: var(--success);
+    }
+    .stage-item.error .stage-status {
+      color: var(--error);
+    }
+    .stage-connector {
+      flex-shrink: 0;
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stage-connector-line {
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+      position: relative;
+    }
+    .stage-connector-line.complete {
+      background: var(--success);
+    }
+    .stage-connector-line::after {
+      content: '';
+      position: absolute;
+      right: -4px;
+      top: -3px;
+      border: 4px solid transparent;
+      border-left-color: var(--border);
+    }
+    .stage-connector-line.complete::after {
+      border-left-color: var(--success);
+    }
+    
+    /* Mode toggle */
+    .mode-toggle {
+      display: flex;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      overflow: hidden;
+    }
+    .mode-toggle-btn {
+      padding: 0.375rem 0.625rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .mode-toggle-btn:hover {
+      color: var(--text);
+    }
+    .mode-toggle-btn.active {
+      background: var(--accent);
+      color: var(--text);
+    }
+    .mode-toggle-btn:first-child {
+      border-right: 1px solid var(--border);
+    }
+    
+    /* Next step button */
+    .btn-next {
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      border-color: transparent;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-next::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+    .btn-next:hover::before {
+      left: 100%;
+    }
+    .btn-next:hover {
+      background: linear-gradient(135deg, var(--accent-hover), #4f46e5);
+    }
+    .btn-next:disabled {
+      background: var(--bg-secondary);
+      border-color: var(--border);
+    }
+    .btn-next:disabled::before {
+      display: none;
+    }
     .error-banner {
       background: rgba(239, 68, 68, 0.1);
       border: 1px solid var(--error);
@@ -293,8 +521,19 @@
       </div>
       
       <div class="controls">
+        <div class="mode-toggle">
+          <button class="mode-toggle-btn active" id="mode-all-btn" title="Run all stages at once">
+            <span>⚡</span> all
+          </button>
+          <button class="mode-toggle-btn" id="mode-step-btn" title="Run stages one by one">
+            <span>👣</span> step
+          </button>
+        </div>
         <button class="btn btn-primary" id="run-btn">
           <span>▶</span> run
+        </button>
+        <button class="btn btn-next" id="next-btn" style="display: none;">
+          <span>→</span> next
         </button>
         <button class="btn btn-toggle" id="auto-btn">
           <span>⟳</span> auto
@@ -305,6 +544,14 @@
         <button class="btn" id="share-btn" style="margin-left: auto;">
           <span>🔗</span> share
         </button>
+      </div>
+      
+      <div class="stage-timeline" id="stage-timeline">
+        <div class="stage-timeline-header">
+          <div class="stage-timeline-title">stages</div>
+          <div class="stage-timeline-hint"><kbd>Space</kbd> next step</div>
+        </div>
+        <div class="stage-track" id="stage-track"></div>
       </div>
       
       <div class="history-section">
@@ -346,6 +593,13 @@ export default (
     let currentRenderId = null;
     let debounceTimer = null;
     let history = JSON.parse(localStorage.getItem('varg-history') || '[]');
+    
+    // Step mode state
+    let stepMode = false;
+    let stepSession = null;
+    let stages = [];
+    let currentStageIndex = -1;
+    let selectedStageId = null;
 
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
 
@@ -418,7 +672,23 @@ export default (
       e.target.value = '';
     });
 
-    document.getElementById('run-btn').addEventListener('click', startRender);
+    document.getElementById('run-btn').addEventListener('click', () => {
+      if (stepMode) {
+        startStepSession();
+      } else {
+        startRender();
+      }
+    });
+    
+    document.getElementById('next-btn').addEventListener('click', executeNextStep);
+    
+    document.getElementById('mode-all-btn').addEventListener('click', () => {
+      setStepMode(false);
+    });
+    
+    document.getElementById('mode-step-btn').addEventListener('click', () => {
+      setStepMode(true);
+    });
     
     document.getElementById('auto-btn').addEventListener('click', () => {
       autoMode = !autoMode;
@@ -430,12 +700,260 @@ export default (
     document.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        startRender();
+        if (stepMode) {
+          startStepSession();
+        } else {
+          startRender();
+        }
       }
       if (e.key === 'Escape' && isRendering) {
         stopRender();
       }
+      // Space to execute next step in step mode
+      if (e.code === 'Space' && stepMode && stepSession && !isRendering) {
+        // Don't trigger if focused on editor or input
+        if (document.activeElement.tagName !== 'INPUT' && 
+            document.activeElement.tagName !== 'TEXTAREA' &&
+            !document.activeElement.closest('#editor-container')) {
+          e.preventDefault();
+          executeNextStep();
+        }
+      }
     });
+    
+    function setStepMode(enabled) {
+      stepMode = enabled;
+      document.getElementById('mode-all-btn').classList.toggle('active', !enabled);
+      document.getElementById('mode-step-btn').classList.toggle('active', enabled);
+      document.getElementById('stage-timeline').classList.toggle('active', enabled && stages.length > 0);
+      document.getElementById('next-btn').style.display = enabled && stepSession ? 'flex' : 'none';
+      document.getElementById('auto-btn').style.display = enabled ? 'none' : 'flex';
+      
+      if (!enabled) {
+        // Reset step state when switching to run-all mode
+        stepSession = null;
+        stages = [];
+        currentStageIndex = -1;
+        selectedStageId = null;
+        renderStageTimeline();
+      }
+    }
+    
+    function getStageIcon(type) {
+      const icons = {
+        image: '🖼️',
+        video: '🎬',
+        animate: '🎬',
+        speech: '🎤',
+        music: '🎵',
+        default: '⚙️'
+      };
+      return icons[type] || icons.default;
+    }
+    
+    function renderStageTimeline() {
+      const track = document.getElementById('stage-track');
+      const timeline = document.getElementById('stage-timeline');
+      
+      if (stages.length === 0) {
+        timeline.classList.remove('active');
+        track.innerHTML = '';
+        return;
+      }
+      
+      if (stepMode) {
+        timeline.classList.add('active');
+      }
+      
+      let html = '';
+      stages.forEach((stage, index) => {
+        const isSelected = stage.id === selectedStageId;
+        const statusClass = stage.status + (isSelected ? ' selected' : '');
+        
+        // Add connector before each stage except the first
+        if (index > 0) {
+          const prevComplete = stages[index - 1].status === 'complete';
+          html += `
+            <div class="stage-connector">
+              <div class="stage-connector-line ${prevComplete ? 'complete' : ''}"></div>
+            </div>
+          `;
+        }
+        
+        html += `
+          <div class="stage-item ${statusClass}" 
+               data-stage-id="${stage.id}" 
+               data-stage-index="${index}"
+               onclick="selectStage('${stage.id}')">
+            <div class="stage-icon">${getStageIcon(stage.type)}</div>
+            <div class="stage-label" title="${stage.label}">${stage.label}</div>
+            <div class="stage-status">${stage.status}</div>
+          </div>
+        `;
+      });
+      
+      track.innerHTML = html;
+    }
+    
+    async function selectStage(stageId) {
+      const stage = stages.find(s => s.id === stageId);
+      if (!stage || stage.status !== 'complete') return;
+      
+      selectedStageId = stageId;
+      renderStageTimeline();
+      
+      // Show stored result directly (preview URL already available)
+      if (stage.result) {
+        showStagePreview({ result: stage.result });
+      }
+    }
+    
+    function showStagePreview(data) {
+      const container = document.getElementById('preview-content');
+      console.log('[preview] showStagePreview called with:', data);
+      
+      if (!data || !data.result) {
+        container.innerHTML = `<div class="preview-placeholder">
+          <div class="preview-placeholder-icon">📭</div>
+          <div>no preview available</div>
+        </div>`;
+        return;
+      }
+      
+      const { type, previewUrl, mimeType } = data.result;
+      console.log('[preview] type:', type, 'previewUrl:', previewUrl, 'mimeType:', mimeType);
+      
+      if (mimeType?.startsWith('video/') || type === 'video' || type === 'animate') {
+        container.innerHTML = `<video class="preview-video" src="${previewUrl}" controls autoplay loop></video>`;
+      } else if (mimeType?.startsWith('image/') || type === 'image') {
+        container.innerHTML = `<img class="preview-video" src="${previewUrl}" alt="Stage preview" style="object-fit: contain; max-width: 100%; max-height: 100%;">`;
+      } else if (mimeType?.startsWith('audio/') || type === 'speech' || type === 'music') {
+        container.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+            <div style="font-size: 3rem;">${type === 'music' ? '🎵' : '🎤'}</div>
+            <audio controls src="${previewUrl}" style="width: 80%;"></audio>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `<div class="preview-placeholder">
+          <div class="preview-placeholder-icon">✓</div>
+          <div>stage complete</div>
+        </div>`;
+      }
+    }
+    
+    async function startStepSession() {
+      if (isRendering) return;
+      
+      isRendering = true;
+      updateUI('rendering');
+      
+      const code = editor.getValue();
+      
+      try {
+        const res = await fetch('/api/step/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Failed to create step session');
+        }
+        
+        const data = await res.json();
+        stepSession = data;
+        stages = data.stages.map(s => ({ ...s, status: 'pending' }));
+        currentStageIndex = -1;
+        selectedStageId = null;
+        
+        renderStageTimeline();
+        document.getElementById('next-btn').style.display = 'flex';
+        document.getElementById('next-btn').disabled = false;
+        
+        updateProgress(0, 'session ready — click next to start');
+        updateUI('idle');
+        
+        // Show placeholder for step mode
+        const container = document.getElementById('preview-content');
+        container.innerHTML = `<div class="preview-placeholder">
+          <div class="preview-placeholder-icon">👣</div>
+          <div>step through ${stages.length} stage${stages.length > 1 ? 's' : ''}</div>
+        </div>`;
+        
+      } catch (err) {
+        showError(err.message);
+        updateUI('error');
+      }
+      
+      isRendering = false;
+    }
+    
+    async function executeNextStep() {
+      if (!stepSession || isRendering) return;
+      
+      const nextIndex = currentStageIndex + 1;
+      if (nextIndex >= stages.length) {
+        // All stages complete
+        document.getElementById('next-btn').disabled = true;
+        return;
+      }
+      
+      isRendering = true;
+      currentStageIndex = nextIndex;
+      stages[nextIndex].status = 'running';
+      renderStageTimeline();
+      
+      document.getElementById('next-btn').disabled = true;
+      updateProgress((nextIndex / stages.length), `executing: ${stages[nextIndex].label}`);
+      document.getElementById('progress-section').style.display = 'block';
+      
+      try {
+        const res = await fetch('/api/step/next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: stepSession.sessionId }),
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Step execution failed');
+        }
+        
+        const data = await res.json();
+        stages[nextIndex].status = 'complete';
+        stages[nextIndex].result = data.result;
+        
+        // Auto-select and show the completed stage
+        selectedStageId = stages[nextIndex].id;
+        renderStageTimeline();
+        showStagePreview(data);
+        
+        const progress = (nextIndex + 1) / stages.length;
+        if (nextIndex + 1 >= stages.length) {
+          updateProgress(1, 'all stages complete');
+          document.getElementById('progress-bar').className = 'progress-bar complete';
+          document.getElementById('next-btn').disabled = true;
+          
+          // Add to history if final result is a video
+          if (data.result?.type === 'video' && data.result?.previewUrl) {
+            addToHistory(editor.getValue(), data.result.previewUrl);
+          }
+        } else {
+          updateProgress(progress, `${nextIndex + 1}/${stages.length} complete — ready for next`);
+          document.getElementById('next-btn').disabled = false;
+        }
+        
+      } catch (err) {
+        stages[nextIndex].status = 'error';
+        renderStageTimeline();
+        showError(err.message);
+        updateUI('error');
+      }
+      
+      isRendering = false;
+    }
 
     async function startRender() {
       if (isRendering) return;
@@ -507,12 +1025,16 @@ export default (
     function updateUI(state) {
       const runBtn = document.getElementById('run-btn');
       const stopBtn = document.getElementById('stop-btn');
+      const nextBtn = document.getElementById('next-btn');
       const progressSection = document.getElementById('progress-section');
       const progressBar = document.getElementById('progress-bar');
 
       if (state === 'rendering') {
         runBtn.disabled = true;
         stopBtn.disabled = false;
+        if (stepMode) {
+          nextBtn.disabled = true;
+        }
         progressSection.style.display = 'block';
         progressBar.className = 'progress-bar';
       } else if (state === 'complete') {
@@ -526,7 +1048,9 @@ export default (
       } else {
         runBtn.disabled = false;
         stopBtn.disabled = true;
-        progressSection.style.display = 'none';
+        if (!stepMode) {
+          progressSection.style.display = 'none';
+        }
       }
     }
 
