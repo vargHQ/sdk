@@ -33,3 +33,28 @@ export interface VideoData {
   base64?: string;
   url?: string;
 }
+
+export interface RenderRequest {
+  code: string;
+  cacheDir?: string;
+}
+
+export interface RenderProgress {
+  step: "parsing" | "rendering" | "complete" | "error";
+  progress: number;
+  message: string;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface HistoryItem {
+  id: string;
+  code: string;
+  videoUrl: string;
+  thumbnail?: string;
+  createdAt: Date;
+}

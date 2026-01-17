@@ -1,0 +1,284 @@
+import { existsSync, mkdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { getCacheItemMedia, scanCacheFolder } from "./scanner";
+import type { CacheItem, RenderProgress, RenderRequest } from "./types";
+
+const DEFAULT_CACHE_DIR = ".cache/ai";
+const DEFAULT_OUTPUT_DIR = "output/studio";
+const DEFAULT_SHARES_DIR = "output/studio/shares";
+
+interface StudioConfig {
+  cacheDir: string;
+  outputDir: string;
+  port: number;
+}
+
+interface ShareData {
+  code: string;
+  videoUrl?: string;
+  createdAt: string;
+}
+
+export function createStudioServer(config: Partial<StudioConfig> = {}) {
+  const cacheDir = resolve(config.cacheDir ?? DEFAULT_CACHE_DIR);
+  const outputDir = resolve(config.outputDir ?? DEFAULT_OUTPUT_DIR);
+  const sharesDir = resolve(DEFAULT_SHARES_DIR);
+  const port = config.port ?? 8282;
+
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
+  }
+  if (!existsSync(sharesDir)) {
+    mkdirSync(sharesDir, { recursive: true });
+  }
+
+  let cachedItems: CacheItem[] = [];
+
+  async function refreshCache() {
+    if (existsSync(cacheDir)) {
+      cachedItems = await scanCacheFolder(cacheDir);
+    }
+  }
+
+  const activeRenders = new Map<string, AbortController>();
+
+  async function executeRender(
+    code: string,
+    renderId: string,
+    onProgress: (progress: RenderProgress) => void,
+    signal: AbortSignal,
+  ): Promise<string> {
+    const outputPath = join(outputDir, `${renderId}.mp4`);
+    const tempDir = join(import.meta.dir, "../examples");
+    const tempFile = join(tempDir, `_studio_${renderId}.tsx`);
+
+    onProgress({ step: "parsing", progress: 0, message: "parsing code..." });
+    await Bun.write(tempFile, code);
+    onProgress({
+      step: "rendering",
+      progress: 0.1,
+      message: "starting render...",
+    });
+
+    try {
+      console.log(`[render] importing ${tempFile}`);
+      const mod = await import(tempFile);
+      const element = mod.default;
+
+      if (
+        !element ||
+        typeof element !== "object" ||
+        element.type !== "render"
+      ) {
+        throw new Error("file must export a <Render> element as default");
+      }
+
+      console.log("[render] starting render pipeline");
+      const { render } = await import("../react/render");
+
+      await render(element, {
+        output: outputPath,
+        cache: cacheDir,
+        quiet: false,
+      });
+
+      console.log(`[render] complete: ${outputPath}`);
+      onProgress({ step: "complete", progress: 1, message: "done!" });
+      return outputPath;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[render] error: ${msg}`);
+      if (err instanceof Error && err.stack) {
+        console.error(err.stack);
+      }
+      throw new Error(msg);
+    } finally {
+      try {
+        if (await Bun.file(tempFile).exists()) {
+          await Bun.$`rm ${tempFile}`;
+        }
+      } catch {}
+    }
+  }
+
+  const server = Bun.serve({
+    port,
+    idleTimeout: 255,
+    async fetch(req) {
+      const url = new URL(req.url);
+      const method = req.method;
+      const path = url.pathname;
+
+      if (path.startsWith("/api/")) {
+        console.log(`${method} ${path}`);
+      }
+
+      if (url.pathname === "/" || url.pathname === "/editor") {
+        const html = await Bun.file(
+          join(import.meta.dir, "ui/index.html"),
+        ).text();
+        return new Response(html, { headers: { "content-type": "text/html" } });
+      }
+
+      if (url.pathname === "/cache") {
+        const html = await Bun.file(
+          join(import.meta.dir, "ui/cache.html"),
+        ).text();
+        return new Response(html, { headers: { "content-type": "text/html" } });
+      }
+
+      if (url.pathname === "/api/items") {
+        await refreshCache();
+        return Response.json(cachedItems);
+      }
+
+      if (url.pathname.startsWith("/api/media/")) {
+        const id = decodeURIComponent(url.pathname.replace("/api/media/", ""));
+        const media = await getCacheItemMedia(cacheDir, id);
+        if (!media) return new Response("not found", { status: 404 });
+        const buffer = Buffer.from(media.data, "base64");
+        return new Response(buffer, {
+          headers: { "content-type": media.mimeType },
+        });
+      }
+
+      if (url.pathname === "/api/templates") {
+        const templates = [
+          {
+            id: "simple-portrait",
+            name: "simple portrait",
+            description: "basic portrait video with text prompt",
+          },
+          {
+            id: "portrait-cues",
+            name: "portrait with cues",
+            description: "advanced portrait using type-safe cue system",
+          },
+          {
+            id: "talking-head",
+            name: "talking head",
+            description: "character with voice and lipsync",
+          },
+        ];
+        return Response.json(templates);
+      }
+
+      if (url.pathname.startsWith("/api/templates/")) {
+        const id = url.pathname.replace("/api/templates/", "");
+        const templateFiles: Record<string, string> = {
+          "simple-portrait": "orange-portrait.tsx",
+          "portrait-cues": "orange-portrait-cues.tsx",
+          "talking-head": "ralph-talking.tsx",
+        };
+        const file = templateFiles[id];
+        if (!file) return new Response("not found", { status: 404 });
+        const code = await Bun.file(
+          join(import.meta.dir, "../examples", file),
+        ).text();
+        return Response.json({ code });
+      }
+
+      if (url.pathname === "/api/render" && req.method === "POST") {
+        const body = (await req.json()) as RenderRequest;
+        const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const controller = new AbortController();
+        activeRenders.set(renderId, controller);
+
+        const stream = new ReadableStream({
+          async start(streamController) {
+            const encoder = new TextEncoder();
+            const send = (event: string, data: unknown) => {
+              streamController.enqueue(
+                encoder.encode(
+                  `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
+                ),
+              );
+            };
+
+            try {
+              send("start", { renderId });
+              const outputPath = await executeRender(
+                body.code,
+                renderId,
+                (progress) => send("progress", progress),
+                controller.signal,
+              );
+              send("complete", { videoUrl: `/api/output/${renderId}.mp4` });
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : "unknown error";
+              send("error", { message });
+            } finally {
+              activeRenders.delete(renderId);
+              streamController.close();
+            }
+          },
+        });
+
+        return new Response(stream, {
+          headers: {
+            "content-type": "text/event-stream",
+            "cache-control": "no-cache",
+            connection: "keep-alive",
+          },
+        });
+      }
+
+      if (url.pathname.startsWith("/api/render/") && req.method === "DELETE") {
+        const renderId = url.pathname.replace("/api/render/", "");
+        const controller = activeRenders.get(renderId);
+        if (controller) {
+          controller.abort();
+          activeRenders.delete(renderId);
+          return Response.json({ stopped: true });
+        }
+        return Response.json({ stopped: false });
+      }
+
+      if (url.pathname.startsWith("/api/output/")) {
+        const filename = url.pathname.replace("/api/output/", "");
+        const filePath = join(outputDir, filename);
+        const file = Bun.file(filePath);
+        if (!(await file.exists()))
+          return new Response("not found", { status: 404 });
+        return new Response(file, { headers: { "content-type": "video/mp4" } });
+      }
+
+      if (url.pathname === "/api/share" && req.method === "POST") {
+        const body = (await req.json()) as { code: string; videoUrl?: string };
+        const shareId = Math.random().toString(36).slice(2, 10);
+        const shareData: ShareData = {
+          code: body.code,
+          videoUrl: body.videoUrl,
+          createdAt: new Date().toISOString(),
+        };
+        await Bun.write(
+          join(sharesDir, `${shareId}.json`),
+          JSON.stringify(shareData),
+        );
+        return Response.json({ shareId, url: `/s/${shareId}` });
+      }
+
+      if (url.pathname.startsWith("/api/share/")) {
+        const shareId = url.pathname.replace("/api/share/", "");
+        const sharePath = join(sharesDir, `${shareId}.json`);
+        const file = Bun.file(sharePath);
+        if (!(await file.exists()))
+          return new Response("not found", { status: 404 });
+        const data = await file.json();
+        return Response.json(data);
+      }
+
+      if (url.pathname.startsWith("/s/")) {
+        const html = await Bun.file(
+          join(import.meta.dir, "ui/index.html"),
+        ).text();
+        return new Response(html, { headers: { "content-type": "text/html" } });
+      }
+
+      return new Response("not found", { status: 404 });
+    },
+  });
+
+  return { server, port };
+}
