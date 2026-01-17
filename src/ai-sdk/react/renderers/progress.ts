@@ -7,39 +7,35 @@ export type GenerationType =
   | "editly";
 
 export const TIME_ESTIMATES: Record<GenerationType, number> = {
-  image: 5,
-  video: 60,
-  animate: 45,
-  speech: 3,
-  music: 30,
-  editly: 10,
+  image: 30,
+  video: 120,
+  animate: 90,
+  speech: 5,
+  music: 45,
+  editly: 15,
 };
 
 export const MODEL_TIME_ESTIMATES: Record<string, number> = {
-  // image models
-  "fal-ai/flux/schnell": 3,
-  "fal-ai/flux/dev": 8,
-  "fal-ai/flux-pro": 12,
-  "fal-ai/flux-pro/v1.1": 12,
-  "fal-ai/flux-pro/v1.1-ultra": 15,
-  "fal-ai/recraft-v3": 10,
-  "fal-ai/ideogram/v2": 8,
-  "fal-ai/ideogram/v2/turbo": 5,
+  // image models - use partial matching
+  "flux/schnell": 3,
+  "flux/dev": 8,
+  "flux-pro": 12,
+  recraft: 10,
+  ideogram: 8,
   // video models
-  "fal-ai/kling-video/v1/standard/image-to-video": 120,
-  "fal-ai/kling-video/v1/pro/image-to-video": 180,
-  "fal-ai/kling-video/v1.5/pro/image-to-video": 180,
-  "fal-ai/minimax/video-01/image-to-video": 90,
-  "fal-ai/minimax/video-01-live/image-to-video": 60,
-  "fal-ai/luma-dream-machine/image-to-video": 90,
-  "fal-ai/runway-gen3/turbo/image-to-video": 45,
-  "fal-ai/veo2": 120,
+  kling: 180,
+  "kling-v2": 180,
+  "kling-v2.5": 180,
+  minimax: 90,
+  luma: 90,
+  runway: 45,
+  veo: 120,
   // speech models
-  "elevenlabs/eleven_multilingual_v2": 3,
-  "elevenlabs/eleven_turbo_v2_5": 2,
+  elevenlabs: 5,
+  eleven: 5,
   // music models
-  "fal-ai/stable-audio": 30,
-  "replicate/musicgen": 45,
+  "stable-audio": 30,
+  musicgen: 45,
 };
 
 export interface ProgressTask {
@@ -86,20 +82,30 @@ export function startTask(tracker: ProgressTracker, id: string): void {
   tracker.onUpdate?.(tracker);
 }
 
+const CACHE_THRESHOLD_MS = 1000;
+
 export function completeTask(tracker: ProgressTracker, id: string): void {
   const task = tracker.tasks.find((t) => t.id === id);
   if (task) {
     task.status = "done";
     task.completedAt = Date.now();
+    const duration = task.startedAt ? task.completedAt - task.startedAt : 0;
+    const wasCached = duration < CACHE_THRESHOLD_MS;
     if (!tracker.quiet) {
-      logTaskComplete(task);
+      logTaskComplete(task, wasCached);
     }
   }
   tracker.onUpdate?.(tracker);
 }
 
 function getEstimate(task: ProgressTask): number {
-  return MODEL_TIME_ESTIMATES[task.model] ?? TIME_ESTIMATES[task.type];
+  const modelLower = task.model.toLowerCase();
+  for (const [key, estimate] of Object.entries(MODEL_TIME_ESTIMATES)) {
+    if (modelLower.includes(key.toLowerCase())) {
+      return estimate;
+    }
+  }
+  return TIME_ESTIMATES[task.type];
 }
 
 function logTaskStart(task: ProgressTask): void {
@@ -107,12 +113,16 @@ function logTaskStart(task: ProgressTask): void {
   console.log(`⏳ generating ${task.type} with ${task.model} (~${estimate}s)`);
 }
 
-function logTaskComplete(task: ProgressTask): void {
+function logTaskComplete(task: ProgressTask, cached: boolean): void {
   const duration =
     task.completedAt && task.startedAt
       ? ((task.completedAt - task.startedAt) / 1000).toFixed(1)
       : "?";
-  console.log(`✓ ${task.type} done (${duration}s)`);
+  if (cached) {
+    console.log(`⚡ ${task.type} cached (${duration}s)`);
+  } else {
+    console.log(`✓ ${task.type} done (${duration}s)`);
+  }
 }
 
 export function getTotalEstimate(tracker: ProgressTracker): number {
