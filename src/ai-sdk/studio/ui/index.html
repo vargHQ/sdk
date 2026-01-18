@@ -803,6 +803,7 @@ export default (
     // View mode state
     let currentView = 'code';
     let drawflowEditor = null;
+    let renderingFinal = false;
 
     // Initialize Drawflow
     function initDrawflow() {
@@ -965,7 +966,7 @@ export default (
         `;
 
         const inputs = index > 0 ? 1 : 0;
-        const outputs = index < stages.length - 1 ? 1 : 0;
+        const outputs = 1; // all stages output to next or to render node
 
         const nodeId = drawflowEditor.addNode(
           stage.type,
@@ -984,6 +985,63 @@ export default (
 
       for (let i = 0; i < nodeIds.length - 1; i++) {
         drawflowEditor.addConnection(nodeIds[i], nodeIds[i + 1], 'output_1', 'input_1');
+      }
+
+      // Add final "Render" root node
+      const allComplete = stages.every(s => s.status === 'complete');
+      const renderX = startX + (cols) * (nodeWidth + gapX);
+      const renderY = startY;
+
+      let renderPreviewHtml = '';
+      const hasRenderResult = currentVideoUrl || stepSession?.renderResult?.previewUrl;
+      
+      if (renderingFinal) {
+        renderPreviewHtml = `<div class="node-preview-placeholder"><div class="spinner"></div></div>`;
+      } else if (hasRenderResult) {
+        const url = currentVideoUrl || stepSession.renderResult.previewUrl;
+        renderPreviewHtml = `<video class="node-preview" src="${url}" muted loop></video>`;
+      } else if (allComplete) {
+        renderPreviewHtml = `<div class="node-preview-placeholder">ready to render</div>`;
+      } else {
+        renderPreviewHtml = `<div class="node-preview-placeholder">waiting for stages...</div>`;
+      }
+
+      const renderBtnHtml = (allComplete && !hasRenderResult && !renderingFinal)
+        ? `<button class="node-btn" onclick="event.stopPropagation(); runFinalRender()" style="background: var(--accent); border-color: var(--accent);">▶ render</button>`
+        : '';
+
+      const renderStatusText = renderingFinal ? 'rendering...' : (hasRenderResult ? 'complete' : (allComplete ? 'ready' : 'pending'));
+      const renderStatusClass = renderingFinal ? 'running' : (hasRenderResult ? 'complete' : 'pending');
+
+      const renderHtml = `
+        <div class="node-title" style="background: rgba(59,130,246,0.15);">
+          <span class="node-title-icon">🎬</span>
+          <span>render</span>
+        </div>
+        <div class="node-content">
+          ${renderPreviewHtml}
+          <div class="node-label">final output</div>
+          <div class="node-status ${renderStatusClass}">${renderStatusText}</div>
+          ${renderBtnHtml}
+        </div>
+      `;
+
+      const renderNodeId = drawflowEditor.addNode(
+        'render',
+        1,
+        0,
+        renderX,
+        renderY,
+        renderingFinal ? 'running' : (hasRenderResult ? 'complete' : 'pending'),
+        { type: 'render' },
+        renderHtml
+      );
+
+      // Connect last stage to render node
+      if (nodeIds.length > 0) {
+        // Update last stage node to have output
+        const lastNodeId = nodeIds[nodeIds.length - 1];
+        drawflowEditor.addConnection(lastNodeId, renderNodeId, 'output_1', 'input_1');
       }
 
       // Play videos on hover
@@ -1041,6 +1099,54 @@ export default (
         renderNodeGraph();
         renderStageTimeline();
         showError(err.message);
+      }
+
+      isRendering = false;
+    }
+
+    async function runFinalRender() {
+      if (!stepSession || isRendering) return;
+      
+      const allComplete = stages.every(s => s.status === 'complete');
+      if (!allComplete) {
+        alert('Complete all stages first');
+        return;
+      }
+
+      isRendering = true;
+      renderingFinal = true;
+      renderNodeGraph();
+      updateProgress(0.5, 'rendering final video...');
+      document.getElementById('progress-section').style.display = 'block';
+
+      try {
+        const res = await fetch('/api/step/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: stepSession.sessionId }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || err.message || 'Final render failed');
+        }
+
+        const data = await res.json();
+        currentVideoUrl = data.videoUrl;
+        
+        renderingFinal = false;
+        renderNodeGraph();
+        showVideo(data.videoUrl);
+        addToHistory(editor.getValue(), data.videoUrl);
+        updateProgress(1, 'render complete');
+        document.getElementById('progress-bar').className = 'progress-bar complete';
+
+      } catch (err) {
+        renderingFinal = false;
+        renderNodeGraph();
+        showError(err.message);
+        updateProgress(0, err.message);
+        document.getElementById('progress-bar').className = 'progress-bar error';
       }
 
       isRendering = false;
