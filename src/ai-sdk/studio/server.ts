@@ -505,6 +505,25 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
         return Response.json({ deleted: true });
       }
 
+      if (url.pathname === "/api/step/render" && req.method === "POST") {
+        const body = (await req.json()) as { sessionId: string };
+        const session = getSession(body.sessionId);
+
+        if (!session) {
+          return Response.json({ error: "session not found" }, { status: 404 });
+        }
+
+        try {
+          const { finalizeRender } = await import("./step-renderer");
+          const videoPath = await finalizeRender(session, outputDir);
+          const videoUrl = `/api/output/${videoPath.split("/").pop()}`;
+          return Response.json({ videoUrl, path: videoPath });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 500 });
+        }
+      }
+
       return new Response("not found", { status: 404 });
     },
   });

@@ -223,6 +223,29 @@ export function getStagePreviewPath(
   return result?.path ?? null;
 }
 
+export async function finalizeRender(
+  session: StepSession,
+  outputDir: string,
+): Promise<string> {
+  const allComplete = session.extracted.stages.every(
+    (s) => s.status === "complete",
+  );
+  if (!allComplete) {
+    throw new Error("Not all stages are complete");
+  }
+
+  const { render } = await import("../react/render");
+  const outputPath = `${outputDir}/render-${session.id}.mp4`;
+
+  await render(session.rootElement, {
+    output: outputPath,
+    cache: session.ctx.cache ? ".cache/ai" : undefined,
+    quiet: true,
+  });
+
+  return outputPath;
+}
+
 export function getSessionStatus(session: StepSession): {
   sessionId: string;
   totalStages: number;
