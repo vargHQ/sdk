@@ -21,8 +21,7 @@ async function main() {
   console.log("\ngenerating with model settings...");
   const { images: styledImages } = await generateImage({
     model: higgsfield.imageModel("soul", {
-      style: "Cinematic",
-      quality: "high",
+      quality: "1080p",
     }),
     prompt:
       "a cyberpunk street scene at night, neon lights reflecting on wet pavement",
@@ -38,7 +37,6 @@ async function main() {
   console.log("\ngenerating with provider defaults...");
   const customHiggsfield = createHiggsfield({
     defaultModelSettings: {
-      style: "Realistic",
       enhancePrompt: true,
     },
   });

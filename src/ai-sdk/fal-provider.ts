@@ -54,6 +54,19 @@ const IMAGE_MODELS: Record<string, string> = {
   "recraft-v3": "fal-ai/recraft/v3/text-to-image",
   "nano-banana-pro": "fal-ai/nano-banana-pro",
   "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
+  "seedream-v4.5/edit": "fal-ai/bytedance/seedream/v4.5/edit",
+};
+
+// Models that use image_size instead of aspect_ratio
+const IMAGE_SIZE_MODELS = new Set(["seedream-v4.5/edit"]);
+
+// Map aspect ratio strings to image_size enum values
+const ASPECT_RATIO_TO_IMAGE_SIZE: Record<string, string> = {
+  "1:1": "square",
+  "4:3": "landscape_4_3",
+  "3:4": "portrait_4_3",
+  "16:9": "landscape_16_9",
+  "9:16": "portrait_16_9",
 };
 
 const TRANSCRIPTION_MODELS: Record<string, string> = {
@@ -75,6 +88,33 @@ function getMediaType(file: ImageModelV3File): string | undefined {
   return mimeTypes[ext ?? ""];
 }
 
+function detectImageType(bytes: Uint8Array): string | undefined {
+  // Check magic bytes for common image formats
+  if (
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
+    return "image/gif";
+  }
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46
+  ) {
+    return "image/webp";
+  }
+  return undefined;
+}
+
 async function fileToUrl(file: ImageModelV3File): Promise<string> {
   if (file.type === "url") return file.url;
   const data = file.data;
@@ -82,7 +122,9 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
     typeof data === "string"
       ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
       : data;
-  return fal.storage.upload(new Blob([bytes]));
+  // Use mediaType from file if available, otherwise detect from bytes or default to png
+  const mediaType = file.mediaType ?? detectImageType(bytes) ?? "image/png";
+  return fal.storage.upload(new Blob([bytes], { type: mediaType }));
 }
 
 async function uploadBuffer(buffer: ArrayBuffer): Promise<string> {
@@ -263,16 +305,41 @@ class FalImageModel implements ImageModelV3 {
 
     const input: Record<string, unknown> = {
       prompt,
-      num_images: n,
+      num_images: n ?? 1,
       ...(providerOptions?.fal ?? {}),
     };
 
+    const usesImageSize = IMAGE_SIZE_MODELS.has(this.modelId);
+
     if (size) {
-      input.image_size = size;
+      // size format is "{width}x{height}"
+      const [width, height] = size.split("x").map(Number);
+      if (usesImageSize) {
+        input.image_size = { width, height };
+      } else {
+        input.image_size = size;
+      }
     }
 
     if (aspectRatio) {
-      input.aspect_ratio = aspectRatio;
+      if (usesImageSize) {
+        // Convert aspect ratio to image_size enum for models that require it
+        // Only set if size wasn't already provided
+        if (!input.image_size) {
+          const imageSizeEnum = ASPECT_RATIO_TO_IMAGE_SIZE[aspectRatio];
+          if (imageSizeEnum) {
+            input.image_size = imageSizeEnum;
+          } else {
+            warnings.push({
+              type: "unsupported",
+              feature: "aspectRatio",
+              details: `Aspect ratio "${aspectRatio}" not supported, use one of: ${Object.keys(ASPECT_RATIO_TO_IMAGE_SIZE).join(", ")}`,
+            });
+          }
+        }
+      } else {
+        input.aspect_ratio = aspectRatio;
+      }
     }
 
     if (seed !== undefined) {
@@ -294,6 +361,14 @@ class FalImageModel implements ImageModelV3 {
     }
 
     const finalEndpoint = this.resolveEndpoint();
+
+    // Debug: log the input being sent
+    if (IMAGE_SIZE_MODELS.has(this.modelId)) {
+      console.log(
+        "[fal-provider] seedream input:",
+        JSON.stringify(input, null, 2),
+      );
+    }
 
     const result = await fal.subscribe(finalEndpoint, {
       input,
