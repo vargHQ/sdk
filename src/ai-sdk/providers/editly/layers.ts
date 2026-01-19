@@ -261,28 +261,45 @@ export function getImageFilter(
       yExpr = "trunc((ih-ih/zoom)/2)";
     }
 
+    const zoomWidth = width * 4;
+    const zoomHeight = height * 4;
     const maxDim = Math.max(width, height);
     const zoomSize = maxDim * 4;
 
-    filters.push(
-      `scale=${zoomSize}:${zoomSize}:force_original_aspect_ratio=increase`,
-    );
-    filters.push(
-      `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${zoomSize}x${zoomSize}:fps=30`,
-    );
-
     if (layer.resizeMode === "cover") {
+      filters.push(
+        `scale=${zoomSize}:${zoomSize}:force_original_aspect_ratio=increase`,
+      );
+      filters.push(
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${zoomSize}x${zoomSize}:fps=30`,
+      );
       filters.push(
         `scale=${width}:${height}:force_original_aspect_ratio=increase`,
       );
       filters.push(`crop=${width}:${height}`);
     } else if (layer.resizeMode === "stretch") {
-      filters.push(`scale=${width}:${height}`);
-    } else {
+      filters.push(`scale=${zoomWidth}:${zoomHeight}`);
+      filters.push(
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
+      );
+    } else if (layer.resizeMode === "contain") {
+      filters.push(
+        `scale=${zoomSize}:${zoomSize}:force_original_aspect_ratio=increase`,
+      );
+      filters.push(
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${zoomSize}x${zoomSize}:fps=30`,
+      );
       filters.push(
         `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
       );
       filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
+    } else {
+      filters.push(
+        `scale=${zoomWidth}:${zoomHeight}:force_original_aspect_ratio=increase`,
+      );
+      filters.push(
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
+      );
     }
   } else {
     filters.push(`loop=loop=-1:size=1:start=0`);
