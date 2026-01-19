@@ -8,11 +8,17 @@ Default to using Bun instead of Node.js.
 
 ## Working with this SDK
 
-- **Use existing tools**: Always use the built-in CLI tools via bash commands (e.g., `bun run lib/fal.ts`, `bun run lib/elevenlabs.ts`, `bun run lib/apify.ts`)
-- **Don't write custom scripts**: Avoid creating new TypeScript/JavaScript scripts. Use the existing lib/ tools directly
+- **Use the varg CLI**: Run actions via `bun run src/cli/index.ts run <action> [options]`
+  - Use `--quiet` for minimal output (recommended for scripts)
+  - Use `--json` for JSON output
+  - Example: `bun run src/cli/index.ts run video --prompt "sunset over ocean" --quiet`
+- **Available actions**: image, video, voice, music, transcribe, captions, sync, upload, edit
+- **List actions**: `bun run src/cli/index.ts list`
+- **Action help**: `bun run src/cli/index.ts run <action> --help`
 - **Media folders**: Store input files in `media/` folder, outputs go to `output/` folder
-- **Local file support**: Tools like `lib/fal.ts` support local file paths (e.g., `media/image.png`) in addition to URLs
-- **Web scraping**: Use `bun run lib/apify.ts run <actor_id> [input_json]` to scrape tiktok, social media, etc.
+- **Local file support**: Actions support local file paths (e.g., `media/image.png`) in addition to URLs
+- **Providers**: Located in `src/providers/` (fal, elevenlabs, replicate, groq, etc.)
+- **Action definitions**: Located in `src/definitions/actions/`
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
 - Use `bun test` instead of `jest` or `vitest`

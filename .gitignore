@@ -42,3 +42,8 @@ media/
 
 scripts/*
 !scripts/.gitkeep
+
+lib
+
+
+output

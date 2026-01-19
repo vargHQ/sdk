@@ -58,7 +58,7 @@ export const definition: ActionDefinition<typeof schema> = {
       return generateWithSoul(prompt);
     }
 
-    return generateWithFal(prompt, { model: size });
+    return generateWithFal(prompt, { imageSize: size });
   },
 };
 
@@ -69,13 +69,13 @@ export interface ImageGenerationResult {
 
 export async function generateWithFal(
   prompt: string,
-  options: { model?: string; upload?: boolean } = {},
+  options: { imageSize?: string; upload?: boolean } = {},
 ): Promise<ImageGenerationResult> {
   console.log("[image] generating with fal");
 
   const result = await falProvider.generateImage({
     prompt,
-    model: options.model,
+    imageSize: options.imageSize,
   });
 
   const imageUrl = (result.data as { images?: Array<{ url?: string }> })
