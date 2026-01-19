@@ -1012,4 +1012,38 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  test("portrait 9:16 image with zoompan (onlyfans workflow)", async () => {
+    const outPath = "output/editly-test-portrait-zoompan.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    // Simulates the OnlyFans-style workflow: portrait video with image zoompan
+    // Original workflow generates image via Higgsfield, here we use a test image
+    await editly({
+      outPath,
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "image",
+              path: IMAGE_SQUARE,
+              zoomDirection: "in",
+              zoomAmount: 0.1,
+              resizeMode: "cover",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.width).toBe(1080);
+    expect(info.height).toBe(1920);
+    expect(info.duration).toBeCloseTo(3, 0);
+  });
 });
