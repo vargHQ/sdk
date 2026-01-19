@@ -9,8 +9,9 @@ import { createHiggsfield, higgsfield } from "./providers/higgsfield";
 import { createOpenAI, openai } from "./providers/openai";
 import { createReplicate, replicate } from "./providers/replicate";
 
-const hasFalKey = !!process.env.FAL_API_KEY;
-const hasElevenLabsKey = !!process.env.ELEVENLABS_API_KEY;
+const runLiveTests = process.env.RUN_LIVE_TESTS === "true";
+const hasFalKey = runLiveTests && !!process.env.FAL_API_KEY;
+const hasElevenLabsKey = runLiveTests && !!process.env.ELEVENLABS_API_KEY;
 
 describe("ai-sdk providers", () => {
   describe("fal provider", () => {
