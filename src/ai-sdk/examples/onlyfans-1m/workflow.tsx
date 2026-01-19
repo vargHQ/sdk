@@ -50,7 +50,7 @@ const newBraCharacter = Image({
 
 const newAngleCharacter = Image({
   prompt: {
-    text: `Slightly change the pose of the character, keeping the same pose, lighting, and background.`,
+    text: `Slightly change the pose of the character, keeping the same pose, lighting, and background. Put the character two steps aways from the`,
     images: [newBraCharacter, background],
   },
   model: fal.imageModel("nano-banana-pro/edit"),
@@ -81,16 +81,5 @@ export default (
         model={fal.videoModel("kling-v2.5")}
       />
     </Clip>
-
-    {/* Clip 2: Right angle, turns right */}
-    {/* <Clip duration={5} transition={{ name: "fade", duration: 0.5 }}>
-      <Video
-        prompt={{
-          images: [angleRight],
-          text: motionRight,
-        }}
-        model={fal.videoModel("kling-v2.5")}
-      />
-    </Clip> */}
   </Render>
 );

@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 import { getCacheItemMedia, scanCacheFolder } from "./scanner";
 import { extractStages, serializeStages } from "./stages";
 import {
@@ -28,6 +28,43 @@ interface ShareData {
   code: string;
   videoUrl?: string;
   createdAt: string;
+}
+
+interface TemplateInfo {
+  id: string;
+  name: string;
+  filename: string;
+}
+
+function fileNameToReadable(filename: string): string {
+  return basename(filename, ".tsx")
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (c) => c.toLowerCase());
+}
+
+function scanTemplates(dir: string): TemplateInfo[] {
+  const templates: TemplateInfo[] = [];
+
+  if (!existsSync(dir)) return templates;
+
+  const entries = readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (
+      entry.isFile() &&
+      entry.name.endsWith(".tsx") &&
+      !entry.name.startsWith("_")
+    ) {
+      const id = basename(entry.name, ".tsx");
+      templates.push({
+        id,
+        name: fileNameToReadable(entry.name),
+        filename: entry.name,
+      });
+    }
+  }
+
+  return templates.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function createStudioServer(config: Partial<StudioConfig> = {}) {
@@ -167,37 +204,22 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
       }
 
       if (url.pathname === "/api/templates") {
-        const templates = [
-          {
-            id: "simple-portrait",
-            name: "simple portrait",
-            description: "basic portrait video with text prompt",
-          },
-          {
-            id: "portrait-cues",
-            name: "portrait with cues",
-            description: "advanced portrait using type-safe cue system",
-          },
-          {
-            id: "talking-head",
-            name: "talking head",
-            description: "character with voice and lipsync",
-          },
-        ];
+        const examplesDir = join(import.meta.dir, "../examples");
+        const templates = scanTemplates(examplesDir).map((t) => ({
+          id: t.id,
+          name: t.name,
+        }));
         return Response.json(templates);
       }
 
       if (url.pathname.startsWith("/api/templates/")) {
         const id = url.pathname.replace("/api/templates/", "");
-        const templateFiles: Record<string, string> = {
-          "simple-portrait": "orange-portrait.tsx",
-          "portrait-cues": "orange-portrait-cues.tsx",
-          "talking-head": "ralph-talking-studio.tsx",
-        };
-        const file = templateFiles[id];
-        if (!file) return new Response("not found", { status: 404 });
+        const examplesDir = join(import.meta.dir, "../examples");
+        const templates = scanTemplates(examplesDir);
+        const template = templates.find((t) => t.id === id);
+        if (!template) return new Response("not found", { status: 404 });
         const code = await Bun.file(
-          join(import.meta.dir, "../examples", file),
+          join(examplesDir, template.filename),
         ).text();
         return Response.json({ code });
       }
