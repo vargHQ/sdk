@@ -33,6 +33,10 @@ class HiggsfieldImageModel implements ImageModelV3 {
   private baseURL: string;
   private modelSettings: HiggsfieldImageModelSettings;
 
+  get settings(): HiggsfieldImageModelSettings {
+    return this.modelSettings;
+  }
+
   constructor(
     modelId: string,
     options: {
