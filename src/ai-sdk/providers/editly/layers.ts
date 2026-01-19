@@ -261,23 +261,24 @@ export function getImageFilter(
       yExpr = "trunc((ih-ih/zoom)/2)";
     }
 
+    const maxDim = Math.max(width, height);
+    const zoomSize = maxDim * 4;
+
+    filters.push(
+      `scale=${zoomSize}:${zoomSize}:force_original_aspect_ratio=increase`,
+    );
+    filters.push(
+      `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${zoomSize}x${zoomSize}:fps=30`,
+    );
+
     if (layer.resizeMode === "cover") {
-      filters.push(`scale=8000:-1`);
       filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
+        `scale=${width}:${height}:force_original_aspect_ratio=increase`,
       );
+      filters.push(`crop=${width}:${height}`);
     } else if (layer.resizeMode === "stretch") {
-      filters.push(`scale=8000:-1`);
-      filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
-      );
+      filters.push(`scale=${width}:${height}`);
     } else {
-      // Default "contain" mode: preserve aspect ratio with letterboxing
-      // Zoompan at high res square, then scale down preserving aspect, then pad
-      filters.push(`scale=8000:8000:force_original_aspect_ratio=increase`);
-      filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=8000x8000:fps=30`,
-      );
       filters.push(
         `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
       );
