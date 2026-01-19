@@ -257,6 +257,7 @@ export function getSessionStatus(session: StepSession): {
     label: string;
     status: string;
     hasResult: boolean;
+    dependsOn: string[];
   }>;
 } {
   return {
@@ -272,6 +273,7 @@ export function getSessionStatus(session: StepSession): {
         label: stage.label,
         status: stage.status,
         hasResult: session.results.has(id),
+        dependsOn: stage.dependsOn,
       };
     }),
   };
