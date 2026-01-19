@@ -261,28 +261,16 @@ export function getImageFilter(
       yExpr = "trunc((ih-ih/zoom)/2)";
     }
 
-    if (layer.resizeMode === "cover") {
-      filters.push(`scale=8000:-1`);
-      filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
-      );
-    } else if (layer.resizeMode === "stretch") {
-      filters.push(`scale=8000:-1`);
-      filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
-      );
-    } else {
-      // Default "contain" mode: preserve aspect ratio with letterboxing
-      // Zoompan at high res square, then scale down preserving aspect, then pad
-      filters.push(`scale=8000:8000:force_original_aspect_ratio=increase`);
-      filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=8000x8000:fps=30`,
-      );
-      filters.push(
-        `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
-      );
-      filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
-    }
+    // Scale up for high-quality zoompan, then output at target size
+    // Use 4x target resolution for smooth zoom
+    const zoomWidth = width * 4;
+    const zoomHeight = height * 4;
+    filters.push(
+      `scale=${zoomWidth}:${zoomHeight}:force_original_aspect_ratio=increase`,
+    );
+    filters.push(
+      `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
+    );
   } else {
     filters.push(`loop=loop=-1:size=1:start=0`);
     filters.push(`fps=30`);
