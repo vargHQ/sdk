@@ -260,6 +260,7 @@ describe("editly", () => {
               path: IMAGE_SQUARE,
               zoomDirection: "in",
               zoomAmount: 0.1,
+              resizeMode: "contain",
             },
           ],
         },
