@@ -69,8 +69,15 @@ export function computeCacheKey(element: VargElement): CacheKeyPart[] {
   for (const [k, v] of Object.entries(element.props)) {
     if (k === "children") continue;
     if (k === "model" && v && typeof v === "object" && "modelId" in v) {
-      // Serialize the entire model object to capture all settings (quality, styleId, etc.)
-      key.push(k, serializeValue(v));
+      const model = v as {
+        provider?: string;
+        modelId: string;
+        settings?: unknown;
+      };
+      key.push("model", model.provider ?? "", model.modelId);
+      if (model.settings) {
+        key.push("settings", serializeValue(model.settings));
+      }
       continue;
     }
     if (typeof v === "string") {
