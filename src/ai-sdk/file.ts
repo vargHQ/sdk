@@ -183,6 +183,18 @@ export class File {
     return path;
   }
 
+  static async toTemp(
+    file:
+      | { uint8Array: Uint8Array; mimeType?: string; mediaType?: string }
+      | File,
+  ): Promise<string> {
+    if (file instanceof File) {
+      return file.toTemp();
+    }
+    const f = File.from(file);
+    return f.toTemp();
+  }
+
   private extensionFromMediaType(): string {
     const extMap: Record<string, string> = {
       "image/png": ".png",
@@ -197,18 +209,6 @@ export class File {
       "video/quicktime": ".mov",
     };
     return extMap[this._mediaType] ?? "";
-  }
-
-  static async toTemp(
-    file:
-      | { uint8Array: Uint8Array; mimeType?: string; mediaType?: string }
-      | File,
-  ): Promise<string> {
-    if (file instanceof File) {
-      return file.toTemp();
-    }
-    const f = File.from(file);
-    return f.toTemp();
   }
 }
 

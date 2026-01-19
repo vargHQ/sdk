@@ -95,7 +95,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
     code: string,
     renderId: string,
     onProgress: (progress: RenderProgress) => void,
-    signal: AbortSignal,
+    _signal: AbortSignal,
   ): Promise<string> {
     const outputPath = join(outputDir, `${renderId}.mp4`);
     const tempDir = join(import.meta.dir, "../examples");
@@ -243,7 +243,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
             try {
               send("start", { renderId });
-              const outputPath = await executeRender(
+              const _outputPath = await executeRender(
                 body.code,
                 renderId,
                 (progress) => send("progress", progress),

@@ -36,12 +36,6 @@ const DEFAULT_FPS = 30;
 const DEFAULT_WIDTH = 1280;
 const DEFAULT_HEIGHT = 720;
 
-interface OverlayVideoUsage {
-  path: string;
-  inputIndex: number;
-  currentTimeOffset: number;
-}
-
 async function getVideoDuration(path: string): Promise<number> {
   const info = await ffprobe(path);
   return info.duration;
@@ -268,12 +262,6 @@ function buildBaseClipFilter(
     nextInputOffset: inputIdx,
     videoSources,
   };
-}
-
-interface ContinuousOverlay {
-  layer: VideoLayer;
-  inputIndex: number;
-  totalDuration: number;
 }
 
 function collectContinuousVideoOverlays(

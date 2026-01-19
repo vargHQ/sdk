@@ -11,10 +11,12 @@ const _originalWrite = process.stdout.write.bind(process.stdout);
 
 if (isQuietMode) {
   // Override process.stdout.write to filter non-JSON output
-  // biome-ignore lint/suspicious/noExplicitAny: complex overload signature
   process.stdout.write = ((
+    // biome-ignore lint/suspicious/noExplicitAny: complex overload signature
     chunk: any,
+    // biome-ignore lint/suspicious/noExplicitAny: complex overload signature
     encoding?: any,
+    // biome-ignore lint/suspicious/noExplicitAny: complex overload signature
     callback?: any,
   ): boolean => {
     const str = typeof chunk === "string" ? chunk : chunk.toString();
@@ -37,6 +39,6 @@ if (isQuietMode) {
 
 // Export for direct output when needed (bypasses quiet mode)
 export function rawLog(...args: unknown[]): void {
-  const message = args.map(String).join(" ") + "\n";
+  const message = `${args.map(String).join(" ")}\n`;
   _originalWrite(message);
 }

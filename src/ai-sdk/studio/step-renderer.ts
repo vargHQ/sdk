@@ -1,6 +1,5 @@
 import { generateImage } from "ai";
 import { withCache } from "../cache";
-import { File } from "../file";
 import { fileCache } from "../file-cache";
 import { generateVideo } from "../generate-video";
 import { renderAnimate } from "../react/renderers/animate";
