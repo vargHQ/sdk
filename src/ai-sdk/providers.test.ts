@@ -46,7 +46,7 @@ describe("ai-sdk providers", () => {
         prompt: "a red circle on white background",
       });
       expect(images.length).toBeGreaterThan(0);
-      expect(images[0].uint8Array).toBeInstanceOf(Uint8Array);
+      expect(images[0]?.uint8Array).toBeInstanceOf(Uint8Array);
     });
   });
 
