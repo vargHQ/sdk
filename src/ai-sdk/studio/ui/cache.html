@@ -214,18 +214,18 @@
       const images = items.filter(i => i.type === 'image').length;
       const videos = items.filter(i => i.type === 'video').length;
       document.getElementById('stats').textContent = 
-        items.length + ' items (' + images + ' images, ' + videos + ' videos)';
+        `${items.length} items (${images} images, ${videos} videos)`;
     }
 
     function formatSize(bytes) {
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     }
 
     function formatDate(dateStr) {
       const date = new Date(dateStr);
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     }
 
     function renderGrid() {
@@ -238,10 +238,10 @@
       }
 
       grid.innerHTML = filtered.map(item => {
-        const mediaUrl = '/api/media/' + encodeURIComponent(item.id);
+        const mediaUrl = `/api/media/${encodeURIComponent(item.id)}`;
         const mediaHtml = item.type === 'video' 
-          ? '<video src="' + mediaUrl + '" muted loop preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>'
-          : '<img src="' + mediaUrl + '" alt="' + item.id + '" loading="lazy">';
+          ? `<video src="${mediaUrl}" muted loop preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>`
+          : `<img src="${mediaUrl}" alt="${item.id}" loading="lazy">`;
         
         return '<div class="card">' +
           '<div class="card-media" onclick="openModal(\'' + item.type + '\', \'' + mediaUrl + '\')">' + mediaHtml + '</div>' +
@@ -257,30 +257,30 @@
       }).join('');
     }
 
-    function refresh() { fetchItems(); }
+    function _refresh() { fetchItems(); }
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('active'); });
         btn.classList.add('active');
         filter = btn.dataset.filter;
         renderGrid();
       });
     });
 
-    function openModal(type, url) {
+    function _openModal(type, url) {
       const modal = document.getElementById('modal');
       const mediaContainer = document.getElementById('modal-media');
       if (type === 'video') {
         mediaContainer.innerHTML = '<video id="modal-video" src="' + url + '" controls autoplay loop muted></video>' +
           '<button class="mute-toggle" onclick="toggleMute()"><span id="mute-icon">muted</span></button>';
       } else {
-        mediaContainer.innerHTML = '<img src="' + url + '">';
+        mediaContainer.innerHTML = `<img src="${url}">`;
       }
       modal.classList.add('open');
     }
 
-    function toggleMute() {
+    function _toggleMute() {
       const video = document.getElementById('modal-video');
       if (!video) return;
       video.muted = !video.muted;

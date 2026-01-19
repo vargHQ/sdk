@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { parseArgs } from "util";
+import { parseArgs } from "node:util";
 import { render } from "./render";
 import type { VargElement } from "./types";
 

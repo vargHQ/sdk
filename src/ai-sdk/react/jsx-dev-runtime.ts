@@ -34,8 +34,10 @@ export const Fragment = ({ children }: { children?: VargNode }) => children;
 
 export namespace JSX {
   export type Element = VargElement;
+  // biome-ignore lint/complexity/noBannedTypes: required for JSX namespace
   export type IntrinsicElements = {};
   export interface ElementChildrenAttribute {
+    // biome-ignore lint/complexity/noBannedTypes: required for JSX namespace
     children: {};
   }
 }

@@ -953,7 +953,7 @@ export default (
         // BFS to assign levels
         while (queue.length > 0) {
           const currentId = queue.shift();
-          const currentLevel = levels.get(currentId);
+          const _currentLevel = levels.get(currentId);
           
           children.get(currentId).forEach(childId => {
             const childStage = stageMap.get(childId);
@@ -1046,7 +1046,7 @@ export default (
 
           // Input count = number of dependencies, output = 1 (for children or render node)
           const inputCount = (stage.dependsOn || []).length || 0;
-          const hasChildren = children.get(stage.id)?.length > 0;
+          const _hasChildren = children.get(stage.id)?.length > 0;
           const outputCount = 1; // Always 1 output (to children or render)
 
           const nodeId = drawflowEditor.addNode(
@@ -1151,7 +1151,7 @@ export default (
       });
     }
 
-    async function generateNodeStage(stageId) {
+    async function _generateNodeStage(stageId) {
       if (!stepSession || isRendering) return;
 
       const stage = stages.find(s => s.id === stageId);
@@ -1207,7 +1207,7 @@ export default (
       isRendering = false;
     }
 
-    async function runFinalRender() {
+    async function _runFinalRender() {
       if (!stepSession || isRendering) return;
       
       const allComplete = stages.every(s => s.status === 'complete');
@@ -1334,7 +1334,7 @@ export default (
 
     document.getElementById('template-select').addEventListener('change', async (e) => {
       if (!e.target.value) return;
-      const res = await fetch('/api/templates/' + e.target.value);
+      const res = await fetch(`/api/templates/${e.target.value}`);
       const { code } = await res.json();
       editor.setValue(code);
       e.target.value = '';
@@ -1468,7 +1468,7 @@ export default (
       track.innerHTML = html;
     }
     
-    async function selectStage(stageId) {
+    async function _selectStage(stageId) {
       const stage = stages.find(s => s.id === stageId);
       if (!stage || stage.status !== 'complete') return;
       
@@ -1689,7 +1689,7 @@ export default (
 
     async function stopRender() {
       if (!currentRenderId) return;
-      await fetch('/api/render/' + currentRenderId, { method: 'DELETE' });
+      await fetch(`/api/render/${currentRenderId}`, { method: 'DELETE' });
       isRendering = false;
       currentRenderId = null;
       updateUI('idle');
@@ -1728,7 +1728,7 @@ export default (
     }
 
     function updateProgress(progress, message) {
-      document.getElementById('progress-bar').style.width = (progress * 100) + '%';
+      document.getElementById('progress-bar').style.width = `${progress * 100}%`;
       document.getElementById('progress-text').textContent = message;
     }
 
@@ -1765,7 +1765,7 @@ export default (
       `).join('');
     }
 
-    function loadHistory(id) {
+    function _loadHistory(id) {
       const item = history.find(h => h.id === id);
       if (!item) return;
       editor.setValue(item.code);
@@ -1784,7 +1784,7 @@ export default (
       const { url } = await res.json();
       const fullUrl = window.location.origin + url;
       await navigator.clipboard.writeText(fullUrl);
-      alert('Link copied to clipboard: ' + fullUrl);
+      alert(`Link copied to clipboard: ${fullUrl}`);
     });
 
     async function loadSharedCode() {
@@ -1792,7 +1792,7 @@ export default (
       if (!path.startsWith('/s/')) return;
       const shareId = path.replace('/s/', '');
       try {
-        const res = await fetch('/api/share/' + shareId);
+        const res = await fetch(`/api/share/${shareId}`);
         if (!res.ok) return;
         const data = await res.json();
         if (data.code && editor) {
