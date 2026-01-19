@@ -7,6 +7,7 @@ const VIDEO_1 = "output/sora-landscape.mp4";
 const VIDEO_2 = "output/simpsons-scene.mp4";
 const VIDEO_TALKING = "output/workflow-talking-synced.mp4";
 const IMAGE_SQUARE = "media/replicate-forest.png";
+const IMAGE_PORTRAIT = "media/madi-portrait.png";
 
 describe("editly", () => {
   test("requires outPath", async () => {
@@ -1013,12 +1014,10 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
   });
 
-  test("portrait 9:16 image with zoompan (onlyfans workflow)", async () => {
+  test("portrait 9:16 image with zoompan - square image cover mode", async () => {
     const outPath = "output/editly-test-portrait-zoompan.mp4";
     if (existsSync(outPath)) unlinkSync(outPath);
 
-    // Simulates the OnlyFans-style workflow: portrait video with image zoompan
-    // Original workflow generates image via Higgsfield, here we use a test image
     await editly({
       outPath,
       width: 1080,
@@ -1045,5 +1044,30 @@ describe("editly", () => {
     expect(info.width).toBe(1080);
     expect(info.height).toBe(1920);
     expect(info.duration).toBeCloseTo(3, 0);
+  });
+
+  test("portrait 9:16 native image with zoompan (onlyfans workflow)", async () => {
+    const outPath = "output/editly-test-portrait-native.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            {
+              type: "image",
+              path: IMAGE_PORTRAIT,
+              zoomDirection: "in",
+              zoomAmount: 0.1,
+            },
+          ],
+        },
+      ],
+    });
   });
 });
