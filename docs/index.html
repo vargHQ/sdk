@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>varg-react | JSX for AI Video</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050505;
+      --bg-elevated: #0a0a0a;
+      --bg-card: #0f0f0f;
+      --bg-code: #0d0d0d;
+      --border: #1a1a1a;
+      --border-subtle: #141414;
+      --text: #e5e5e5;
+      --text-muted: #737373;
+      --text-dim: #525252;
+      --orange: #ff6b35;
+      --orange-glow: rgba(255, 107, 53, 0.15);
+      --orange-dim: #cc5629;
+      --green: #a5d6a7;
+      --blue: #82b1ff;
+      --purple: #ce93d8;
+      --pink: #f48fb1;
+      --yellow: #ffd54f;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Sora', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Noise overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 20px 0;
+      background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
+      backdrop-filter: blur(12px);
+    }
+
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dim) 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 16px;
+      height: 16px;
+      fill: white;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 400;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-btn {
+      background: var(--orange);
+      color: #000;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 14px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: var(--text);
+      color: #000;
+    }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 120px 0 80px;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, var(--orange-glow) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .hero-badge-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--orange);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero h1 {
+      font-size: clamp(48px, 10vw, 88px);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--orange) 0%, var(--yellow) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(18px, 2.5vw, 22px);
+      color: var(--text-muted);
+      max-width: 560px;
+      margin-bottom: 48px;
+      font-weight: 300;
+    }
+
+    .hero-cmd {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      margin-bottom: 64px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .hero-cmd:hover {
+      border-color: var(--orange);
+      box-shadow: 0 0 32px var(--orange-glow);
+    }
+
+    .hero-cmd-prompt {
+      color: var(--text-muted);
+    }
+
+    .hero-cmd-text {
+      color: var(--text);
+    }
+
+    .hero-cmd-copy {
+      color: var(--text-dim);
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .hero-cmd:hover .hero-cmd-copy {
+      color: var(--orange);
+    }
+
+    /* Code Block */
+    .code-block {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 720px;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+    }
+
+    .code-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    .code-dot:nth-child(1) { background: #ff5f57; }
+    .code-dot:nth-child(2) { background: #ffbd2e; }
+    .code-dot:nth-child(3) { background: #28c840; }
+
+    .code-title {
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .code-content {
+      padding: 20px 24px;
+      overflow-x: auto;
+    }
+
+    pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre;
+      margin: 0;
+    }
+
+    .kw { color: var(--orange); }
+    .str { color: var(--green); }
+    .tag { color: var(--blue); }
+    .attr { color: var(--purple); }
+    .num { color: var(--pink); }
+    .cmt { color: var(--text-dim); }
+    .fn { color: var(--yellow); }
+    .op { color: var(--text-muted); }
+
+    /* Sections */
+    section {
+      padding: 120px 0;
+    }
+
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--orange);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      color: var(--text-muted);
+      max-width: 600px;
+      font-weight: 300;
+    }
+
+    /* Pillars Grid */
+    .pillars {
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border-subtle);
+      margin-top: 64px;
+    }
+
+    .pillar {
+      background: var(--bg-elevated);
+      padding: 48px 40px;
+      transition: all 0.3s;
+    }
+
+    .pillar:hover {
+      background: var(--bg-card);
+    }
+
+    .pillar-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--orange-glow) 0%, transparent 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .pillar-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--orange);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .pillar h3 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .pillar p {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .pillar-highlight {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--orange);
+      background: var(--orange-glow);
+      padding: 6px 12px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .pillar-code {
+      background: var(--bg-code);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+
+    .pillar-code pre {
+      font-size: 12px;
+    }
+
+    /* AI Agents Section */
+    .agents {
+      position: relative;
+    }
+
+    .agents::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(ellipse at center, var(--orange-glow) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .agents-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+      margin-top: 64px;
+    }
+
+    .agents-text h3 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .agents-text p {
+      color: var(--text-muted);
+      font-size: 16px;
+      margin-bottom: 32px;
+    }
+
+    .agents-list {
+      list-style: none;
+    }
+
+    .agents-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    .agents-list li::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--orange);
+      border-radius: 50%;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    .terminal {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+    }
+
+    .terminal-body {
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .terminal-line {
+      display: flex;
+      gap: 8px;
+    }
+
+    .terminal-prompt {
+      color: var(--orange);
+    }
+
+    .terminal-cmd {
+      color: var(--text);
+    }
+
+    .terminal-output {
+      color: var(--text-muted);
+      padding-left: 20px;
+    }
+
+    .terminal-error {
+      color: #ff5f57;
+    }
+
+    .terminal-success {
+      color: #28c840;
+    }
+
+    /* Composability Section */
+    .compose {
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .compose-flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 64px;
+      justify-content: center;
+    }
+
+    .compose-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 28px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .compose-item:hover {
+      border-color: var(--orange);
+      transform: translateY(-2px);
+    }
+
+    .compose-item-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--blue);
+      margin-bottom: 8px;
+    }
+
+    .compose-item-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .compose-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--text-dim);
+      font-size: 20px;
+    }
+
+    .compose-equals {
+      display: flex;
+      align-items: center;
+      color: var(--orange);
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .compose-result {
+      background: linear-gradient(135deg, var(--orange-glow) 0%, transparent 100%);
+      border-color: var(--orange);
+    }
+
+    .compose-result .compose-item-tag {
+      color: var(--orange);
+    }
+
+    /* Examples Section */
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-top: 64px;
+    }
+
+    .example-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .example-card:hover {
+      border-color: var(--border);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .example-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .example-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--orange-glow);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .example-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--orange);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .example-title {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .example-code {
+      padding: 20px 24px;
+    }
+
+    .example-code pre {
+      font-size: 12px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 80px 0;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 32px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--orange);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .pillars-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .agents-content {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+
+      .examples-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+
+      .hero {
+        padding: 100px 0 60px;
+      }
+
+      .hero h1 {
+        font-size: 40px;
+      }
+
+      .compose-flow {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .compose-arrow {
+        transform: rotate(90deg);
+      }
+
+      .footer-content {
+        flex-direction: column;
+        gap: 24px;
+        text-align: center;
+      }
+
+      .code-block {
+        margin: 0 -24px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .pillar {
+        padding: 32px 24px;
+      }
+
+      .hero-cmd {
+        padding: 12px 16px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="#" class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><polygon points="12,2 22,22 2,22"/></svg>
+        </div>
+        varg-react
+      </a>
+      <div class="nav-links">
+        <a href="#pillars">Features</a>
+        <a href="#agents">AI Agents</a>
+        <a href="#examples">Examples</a>
+        <a href="https://github.com/varghq/sdk" class="nav-btn">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="hero-badge-dot"></span>
+          <span>Now in public beta</span>
+        </div>
+        <h1>JSX for <span>AI Video</span></h1>
+        <p class="hero-sub">Declarative video rendering with AI generation. Write JSX, get video. Same prompt = cache hit = instant.</p>
+        
+        <div class="hero-cmd" onclick="navigator.clipboard.writeText('varg render example.tsx')">
+          <span class="hero-cmd-prompt">$</span>
+          <span class="hero-cmd-text">varg render example.tsx</span>
+          <span class="hero-cmd-copy">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </span>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dot"></div>
+            <div class="code-dot"></div>
+            <div class="code-dot"></div>
+            <span class="code-title">portrait.tsx</span>
+          </div>
+          <div class="code-content">
+<pre><span class="kw">import</span> { <span class="tag">Clip</span>, <span class="tag">Image</span>, <span class="tag">Render</span>, <span class="tag">Video</span> } <span class="kw">from</span> <span class="str">"@vargai/react"</span>;
+<span class="kw">import</span> { <span class="fn">fal</span> } <span class="kw">from</span> <span class="str">"@vargai/fal"</span>;
+
+<span class="kw">export default</span> (
+  &lt;<span class="tag">Render</span> <span class="attr">width</span>=<span class="op">{</span><span class="num">1080</span><span class="op">}</span> <span class="attr">height</span>=<span class="op">{</span><span class="num">1920</span><span class="op">}</span>&gt;
+    &lt;<span class="tag">Clip</span> <span class="attr">duration</span>=<span class="op">{</span><span class="num">5</span><span class="op">}</span>&gt;
+      &lt;<span class="tag">Video</span>
+        <span class="attr">prompt</span>=<span class="op">{{</span>
+          <span class="attr">text</span>: <span class="str">"Camera reveals full figure, dramatic lighting..."</span>,
+          <span class="attr">images</span>: [
+            <span class="fn">Image</span>({
+              <span class="attr">prompt</span>: { <span class="attr">text</span>: <span class="str">"Editorial portrait, orange rim light..."</span> },
+              <span class="attr">model</span>: <span class="fn">fal</span>.<span class="fn">imageModel</span>(<span class="str">"nano-banana-pro/edit"</span>),
+            }),
+          ],
+        <span class="op">}}</span>
+        <span class="attr">model</span>=<span class="op">{</span><span class="fn">fal</span>.<span class="fn">videoModel</span>(<span class="str">"kling-v2.5"</span>)<span class="op">}</span>
+        <span class="attr">duration</span>=<span class="op">{</span><span class="num">5</span><span class="op">}</span>
+      /&gt;
+    &lt;/<span class="tag">Clip</span>&gt;
+  &lt;/<span class="tag">Render</span>&gt;
+);</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pillars" id="pillars">
+    <div class="container">
+      <span class="section-label">Core Principles</span>
+      <h2 class="section-title">Three pillars of video generation</h2>
+      <p class="section-desc">Built on principles that make complex video workflows feel simple.</p>
+
+      <div class="pillars-grid">
+        <div class="pillar">
+          <div class="pillar-icon">
+            <svg viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1M16 3h1a2 2 0 0 1 2 2v5c0 1.1.9 2 2 2a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1"/></svg>
+          </div>
+          <h3>Declarative</h3>
+          <p>Describe WHAT you want, not HOW to make it. No manual file handling, no temp files, no state management. Just JSX that describes your video structure. The engine handles orchestration, parallelization, and composition automatically.</p>
+          <div class="pillar-code">
+<pre><span class="cmt">// describe structure, not steps</span>
+&lt;<span class="tag">Render</span>&gt;
+  &lt;<span class="tag">Clip</span>&gt;&lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="str">"scene 1"</span> /&gt;&lt;/<span class="tag">Clip</span>&gt;
+  &lt;<span class="tag">Clip</span>&gt;&lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="str">"scene 2"</span> /&gt;&lt;/<span class="tag">Clip</span>&gt;
+&lt;/<span class="tag">Render</span>&gt;</pre>
+          </div>
+        </div>
+
+        <div class="pillar">
+          <div class="pillar-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/></svg>
+          </div>
+          <h3>Good Defaults</h3>
+          <p>Everything just works out of the box. Automatic caching, smart aspect ratio handling, audio ducking, transitions. You don't configure what you don't need to. But when you do need control, every parameter is there.</p>
+          <span class="pillar-highlight">same prompt = cache hit = instant</span>
+        </div>
+
+        <div class="pillar">
+          <div class="pillar-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+          <h3>Flexible</h3>
+          <p>Compose primitives into complex pipelines. TalkingHead? Just Image + Animate + Speech. Split screen? Two children in a Split component. Everything is composable. Build your own abstractions on top of the primitives.</p>
+          <div class="pillar-code">
+<pre><span class="cmt">// compose your own components</span>
+<span class="kw">const</span> <span class="fn">TalkingHead</span> = () =&gt; (
+  &lt;&gt;
+    &lt;<span class="tag">Animate</span> <span class="attr">image</span>=<span class="op">{</span>&lt;<span class="tag">Image</span> /&gt;<span class="op">}</span> /&gt;
+    &lt;<span class="tag">Speech</span>&gt;Hello!&lt;/<span class="tag">Speech</span>&gt;
+  &lt;/&gt;
+);</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="agents" id="agents">
+    <div class="container">
+      <span class="section-label">AI Native</span>
+      <h2 class="section-title">Made for AI Agents</h2>
+      <p class="section-desc">AI agents write good varg-react code out of the box. The declarative API maps naturally to how LLMs think about structure.</p>
+
+      <div class="agents-content">
+        <div class="agents-text">
+          <h3>Clear errors, easy fixes</h3>
+          <p>For the 5% of cases where agents don't one-shot it, they receive clear runtime errors with actionable messages. No cryptic stack traces. No hidden state to debug.</p>
+          <ul class="agents-list">
+            <li>Agents generate correct code 95% of the time</li>
+            <li>Clear runtime errors for the other 5%</li>
+            <li>No magic strings or hidden state</li>
+            <li>Type-safe props catch mistakes early</li>
+          </ul>
+        </div>
+
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="code-dot"></div>
+            <div class="code-dot"></div>
+            <div class="code-dot"></div>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-cmd"> varg render scene.tsx</span></div>
+            <div class="terminal-output"><span class="terminal-error">Error: Clip duration required when using Video</span></div>
+            <div class="terminal-output"><span class="terminal-error">   at Clip (line 12)</span></div>
+            <div class="terminal-output"><span class="terminal-error">   hint: add duration={5} or duration="auto"</span></div>
+            <br>
+            <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-cmd"> # agent fixes and retries</span></div>
+            <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-cmd"> varg render scene.tsx</span></div>
+            <div class="terminal-output"><span class="terminal-success">Rendering 3 clips...</span></div>
+            <div class="terminal-output"><span class="terminal-success">Done! output/scene.mp4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="compose">
+    <div class="container">
+      <span class="section-label">Primitives</span>
+      <h2 class="section-title">Everything Composes</h2>
+      <p class="section-desc">Combine simple primitives into complex pipelines. Each piece does one thing well.</p>
+
+      <div class="compose-flow">
+        <div class="compose-item">
+          <div class="compose-item-tag">&lt;Image /&gt;</div>
+          <div class="compose-item-desc">generates still</div>
+        </div>
+        <div class="compose-arrow">+</div>
+        <div class="compose-item">
+          <div class="compose-item-tag">&lt;Animate /&gt;</div>
+          <div class="compose-item-desc">adds motion</div>
+        </div>
+        <div class="compose-arrow">+</div>
+        <div class="compose-item">
+          <div class="compose-item-tag">&lt;Speech /&gt;</div>
+          <div class="compose-item-desc">generates audio</div>
+        </div>
+        <div class="compose-equals">=</div>
+        <div class="compose-item compose-result">
+          <div class="compose-item-tag">TalkingHead</div>
+          <div class="compose-item-desc">full character video</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="examples" id="examples">
+    <div class="container">
+      <span class="section-label">Examples</span>
+      <h2 class="section-title">See it in action</h2>
+      <p class="section-desc">Real patterns from production. Copy, paste, render.</p>
+
+      <div class="examples-grid">
+        <div class="example-card">
+          <div class="example-header">
+            <div class="example-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+            </div>
+            <span class="example-title">Talking Head</span>
+          </div>
+          <div class="example-code">
+<pre><span class="kw">const</span> <span class="fn">TalkingHead</span> = ({ <span class="attr">character</span>, <span class="attr">voice</span>, <span class="attr">children</span> }) =&gt; (
+  &lt;&gt;
+    &lt;<span class="tag">Animate</span>
+      <span class="attr">image</span>=<span class="op">{</span>&lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="op">{</span>character<span class="op">}</span> /&gt;<span class="op">}</span>
+      <span class="attr">motion</span>=<span class="str">"talking, blinking"</span>
+    /&gt;
+    &lt;<span class="tag">Speech</span> <span class="attr">voice</span>=<span class="op">{</span>voice<span class="op">}</span>&gt;<span class="op">{</span>children<span class="op">}</span>&lt;/<span class="tag">Speech</span>&gt;
+  &lt;/&gt;
+);
+
+&lt;<span class="tag">Clip</span> <span class="attr">duration</span>=<span class="str">"auto"</span>&gt;
+  &lt;<span class="tag">TalkingHead</span> <span class="attr">character</span>=<span class="str">"news anchor"</span> <span class="attr">voice</span>=<span class="str">"adam"</span>&gt;
+    Breaking news from the studio...
+  &lt;/<span class="tag">TalkingHead</span>&gt;
+&lt;/<span class="tag">Clip</span>&gt;</pre>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-header">
+            <div class="example-icon">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+            </div>
+            <span class="example-title">Split Screen</span>
+          </div>
+          <div class="example-code">
+<pre><span class="kw">const</span> before = &lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="str">"before state"</span> /&gt;;
+<span class="kw">const</span> after = &lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="str">"after state"</span> /&gt;;
+
+&lt;<span class="tag">Render</span> <span class="attr">width</span>=<span class="op">{</span><span class="num">1920</span><span class="op">}</span> <span class="attr">height</span>=<span class="op">{</span><span class="num">1080</span><span class="op">}</span>&gt;
+  &lt;<span class="tag">Clip</span> <span class="attr">duration</span>=<span class="op">{</span><span class="num">5</span><span class="op">}</span>&gt;
+    &lt;<span class="tag">Split</span> <span class="attr">left</span>=<span class="op">{</span>before<span class="op">}</span> <span class="attr">right</span>=<span class="op">{</span>after<span class="op">}</span> /&gt;
+    &lt;<span class="tag">Title</span> <span class="attr">position</span>=<span class="str">"bottom"</span>&gt;
+      30 Day Transformation
+    &lt;/<span class="tag">Title</span>&gt;
+  &lt;/<span class="tag">Clip</span>&gt;
+&lt;/<span class="tag">Render</span>&gt;</pre>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-header">
+            <div class="example-icon">
+              <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></svg>
+            </div>
+            <span class="example-title">Slideshow</span>
+          </div>
+          <div class="example-code">
+<pre><span class="kw">const</span> scenes = [<span class="str">"sunset"</span>, <span class="str">"mountains"</span>, <span class="str">"ocean"</span>];
+
+&lt;<span class="tag">Render</span>&gt;
+  &lt;<span class="tag">Music</span> <span class="attr">prompt</span>=<span class="str">"ambient, peaceful"</span> <span class="attr">loop</span> /&gt;
+  
+  <span class="op">{</span>scenes.<span class="fn">map</span>((scene, i) =&gt; (
+    &lt;<span class="tag">Clip</span>
+      <span class="attr">key</span>=<span class="op">{</span>i<span class="op">}</span>
+      <span class="attr">duration</span>=<span class="op">{</span><span class="num">3</span><span class="op">}</span>
+      <span class="attr">transition</span>=<span class="op">{{</span> <span class="attr">name</span>: <span class="str">"fade"</span> <span class="op">}}</span>
+    &gt;
+      &lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="op">{</span>scene<span class="op">}</span> <span class="attr">zoom</span>=<span class="str">"in"</span> /&gt;
+    &lt;/<span class="tag">Clip</span>&gt;
+  ))<span class="op">}</span>
+&lt;/<span class="tag">Render</span>&gt;</pre>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-header">
+            <div class="example-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <span class="example-title">Before/After Slider</span>
+          </div>
+          <div class="example-code">
+<pre>&lt;<span class="tag">Clip</span> <span class="attr">duration</span>=<span class="op">{</span><span class="num">5</span><span class="op">}</span>&gt;
+  &lt;<span class="tag">Slider</span> <span class="attr">direction</span>=<span class="str">"horizontal"</span>&gt;
+    &lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="str">"old photo, faded"</span> /&gt;
+    &lt;<span class="tag">Image</span> <span class="attr">prompt</span>=<span class="str">"restored photo, vibrant"</span> /&gt;
+  &lt;/<span class="tag">Slider</span>&gt;
+  
+  &lt;<span class="tag">Title</span> <span class="attr">position</span>=<span class="str">"top"</span>&gt;
+    AI Photo Restoration
+  &lt;/<span class="tag">Title</span>&gt;
+&lt;/<span class="tag">Clip</span>&gt;</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24"><polygon points="12,2 22,22 2,22" fill="white"/></svg>
+          </div>
+          varg-react
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/varghq/sdk">GitHub</a>
+          <a href="#">Docs</a>
+          <a href="#">Discord</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Smooth reveal animations on scroll
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.pillar, .example-card, .compose-item').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+      observer.observe(el);
+    });
+
+    // Stagger animation for pillars
+    document.querySelectorAll('.pillar').forEach((el, i) => {
+      el.style.transitionDelay = `${i * 0.1}s`;
+    });
+
+    // Copy command on click
+    document.querySelector('.hero-cmd').addEventListener('click', function() {
+      const text = this.querySelector('.hero-cmd-text').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const copyIcon = this.querySelector('.hero-cmd-copy');
+        copyIcon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        setTimeout(() => {
+          copyIcon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

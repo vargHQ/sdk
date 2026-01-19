@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>varg studio</title>
+  <link rel="stylesheet" href="https://unpkg.com/drawflow@0.0.60/dist/drawflow.min.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a;
+      --bg-secondary: #141414;
+      --border: #222;
+      --border-hover: #444;
+      --text: #fafafa;
+      --text-muted: #888;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --error: #ef4444;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      height: 48px;
+      padding: 0 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .logo {
+      font-weight: 600;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .nav-btn {
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .nav-btn:hover { color: var(--text); background: var(--bg-secondary); }
+    .nav-btn.active { color: var(--text); background: var(--bg-secondary); }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    select {
+      padding: 0.375rem 0.5rem;
+      border-radius: 0.375rem;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    select:hover { border-color: var(--border-hover); }
+    .main {
+      display: flex;
+      height: calc(100vh - 48px);
+    }
+    .editor-pane {
+      flex: 1;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-pane {
+      width: 480px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #editor-container {
+      flex: 1;
+      overflow: hidden;
+    }
+    .preview-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    .preview-content {
+      flex: 1;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .preview-video {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .preview-placeholder {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      text-align: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .preview-placeholder-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.5;
+    }
+    .progress-section {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .progress-bar-container {
+      height: 4px;
+      background: var(--bg-secondary);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .progress-bar.complete { background: var(--success); }
+    .progress-bar.error { background: var(--error); }
+    .progress-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .controls {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+    .btn:hover { border-color: var(--border-hover); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-danger {
+      background: var(--error);
+      border-color: var(--error);
+    }
+    .btn-danger:hover { background: #dc2626; border-color: #dc2626; }
+    .btn-toggle {
+      position: relative;
+    }
+    .btn-toggle.active {
+      background: var(--success);
+      border-color: var(--success);
+    }
+    .history-section {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .history-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+    .history-grid {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+    .history-item {
+      width: 80px;
+      flex-shrink: 0;
+      cursor: pointer;
+      border-radius: 0.375rem;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .history-item:hover { border-color: var(--border-hover); }
+    .history-item.active { border-color: var(--accent); }
+    .history-thumb {
+      width: 100%;
+      aspect-ratio: 9/16;
+      background: var(--bg-secondary);
+      object-fit: cover;
+    }
+    .history-meta {
+      padding: 0.25rem;
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Step mode timeline */
+    .stage-timeline {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      display: none;
+    }
+    .stage-timeline.active {
+      display: block;
+    }
+    .stage-timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .stage-timeline-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .stage-timeline-hint {
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+    .stage-timeline-hint kbd {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.125rem 0.375rem;
+      font-family: inherit;
+      font-size: 0.625rem;
+    }
+    .stage-track {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .stage-track::-webkit-scrollbar {
+      height: 4px;
+    }
+    .stage-track::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .stage-track::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+    .stage-item {
+      flex-shrink: 0;
+      width: 100px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.625rem;
+      cursor: default;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .stage-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: transparent;
+      transition: background 0.2s ease;
+    }
+    .stage-item.pending {
+      opacity: 0.5;
+    }
+    .stage-item.running {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .stage-item.running::before {
+      background: var(--accent);
+      animation: stage-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes stage-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .stage-item.complete {
+      cursor: pointer;
+      border-color: var(--success);
+    }
+    .stage-item.complete::before {
+      background: var(--success);
+    }
+    .stage-item.complete:hover {
+      border-color: var(--success);
+      background: rgba(34, 197, 94, 0.1);
+    }
+    .stage-item.error {
+      border-color: var(--error);
+    }
+    .stage-item.error::before {
+      background: var(--error);
+    }
+    .stage-item.selected {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .stage-icon {
+      font-size: 1.25rem;
+      margin-bottom: 0.375rem;
+    }
+    .stage-label {
+      font-size: 0.7rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.25rem;
+    }
+    .stage-status {
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .stage-item.running .stage-status {
+      color: var(--accent);
+    }
+    .stage-item.complete .stage-status {
+      color: var(--success);
+    }
+    .stage-item.error .stage-status {
+      color: var(--error);
+    }
+    .stage-connector {
+      flex-shrink: 0;
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stage-connector-line {
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+      position: relative;
+    }
+    .stage-connector-line.complete {
+      background: var(--success);
+    }
+    .stage-connector-line::after {
+      content: '';
+      position: absolute;
+      right: -4px;
+      top: -3px;
+      border: 4px solid transparent;
+      border-left-color: var(--border);
+    }
+    .stage-connector-line.complete::after {
+      border-left-color: var(--success);
+    }
+    
+    /* Mode toggle */
+    .mode-toggle {
+      display: flex;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      overflow: hidden;
+    }
+    .mode-toggle-btn {
+      padding: 0.375rem 0.625rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .mode-toggle-btn:hover {
+      color: var(--text);
+    }
+    .mode-toggle-btn.active {
+      background: var(--accent);
+      color: var(--text);
+    }
+    .mode-toggle-btn:first-child {
+      border-right: 1px solid var(--border);
+    }
+    
+    /* Next step button */
+    .btn-next {
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      border-color: transparent;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-next::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+    .btn-next:hover::before {
+      left: 100%;
+    }
+    .btn-next:hover {
+      background: linear-gradient(135deg, var(--accent-hover), #4f46e5);
+    }
+    .btn-next:disabled {
+      background: var(--bg-secondary);
+      border-color: var(--border);
+    }
+    .btn-next:disabled::before {
+      display: none;
+    }
+    .error-banner {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error);
+      border-radius: 0.375rem;
+      padding: 0.75rem 1rem;
+      margin: 1rem;
+      font-size: 0.8rem;
+      color: var(--error);
+    }
+
+    /* Editor pane header with view toggle */
+    .editor-pane-header {
+      height: 36px;
+      padding: 0 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .view-toggle {
+      display: flex;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      overflow: hidden;
+    }
+    .view-toggle-btn {
+      padding: 0.25rem 0.625rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .view-toggle-btn:hover { color: var(--text); }
+    .view-toggle-btn.active {
+      background: var(--accent);
+      color: var(--text);
+    }
+    .view-toggle-btn:first-child {
+      border-right: 1px solid var(--border);
+    }
+    .editor-pane-content {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #editor-container, #nodes-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+    #nodes-container {
+      display: none;
+      background: var(--bg);
+    }
+    #nodes-container.active { display: block; }
+    #editor-container.hidden { display: none; }
+
+    /* Drawflow dark theme */
+    #drawflow {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      background-size: 20px 20px;
+      background-image:
+        linear-gradient(to right, #1a1a1a 1px, transparent 1px),
+        linear-gradient(to bottom, #1a1a1a 1px, transparent 1px);
+    }
+    .drawflow .drawflow-node {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-width: 160px;
+      color: var(--text);
+      font-size: 0.8rem;
+    }
+    .drawflow .drawflow-node.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+    }
+    .drawflow .drawflow-node .inputs, .drawflow .drawflow-node .outputs {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .drawflow .drawflow-node .input, .drawflow .drawflow-node .output {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--bg);
+    }
+    .drawflow .drawflow-node .input:hover, .drawflow .drawflow-node .output:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .drawflow .connection .main-path {
+      stroke: var(--accent);
+      stroke-width: 2px;
+    }
+    .drawflow .connection .main-path:hover {
+      stroke-width: 3px;
+    }
+
+    /* Custom node styles */
+    .node-title {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 7px 7px 0 0;
+    }
+    .node-title-icon { font-size: 1rem; }
+    .node-content {
+      padding: 8px;
+    }
+    .node-preview {
+      width: 100%;
+      max-height: 120px;
+      object-fit: contain;
+      border-radius: 4px;
+      background: #000;
+    }
+    .node-preview-placeholder {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+    .node-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .node-status {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      margin-top: 4px;
+      letter-spacing: 0.03em;
+    }
+    .node-status.pending { color: var(--text-muted); }
+    .node-status.running { color: var(--accent); }
+    .node-status.complete { color: var(--success); }
+    .node-status.error { color: var(--error); }
+    .node-btn {
+      margin-top: 8px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.65rem;
+      cursor: pointer;
+      width: 100%;
+    }
+    .node-btn:hover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .node-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .drawflow-node.complete { border-color: var(--success); }
+    .drawflow-node.running {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .drawflow-node.error { border-color: var(--error); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <span>varg studio</span>
+    </div>
+    <nav class="nav">
+      <a href="/editor" class="nav-btn active">editor</a>
+      <a href="/cache" class="nav-btn">cache</a>
+    </nav>
+    <div class="header-right">
+      <select id="template-select">
+        <option value="">select template...</option>
+      </select>
+    </div>
+  </header>
+  
+  <main class="main">
+    <div class="editor-pane">
+      <div class="editor-pane-header">
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" id="view-code-btn" title="Code view">
+            <span>{ }</span> code
+          </button>
+          <button class="view-toggle-btn" id="view-nodes-btn" title="Node view">
+            <span>◎</span> nodes
+          </button>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted);">
+          <span id="view-hint">cmd+enter to run</span>
+        </div>
+      </div>
+      <div class="editor-pane-content">
+        <div id="editor-container"></div>
+        <div id="nodes-container">
+          <div id="drawflow"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="preview-pane">
+      <div class="preview-header">preview</div>
+      
+      <div class="preview-content" id="preview-content">
+        <div class="preview-placeholder">
+          <div class="preview-placeholder-icon">▶</div>
+          <div>click run to generate</div>
+        </div>
+      </div>
+      
+      <div class="progress-section" id="progress-section" style="display: none;">
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="progress-text" id="progress-text">ready</div>
+      </div>
+      
+      <div class="controls">
+        <div class="mode-toggle">
+          <button class="mode-toggle-btn active" id="mode-all-btn" title="Run all stages at once">
+            <span>⚡</span> all
+          </button>
+          <button class="mode-toggle-btn" id="mode-step-btn" title="Run stages one by one">
+            <span>👣</span> step
+          </button>
+        </div>
+        <button class="btn btn-primary" id="run-btn">
+          <span>▶</span> run
+        </button>
+        <button class="btn btn-next" id="next-btn" style="display: none;">
+          <span>→</span> next
+        </button>
+        <button class="btn btn-toggle" id="auto-btn">
+          <span>⟳</span> auto
+        </button>
+        <button class="btn btn-danger" id="stop-btn" disabled>
+          <span>⬜</span> stop
+        </button>
+        <button class="btn" id="share-btn" style="margin-left: auto;">
+          <span>🔗</span> share
+        </button>
+      </div>
+      
+      <div class="stage-timeline" id="stage-timeline">
+        <div class="stage-timeline-header">
+          <div class="stage-timeline-title">stages</div>
+          <div class="stage-timeline-hint"><kbd>Space</kbd> next step</div>
+        </div>
+        <div class="stage-track" id="stage-track"></div>
+      </div>
+      
+      <div class="history-section">
+        <div class="history-title">history</div>
+        <div class="history-grid" id="history-grid">
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/drawflow@0.0.60/dist/drawflow.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+  <script>
+    const DEFAULT_CODE = `import { fal } from "../fal-provider";
+import { Clip, Image, Render, Video } from "../react";
+
+export default (
+  <Render width={1080} height={1920}>
+    <Clip duration={5}>
+      <Video
+        prompt={{
+          text: "A person walking through a neon-lit city at night",
+          images: [
+            Image({
+              prompt: "cyberpunk street scene, neon lights, rain",
+              model: fal.imageModel("flux-schnell"),
+            }),
+          ],
+        }}
+        model={fal.videoModel("kling-v2.5")}
+        duration={5}
+      />
+    </Clip>
+  </Render>
+);`;
+
+    let editor;
+    let isRendering = false;
+    let autoMode = false;
+    let currentRenderId = null;
+    let debounceTimer = null;
+    let history = JSON.parse(localStorage.getItem('varg-history') || '[]');
+    
+    // Step mode state
+    let stepMode = false;
+    let stepSession = null;
+    let stages = [];
+    let currentStageIndex = -1;
+    let selectedStageId = null;
+
+    // View mode state
+    let currentView = 'code';
+    let drawflowEditor = null;
+    let renderingFinal = false;
+
+    // Initialize Drawflow
+    function initDrawflow() {
+      const container = document.getElementById('drawflow');
+      drawflowEditor = new Drawflow(container);
+      drawflowEditor.reroute = true;
+      drawflowEditor.start();
+
+      drawflowEditor.on('nodeSelected', (nodeId) => {
+        const stage = stages.find(s => s.nodeId === nodeId);
+        if (stage && stage.status === 'complete') {
+          selectedStageId = stage.id;
+          renderStageTimeline();
+          if (stage.result) {
+            showStagePreview({ result: stage.result });
+          }
+        }
+      });
+    }
+
+    async function setView(view) {
+      currentView = view;
+      document.getElementById('view-code-btn').classList.toggle('active', view === 'code');
+      document.getElementById('view-nodes-btn').classList.toggle('active', view === 'nodes');
+      document.getElementById('editor-container').classList.toggle('hidden', view === 'nodes');
+      document.getElementById('nodes-container').classList.toggle('active', view === 'nodes');
+
+      if (view === 'nodes') {
+        document.getElementById('view-hint').textContent = 'click node to preview';
+        if (stages.length > 0) {
+          renderNodeGraph();
+        } else {
+          // Auto-parse stages when switching to nodes view
+          await parseStagesForNodeView();
+        }
+      } else {
+        document.getElementById('view-hint').textContent = 'cmd+enter to run';
+      }
+    }
+
+    async function parseStagesForNodeView() {
+      if (!drawflowEditor) {
+        showEmptyNodeGraph();
+        return;
+      }
+
+      const code = editor.getValue();
+      try {
+        const res = await fetch('/api/step/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to parse stages');
+        }
+
+        const data = await res.json();
+        stepSession = data;
+        stages = data.stages.map(s => ({ ...s, status: 'pending' }));
+        currentStageIndex = -1;
+        selectedStageId = null;
+
+        renderNodeGraph();
+        renderStageTimeline();
+
+      } catch (err) {
+        console.error('Failed to parse stages:', err);
+        showParseErrorNode(err.message);
+      }
+    }
+
+    function showParseErrorNode(message) {
+      if (!drawflowEditor) return;
+      drawflowEditor.clear();
+      const html = `
+        <div class="node-title" style="background: rgba(239,68,68,0.1);">
+          <span class="node-title-icon">⚠️</span>
+          <span>parse error</span>
+        </div>
+        <div class="node-content">
+          <div class="node-label" style="color: var(--error); white-space: normal;">${message}</div>
+          <button class="node-btn" onclick="setView('code')">← back to code</button>
+        </div>
+      `;
+      drawflowEditor.addNode('error', 0, 0, 200, 150, 'error', {}, html);
+    }
+
+    function showEmptyNodeGraph() {
+      if (!drawflowEditor) return;
+      drawflowEditor.clear();
+      const html = `
+        <div class="node-title">
+          <span class="node-title-icon">💡</span>
+          <span>no stages</span>
+        </div>
+        <div class="node-content">
+          <div class="node-preview-placeholder">run in step mode first</div>
+        </div>
+      `;
+      drawflowEditor.addNode('empty', 0, 0, 200, 150, 'empty-node', {}, html);
+    }
+
+    function renderNodeGraph() {
+      if (!drawflowEditor || stages.length === 0) return;
+
+      drawflowEditor.clear();
+
+      const nodeWidth = 180;
+      const nodeHeight = 180;
+      const gapX = 100;
+      const gapY = 50;
+      const startX = 50;
+      const startY = 50;
+
+      // Build dependency graph and calculate levels
+      const stageMap = new Map(stages.map(s => [s.id, s]));
+      const levels = new Map(); // stageId -> level (depth)
+      const children = new Map(); // stageId -> stages that depend on it
+      
+      // Initialize children map
+      stages.forEach(s => { children.set(s.id, []); });
+      
+      // Build reverse dependency (who depends on me)
+      stages.forEach(s => {
+        (s.dependsOn || []).forEach(depId => {
+          if (children.has(depId)) {
+            children.get(depId).push(s.id);
+          }
+        });
+      });
+
+      // Calculate levels using BFS from roots (nodes with no dependencies)
+      function calculateLevels() {
+        const queue = [];
+        
+        // Find root nodes (no dependencies)
+        stages.forEach(s => {
+          if (!s.dependsOn || s.dependsOn.length === 0) {
+            levels.set(s.id, 0);
+            queue.push(s.id);
+          }
+        });
+        
+        // BFS to assign levels
+        while (queue.length > 0) {
+          const currentId = queue.shift();
+          const currentLevel = levels.get(currentId);
+          
+          children.get(currentId).forEach(childId => {
+            const childStage = stageMap.get(childId);
+            if (!childStage) return;
+            
+            // Child's level is max of all its dependencies + 1
+            const depLevels = (childStage.dependsOn || [])
+              .map(d => levels.get(d) ?? -1)
+              .filter(l => l >= 0);
+            
+            if (depLevels.length === (childStage.dependsOn || []).length) {
+              // All dependencies have levels assigned
+              const newLevel = Math.max(...depLevels) + 1;
+              if (!levels.has(childId) || levels.get(childId) < newLevel) {
+                levels.set(childId, newLevel);
+                queue.push(childId);
+              }
+            }
+          });
+        }
+        
+        // Handle any unassigned (shouldn't happen with valid DAG)
+        stages.forEach(s => {
+          if (!levels.has(s.id)) {
+            levels.set(s.id, 0);
+          }
+        });
+      }
+      
+      calculateLevels();
+
+      // Group stages by level
+      const levelGroups = new Map();
+      stages.forEach(s => {
+        const level = levels.get(s.id);
+        if (!levelGroups.has(level)) {
+          levelGroups.set(level, []);
+        }
+        levelGroups.get(level).push(s);
+      });
+
+      const maxLevel = Math.max(...levels.values());
+      const stageNodeIds = new Map(); // stageId -> drawflow nodeId
+
+      // Render nodes level by level (left to right)
+      for (let level = 0; level <= maxLevel; level++) {
+        const group = levelGroups.get(level) || [];
+        const x = startX + level * (nodeWidth + gapX);
+        
+        group.forEach((stage, idx) => {
+          // Center vertically based on group size
+          const totalHeight = group.length * (nodeHeight + gapY) - gapY;
+          const offsetY = (500 - totalHeight) / 2; // Center in ~500px viewport
+          const y = startY + Math.max(0, offsetY) + idx * (nodeHeight + gapY);
+
+          const icon = getStageIcon(stage.type);
+          const statusClass = stage.status;
+          const hasPreview = stage.result?.previewUrl;
+
+          let previewHtml = '';
+          if (hasPreview) {
+            const url = stage.result.previewUrl;
+            if (stage.result.mimeType?.startsWith('image/') || stage.type === 'image') {
+              previewHtml = `<img class="node-preview" src="${url}" alt="preview">`;
+            } else if (stage.result.mimeType?.startsWith('video/') || stage.type === 'video' || stage.type === 'animate') {
+              previewHtml = `<video class="node-preview" src="${url}" muted loop></video>`;
+            } else if (stage.result.mimeType?.startsWith('audio/') || stage.type === 'speech' || stage.type === 'music') {
+              previewHtml = `<div class="node-preview-placeholder">🎵 audio</div>`;
+            }
+          } else {
+            previewHtml = `<div class="node-preview-placeholder">click to generate</div>`;
+          }
+
+          const btnHtml = stage.status === 'pending' 
+            ? `<button class="node-btn" onclick="event.stopPropagation(); generateNodeStage('${stage.id}')">▶ generate</button>`
+            : '';
+
+          const html = `
+            <div class="node-title">
+              <span class="node-title-icon">${icon}</span>
+              <span>${stage.type}</span>
+            </div>
+            <div class="node-content">
+              ${previewHtml}
+              <div class="node-label" title="${stage.label}">${stage.label}</div>
+              <div class="node-status ${statusClass}">${stage.status}</div>
+              ${btnHtml}
+            </div>
+          `;
+
+          // Input count = number of dependencies, output = 1 (for children or render node)
+          const inputCount = (stage.dependsOn || []).length || 0;
+          const hasChildren = children.get(stage.id)?.length > 0;
+          const outputCount = 1; // Always 1 output (to children or render)
+
+          const nodeId = drawflowEditor.addNode(
+            stage.type,
+            inputCount > 0 ? inputCount : 0,
+            outputCount,
+            x,
+            y,
+            statusClass,
+            { stageId: stage.id },
+            html
+          );
+
+          stage.nodeId = nodeId;
+          stageNodeIds.set(stage.id, nodeId);
+        });
+      }
+
+      // Add connections based on actual dependencies
+      stages.forEach(stage => {
+        const targetNodeId = stageNodeIds.get(stage.id);
+        (stage.dependsOn || []).forEach((depId, depIndex) => {
+          const sourceNodeId = stageNodeIds.get(depId);
+          if (sourceNodeId && targetNodeId) {
+            // Connect source output to target input
+            const inputNum = depIndex + 1;
+            drawflowEditor.addConnection(sourceNodeId, targetNodeId, 'output_1', `input_${inputNum}`);
+          }
+        });
+      });
+
+      // Find leaf nodes (no children) to connect to render node
+      const leafStages = stages.filter(s => {
+        const childList = children.get(s.id) || [];
+        return childList.length === 0;
+      });
+
+      // Add final "Render" root node
+      const allComplete = stages.every(s => s.status === 'complete');
+      const renderX = startX + (maxLevel + 1) * (nodeWidth + gapX);
+      const renderY = startY + (500 - nodeHeight) / 4; // Roughly centered
+
+      let renderPreviewHtml = '';
+      const hasRenderResult = currentVideoUrl || stepSession?.renderResult?.previewUrl;
+      
+      if (renderingFinal) {
+        renderPreviewHtml = `<div class="node-preview-placeholder"><div class="spinner"></div></div>`;
+      } else if (hasRenderResult) {
+        const url = currentVideoUrl || stepSession.renderResult.previewUrl;
+        renderPreviewHtml = `<video class="node-preview" src="${url}" muted loop></video>`;
+      } else if (allComplete) {
+        renderPreviewHtml = `<div class="node-preview-placeholder">ready to render</div>`;
+      } else {
+        renderPreviewHtml = `<div class="node-preview-placeholder">waiting for stages...</div>`;
+      }
+
+      const renderBtnHtml = (allComplete && !hasRenderResult && !renderingFinal)
+        ? `<button class="node-btn" onclick="event.stopPropagation(); runFinalRender()" style="background: var(--accent); border-color: var(--accent);">▶ render</button>`
+        : '';
+
+      const renderStatusText = renderingFinal ? 'rendering...' : (hasRenderResult ? 'complete' : (allComplete ? 'ready' : 'pending'));
+      const renderStatusClass = renderingFinal ? 'running' : (hasRenderResult ? 'complete' : 'pending');
+
+      const renderHtml = `
+        <div class="node-title" style="background: rgba(59,130,246,0.15);">
+          <span class="node-title-icon">🎬</span>
+          <span>render</span>
+        </div>
+        <div class="node-content">
+          ${renderPreviewHtml}
+          <div class="node-label">final output</div>
+          <div class="node-status ${renderStatusClass}">${renderStatusText}</div>
+          ${renderBtnHtml}
+        </div>
+      `;
+
+      const renderNodeId = drawflowEditor.addNode(
+        'render',
+        leafStages.length || 1,
+        0,
+        renderX,
+        renderY,
+        renderingFinal ? 'running' : (hasRenderResult ? 'complete' : 'pending'),
+        { type: 'render' },
+        renderHtml
+      );
+
+      // Connect all leaf nodes to render node
+      leafStages.forEach((stage, idx) => {
+        const sourceNodeId = stageNodeIds.get(stage.id);
+        if (sourceNodeId) {
+          drawflowEditor.addConnection(sourceNodeId, renderNodeId, 'output_1', `input_${idx + 1}`);
+        }
+      });
+
+      // Play videos on hover
+      document.querySelectorAll('.node-preview').forEach(el => {
+        if (el.tagName === 'VIDEO') {
+          el.addEventListener('mouseenter', () => el.play());
+          el.addEventListener('mouseleave', () => { el.pause(); el.currentTime = 0; });
+        }
+      });
+    }
+
+    async function generateNodeStage(stageId) {
+      if (!stepSession || isRendering) return;
+
+      const stage = stages.find(s => s.id === stageId);
+      if (!stage) return;
+
+      // Check if all dependencies are complete
+      const incompleteDeps = (stage.dependsOn || [])
+        .map(depId => stages.find(s => s.id === depId))
+        .filter(dep => dep && dep.status !== 'complete');
+      
+      if (incompleteDeps.length > 0) {
+        const depNames = incompleteDeps.map(d => d.label).join(', ');
+        alert(`Complete dependencies first: ${depNames}`);
+        return;
+      }
+      
+      const stageIndex = stages.findIndex(s => s.id === stageId);
+
+      isRendering = true;
+      stages[stageIndex].status = 'running';
+      renderNodeGraph();
+      renderStageTimeline();
+
+      try {
+        const res = await fetch('/api/step/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: stepSession.sessionId, stageId }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Stage execution failed');
+        }
+
+        const data = await res.json();
+        stages[stageIndex].status = 'complete';
+        stages[stageIndex].result = data.result;
+        currentStageIndex = Math.max(currentStageIndex, stageIndex);
+
+        selectedStageId = stageId;
+        renderNodeGraph();
+        renderStageTimeline();
+        showStagePreview(data);
+
+      } catch (err) {
+        stages[stageIndex].status = 'error';
+        renderNodeGraph();
+        renderStageTimeline();
+        showError(err.message);
+      }
+
+      isRendering = false;
+    }
+
+    async function runFinalRender() {
+      if (!stepSession || isRendering) return;
+      
+      const allComplete = stages.every(s => s.status === 'complete');
+      if (!allComplete) {
+        alert('Complete all stages first');
+        return;
+      }
+
+      isRendering = true;
+      renderingFinal = true;
+      renderNodeGraph();
+      updateProgress(0.5, 'rendering final video...');
+      document.getElementById('progress-section').style.display = 'block';
+
+      try {
+        const res = await fetch('/api/step/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: stepSession.sessionId }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || err.message || 'Final render failed');
+        }
+
+        const data = await res.json();
+        currentVideoUrl = data.videoUrl;
+        
+        renderingFinal = false;
+        renderNodeGraph();
+        showVideo(data.videoUrl);
+        addToHistory(editor.getValue(), data.videoUrl);
+        updateProgress(1, 'render complete');
+        document.getElementById('progress-bar').className = 'progress-bar complete';
+
+      } catch (err) {
+        renderingFinal = false;
+        renderNodeGraph();
+        showError(err.message);
+        updateProgress(0, err.message);
+        document.getElementById('progress-bar').className = 'progress-bar error';
+      }
+
+      isRendering = false;
+    }
+
+    document.getElementById('view-code-btn').addEventListener('click', () => setView('code'));
+    document.getElementById('view-nodes-btn').addEventListener('click', () => setView('nodes'));
+
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+
+    require(['vs/editor/editor.main'], () => {
+      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+        noSemanticValidation: true,
+        noSyntaxValidation: true,
+      });
+
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+        jsx: monaco.languages.typescript.JsxEmit.React,
+        jsxFactory: 'createElement',
+        target: monaco.languages.typescript.ScriptTarget.ESNext,
+        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+        allowNonTsExtensions: true,
+      });
+
+      monaco.editor.defineTheme('varg-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [],
+        colors: {
+          'editor.background': '#0a0a0a',
+          'editor.lineHighlightBackground': '#141414',
+          'editorLineNumber.foreground': '#444',
+          'editorLineNumber.activeForeground': '#888',
+        }
+      });
+
+      editor = monaco.editor.create(document.getElementById('editor-container'), {
+        value: localStorage.getItem('varg-code') || DEFAULT_CODE,
+        language: 'typescript',
+        theme: 'varg-dark',
+        fontSize: 13,
+        fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+        lineNumbers: 'on',
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        padding: { top: 16, bottom: 16 },
+        automaticLayout: true,
+        tabSize: 2,
+      });
+
+      editor.onDidChangeModelContent(() => {
+        localStorage.setItem('varg-code', editor.getValue());
+        if (autoMode && !isRendering) {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => startRender(), 2000);
+        }
+      });
+
+      loadInitialCode();
+    });
+
+    async function loadTemplates() {
+      const res = await fetch('/api/templates');
+      const templates = await res.json();
+      const select = document.getElementById('template-select');
+      templates.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function loadInitialCode() {
+      const res = await fetch('/api/initial-code');
+      const data = await res.json();
+      if (data.code) {
+        editor.setValue(data.code);
+        localStorage.setItem('varg-code', data.code);
+      }
+    }
+
+    document.getElementById('template-select').addEventListener('change', async (e) => {
+      if (!e.target.value) return;
+      const res = await fetch('/api/templates/' + e.target.value);
+      const { code } = await res.json();
+      editor.setValue(code);
+      e.target.value = '';
+    });
+
+    document.getElementById('run-btn').addEventListener('click', () => {
+      if (stepMode) {
+        startStepSession();
+      } else {
+        startRender();
+      }
+    });
+    
+    document.getElementById('next-btn').addEventListener('click', executeNextStep);
+    
+    document.getElementById('mode-all-btn').addEventListener('click', () => {
+      setStepMode(false);
+    });
+    
+    document.getElementById('mode-step-btn').addEventListener('click', () => {
+      setStepMode(true);
+    });
+    
+    document.getElementById('auto-btn').addEventListener('click', () => {
+      autoMode = !autoMode;
+      document.getElementById('auto-btn').classList.toggle('active', autoMode);
+    });
+
+    document.getElementById('stop-btn').addEventListener('click', stopRender);
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (stepMode) {
+          startStepSession();
+        } else {
+          startRender();
+        }
+      }
+      if (e.key === 'Escape' && isRendering) {
+        stopRender();
+      }
+      // Space to execute next step in step mode
+      if (e.code === 'Space' && stepMode && stepSession && !isRendering) {
+        // Don't trigger if focused on editor or input
+        if (document.activeElement.tagName !== 'INPUT' && 
+            document.activeElement.tagName !== 'TEXTAREA' &&
+            !document.activeElement.closest('#editor-container')) {
+          e.preventDefault();
+          executeNextStep();
+        }
+      }
+    });
+    
+    function setStepMode(enabled) {
+      stepMode = enabled;
+      document.getElementById('mode-all-btn').classList.toggle('active', !enabled);
+      document.getElementById('mode-step-btn').classList.toggle('active', enabled);
+      document.getElementById('stage-timeline').classList.toggle('active', enabled && stages.length > 0);
+      document.getElementById('next-btn').style.display = enabled && stepSession ? 'flex' : 'none';
+      document.getElementById('auto-btn').style.display = enabled ? 'none' : 'flex';
+      
+      if (!enabled) {
+        // Reset step state when switching to run-all mode
+        stepSession = null;
+        stages = [];
+        currentStageIndex = -1;
+        selectedStageId = null;
+        renderStageTimeline();
+      }
+    }
+    
+    function getStageIcon(type) {
+      const icons = {
+        image: '🖼️',
+        video: '🎬',
+        animate: '🎬',
+        speech: '🎤',
+        music: '🎵',
+        default: '⚙️'
+      };
+      return icons[type] || icons.default;
+    }
+    
+    function renderStageTimeline() {
+      const track = document.getElementById('stage-track');
+      const timeline = document.getElementById('stage-timeline');
+      
+      if (stages.length === 0) {
+        timeline.classList.remove('active');
+        track.innerHTML = '';
+        if (currentView === 'nodes') showEmptyNodeGraph();
+        return;
+      }
+      
+      if (stepMode) {
+        timeline.classList.add('active');
+      }
+
+      if (currentView === 'nodes') {
+        renderNodeGraph();
+      }
+      
+      let html = '';
+      stages.forEach((stage, index) => {
+        const isSelected = stage.id === selectedStageId;
+        const statusClass = stage.status + (isSelected ? ' selected' : '');
+        
+        // Add connector before each stage except the first
+        if (index > 0) {
+          const prevComplete = stages[index - 1].status === 'complete';
+          html += `
+            <div class="stage-connector">
+              <div class="stage-connector-line ${prevComplete ? 'complete' : ''}"></div>
+            </div>
+          `;
+        }
+        
+        html += `
+          <div class="stage-item ${statusClass}" 
+               data-stage-id="${stage.id}" 
+               data-stage-index="${index}"
+               onclick="selectStage('${stage.id}')">
+            <div class="stage-icon">${getStageIcon(stage.type)}</div>
+            <div class="stage-label" title="${stage.label}">${stage.label}</div>
+            <div class="stage-status">${stage.status}</div>
+          </div>
+        `;
+      });
+      
+      track.innerHTML = html;
+    }
+    
+    async function selectStage(stageId) {
+      const stage = stages.find(s => s.id === stageId);
+      if (!stage || stage.status !== 'complete') return;
+      
+      selectedStageId = stageId;
+      renderStageTimeline();
+      
+      // Show stored result directly (preview URL already available)
+      if (stage.result) {
+        showStagePreview({ result: stage.result });
+      }
+    }
+    
+    function showStagePreview(data) {
+      const container = document.getElementById('preview-content');
+      console.log('[preview] showStagePreview called with:', data);
+      
+      if (!data || !data.result) {
+        container.innerHTML = `<div class="preview-placeholder">
+          <div class="preview-placeholder-icon">📭</div>
+          <div>no preview available</div>
+        </div>`;
+        return;
+      }
+      
+      const { type, previewUrl, mimeType } = data.result;
+      console.log('[preview] type:', type, 'previewUrl:', previewUrl, 'mimeType:', mimeType);
+      
+      if (mimeType?.startsWith('video/') || type === 'video' || type === 'animate') {
+        container.innerHTML = `<video class="preview-video" src="${previewUrl}" controls autoplay loop></video>`;
+      } else if (mimeType?.startsWith('image/') || type === 'image') {
+        container.innerHTML = `<img class="preview-video" src="${previewUrl}" alt="Stage preview" style="object-fit: contain; max-width: 100%; max-height: 100%;">`;
+      } else if (mimeType?.startsWith('audio/') || type === 'speech' || type === 'music') {
+        container.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+            <div style="font-size: 3rem;">${type === 'music' ? '🎵' : '🎤'}</div>
+            <audio controls src="${previewUrl}" style="width: 80%;"></audio>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `<div class="preview-placeholder">
+          <div class="preview-placeholder-icon">✓</div>
+          <div>stage complete</div>
+        </div>`;
+      }
+    }
+    
+    async function startStepSession() {
+      if (isRendering) return;
+      
+      isRendering = true;
+      updateUI('rendering');
+      
+      const code = editor.getValue();
+      
+      try {
+        const res = await fetch('/api/step/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Failed to create step session');
+        }
+        
+        const data = await res.json();
+        stepSession = data;
+        stages = data.stages.map(s => ({ ...s, status: 'pending' }));
+        currentStageIndex = -1;
+        selectedStageId = null;
+        
+        renderStageTimeline();
+        document.getElementById('next-btn').style.display = 'flex';
+        document.getElementById('next-btn').disabled = false;
+        
+        updateProgress(0, 'session ready — click next to start');
+        updateUI('idle');
+        
+        // Show placeholder for step mode
+        const container = document.getElementById('preview-content');
+        container.innerHTML = `<div class="preview-placeholder">
+          <div class="preview-placeholder-icon">👣</div>
+          <div>step through ${stages.length} stage${stages.length > 1 ? 's' : ''}</div>
+        </div>`;
+        
+      } catch (err) {
+        showError(err.message);
+        updateUI('error');
+      }
+      
+      isRendering = false;
+    }
+    
+    async function executeNextStep() {
+      if (!stepSession || isRendering) return;
+      
+      const nextIndex = currentStageIndex + 1;
+      if (nextIndex >= stages.length) {
+        // All stages complete
+        document.getElementById('next-btn').disabled = true;
+        return;
+      }
+      
+      isRendering = true;
+      currentStageIndex = nextIndex;
+      stages[nextIndex].status = 'running';
+      renderStageTimeline();
+      
+      document.getElementById('next-btn').disabled = true;
+      updateProgress((nextIndex / stages.length), `executing: ${stages[nextIndex].label}`);
+      document.getElementById('progress-section').style.display = 'block';
+      
+      try {
+        const res = await fetch('/api/step/next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: stepSession.sessionId }),
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Step execution failed');
+        }
+        
+        const data = await res.json();
+        stages[nextIndex].status = 'complete';
+        stages[nextIndex].result = data.result;
+        
+        // Auto-select and show the completed stage
+        selectedStageId = stages[nextIndex].id;
+        renderStageTimeline();
+        showStagePreview(data);
+        
+        const progress = (nextIndex + 1) / stages.length;
+        if (nextIndex + 1 >= stages.length) {
+          updateProgress(1, 'all stages complete');
+          document.getElementById('progress-bar').className = 'progress-bar complete';
+          document.getElementById('next-btn').disabled = true;
+          
+          // Add to history if final result is a video
+          if (data.result?.type === 'video' && data.result?.previewUrl) {
+            addToHistory(editor.getValue(), data.result.previewUrl);
+          }
+        } else {
+          updateProgress(progress, `${nextIndex + 1}/${stages.length} complete — ready for next`);
+          document.getElementById('next-btn').disabled = false;
+        }
+        
+      } catch (err) {
+        stages[nextIndex].status = 'error';
+        renderStageTimeline();
+        showError(err.message);
+        updateUI('error');
+      }
+      
+      isRendering = false;
+    }
+
+    async function startRender() {
+      if (isRendering) return;
+      
+      isRendering = true;
+      updateUI('rendering');
+      
+      const code = editor.getValue();
+      
+      try {
+        const res = await fetch('/api/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const eventMatch = line.match(/event: (\w+)/);
+            const dataMatch = line.match(/data: (.+)/);
+            if (!eventMatch || !dataMatch) continue;
+
+            const event = eventMatch[1];
+            const data = JSON.parse(dataMatch[1]);
+
+            if (event === 'start') {
+              currentRenderId = data.renderId;
+            } else if (event === 'progress') {
+              updateProgress(data.progress, data.message);
+            } else if (event === 'complete') {
+              showVideo(data.videoUrl);
+              addToHistory(code, data.videoUrl);
+              updateUI('complete');
+            } else if (event === 'error') {
+              showError(data.message);
+              updateUI('error');
+            }
+          }
+        }
+      } catch (err) {
+        showError(err.message);
+        updateUI('error');
+      }
+
+      isRendering = false;
+      currentRenderId = null;
+    }
+
+    async function stopRender() {
+      if (!currentRenderId) return;
+      await fetch('/api/render/' + currentRenderId, { method: 'DELETE' });
+      isRendering = false;
+      currentRenderId = null;
+      updateUI('idle');
+    }
+
+    function updateUI(state) {
+      const runBtn = document.getElementById('run-btn');
+      const stopBtn = document.getElementById('stop-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const progressSection = document.getElementById('progress-section');
+      const progressBar = document.getElementById('progress-bar');
+
+      if (state === 'rendering') {
+        runBtn.disabled = true;
+        stopBtn.disabled = false;
+        if (stepMode) {
+          nextBtn.disabled = true;
+        }
+        progressSection.style.display = 'block';
+        progressBar.className = 'progress-bar';
+      } else if (state === 'complete') {
+        runBtn.disabled = false;
+        stopBtn.disabled = true;
+        progressBar.className = 'progress-bar complete';
+      } else if (state === 'error') {
+        runBtn.disabled = false;
+        stopBtn.disabled = true;
+        progressBar.className = 'progress-bar error';
+      } else {
+        runBtn.disabled = false;
+        stopBtn.disabled = true;
+        if (!stepMode) {
+          progressSection.style.display = 'none';
+        }
+      }
+    }
+
+    function updateProgress(progress, message) {
+      document.getElementById('progress-bar').style.width = (progress * 100) + '%';
+      document.getElementById('progress-text').textContent = message;
+    }
+
+    function showVideo(url) {
+      const container = document.getElementById('preview-content');
+      container.innerHTML = `<video class="preview-video" src="${url}" controls autoplay loop></video>`;
+    }
+
+    function showError(message) {
+      const container = document.getElementById('preview-content');
+      container.innerHTML = `<div class="error-banner">${message}</div>`;
+    }
+
+    function addToHistory(code, videoUrl) {
+      const item = {
+        id: Date.now().toString(),
+        code,
+        videoUrl,
+        createdAt: new Date().toISOString(),
+      };
+      history.unshift(item);
+      if (history.length > 10) history = history.slice(0, 10);
+      localStorage.setItem('varg-history', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const grid = document.getElementById('history-grid');
+      grid.innerHTML = history.map(item => `
+        <div class="history-item" onclick="loadHistory('${item.id}')">
+          <video class="history-thumb" src="${item.videoUrl}" muted></video>
+          <div class="history-meta">${new Date(item.createdAt).toLocaleTimeString()}</div>
+        </div>
+      `).join('');
+    }
+
+    function loadHistory(id) {
+      const item = history.find(h => h.id === id);
+      if (!item) return;
+      editor.setValue(item.code);
+      showVideo(item.videoUrl);
+    }
+
+    let currentVideoUrl = null;
+
+    document.getElementById('share-btn').addEventListener('click', async () => {
+      const code = editor.getValue();
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, videoUrl: currentVideoUrl }),
+      });
+      const { url } = await res.json();
+      const fullUrl = window.location.origin + url;
+      await navigator.clipboard.writeText(fullUrl);
+      alert('Link copied to clipboard: ' + fullUrl);
+    });
+
+    async function loadSharedCode() {
+      const path = window.location.pathname;
+      if (!path.startsWith('/s/')) return;
+      const shareId = path.replace('/s/', '');
+      try {
+        const res = await fetch('/api/share/' + shareId);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.code && editor) {
+          editor.setValue(data.code);
+        }
+        if (data.videoUrl) {
+          showVideo(data.videoUrl);
+          currentVideoUrl = data.videoUrl;
+        }
+      } catch {}
+    }
+
+    loadTemplates();
+    renderHistory();
+    setTimeout(loadSharedCode, 500);
+    
+    // Init drawflow after DOM is ready
+    if (typeof Drawflow !== 'undefined') {
+      initDrawflow();
+    } else {
+      console.error('Drawflow not available');
+    }
+  </script>
+</body>
+</html>
