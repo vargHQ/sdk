@@ -915,82 +915,179 @@ export default (
       drawflowEditor.clear();
 
       const nodeWidth = 180;
-      const nodeHeight = 160;
-      const gapX = 80;
-      const gapY = 40;
+      const nodeHeight = 180;
+      const gapX = 100;
+      const gapY = 50;
       const startX = 50;
       const startY = 50;
 
-      const nodeIds = [];
-      const cols = Math.ceil(Math.sqrt(stages.length));
-
-      stages.forEach((stage, index) => {
-        const col = index % cols;
-        const row = Math.floor(index / cols);
-        const x = startX + col * (nodeWidth + gapX);
-        const y = startY + row * (nodeHeight + gapY);
-
-        const icon = getStageIcon(stage.type);
-        const statusClass = stage.status;
-        const hasPreview = stage.result?.previewUrl;
-
-        let previewHtml = '';
-        if (hasPreview) {
-          const url = stage.result.previewUrl;
-          if (stage.result.mimeType?.startsWith('image/') || stage.type === 'image') {
-            previewHtml = `<img class="node-preview" src="${url}" alt="preview">`;
-          } else if (stage.result.mimeType?.startsWith('video/') || stage.type === 'video' || stage.type === 'animate') {
-            previewHtml = `<video class="node-preview" src="${url}" muted loop></video>`;
-          } else if (stage.result.mimeType?.startsWith('audio/') || stage.type === 'speech' || stage.type === 'music') {
-            previewHtml = `<div class="node-preview-placeholder">🎵 audio</div>`;
+      // Build dependency graph and calculate levels
+      const stageMap = new Map(stages.map(s => [s.id, s]));
+      const levels = new Map(); // stageId -> level (depth)
+      const children = new Map(); // stageId -> stages that depend on it
+      
+      // Initialize children map
+      stages.forEach(s => { children.set(s.id, []); });
+      
+      // Build reverse dependency (who depends on me)
+      stages.forEach(s => {
+        (s.dependsOn || []).forEach(depId => {
+          if (children.has(depId)) {
+            children.get(depId).push(s.id);
           }
-        } else {
-          previewHtml = `<div class="node-preview-placeholder">click to generate</div>`;
-        }
-
-        const btnHtml = stage.status === 'pending' 
-          ? `<button class="node-btn" onclick="event.stopPropagation(); generateNodeStage('${stage.id}')">▶ generate</button>`
-          : '';
-
-        const html = `
-          <div class="node-title">
-            <span class="node-title-icon">${icon}</span>
-            <span>${stage.type}</span>
-          </div>
-          <div class="node-content">
-            ${previewHtml}
-            <div class="node-label" title="${stage.label}">${stage.label}</div>
-            <div class="node-status ${statusClass}">${stage.status}</div>
-            ${btnHtml}
-          </div>
-        `;
-
-        const inputs = index > 0 ? 1 : 0;
-        const outputs = 1; // all stages output to next or to render node
-
-        const nodeId = drawflowEditor.addNode(
-          stage.type,
-          inputs,
-          outputs,
-          x,
-          y,
-          statusClass,
-          { stageId: stage.id },
-          html
-        );
-
-        stage.nodeId = nodeId;
-        nodeIds.push(nodeId);
+        });
       });
 
-      for (let i = 0; i < nodeIds.length - 1; i++) {
-        drawflowEditor.addConnection(nodeIds[i], nodeIds[i + 1], 'output_1', 'input_1');
+      // Calculate levels using BFS from roots (nodes with no dependencies)
+      function calculateLevels() {
+        const queue = [];
+        
+        // Find root nodes (no dependencies)
+        stages.forEach(s => {
+          if (!s.dependsOn || s.dependsOn.length === 0) {
+            levels.set(s.id, 0);
+            queue.push(s.id);
+          }
+        });
+        
+        // BFS to assign levels
+        while (queue.length > 0) {
+          const currentId = queue.shift();
+          const currentLevel = levels.get(currentId);
+          
+          children.get(currentId).forEach(childId => {
+            const childStage = stageMap.get(childId);
+            if (!childStage) return;
+            
+            // Child's level is max of all its dependencies + 1
+            const depLevels = (childStage.dependsOn || [])
+              .map(d => levels.get(d) ?? -1)
+              .filter(l => l >= 0);
+            
+            if (depLevels.length === (childStage.dependsOn || []).length) {
+              // All dependencies have levels assigned
+              const newLevel = Math.max(...depLevels) + 1;
+              if (!levels.has(childId) || levels.get(childId) < newLevel) {
+                levels.set(childId, newLevel);
+                queue.push(childId);
+              }
+            }
+          });
+        }
+        
+        // Handle any unassigned (shouldn't happen with valid DAG)
+        stages.forEach(s => {
+          if (!levels.has(s.id)) {
+            levels.set(s.id, 0);
+          }
+        });
       }
+      
+      calculateLevels();
+
+      // Group stages by level
+      const levelGroups = new Map();
+      stages.forEach(s => {
+        const level = levels.get(s.id);
+        if (!levelGroups.has(level)) {
+          levelGroups.set(level, []);
+        }
+        levelGroups.get(level).push(s);
+      });
+
+      const maxLevel = Math.max(...levels.values());
+      const stageNodeIds = new Map(); // stageId -> drawflow nodeId
+
+      // Render nodes level by level (left to right)
+      for (let level = 0; level <= maxLevel; level++) {
+        const group = levelGroups.get(level) || [];
+        const x = startX + level * (nodeWidth + gapX);
+        
+        group.forEach((stage, idx) => {
+          // Center vertically based on group size
+          const totalHeight = group.length * (nodeHeight + gapY) - gapY;
+          const offsetY = (500 - totalHeight) / 2; // Center in ~500px viewport
+          const y = startY + Math.max(0, offsetY) + idx * (nodeHeight + gapY);
+
+          const icon = getStageIcon(stage.type);
+          const statusClass = stage.status;
+          const hasPreview = stage.result?.previewUrl;
+
+          let previewHtml = '';
+          if (hasPreview) {
+            const url = stage.result.previewUrl;
+            if (stage.result.mimeType?.startsWith('image/') || stage.type === 'image') {
+              previewHtml = `<img class="node-preview" src="${url}" alt="preview">`;
+            } else if (stage.result.mimeType?.startsWith('video/') || stage.type === 'video' || stage.type === 'animate') {
+              previewHtml = `<video class="node-preview" src="${url}" muted loop></video>`;
+            } else if (stage.result.mimeType?.startsWith('audio/') || stage.type === 'speech' || stage.type === 'music') {
+              previewHtml = `<div class="node-preview-placeholder">🎵 audio</div>`;
+            }
+          } else {
+            previewHtml = `<div class="node-preview-placeholder">click to generate</div>`;
+          }
+
+          const btnHtml = stage.status === 'pending' 
+            ? `<button class="node-btn" onclick="event.stopPropagation(); generateNodeStage('${stage.id}')">▶ generate</button>`
+            : '';
+
+          const html = `
+            <div class="node-title">
+              <span class="node-title-icon">${icon}</span>
+              <span>${stage.type}</span>
+            </div>
+            <div class="node-content">
+              ${previewHtml}
+              <div class="node-label" title="${stage.label}">${stage.label}</div>
+              <div class="node-status ${statusClass}">${stage.status}</div>
+              ${btnHtml}
+            </div>
+          `;
+
+          // Input count = number of dependencies, output = 1 (for children or render node)
+          const inputCount = (stage.dependsOn || []).length || 0;
+          const hasChildren = children.get(stage.id)?.length > 0;
+          const outputCount = 1; // Always 1 output (to children or render)
+
+          const nodeId = drawflowEditor.addNode(
+            stage.type,
+            inputCount > 0 ? inputCount : 0,
+            outputCount,
+            x,
+            y,
+            statusClass,
+            { stageId: stage.id },
+            html
+          );
+
+          stage.nodeId = nodeId;
+          stageNodeIds.set(stage.id, nodeId);
+        });
+      }
+
+      // Add connections based on actual dependencies
+      stages.forEach(stage => {
+        const targetNodeId = stageNodeIds.get(stage.id);
+        (stage.dependsOn || []).forEach((depId, depIndex) => {
+          const sourceNodeId = stageNodeIds.get(depId);
+          if (sourceNodeId && targetNodeId) {
+            // Connect source output to target input
+            const inputNum = depIndex + 1;
+            drawflowEditor.addConnection(sourceNodeId, targetNodeId, 'output_1', `input_${inputNum}`);
+          }
+        });
+      });
+
+      // Find leaf nodes (no children) to connect to render node
+      const leafStages = stages.filter(s => {
+        const childList = children.get(s.id) || [];
+        return childList.length === 0;
+      });
 
       // Add final "Render" root node
       const allComplete = stages.every(s => s.status === 'complete');
-      const renderX = startX + (cols) * (nodeWidth + gapX);
-      const renderY = startY;
+      const renderX = startX + (maxLevel + 1) * (nodeWidth + gapX);
+      const renderY = startY + (500 - nodeHeight) / 4; // Roughly centered
 
       let renderPreviewHtml = '';
       const hasRenderResult = currentVideoUrl || stepSession?.renderResult?.previewUrl;
@@ -1028,7 +1125,7 @@ export default (
 
       const renderNodeId = drawflowEditor.addNode(
         'render',
-        1,
+        leafStages.length || 1,
         0,
         renderX,
         renderY,
@@ -1037,12 +1134,13 @@ export default (
         renderHtml
       );
 
-      // Connect last stage to render node
-      if (nodeIds.length > 0) {
-        // Update last stage node to have output
-        const lastNodeId = nodeIds[nodeIds.length - 1];
-        drawflowEditor.addConnection(lastNodeId, renderNodeId, 'output_1', 'input_1');
-      }
+      // Connect all leaf nodes to render node
+      leafStages.forEach((stage, idx) => {
+        const sourceNodeId = stageNodeIds.get(stage.id);
+        if (sourceNodeId) {
+          drawflowEditor.addConnection(sourceNodeId, renderNodeId, 'output_1', `input_${idx + 1}`);
+        }
+      });
 
       // Play videos on hover
       document.querySelectorAll('.node-preview').forEach(el => {
@@ -1056,16 +1154,21 @@ export default (
     async function generateNodeStage(stageId) {
       if (!stepSession || isRendering) return;
 
-      const stageIndex = stages.findIndex(s => s.id === stageId);
-      if (stageIndex === -1) return;
+      const stage = stages.find(s => s.id === stageId);
+      if (!stage) return;
 
-      // Check if previous stages are complete
-      for (let i = 0; i < stageIndex; i++) {
-        if (stages[i].status !== 'complete') {
-          alert(`Complete stage "${stages[i].label}" first`);
-          return;
-        }
+      // Check if all dependencies are complete
+      const incompleteDeps = (stage.dependsOn || [])
+        .map(depId => stages.find(s => s.id === depId))
+        .filter(dep => dep && dep.status !== 'complete');
+      
+      if (incompleteDeps.length > 0) {
+        const depNames = incompleteDeps.map(d => d.label).join(', ');
+        alert(`Complete dependencies first: ${depNames}`);
+        return;
       }
+      
+      const stageIndex = stages.findIndex(s => s.id === stageId);
 
       isRendering = true;
       stages[stageIndex].status = 'running';
