@@ -25,7 +25,10 @@ const NEW_BRA_COLOR = "deep purple";
 const baseCharacter = Image({
   prompt:
     "A beautiful Slavic woman in her late 20s with platinum blonde hair, icy blue eyes, and perfect skin. She bends very close to the phone lens, her chest framed by a white sports bra with a bold neckline, and she is wearing high-waisted athletic shorts in pale grey that accentuate her figure. Her expression is confident and slightly teasing. The background shows a modern apartment with soft daylight through large windows, reinforcing the natural homemade vibe",
-  model: higgsfield.imageModel("soul", { quality: "1080p" }),
+  model: higgsfield.imageModel("soul", {
+    quality: "1080p",
+    styleId: higgsfield.styles.CAM_360,
+  }),
   aspectRatio: "9:16",
 });
 
