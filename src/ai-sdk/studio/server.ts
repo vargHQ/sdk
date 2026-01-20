@@ -152,7 +152,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
   const server = Bun.serve({
     port,
-    idleTimeout: 255,
+    idleTimeout: 0,
     async fetch(req) {
       const url = new URL(req.url);
       const method = req.method;
