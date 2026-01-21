@@ -17,7 +17,7 @@ export {
   Title,
   Video,
 } from "./elements";
-export { Grid, Split as SplitLayout } from "./layouts";
+export { Grid, SplitLayout } from "./layouts";
 export { render, renderStream } from "./render";
 export type {
   AnimateProps,

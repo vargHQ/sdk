@@ -1,4 +1,4 @@
-import type { VargElement } from "./types";
+import type { VargElement } from "../types";
 
 export const Grid = ({
   columns,
@@ -23,21 +23,3 @@ export const Grid = ({
   }));
   return <>{positioned}</>;
 };
-
-export const Split = ({
-  left,
-  right,
-  direction = "horizontal",
-}: {
-  left: VargElement;
-  right: VargElement;
-  direction?: "horizontal" | "vertical";
-}) => (
-  <Grid
-    columns={direction === "horizontal" ? 2 : 1}
-    rows={direction === "vertical" ? 2 : 1}
-  >
-    {left}
-    {right}
-  </Grid>
-);
