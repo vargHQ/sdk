@@ -1,5 +1,8 @@
 import type {
+  AudioLayer,
+  AudioTrack,
   Clip,
+  DetachedAudioLayer,
   EditlyConfig,
   FillColorLayer,
   ImageLayer,
@@ -9,9 +12,12 @@ import type {
   RadialGradientLayer,
   VideoLayer,
 } from "../editly/types.ts";
+import { AudioSource } from "./audio-decoder.ts";
+import { AudioEncoderWrapper } from "./audio-encoder.ts";
+import { AudioMixer, type AudioTrackState } from "./audio-mixer.ts";
 import { WebGLCompositor } from "./compositor.ts";
 import { VideoEncoderWrapper } from "./encoder.ts";
-import { muxToMp4 } from "./muxer.ts";
+import { muxToMp4, muxVideoAndAudio } from "./muxer.ts";
 import {
   ColorSource,
   type FrameSource,
@@ -30,6 +36,8 @@ const DEFAULT_DURATION = 4;
 const DEFAULT_FPS = 30;
 const DEFAULT_WIDTH = 1280;
 const DEFAULT_HEIGHT = 720;
+const DEFAULT_SAMPLE_RATE = 44100;
+const DEFAULT_CHANNELS = 2;
 
 function applyLayerDefaults(
   layer: Layer,
@@ -146,6 +154,239 @@ async function createSource(
   }
 }
 
+interface AudioProcessingResult {
+  hasAudio: boolean;
+  chunks: EncodedAudioChunk[];
+  sampleRate: number;
+  numberOfChannels: number;
+}
+
+async function processAudio(
+  clips: ProcessedClip[],
+  config: EditlyWebConfig,
+): Promise<AudioProcessingResult> {
+  const sources = config.sources;
+  const keepSourceAudio = config.keepSourceAudio ?? false;
+  const clipsAudioVolume = parseVolume(config.clipsAudioVolume ?? 1);
+  const loopAudio = config.loopAudio ?? false;
+
+  let totalDuration = 0;
+  for (const clip of clips) {
+    totalDuration += clip.duration;
+  }
+
+  const mixer = new AudioMixer({
+    sampleRate: DEFAULT_SAMPLE_RATE,
+    numberOfChannels: DEFAULT_CHANNELS,
+    totalDuration,
+  });
+
+  let hasAnyAudio = false;
+  let currentTime = 0;
+
+  for (const clip of clips) {
+    for (const layer of clip.layers) {
+      if (layer.type === "video" && keepSourceAudio) {
+        const videoLayer = layer as VideoLayer;
+        const data = sources.get(videoLayer.path);
+        if (data) {
+          const audioSource = await AudioSource.create({
+            data: data instanceof Blob ? await data.arrayBuffer() : data,
+          });
+          if (audioSource.hasAudio()) {
+            hasAnyAudio = true;
+            const cutFrom = videoLayer.cutFrom ?? 0;
+            const samples = audioSource.getSamples(cutFrom, clip.duration);
+            const volume =
+              parseVolume(videoLayer.mixVolume ?? 1) * clipsAudioVolume;
+            mixer.addTrack({
+              samples,
+              startTime: currentTime,
+              duration: clip.duration,
+              volume,
+            });
+          }
+          audioSource.close();
+        }
+      }
+
+      if (layer.type === "audio") {
+        const audioLayer = layer as AudioLayer;
+        const data = sources.get(audioLayer.path);
+        if (data) {
+          const audioSource = await AudioSource.create({
+            data: data instanceof Blob ? await data.arrayBuffer() : data,
+          });
+          if (audioSource.hasAudio()) {
+            hasAnyAudio = true;
+            const cutFrom = audioLayer.cutFrom ?? 0;
+            const cutTo = audioLayer.cutTo ?? audioSource.duration;
+            const samples = audioSource.getSamples(cutFrom, cutTo - cutFrom);
+            const startOffset = audioLayer.start ?? 0;
+            mixer.addTrack({
+              samples,
+              startTime: currentTime + startOffset,
+              duration: cutTo - cutFrom,
+              volume: parseVolume(audioLayer.mixVolume ?? 1),
+            });
+          }
+          audioSource.close();
+        }
+      }
+
+      if (layer.type === "detached-audio") {
+        const detachedLayer = layer as DetachedAudioLayer;
+        const data = sources.get(detachedLayer.path);
+        if (data) {
+          const audioSource = await AudioSource.create({
+            data: data instanceof Blob ? await data.arrayBuffer() : data,
+          });
+          if (audioSource.hasAudio()) {
+            hasAnyAudio = true;
+            const cutFrom = detachedLayer.cutFrom ?? 0;
+            const cutTo = detachedLayer.cutTo ?? audioSource.duration;
+            const startOffset = detachedLayer.start ?? 0;
+            const samples = audioSource.getSamples(cutFrom, cutTo - cutFrom);
+            mixer.addTrack({
+              samples,
+              startTime: currentTime + startOffset,
+              duration: cutTo - cutFrom,
+              volume: parseVolume(detachedLayer.mixVolume ?? 1),
+            });
+          }
+          audioSource.close();
+        }
+      }
+    }
+    currentTime += clip.duration;
+  }
+
+  if (config.audioTracks) {
+    for (const track of config.audioTracks) {
+      await addAudioTrack(mixer, track, sources, totalDuration, loopAudio);
+      hasAnyAudio = true;
+    }
+  }
+
+  if (config.audioFilePath) {
+    const data = sources.get(config.audioFilePath);
+    if (data) {
+      const backgroundTrack: AudioTrack = {
+        path: config.audioFilePath,
+        mixVolume: config.backgroundAudioVolume ?? 1,
+      };
+      await addAudioTrack(
+        mixer,
+        backgroundTrack,
+        sources,
+        totalDuration,
+        loopAudio,
+      );
+      hasAnyAudio = true;
+    }
+  }
+
+  if (!hasAnyAudio) {
+    return {
+      hasAudio: false,
+      chunks: [],
+      sampleRate: DEFAULT_SAMPLE_RATE,
+      numberOfChannels: DEFAULT_CHANNELS,
+    };
+  }
+
+  let mixedSamples = mixer.mix();
+
+  if (config.audioNorm?.enable) {
+    mixedSamples = AudioMixer.normalize(mixedSamples);
+  }
+
+  if (config.outputVolume !== undefined) {
+    mixedSamples = AudioMixer.applyVolume(mixedSamples, config.outputVolume);
+  }
+
+  const audioEncoder = new AudioEncoderWrapper({
+    sampleRate: DEFAULT_SAMPLE_RATE,
+    numberOfChannels: DEFAULT_CHANNELS,
+  });
+  await audioEncoder.configure();
+
+  const chunkSize = 1024;
+  const totalSamples = mixedSamples[0].length;
+  for (let i = 0; i < totalSamples; i += chunkSize) {
+    const end = Math.min(i + chunkSize, totalSamples);
+    const chunk: Float32Array[] = mixedSamples.map((ch) => ch.slice(i, end));
+    audioEncoder.encode(chunk);
+  }
+
+  const chunks = await audioEncoder.flush();
+  audioEncoder.close();
+
+  return {
+    hasAudio: true,
+    chunks,
+    sampleRate: DEFAULT_SAMPLE_RATE,
+    numberOfChannels: DEFAULT_CHANNELS,
+  };
+}
+
+async function addAudioTrack(
+  mixer: AudioMixer,
+  track: AudioTrack,
+  sources: Map<string, ArrayBuffer | Blob>,
+  totalDuration: number,
+  loop: boolean,
+): Promise<void> {
+  const data = sources.get(track.path);
+  if (!data) return;
+
+  const audioSource = await AudioSource.create({
+    data: data instanceof Blob ? await data.arrayBuffer() : data,
+  });
+
+  if (!audioSource.hasAudio()) {
+    audioSource.close();
+    return;
+  }
+
+  const cutFrom = track.cutFrom ?? 0;
+  const cutTo = track.cutTo ?? audioSource.duration;
+  const startOffset = track.start ?? 0;
+  const trackDuration = cutTo - cutFrom;
+
+  if (loop) {
+    let currentStart = startOffset;
+    while (currentStart < totalDuration) {
+      const remainingDuration = totalDuration - currentStart;
+      const segmentDuration = Math.min(trackDuration, remainingDuration);
+      const samples = audioSource.getSamples(cutFrom, segmentDuration);
+      mixer.addTrack({
+        samples,
+        startTime: currentStart,
+        duration: segmentDuration,
+        volume: parseVolume(track.mixVolume ?? 1),
+      });
+      currentStart += trackDuration;
+    }
+  } else {
+    const samples = audioSource.getSamples(cutFrom, trackDuration);
+    mixer.addTrack({
+      samples,
+      startTime: startOffset,
+      duration: trackDuration,
+      volume: parseVolume(track.mixVolume ?? 1),
+    });
+  }
+
+  audioSource.close();
+}
+
+function parseVolume(vol: number | string): number {
+  if (typeof vol === "number") return vol;
+  const parsed = parseFloat(vol);
+  return isNaN(parsed) ? 1 : parsed;
+}
+
 export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
   const { clips: clipsIn, defaults, sources } = config;
 
@@ -234,11 +475,23 @@ export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
     }
   }
 
-  const chunks = await encoder.flush();
+  const videoChunks = await encoder.flush();
   encoder.close();
   compositor.destroy();
 
-  return muxToMp4(chunks, { width, height, fps });
+  const audioResult = await processAudio(clips, config);
+
+  if (audioResult.hasAudio) {
+    return muxVideoAndAudio(videoChunks, audioResult.chunks, {
+      width,
+      height,
+      fps,
+      sampleRate: audioResult.sampleRate,
+      numberOfChannels: audioResult.numberOfChannels,
+    });
+  }
+
+  return muxToMp4(videoChunks, { width, height, fps });
 }
 
 export default editlyWeb;
