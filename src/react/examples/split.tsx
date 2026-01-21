@@ -1,16 +1,18 @@
-import { fal } from "../fal-provider";
-import { Clip, Image, Render, render, SplitLayout as Split, Title } from "../../react";
+import { fal } from "../../ai-sdk/fal-provider";
+import { Clip, Image, Render, render, SplitLayout as Split, Title } from "..";
 
 async function main() {
   console.log("creating before/after split screen...\n");
 
   const before = Image({
-    prompt: "overweight man sitting on couch, tired expression, pale skin, messy hair, wearing stained t-shirt",
+    prompt:
+      "overweight man sitting on couch, tired expression, pale skin, messy hair, wearing stained t-shirt",
     model: fal.imageModel("flux-schnell"),
   });
 
   const after = Image({
-    prompt: "fit muscular man standing confidently, tanned skin, bright smile, wearing fitted athletic shirt",
+    prompt:
+      "fit muscular man standing confidently, tanned skin, bright smile, wearing fitted athletic shirt",
     model: fal.imageModel("flux-schnell"),
   });
 

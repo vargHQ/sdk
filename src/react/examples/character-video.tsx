@@ -1,6 +1,6 @@
-import { elevenlabs } from "../elevenlabs-provider";
-import { fal } from "../fal-provider";
-import { Animate, Clip, Image, Music, Render, render } from "../../react";
+import { elevenlabs } from "../../ai-sdk/elevenlabs-provider";
+import { fal } from "../../ai-sdk/fal-provider";
+import { Animate, Clip, Image, Music, Render, render } from "..";
 
 const MADI_REF =
   "https://s3.varg.ai/fellowers/madi/character_shots/madi_shot_03_closeup.png";
@@ -52,8 +52,8 @@ async function main() {
         duration={8}
       />
 
-      {SCENES.map((scene, i) => (
-        <Clip key={i} duration={2}>
+      {SCENES.map((scene) => (
+        <Clip key={scene.prompt} duration={2}>
           <Animate
             image={Image({
               prompt: { text: scene.prompt, images: [MADI_REF] },

@@ -1,6 +1,6 @@
-import { elevenlabs } from "../elevenlabs-provider";
-import { fal } from "../fal-provider";
-import { Animate, Clip, Image, Render, Speech, Title } from "../../react";
+import { elevenlabs } from "../../ai-sdk/elevenlabs-provider";
+import { fal } from "../../ai-sdk/fal-provider";
+import { Animate, Clip, Image, Render, Speech, Title } from "..";
 
 // Non-linear tree: multiple clips with independent branches
 // Clip 1: TalkingHead (Image -> Animate + Speech)
@@ -8,22 +8,26 @@ import { Animate, Clip, Image, Render, Speech, Title } from "../../react";
 // Clip 3: Product shot with music
 
 const character = Image({
-  prompt: "friendly tech reviewer, young man with glasses, studio lighting, professional headshot",
+  prompt:
+    "friendly tech reviewer, young man with glasses, studio lighting, professional headshot",
   model: fal.imageModel("flux-schnell"),
 });
 
-const productBefore = Image({
-  prompt: "old smartphone, cracked screen, slow, outdated design, on white background",
+const _productBefore = Image({
+  prompt:
+    "old smartphone, cracked screen, slow, outdated design, on white background",
   model: fal.imageModel("flux-schnell"),
 });
 
-const productAfter = Image({
-  prompt: "sleek new smartphone, edge-to-edge display, premium design, on white background",
+const _productAfter = Image({
+  prompt:
+    "sleek new smartphone, edge-to-edge display, premium design, on white background",
   model: fal.imageModel("flux-schnell"),
 });
 
 const packshot = Image({
-  prompt: "smartphone floating with gradient background, product photography, premium feel",
+  prompt:
+    "smartphone floating with gradient background, product photography, premium feel",
   model: fal.imageModel("flux-schnell"),
 });
 
@@ -37,7 +41,8 @@ export default (
         motion="talking naturally, slight head movements, friendly expression"
       />
       <Speech voice="adam" model={elevenlabs.speechModel("turbo")}>
-        Hey everyone! Today we're looking at the biggest smartphone upgrade of the year.
+        Hey everyone! Today we're looking at the biggest smartphone upgrade of
+        the year.
       </Speech>
     </Clip>
 

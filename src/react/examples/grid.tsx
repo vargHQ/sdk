@@ -1,5 +1,5 @@
-import { fal } from "../fal-provider";
-import { Clip, Grid, Image, Render, render, Title } from "../../react";
+import { fal } from "../../ai-sdk/fal-provider";
+import { Clip, Grid, Image, Render, render, Title } from "..";
 
 const CHARACTER_PROMPTS = [
   { name: "Warrior", prompt: "fierce warrior with sword, armor" },
@@ -25,13 +25,13 @@ async function main() {
     Image({
       prompt: `${prompt}, ${baseStyle}`,
       model: fal.imageModel("flux-schnell"),
-    })
+    }),
   );
 
   const video = (
     <Render width={1080} height={1440}>
       <Clip duration={5}>
-        <Grid columns={3} children={images} />
+        <Grid columns={3}>{images}</Grid>
         <Title position="bottom" color="#ffffff">
           Fantasy Characters
         </Title>

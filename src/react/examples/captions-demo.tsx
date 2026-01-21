@@ -1,5 +1,5 @@
-import { elevenlabs } from "../elevenlabs-provider";
-import { Captions, Clip, Image, Render, render, Speech } from "../../react";
+import { elevenlabs } from "../../ai-sdk/elevenlabs-provider";
+import { Captions, Clip, Image, Render, render, Speech } from "..";
 
 async function main() {
   const speech = Speech({

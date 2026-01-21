@@ -1,5 +1,5 @@
-import { fal } from "../fal-provider";
-import { Clip, Grid, Render, render, Title, Video } from "../../react";
+import { fal } from "../../ai-sdk/fal-provider";
+import { Clip, Grid, Render, render, Title, Video } from "..";
 
 async function main() {
   console.log("creating 2x2 video grid...\n");

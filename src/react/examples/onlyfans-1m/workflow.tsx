@@ -12,8 +12,8 @@
  * Required env: HIGGSFIELD_API_KEY, HIGGSFIELD_SECRET, FAL_KEY
  */
 
-import { Clip, Image, Render, Video } from "../../../react";
-import { fal, higgsfield } from "../../index";
+import { fal, higgsfield } from "../../../ai-sdk";
+import { Clip, Image, Render, Video } from "../..";
 
 // ============================================================================
 // CHARACTER DEFINITION
