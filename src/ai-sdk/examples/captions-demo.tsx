@@ -16,9 +16,9 @@ async function main() {
   });
 
   const video = (
-    <Render width={1280} height={720}>
+    <Render width={1080} height={1920}>
       <Clip duration={5}>
-        <Image src="media/cyberpunk-street.png" />
+        <Image src="media/cyberpunk-street.png" resize="contain" />
       </Clip>
       <Captions src={speech} style="tiktok" />
     </Render>
