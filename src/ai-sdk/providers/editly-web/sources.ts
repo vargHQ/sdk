@@ -494,7 +494,8 @@ export class HTMLVideoSource implements FrameSource {
       const onSeeked = () => {
         this.video!.removeEventListener("seeked", onSeeked);
         this.video!.removeEventListener("error", onError);
-        resolve();
+        // Small delay to ensure frame is decoded after seek
+        setTimeout(resolve, 16);
       };
 
       const onError = () => {

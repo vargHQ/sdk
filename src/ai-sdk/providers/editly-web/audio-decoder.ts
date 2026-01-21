@@ -73,8 +73,7 @@ export class AudioSource {
         this.audioSamples.push(...samples);
       };
 
-      mp4box.onError = (_module: string, message: string) =>
-        reject(new Error(message));
+      mp4box.onError = (e: string) => reject(new Error(e));
 
       const buffer = data as unknown as MP4BoxBuffer;
       buffer.fileStart = 0;

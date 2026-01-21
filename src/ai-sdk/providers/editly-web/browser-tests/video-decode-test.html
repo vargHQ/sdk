@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VideoDecoder Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+    pre { white-space: pre-wrap; }
+    .error { color: #f00; }
+    .success { color: #0f0; }
+    .info { color: #0af; }
+  </style>
+</head>
+<body>
+  <h2>VideoDecoder Debug Test</h2>
+  <pre id="log"></pre>
+  <canvas id="canvas" style="border: 1px solid #333; margin-top: 20px;"></canvas>
+  
+  <script type="module">
+    const logEl = document.getElementById('log');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    function log(msg, type = 'info') {
+      const line = document.createElement('div');
+      line.className = type;
+      line.textContent = `[${new Date().toISOString().slice(11, 23)}] ${msg}`;
+      logEl.appendChild(line);
+      console.log(msg);
+    }
+
+    window.testResults = null;
+    window.testError = null;
+
+    async function runTest() {
+      try {
+        log('Starting VideoDecoder test...', 'info');
+        
+        // Check WebCodecs support
+        if (typeof VideoDecoder === 'undefined') {
+          throw new Error('VideoDecoder not supported in this browser');
+        }
+        log('VideoDecoder API available', 'success');
+
+        // Use local test video served by our server
+        const videoUrl = '/test-video.mp4';
+        log(`Fetching test video: ${videoUrl}`, 'info');
+        
+        const response = await fetch(videoUrl);
+        if (!response.ok) throw new Error(`Failed to fetch video: ${response.status}`);
+        
+        const videoData = await response.arrayBuffer();
+        log(`Video fetched: ${videoData.byteLength} bytes`, 'success');
+
+        // Parse with mp4box - use version 0.5.3 (same as our local now)
+        const MP4Box = await import('https://esm.sh/mp4box@0.5.3');
+        log('mp4box loaded', 'success');
+
+        const mp4box = MP4Box.createFile();
+        
+        let videoTrack = null;
+        const samples = [];
+        let codecConfig = null;
+        
+        await new Promise((resolve, reject) => {
+          mp4box.onError = (e) => {
+            log(`mp4box error: ${e}`, 'error');
+            reject(new Error(e));
+          };
+
+          mp4box.onReady = async (info) => {
+            log(`mp4box ready: ${info.tracks.length} tracks`, 'success');
+            
+            videoTrack = info.tracks.find(t => t.type === 'video');
+            if (!videoTrack) {
+              reject(new Error('No video track found'));
+              return;
+            }
+
+            log(`Video track: ${videoTrack.codec}`, 'info');
+            log(`  Resolution: ${videoTrack.video?.width}x${videoTrack.video?.height}`, 'info');
+            log(`  Samples: ${videoTrack.nb_samples}`, 'info');
+            log(`  Duration: ${(videoTrack.duration / videoTrack.timescale).toFixed(2)}s`, 'info');
+
+            // Get avcC description
+            let description;
+            const trak = mp4box.getTrackById(videoTrack.id);
+            if (trak) {
+              for (const entry of trak.mdia.minf.stbl.stsd.entries) {
+                if (entry.avcC) {
+                  const stream = new MP4Box.DataStream(undefined, 0, MP4Box.DataStream.BIG_ENDIAN);
+                  entry.avcC.write(stream);
+                  description = new Uint8Array(stream.buffer.slice(8));
+                  log(`Got avcC: ${description.length} bytes`, 'success');
+                  break;
+                }
+              }
+            }
+
+            if (!description) {
+              log('WARNING: No avcC found!', 'error');
+            }
+
+            codecConfig = {
+              codec: videoTrack.codec,
+              codedWidth: videoTrack.video?.width || videoTrack.track_width,
+              codedHeight: videoTrack.video?.height || videoTrack.track_height,
+              description,
+            };
+
+            log(`Testing codec support: ${codecConfig.codec}`, 'info');
+            const support = await VideoDecoder.isConfigSupported(codecConfig);
+            log(`Codec supported: ${support.supported}`, support.supported ? 'success' : 'error');
+
+            if (!support.supported) {
+              reject(new Error(`Codec not supported: ${codecConfig.codec}`));
+              return;
+            }
+
+            // Set up sample extraction
+            mp4box.onSamples = (trackId, user, newSamples) => {
+              log(`Received ${newSamples.length} samples (total: ${samples.length + newSamples.length})`, 'info');
+              samples.push(...newSamples);
+              
+              if (samples.length >= videoTrack.nb_samples) {
+                resolve();
+              }
+            };
+
+            mp4box.setExtractionOptions(videoTrack.id, null, {
+              nbSamples: videoTrack.nb_samples
+            });
+            mp4box.start();
+          };
+
+          const buffer = videoData.slice(0);
+          buffer.fileStart = 0;
+          mp4box.appendBuffer(buffer);
+          mp4box.flush();
+        });
+
+        log(`All ${samples.length} samples extracted`, 'success');
+
+        // Now test VideoDecoder
+        log('Creating VideoDecoder...', 'info');
+        
+        let decodedFrames = 0;
+        let lastFrame = null;
+        
+        const decoder = new VideoDecoder({
+          output: (frame) => {
+            decodedFrames++;
+            log(`Frame decoded: ${frame.codedWidth}x${frame.codedHeight}, ts=${frame.timestamp}`, 'success');
+            
+            if (lastFrame) lastFrame.close();
+            lastFrame = frame;
+            
+            // Draw to canvas
+            canvas.width = frame.displayWidth;
+            canvas.height = frame.displayHeight;
+            ctx.drawImage(frame, 0, 0);
+          },
+          error: (e) => {
+            log(`Decoder error: ${e.message}`, 'error');
+          }
+        });
+
+        log(`Configuring decoder with: ${JSON.stringify(codecConfig)}`, 'info');
+        decoder.configure(codecConfig);
+        log(`Decoder state after configure: ${decoder.state}`, 'info');
+
+        // Decode first 10 samples (or all if less)
+        const samplesToTest = Math.min(30, samples.length);
+        log(`Decoding first ${samplesToTest} samples...`, 'info');
+
+        for (let i = 0; i < samplesToTest; i++) {
+          const sample = samples[i];
+          if (!sample.data) {
+            log(`Sample ${i} has no data, skipping`, 'error');
+            continue;
+          }
+
+          const chunk = new EncodedVideoChunk({
+            type: sample.is_sync ? 'key' : 'delta',
+            timestamp: (sample.cts / sample.timescale) * 1_000_000,
+            duration: (sample.duration / sample.timescale) * 1_000_000,
+            data: sample.data,
+          });
+
+          log(`Decoding sample ${i}: sync=${sample.is_sync}, size=${sample.data.byteLength}, queue=${decoder.decodeQueueSize}`, 'info');
+          decoder.decode(chunk);
+        }
+
+        log(`All samples queued. Queue size: ${decoder.decodeQueueSize}`, 'info');
+        log('Calling flush()...', 'info');
+        
+        await decoder.flush();
+        
+        log(`Flush complete. Decoded ${decodedFrames} frames`, decodedFrames > 0 ? 'success' : 'error');
+        
+        if (lastFrame) {
+          lastFrame.close();
+        }
+        decoder.close();
+
+        if (decodedFrames === 0) {
+          throw new Error('VideoDecoder produced 0 frames!');
+        }
+
+        window.testResults = { success: true, framesDecoded: decodedFrames };
+        log(`TEST PASSED: Decoded ${decodedFrames} frames`, 'success');
+        
+      } catch (err) {
+        log(`TEST FAILED: ${err.message}`, 'error');
+        log(err.stack, 'error');
+        window.testError = err.message;
+        window.testResults = { success: false, error: err.message };
+      }
+    }
+
+    runTest();
+  </script>
+</body>
+</html>
