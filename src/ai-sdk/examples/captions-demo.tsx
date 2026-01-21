@@ -1,24 +1,24 @@
 import { elevenlabs } from "../elevenlabs-provider";
-import {
-  Captions,
-  Clip,
-  Image,
-  Render,
-  render,
-  Speech,
-} from "../react";
+import { Captions, Clip, Image, Render, render, Speech } from "../react";
 
 async function main() {
   const speech = Speech({
     model: elevenlabs.speechModel("eleven_multilingual_v2"),
     voice: "adam",
-    children: "Hello world! This is a test of the captions system with word level timestamps.",
+    children:
+      "Hello world! This is a test of the captions system with word level timestamps.",
   });
 
   const video = (
     <Render width={1080} height={1920}>
       <Clip duration={5}>
         <Image src="media/cyberpunk-street.png" resize="contain" />
+      </Clip>
+      <Clip duration={5}>
+        <Image src="media/cyberpunk-street.png" resize="cover" />
+      </Clip>
+      <Clip duration={5}>
+        <Image src="media/cyberpunk-street.png" />
       </Clip>
       <Captions src={speech} style="tiktok" />
     </Render>
