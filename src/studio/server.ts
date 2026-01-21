@@ -98,7 +98,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
     _signal: AbortSignal,
   ): Promise<string> {
     const outputPath = join(outputDir, `${renderId}.mp4`);
-    const tempDir = join(import.meta.dir, "../ai-sdk/examples");
+    const tempDir = join(import.meta.dir, "../react/examples");
     const tempFile = join(tempDir, `_studio_${renderId}.tsx`);
 
     onProgress({ step: "parsing", progress: 0, message: "parsing code..." });
@@ -204,7 +204,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
       }
 
       if (url.pathname === "/api/templates") {
-        const examplesDir = join(import.meta.dir, "../ai-sdk/examples");
+        const examplesDir = join(import.meta.dir, "../react/examples");
         const templates = scanTemplates(examplesDir).map((t) => ({
           id: t.id,
           name: t.name,
@@ -214,7 +214,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
       if (url.pathname.startsWith("/api/templates/")) {
         const id = url.pathname.replace("/api/templates/", "");
-        const examplesDir = join(import.meta.dir, "../ai-sdk/examples");
+        const examplesDir = join(import.meta.dir, "../react/examples");
         const templates = scanTemplates(examplesDir);
         const template = templates.find((t) => t.id === id);
         if (!template) return new Response("not found", { status: 404 });
@@ -324,7 +324,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
       if (url.pathname === "/api/step/stages" && req.method === "POST") {
         const body = (await req.json()) as { code: string };
-        const tempDir = join(import.meta.dir, "../ai-sdk/examples");
+        const tempDir = join(import.meta.dir, "../react/examples");
         const tempFile = join(tempDir, `_stages_${Date.now()}.tsx`);
 
         try {
@@ -361,7 +361,7 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
       if (url.pathname === "/api/step/session" && req.method === "POST") {
         const body = (await req.json()) as { code: string };
-        const tempDir = join(import.meta.dir, "../ai-sdk/examples");
+        const tempDir = join(import.meta.dir, "../react/examples");
         const tempFile = join(tempDir, `_session_${Date.now()}.tsx`);
 
         try {
