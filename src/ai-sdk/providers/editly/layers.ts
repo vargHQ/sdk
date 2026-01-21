@@ -637,7 +637,7 @@ export function getTitleBackgroundFilter(
 }
 
 export function getRainbowColorsFilter(
-  layer: RainbowColorsLayer,
+  _layer: RainbowColorsLayer,
   index: number,
   width: number,
   height: number,
