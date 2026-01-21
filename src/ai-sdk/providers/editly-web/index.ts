@@ -312,7 +312,7 @@ async function processAudio(
   await audioEncoder.configure();
 
   const chunkSize = 1024;
-  const totalSamples = mixedSamples[0].length;
+  const totalSamples = mixedSamples[0]!.length;
   for (let i = 0; i < totalSamples; i += chunkSize) {
     const end = Math.min(i + chunkSize, totalSamples);
     const chunk: Float32Array[] = mixedSamples.map((ch) => ch.slice(i, end));

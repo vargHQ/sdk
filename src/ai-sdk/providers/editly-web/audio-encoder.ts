@@ -72,9 +72,9 @@ export class AudioEncoderWrapper {
     const interleaved = new Float32Array(numFrames * numChannels);
 
     for (let ch = 0; ch < numChannels; ch++) {
-      const channel = samples[ch];
+      const channel = samples[ch]!;
       for (let i = 0; i < numFrames; i++) {
-        interleaved[ch * numFrames + i] = channel[i];
+        interleaved[ch * numFrames + i] = channel[i]!;
       }
     }
 
