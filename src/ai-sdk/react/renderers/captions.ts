@@ -209,6 +209,7 @@ function colorToAss(color: string): string {
 export interface CaptionsResult {
   assPath: string;
   srtPath?: string;
+  audioPath?: string;
 }
 
 export async function renderCaptions(
@@ -219,6 +220,7 @@ export async function renderCaptions(
 
   let srtContent: string;
   let srtPath: string | undefined;
+  let audioPath: string | undefined;
 
   if (props.srt) {
     srtContent = await Bun.file(props.srt).text();
@@ -229,6 +231,7 @@ export async function renderCaptions(
       srtPath = props.src;
     } else if (props.src.type === "speech") {
       const speechResult = await renderSpeech(props.src, ctx);
+      audioPath = speechResult.path;
 
       const transcribeTaskId = ctx.progress
         ? addTask(ctx.progress, "transcribe", "groq-whisper")
@@ -290,5 +293,5 @@ export async function renderCaptions(
   writeFileSync(assPath, assContent);
   ctx.tempFiles.push(assPath);
 
-  return { assPath, srtPath };
+  return { assPath, srtPath, audioPath };
 }

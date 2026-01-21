@@ -66,8 +66,8 @@ export async function renderRoot(
 
   const clipElements: VargElement<"clip">[] = [];
   const overlayElements: VargElement<"overlay">[] = [];
-  const captionsElements: VargElement<"captions">[] = [];
   const audioTracks: AudioTrack[] = [];
+  let captionsResult: Awaited<ReturnType<typeof renderCaptions>> | undefined;
 
   for (const child of element.children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
@@ -79,7 +79,16 @@ export async function renderRoot(
     } else if (childElement.type === "overlay") {
       overlayElements.push(childElement as VargElement<"overlay">);
     } else if (childElement.type === "captions") {
-      captionsElements.push(childElement as VargElement<"captions">);
+      captionsResult = await renderCaptions(
+        childElement as VargElement<"captions">,
+        ctx,
+      );
+      if (captionsResult.audioPath) {
+        audioTracks.push({
+          path: captionsResult.audioPath,
+          mixVolume: 1,
+        });
+      }
     } else if (childElement.type === "speech") {
       const result = await renderSpeech(
         childElement as VargElement<"speech">,
@@ -192,7 +201,8 @@ export async function renderRoot(
     }
   }
 
-  const hasCaptions = captionsElements.length > 0;
+  const hasCaptions = captionsResult !== undefined;
+
   const tempOutPath = hasCaptions
     ? `/tmp/varg-pre-captions-${Date.now()}.mp4`
     : (options.output ?? `output/varg-${Date.now()}.mp4`);
@@ -212,12 +222,9 @@ export async function renderRoot(
 
   completeTask(progress, editlyTaskId);
 
-  if (hasCaptions) {
+  if (hasCaptions && captionsResult) {
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
-
-    const captionsElement = captionsElements[0]!;
-    const captionsResult = await renderCaptions(captionsElement, ctx);
 
     const { $ } = await import("bun");
     await $`ffmpeg -y -i ${tempOutPath} -vf "ass=${captionsResult.assPath}" -c:a copy ${finalOutPath}`.quiet();
