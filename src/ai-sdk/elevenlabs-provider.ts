@@ -107,7 +107,7 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
   }
 
   async doGenerate(options: SpeechModelV3CallOptions) {
-    const { text, voice, outputFormat, speed, providerOptions } = options;
+    const { text, voice, speed, providerOptions } = options;
     const warnings: SharedV3Warning[] = [];
 
     const voiceId = resolveVoiceId(voice ?? "rachel");

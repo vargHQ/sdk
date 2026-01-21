@@ -152,13 +152,13 @@ class FalVideoModel implements VideoModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
-    const hasVideoInput = files?.some((f) =>
+    const _hasVideoInput = files?.some((f) =>
       getMediaType(f)?.startsWith("video/"),
     );
     const hasImageInput = files?.some((f) =>
       getMediaType(f)?.startsWith("image/"),
     );
-    const hasAudioInput = files?.some((f) =>
+    const _hasAudioInput = files?.some((f) =>
       getMediaType(f)?.startsWith("audio/"),
     );
 

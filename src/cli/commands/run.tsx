@@ -71,7 +71,7 @@ function extractErrorMessage(err: unknown): string {
   return err.message;
 }
 
-function sanitizeOutput(key: string, value: unknown): unknown {
+function sanitizeOutput(_key: string, value: unknown): unknown {
   if (value instanceof Buffer) {
     return `<Buffer ${value.length} bytes>`;
   }
