@@ -91,7 +91,10 @@ class OpenAIVideoModel implements VideoModelV3 {
             typeof imageFile.data === "string"
               ? Uint8Array.from(atob(imageFile.data), (c) => c.charCodeAt(0))
               : imageFile.data;
-          blob = new Blob([data], { type: imageFile.mediaType });
+          // Create a proper ArrayBuffer copy to satisfy TS 5.9's stricter BlobPart type
+          const buffer = new ArrayBuffer(data.byteLength);
+          new Uint8Array(buffer).set(data);
+          blob = new Blob([buffer], { type: imageFile.mediaType });
         } else {
           const response = await fetch(imageFile.url, { signal: abortSignal });
           blob = await response.blob();
