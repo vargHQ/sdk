@@ -253,7 +253,7 @@ export class WebGLCompositor {
     gl.enableVertexAttribArray(locations.position);
     gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 4, 4);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
   drawFrame(frame: VideoFrame | ImageBitmap, options: DrawOptions = {}): void {

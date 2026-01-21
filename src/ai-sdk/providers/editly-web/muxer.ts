@@ -1,4 +1,5 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
+import type { ChunkWithMeta } from "./encoder.ts";
 
 export interface MuxerConfig {
   width: number;
@@ -7,10 +8,10 @@ export interface MuxerConfig {
 }
 
 export function muxToMp4(
-  videoChunks: EncodedVideoChunk[],
+  videoChunks: ChunkWithMeta[],
   config: MuxerConfig,
 ): Uint8Array {
-  const { width, height, fps } = config;
+  const { width, height } = config;
 
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
@@ -23,8 +24,8 @@ export function muxToMp4(
     fastStart: "in-memory",
   });
 
-  for (const chunk of videoChunks) {
-    muxer.addVideoChunk(chunk);
+  for (const { chunk, meta } of videoChunks) {
+    muxer.addVideoChunk(chunk, meta);
   }
 
   muxer.finalize();
@@ -33,7 +34,7 @@ export function muxToMp4(
 }
 
 export function muxVideoAndAudio(
-  videoChunks: EncodedVideoChunk[],
+  videoChunks: ChunkWithMeta[],
   audioChunks: EncodedAudioChunk[],
   config: MuxerConfig & { sampleRate: number; numberOfChannels: number },
 ): Uint8Array {
@@ -55,8 +56,8 @@ export function muxVideoAndAudio(
     fastStart: "in-memory",
   });
 
-  for (const chunk of videoChunks) {
-    muxer.addVideoChunk(chunk);
+  for (const { chunk, meta } of videoChunks) {
+    muxer.addVideoChunk(chunk, meta);
   }
 
   for (const chunk of audioChunks) {
