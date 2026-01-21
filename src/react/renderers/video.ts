@@ -1,5 +1,5 @@
-import { File } from "../../file";
-import type { generateVideo } from "../../generate-video";
+import { File } from "../../ai-sdk/file";
+import type { generateVideo } from "../../ai-sdk/generate-video";
 import type {
   ImageInput,
   VargElement,

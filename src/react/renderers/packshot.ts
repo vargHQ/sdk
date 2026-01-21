@@ -1,11 +1,11 @@
-import { editly } from "../../providers/editly";
+import { editly } from "../../ai-sdk/providers/editly";
 import type {
   Clip,
   ImageOverlayLayer,
   Layer,
   Position,
   TitleLayer,
-} from "../../providers/editly/types";
+} from "../../ai-sdk/providers/editly/types";
 import type { PackshotProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";

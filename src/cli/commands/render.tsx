@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
-import { render } from "../../ai-sdk/react/render";
-import type { VargElement } from "../../ai-sdk/react/types";
+import { render } from "../../react/render";
+import type { VargElement } from "../../react/types";
 
 export const renderCmd = defineCommand({
   meta: {

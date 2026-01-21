@@ -1,5 +1,5 @@
 import { fal } from "../fal-provider";
-import { Clip, Image, Render, render, SplitLayout as Split, Title } from "../react";
+import { Clip, Image, Render, render, SplitLayout as Split, Title } from "../../react";
 
 async function main() {
   console.log("creating before/after split screen...\n");

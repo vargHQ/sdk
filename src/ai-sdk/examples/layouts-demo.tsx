@@ -8,7 +8,7 @@ import {
   Split,
   Swipe,
   Title,
-} from "../react";
+} from "../../react";
 
 async function main() {
   const img1 = Image({ src: "media/cyberpunk-street.png" });

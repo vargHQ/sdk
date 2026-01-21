@@ -1,4 +1,4 @@
-import type { TitleLayer } from "../../providers/editly/types";
+import type { TitleLayer } from "../../ai-sdk/providers/editly/types";
 import type { TitleProps, VargElement } from "../types";
 import { getTextContent } from "./utils";
 

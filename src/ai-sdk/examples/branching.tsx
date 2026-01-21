@@ -1,6 +1,6 @@
 import { elevenlabs } from "../elevenlabs-provider";
 import { fal } from "../fal-provider";
-import { Animate, Clip, Image, Render, Speech, Title } from "../react";
+import { Animate, Clip, Image, Render, Speech, Title } from "../../react";
 
 // Non-linear tree: multiple clips with independent branches
 // Clip 1: TalkingHead (Image -> Animate + Speech)

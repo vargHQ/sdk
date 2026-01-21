@@ -1,12 +1,12 @@
 import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
-import type { MusicModelV3 } from "../music-model";
+import type { MusicModelV3 } from "../ai-sdk/music-model";
 import type {
   Position,
   ResizeMode,
   SizeValue,
   TransitionOptions,
-} from "../providers/editly/types";
-import type { VideoModelV3 } from "../video-model";
+} from "../ai-sdk/providers/editly/types";
+import type { VideoModelV3 } from "../ai-sdk/video-model";
 
 export type VargElementType =
   | "render"

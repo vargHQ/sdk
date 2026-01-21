@@ -1,4 +1,4 @@
-import { generateMusic } from "../../generate-music";
+import { generateMusic } from "../../ai-sdk/generate-music";
 import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";

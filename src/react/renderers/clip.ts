@@ -6,7 +6,7 @@ import type {
   ImageOverlayLayer,
   Layer,
   VideoLayer,
-} from "../../providers/editly/types";
+} from "../../ai-sdk/providers/editly/types";
 import type {
   AnimateProps,
   ClipProps,

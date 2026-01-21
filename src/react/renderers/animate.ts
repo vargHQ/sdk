@@ -1,5 +1,5 @@
-import { File } from "../../file";
-import type { generateVideo } from "../../generate-video";
+import { File } from "../../ai-sdk/file";
+import type { generateVideo } from "../../ai-sdk/generate-video";
 import type { AnimateProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";

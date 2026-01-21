@@ -1,7 +1,7 @@
 import { generateImage } from "ai";
-import { withCache } from "../cache";
-import { fileCache } from "../file-cache";
-import { generateVideo } from "../generate-video";
+import { withCache } from "../ai-sdk/cache";
+import { fileCache } from "../ai-sdk/file-cache";
+import { generateVideo } from "../ai-sdk/generate-video";
 import { renderAnimate } from "../react/renderers/animate";
 import type { RenderContext } from "../react/renderers/context";
 import { renderImage } from "../react/renderers/image";

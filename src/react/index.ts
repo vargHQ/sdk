@@ -1,4 +1,4 @@
-export type { SizeValue } from "../providers/editly/types";
+export type { SizeValue } from "../ai-sdk/providers/editly/types";
 export {
   Animate,
   Captions,

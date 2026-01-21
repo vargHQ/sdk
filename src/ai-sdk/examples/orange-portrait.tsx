@@ -1,5 +1,5 @@
 import { fal } from "../fal-provider";
-import { Clip, Image, Render, Video } from "../react";
+import { Clip, Image, Render, Video } from "../../react";
 
 // character: young woman, short dark brown bob with wispy bangs, oval face, fair skin,
 // large dark brown eyes, full lips, silver hoop earrings

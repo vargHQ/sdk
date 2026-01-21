@@ -6,7 +6,7 @@
     "module": "ESNext",
     "moduleDetection": "force",
     "jsx": "react-jsx",
-    "jsxImportSource": "@/ai-sdk/react/runtime",
+    "jsxImportSource": "@/react/runtime",
     "allowJs": true,
 
     // Bundler mode

@@ -1,5 +1,5 @@
-import { editly } from "../../providers/editly";
-import type { Clip, Layer } from "../../providers/editly/types";
+import { editly } from "../../ai-sdk/providers/editly";
+import type { Clip, Layer } from "../../ai-sdk/providers/editly/types";
 import type { SplitProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";

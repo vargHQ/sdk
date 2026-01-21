@@ -1,4 +1,4 @@
-import type { SubtitleLayer } from "../../providers/editly/types";
+import type { SubtitleLayer } from "../../ai-sdk/providers/editly/types";
 import type { SubtitleProps, VargElement } from "../types";
 import { getTextContent } from "./utils";
 

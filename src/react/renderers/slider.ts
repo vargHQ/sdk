@@ -1,24 +1,16 @@
-import { editly } from "../../providers/editly";
-import type { Clip } from "../../providers/editly/types";
-import type { SwipeProps, VargElement } from "../types";
+import { editly } from "../../ai-sdk/providers/editly";
+import type { Clip } from "../../ai-sdk/providers/editly/types";
+import type { SliderProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderVideo } from "./video";
 
-const SWIPE_TRANSITION_MAP = {
-  left: "slideleft",
-  right: "slideright",
-  up: "slideup",
-  down: "slidedown",
-} as const;
-
-export async function renderSwipe(
-  element: VargElement<"swipe">,
+export async function renderSlider(
+  element: VargElement<"slider">,
   ctx: RenderContext,
 ): Promise<string> {
-  const props = element.props as SwipeProps;
-  const direction = props.direction ?? "left";
-  const interval = props.interval ?? 3;
+  const props = element.props as SliderProps;
+  const direction = props.direction ?? "horizontal";
 
   const childPaths: string[] = [];
 
@@ -36,14 +28,16 @@ export async function renderSwipe(
   }
 
   if (childPaths.length === 0) {
-    throw new Error("Swipe element requires at least one image or video child");
+    throw new Error(
+      "Slider element requires at least one image or video child",
+    );
   }
 
   if (childPaths.length === 1) {
     return childPaths[0]!;
   }
 
-  const transitionName = SWIPE_TRANSITION_MAP[direction];
+  const transitionName = direction === "horizontal" ? "slideleft" : "slideup";
 
   const clips: Clip[] = childPaths.map((path, i) => {
     const isVideo = path.endsWith(".mp4") || path.endsWith(".webm");
@@ -55,12 +49,12 @@ export async function renderSwipe(
           ? { type: "video" as const, path, resizeMode: "cover" as const }
           : { type: "image" as const, path, resizeMode: "cover" as const },
       ],
-      duration: interval,
+      duration: 3,
       transition: isLast ? null : { name: transitionName, duration: 0.5 },
     };
   });
 
-  const outPath = `/tmp/varg-swipe-${Date.now()}.mp4`;
+  const outPath = `/tmp/varg-slider-${Date.now()}.mp4`;
 
   await editly({
     outPath,

@@ -1,5 +1,5 @@
 import type { generateImage } from "ai";
-import { File } from "../../file";
+import { File } from "../../ai-sdk/file";
 import type {
   ImageInput,
   ImagePrompt,

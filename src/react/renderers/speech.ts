@@ -1,5 +1,5 @@
 import { experimental_generateSpeech as generateSpeech } from "ai";
-import { File } from "../../file";
+import { File } from "../../ai-sdk/file";
 import type { SpeechProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";

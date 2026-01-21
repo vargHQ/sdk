@@ -1,6 +1,6 @@
 import { elevenlabs } from "../elevenlabs-provider";
 import { fal } from "../fal-provider";
-import { Animate, Clip, Image, Music, Render } from "../react";
+import { Animate, Clip, Image, Music, Render } from "../../react";
 
 const MADI_REF =
   "https://s3.varg.ai/fellowers/madi/character_shots/madi_shot_03_closeup.png";

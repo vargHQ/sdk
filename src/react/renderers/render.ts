@@ -1,14 +1,14 @@
 import { generateImage } from "ai";
-import { withCache } from "../../cache";
-import { fileCache } from "../../file-cache";
-import { generateVideo } from "../../generate-video";
-import { editly } from "../../providers/editly";
+import { withCache } from "../../ai-sdk/cache";
+import { fileCache } from "../../ai-sdk/file-cache";
+import { generateVideo } from "../../ai-sdk/generate-video";
+import { editly } from "../../ai-sdk/providers/editly";
 import type {
   AudioTrack,
   Clip,
   Layer,
   VideoLayer,
-} from "../../providers/editly/types";
+} from "../../ai-sdk/providers/editly/types";
 import type {
   CaptionsProps,
   ClipProps,

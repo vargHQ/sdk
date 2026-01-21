@@ -1,5 +1,5 @@
 import { fal } from "../fal-provider";
-import { Clip, Grid, Image, Render, render, Title } from "../react";
+import { Clip, Grid, Image, Render, render, Title } from "../../react";
 
 const CHARACTER_PROMPTS = [
   { name: "Warrior", prompt: "fierce warrior with sword, armor" },
