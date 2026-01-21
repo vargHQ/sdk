@@ -413,11 +413,25 @@ export class HTMLVideoSource implements FrameSource {
       this.video.muted = true;
       this.video.playsInline = true;
       this.video.preload = "auto";
+      this.video.crossOrigin = "anonymous";
+      this.video.style.position = "fixed";
+      this.video.style.top = "-9999px";
+      this.video.style.left = "-9999px";
+      this.video.style.width = "1px";
+      this.video.style.height = "1px";
+      document.body.appendChild(this.video);
 
-      this.video.onloadedmetadata = () => {
-        this.width = this.video!.videoWidth;
-        this.height = this.video!.videoHeight;
-        this.duration = this.video!.duration;
+      let resolved = false;
+
+      const onLoadedMetadata = () => {
+        if (resolved || !this.video) return;
+        resolved = true;
+        this.video.removeEventListener("loadedmetadata", onLoadedMetadata);
+        this.video.removeEventListener("error", onError);
+
+        this.width = this.video.videoWidth;
+        this.height = this.video.videoHeight;
+        this.duration = this.video.duration;
 
         this.canvas = new OffscreenCanvas(this.width, this.height);
         this.ctx = this.canvas.getContext("2d")!;
@@ -428,7 +442,9 @@ export class HTMLVideoSource implements FrameSource {
         resolve();
       };
 
-      this.video.onerror = () => {
+      const onError = () => {
+        if (resolved) return;
+        resolved = true;
         const error = this.video?.error;
         reject(
           new Error(
@@ -436,6 +452,9 @@ export class HTMLVideoSource implements FrameSource {
           ),
         );
       };
+
+      this.video.addEventListener("loadedmetadata", onLoadedMetadata);
+      this.video.addEventListener("error", onError);
 
       if (options.url) {
         this.video.src = options.url;
@@ -491,22 +510,22 @@ export class HTMLVideoSource implements FrameSource {
         return;
       }
 
+      const video = this.video;
       const onSeeked = () => {
-        this.video!.removeEventListener("seeked", onSeeked);
-        this.video!.removeEventListener("error", onError);
-        // Small delay to ensure frame is decoded after seek
+        video.removeEventListener("seeked", onSeeked);
+        video.removeEventListener("error", onError);
         setTimeout(resolve, 16);
       };
 
       const onError = () => {
-        this.video!.removeEventListener("seeked", onSeeked);
-        this.video!.removeEventListener("error", onError);
+        video.removeEventListener("seeked", onSeeked);
+        video.removeEventListener("error", onError);
         reject(new Error(`Failed to seek to ${timeSeconds}s`));
       };
 
-      this.video.addEventListener("seeked", onSeeked);
-      this.video.addEventListener("error", onError);
-      this.video.currentTime = timeSeconds;
+      video.addEventListener("seeked", onSeeked);
+      video.addEventListener("error", onError);
+      video.currentTime = timeSeconds;
     });
   }
 
@@ -519,6 +538,7 @@ export class HTMLVideoSource implements FrameSource {
       this.video.pause();
       this.video.src = "";
       this.video.load();
+      this.video.remove();
       this.video = null;
     }
     this.canvas = null;

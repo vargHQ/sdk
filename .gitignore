@@ -47,3 +47,8 @@ lib
 
 
 output
+.worktrees
+
+# Test video files
+src/ai-sdk/providers/editly-web/browser-tests/test-video.mp4
+test-results
