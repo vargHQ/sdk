@@ -19,8 +19,12 @@ import type {
 import { renderAnimate } from "./animate";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { renderPackshot } from "./packshot";
+import { renderSlider } from "./slider";
 import { renderSpeech } from "./speech";
+import { renderSplit } from "./split";
 import { renderSubtitle } from "./subtitle";
+import { renderSwipe } from "./swipe";
 import { renderTitle } from "./title";
 import { renderVideo } from "./video";
 
@@ -141,6 +145,62 @@ async function renderClipLayers(
                 path: result.path,
                 mixVolume: props.volume ?? 1,
               }) as AudioLayer,
+          ),
+        });
+        break;
+      }
+
+      case "split": {
+        pending.push({
+          type: "async",
+          promise: renderSplit(element as VargElement<"split">, ctx).then(
+            (path) =>
+              ({
+                type: "video",
+                path,
+              }) as VideoLayer,
+          ),
+        });
+        break;
+      }
+
+      case "slider": {
+        pending.push({
+          type: "async",
+          promise: renderSlider(element as VargElement<"slider">, ctx).then(
+            (path) =>
+              ({
+                type: "video",
+                path,
+              }) as VideoLayer,
+          ),
+        });
+        break;
+      }
+
+      case "swipe": {
+        pending.push({
+          type: "async",
+          promise: renderSwipe(element as VargElement<"swipe">, ctx).then(
+            (path) =>
+              ({
+                type: "video",
+                path,
+              }) as VideoLayer,
+          ),
+        });
+        break;
+      }
+
+      case "packshot": {
+        pending.push({
+          type: "async",
+          promise: renderPackshot(element as VargElement<"packshot">, ctx).then(
+            (path) =>
+              ({
+                type: "video",
+                path,
+              }) as VideoLayer,
           ),
         });
         break;

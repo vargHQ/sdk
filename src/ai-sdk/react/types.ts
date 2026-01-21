@@ -194,11 +194,16 @@ export interface SwipeProps extends BaseProps {
 }
 
 export interface PackshotProps extends BaseProps {
-  background?: VargElement<"image">;
+  background?: VargElement<"image"> | string;
   logo?: string;
+  logoPosition?: Position;
+  logoSize?: SizeValue;
   cta?: string;
+  ctaPosition?: Position;
   ctaColor?: string;
+  ctaSize?: number;
   blinkCta?: boolean;
+  duration?: number;
 }
 
 export interface RenderOptions {

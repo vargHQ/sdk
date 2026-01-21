@@ -1,6 +1,19 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync, unlinkSync } from "node:fs";
 import { fal } from "../fal-provider";
-import { Animate, Clip, Image, Render, render, Title, Video } from "./index";
+import {
+  Animate,
+  Clip,
+  Image,
+  Packshot,
+  Render,
+  render,
+  Slider,
+  Split,
+  Swipe,
+  Title,
+  Video,
+} from "./index";
 
 describe("varg-react elements", () => {
   test("Render creates correct element structure", () => {
@@ -142,5 +155,128 @@ describe("varg-react render", () => {
     });
 
     expect(render(root)).rejects.toThrow("model");
+  });
+});
+
+describe("layout renderers", () => {
+  const testImage1 = "media/cyberpunk-street.png";
+  const testImage2 = "media/fal-coffee-shop.png";
+  const outPath = "output/layout-test.mp4";
+
+  test("Split renders side-by-side images", async () => {
+    const root = Render({
+      width: 1280,
+      height: 720,
+      children: [
+        Clip({
+          duration: 2,
+          children: [
+            Split({
+              direction: "horizontal",
+              children: [
+                Image({ src: testImage1 }),
+                Image({ src: testImage2 }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await render(root, { output: outPath, quiet: true });
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.length).toBeGreaterThan(0);
+    expect(existsSync(outPath)).toBe(true);
+    unlinkSync(outPath);
+  });
+
+  test(
+    "Slider renders with slide transitions",
+    async () => {
+      const root = Render({
+        width: 1280,
+        height: 720,
+        children: [
+          Clip({
+            duration: 4,
+            children: [
+              Slider({
+                direction: "horizontal",
+                children: [
+                  Image({ src: testImage1 }),
+                  Image({ src: testImage2 }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await render(root, { output: outPath, quiet: true });
+      expect(result).toBeInstanceOf(Uint8Array);
+      expect(existsSync(outPath)).toBe(true);
+      unlinkSync(outPath);
+    },
+    { timeout: 30000 },
+  );
+
+  test(
+    "Swipe renders with swipe animation",
+    async () => {
+      const root = Render({
+        width: 1280,
+        height: 720,
+        children: [
+          Clip({
+            duration: 4,
+            children: [
+              Swipe({
+                direction: "left",
+                interval: 2,
+                children: [
+                  Image({ src: testImage1 }),
+                  Image({ src: testImage2 }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      });
+
+      const result = await render(root, { output: outPath, quiet: true });
+      expect(result).toBeInstanceOf(Uint8Array);
+      expect(existsSync(outPath)).toBe(true);
+      unlinkSync(outPath);
+    },
+    { timeout: 30000 },
+  );
+
+  test("Packshot renders end card with logo and cta", async () => {
+    const root = Render({
+      width: 1280,
+      height: 720,
+      children: [
+        Clip({
+          duration: 3,
+          children: [
+            Packshot({
+              background: "#1a1a2e",
+              logo: testImage1,
+              logoPosition: "center",
+              logoSize: "40%",
+              cta: "Subscribe Now!",
+              ctaPosition: "bottom",
+              ctaColor: "#FFD700",
+              duration: 3,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await render(root, { output: outPath, quiet: true });
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(existsSync(outPath)).toBe(true);
+    unlinkSync(outPath);
   });
 });
