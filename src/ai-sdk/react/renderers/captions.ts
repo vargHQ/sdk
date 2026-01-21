@@ -1,10 +1,50 @@
 import { writeFileSync } from "node:fs";
+import { groq } from "@ai-sdk/groq";
 import { experimental_transcribe as transcribe } from "ai";
-import { fal } from "../../fal-provider";
+import { z } from "zod";
 import type { CaptionsProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
 import { renderSpeech } from "./speech";
+
+const groqWordSchema = z.object({
+  word: z.string(),
+  start: z.number(),
+  end: z.number(),
+});
+
+const groqResponseSchema = z.object({
+  words: z.array(groqWordSchema).optional(),
+});
+
+type GroqWord = z.infer<typeof groqWordSchema>;
+
+// Helper function to convert words to SRT format
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const millis = Math.floor((seconds % 1) * 1000);
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(millis).padStart(3, "0")}`;
+}
+
+export function convertToSRT(words: GroqWord[]): string {
+  let srt = "";
+  let index = 1;
+
+  for (const word of words) {
+    const startTime = formatTime(word.start);
+    const endTime = formatTime(word.end);
+
+    srt += `${index}\n`;
+    srt += `${startTime} --> ${endTime}\n`;
+    srt += `${word.word.trim()}\n\n`;
+    index++;
+  }
+
+  return srt;
+}
 
 interface SrtEntry {
   index: number;
@@ -166,23 +206,6 @@ function colorToAss(color: string): string {
   return "&HFFFFFF";
 }
 
-function segmentsToSrt(
-  segments: Array<{ text: string; startSecond: number; endSecond: number }>,
-): string {
-  return segments
-    .map((seg, i) => {
-      const formatTime = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
-        const ms = Math.floor((seconds % 1) * 1000);
-        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
-      };
-      return `${i + 1}\n${formatTime(seg.startSecond)} --> ${formatTime(seg.endSecond)}\n${seg.text.trim()}\n`;
-    })
-    .join("\n");
-}
-
 export interface CaptionsResult {
   assPath: string;
   srtPath?: string;
@@ -208,7 +231,7 @@ export async function renderCaptions(
       const speechResult = await renderSpeech(props.src, ctx);
 
       const transcribeTaskId = ctx.progress
-        ? addTask(ctx.progress, "transcribe", "fal-whisper")
+        ? addTask(ctx.progress, "transcribe", "groq-whisper")
         : null;
       if (transcribeTaskId && ctx.progress)
         startTask(ctx.progress, transcribeTaskId);
@@ -216,11 +239,12 @@ export async function renderCaptions(
       const audioData = await Bun.file(speechResult.path).arrayBuffer();
 
       const result = await transcribe({
-        model: fal.transcriptionModel("whisper"),
+        model: groq.transcription("whisper-large-v3"),
         audio: new Uint8Array(audioData),
         providerOptions: {
-          fal: {
-            chunk_level: "word",
+          groq: {
+            responseFormat: "verbose_json",
+            timestampGranularities: ["word"],
           },
         },
       });
@@ -228,10 +252,14 @@ export async function renderCaptions(
       if (transcribeTaskId && ctx.progress)
         completeTask(ctx.progress, transcribeTaskId);
 
-      if (!result.segments || result.segments.length === 0) {
+      const rawBody = (result.responses[0] as { body?: unknown })?.body;
+      const parsed = groqResponseSchema.safeParse(rawBody);
+      const words = parsed.success ? parsed.data.words : undefined;
+
+      if (!words || words.length === 0) {
         srtContent = `1\n00:00:00,000 --> 00:00:05,000\n${result.text}\n`;
       } else {
-        srtContent = segmentsToSrt(result.segments);
+        srtContent = convertToSRT(words);
       }
 
       srtPath = `/tmp/varg-captions-${Date.now()}.srt`;
