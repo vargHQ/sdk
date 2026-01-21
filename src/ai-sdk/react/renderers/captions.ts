@@ -1,7 +1,5 @@
 import { writeFileSync } from "node:fs";
-import { experimental_transcribe as transcribe } from "ai";
-import { convertToSRT, type FireworksWord } from "../../../providers/fireworks";
-import { fal } from "../../fal-provider";
+import { convertToSRT, fireworksProvider } from "../../../providers/fireworks";
 import type { CaptionsProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
@@ -167,23 +165,6 @@ function colorToAss(color: string): string {
   return "&HFFFFFF";
 }
 
-function segmentsToSrt(
-  segments: Array<{ text: string; startSecond: number; endSecond: number }>,
-): string {
-  return segments
-    .map((seg, i) => {
-      const formatTime = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
-        const ms = Math.floor((seconds % 1) * 1000);
-        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
-      };
-      return `${i + 1}\n${formatTime(seg.startSecond)} --> ${formatTime(seg.endSecond)}\n${seg.text.trim()}\n`;
-    })
-    .join("\n");
-}
-
 export interface CaptionsResult {
   assPath: string;
   srtPath?: string;
@@ -209,26 +190,19 @@ export async function renderCaptions(
       const speechResult = await renderSpeech(props.src, ctx);
 
       const transcribeTaskId = ctx.progress
-        ? addTask(ctx.progress, "transcribe", "fal-whisper")
+        ? addTask(ctx.progress, "transcribe", "fireworks")
         : null;
       if (transcribeTaskId && ctx.progress)
         startTask(ctx.progress, transcribeTaskId);
 
-      const audioData = await Bun.file(speechResult.path).arrayBuffer();
-
-      const result = await transcribe({
-        model: fal.transcriptionModel("whisper"),
-        audio: new Uint8Array(audioData),
+      const result = await fireworksProvider.transcribe({
+        audioPath: speechResult.path,
       });
 
       if (transcribeTaskId && ctx.progress)
         completeTask(ctx.progress, transcribeTaskId);
 
-      if (!result.segments || result.segments.length === 0) {
-        srtContent = `1\n00:00:00,000 --> 00:00:05,000\n${result.text}\n`;
-      } else {
-        srtContent = segmentsToSrt(result.segments);
-      }
+      srtContent = convertToSRT(result.words || []);
 
       srtPath = `/tmp/varg-captions-${Date.now()}.srt`;
       writeFileSync(srtPath, srtContent);
