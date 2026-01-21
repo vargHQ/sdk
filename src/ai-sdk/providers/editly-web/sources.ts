@@ -159,7 +159,7 @@ export class VideoSource implements FrameSource {
         });
 
         console.log(`[VideoSource] Starting sample extraction, seeking to 0`);
-        mp4box.seek(0);
+        mp4box.seek(0, true);
         mp4box.start();
       };
 
