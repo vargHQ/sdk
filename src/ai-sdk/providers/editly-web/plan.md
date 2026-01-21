@@ -105,3 +105,47 @@ all 30+ tests from editly.test.ts should pass with minimal changes:
 - replace file paths with Blobs
 - replace existsSync checks with Uint8Array length checks
 - use happy-dom or playwright for webcodecs api
+
+## implementation phases
+
+### phase 1: mvp video-only ✅
+- [x] video source decoding (VideoDecoder + mp4box)
+- [x] image source loading (ImageBitmap)
+- [x] color/gradient sources
+- [x] webgl compositor with resize modes
+- [x] video encoder (H.264)
+- [x] mp4 muxing (video only)
+- [x] main editlyWeb() function
+- **commit after completing phase 1**
+
+### phase 2: transitions & overlays
+- [ ] gl-transitions integration
+- [ ] ken burns effect
+- [ ] image overlays with positioning
+- [ ] layer start/stop timing
+- **commit after completing phase 2**
+
+### phase 3: audio pipeline ✅
+- [x] audio decoder (AudioDecoder + mp4box)
+- [x] audio mixer (multi-track, volume, fades)
+- [x] audio encoder (AAC)
+- [x] mux video + audio together
+- [x] keepSourceAudio, audioTracks, loopAudio support
+- [x] audio normalization
+- **commit after completing phase 3**
+
+### phase 4: text rendering
+- [ ] title layer (canvas 2d)
+- [ ] subtitle layer
+- [ ] news-title layer
+- [ ] slide-in-text layer
+- [ ] custom font loading (FontFace API)
+- **commit after completing phase 4**
+
+## current status
+
+**phase 3 complete** - audio pipeline implemented with:
+- AudioSource class for decoding audio from video/audio files
+- AudioMixer class for mixing multiple tracks with volume and fade curves
+- AudioEncoderWrapper class for encoding to AAC
+- Full support for: keepSourceAudio, audio layers, detached-audio layers, audioTracks, loopAudio, audioNorm, outputVolume
