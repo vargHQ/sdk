@@ -1,10 +1,7 @@
-/**
- * Source loaders for editly-web
- * Handles video decoding via VideoDecoder and image loading via ImageBitmap
- */
-
 import type { Movie, MP4BoxBuffer, Sample, Track } from "mp4box";
 import * as MP4Box from "mp4box";
+
+console.log("[sources.ts] MP4Box module loaded");
 
 export interface FrameSource {
   type: "video" | "image";
@@ -45,15 +42,28 @@ export class VideoSource implements FrameSource {
   }
 
   private async init(data: ArrayBuffer): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const mp4box = MP4Box.createFile();
+    console.log(`[VideoSource] init() called, data size: ${data.byteLength}`);
 
-      mp4box.onReady = (info: Movie) => {
+    return new Promise((resolve, reject) => {
+      const mp4box = MP4Box.createFile(true);
+
+      mp4box.onError = (e: string) => {
+        console.error(`[VideoSource] mp4box error:`, e);
+        reject(new Error(e));
+      };
+
+      mp4box.onReady = async (info: Movie) => {
+        console.log(`[VideoSource] onReady, tracks: ${info.tracks.length}`);
+
         const videoTrack = info.tracks.find((t: Track) => t.type === "video");
         if (!videoTrack) {
           reject(new Error("No video track found"));
           return;
         }
+
+        console.log(
+          `[VideoSource] Video track: ${videoTrack.codec}, ${videoTrack.nb_samples} samples`,
+        );
 
         this.width = videoTrack.video?.width ?? videoTrack.track_width ?? 0;
         this.height = videoTrack.video?.height ?? videoTrack.track_height ?? 0;
@@ -61,59 +71,106 @@ export class VideoSource implements FrameSource {
         this.fps =
           videoTrack.nb_samples / (videoTrack.duration / videoTrack.timescale);
 
-        const codec = videoTrack.codec;
-        this.codecConfig = {
-          codec,
+        let description: Uint8Array | undefined;
+        const trak = mp4box.getTrackById(videoTrack.id);
+        if (trak) {
+          for (const entry of trak.mdia.minf.stbl.stsd.entries) {
+            if (entry.avcC) {
+              const stream = new MP4Box.DataStream(
+                undefined,
+                0,
+                MP4Box.DataStream.BIG_ENDIAN,
+              );
+              entry.avcC.write(stream);
+              // Skip the 8-byte box header (size + type)
+              description = new Uint8Array(stream.buffer.slice(8));
+              console.log(
+                `[VideoSource] Got avcC description, ${description.length} bytes, first bytes:`,
+                Array.from(description.slice(0, 10)),
+              );
+              break;
+            }
+          }
+        }
+
+        if (!description) {
+          console.error(`[VideoSource] No avcC found in track`);
+        }
+
+        const config: VideoDecoderConfig = {
+          codec: videoTrack.codec,
           codedWidth: this.width,
           codedHeight: this.height,
+          description,
+        };
+
+        const support = await VideoDecoder.isConfigSupported(config);
+        if (!support.supported) {
+          console.error(`[VideoSource] Codec not supported:`, config);
+          reject(
+            new Error(`Unsupported codec: ${videoTrack.codec}. Use H.264.`),
+          );
+          return;
+        }
+
+        this.codecConfig = config;
+        const expectedSamples = videoTrack.nb_samples;
+
+        mp4box.onSamples = (
+          _trackId: number,
+          _user: unknown,
+          samples: Sample[],
+        ) => {
+          console.log(
+            `[VideoSource] onSamples: ${samples.length}, total: ${this.samples.length + samples.length}/${expectedSamples}`,
+          );
+          this.samples.push(...samples);
+
+          if (this.samples.length >= expectedSamples) {
+            console.log(
+              `[VideoSource] All samples received, initializing decoder`,
+            );
+            this.decoder = new VideoDecoder({
+              output: (frame) => {
+                console.log(
+                  `[VideoDecoder] Output frame: ${frame.codedWidth}x${frame.codedHeight}, ts=${frame.timestamp}`,
+                );
+                if (this.frameResolve) {
+                  this.frameResolve(frame);
+                  this.frameResolve = null;
+                } else {
+                  this.pendingFrame?.close();
+                  this.pendingFrame = frame;
+                }
+              },
+              error: (e) => {
+                console.error(`[VideoDecoder] Error:`, e);
+              },
+            });
+
+            this.decoder.configure(this.codecConfig!);
+            this.initialized = true;
+            resolve();
+          }
         };
 
         mp4box.setExtractionOptions(videoTrack.id, null, {
-          nbSamples: videoTrack.nb_samples,
+          nbSamples: expectedSamples,
         });
+
+        console.log(`[VideoSource] Starting sample extraction, seeking to 0`);
+        mp4box.seek(0);
         mp4box.start();
       };
 
-      mp4box.onSamples = (
-        _trackId: number,
-        _user: unknown,
-        samples: Sample[],
-      ) => {
-        this.samples.push(...samples);
-      };
-
-      mp4box.onError = (_module: string, message: string) =>
-        reject(new Error(message));
-
-      const buffer = data as unknown as MP4BoxBuffer;
+      const buffer = data.slice(0) as unknown as MP4BoxBuffer;
       buffer.fileStart = 0;
       mp4box.appendBuffer(buffer);
       mp4box.flush();
-
-      this.decoder = new VideoDecoder({
-        output: (frame) => {
-          if (this.frameResolve) {
-            this.frameResolve(frame);
-            this.frameResolve = null;
-          } else {
-            this.pendingFrame?.close();
-            this.pendingFrame = frame;
-          }
-        },
-        error: (e) => console.error("VideoDecoder error:", e),
-      });
-
-      setTimeout(() => {
-        if (this.codecConfig) {
-          this.decoder!.configure(this.codecConfig);
-          this.initialized = true;
-          resolve();
-        } else {
-          reject(new Error("Failed to get codec config"));
-        }
-      }, 10);
     });
   }
+
+  private lastDecodedIndex = -1;
 
   async getFrame(timeSeconds: number): Promise<VideoFrame> {
     if (!this.initialized || !this.decoder) {
@@ -121,33 +178,76 @@ export class VideoSource implements FrameSource {
     }
 
     const targetTime = timeSeconds * 1_000_000;
-    let closestSample: Sample | null = null;
+    let targetIndex = 0;
     let closestDiff = Infinity;
 
-    for (const sample of this.samples) {
+    for (let i = 0; i < this.samples.length; i++) {
+      const sample = this.samples[i]!;
       const sampleTime = (sample.cts / sample.timescale) * 1_000_000;
       const diff = Math.abs(sampleTime - targetTime);
       if (diff < closestDiff) {
         closestDiff = diff;
-        closestSample = sample;
+        targetIndex = i;
       }
     }
 
-    if (!closestSample || !closestSample.data) {
-      throw new Error(`No sample found for time ${timeSeconds}`);
+    let startIndex = this.lastDecodedIndex + 1;
+
+    if (targetIndex < this.lastDecodedIndex || this.lastDecodedIndex === -1) {
+      for (let i = targetIndex; i >= 0; i--) {
+        if (this.samples[i]!.is_sync) {
+          startIndex = i;
+          break;
+        }
+      }
     }
 
-    const chunk = new EncodedVideoChunk({
-      type: closestSample.is_sync ? "key" : "delta",
-      timestamp: (closestSample.cts / closestSample.timescale) * 1_000_000,
-      duration: (closestSample.duration / closestSample.timescale) * 1_000_000,
-      data: closestSample.data,
-    });
+    console.log(
+      `[VideoSource] getFrame: startIndex=${startIndex}, targetIndex=${targetIndex}, lastDecoded=${this.lastDecodedIndex}`,
+    );
 
-    return new Promise<VideoFrame>((resolve) => {
-      this.frameResolve = resolve;
-      this.decoder!.decode(chunk);
-    });
+    for (let i = startIndex; i <= targetIndex; i++) {
+      const sample = this.samples[i]!;
+      if (!sample.data) {
+        console.log(`[VideoSource] Sample ${i} has no data, skipping`);
+        continue;
+      }
+
+      const chunk = new EncodedVideoChunk({
+        type: sample.is_sync ? "key" : "delta",
+        timestamp: (sample.cts / sample.timescale) * 1_000_000,
+        duration: (sample.duration / sample.timescale) * 1_000_000,
+        data: sample.data,
+      });
+
+      console.log(
+        `[VideoSource] Decoding sample ${i}, sync=${sample.is_sync}, size=${sample.data.byteLength}`,
+      );
+
+      if (i === targetIndex) {
+        return new Promise<VideoFrame>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            console.error(
+              `[VideoSource] Timeout! Decoder state: ${this.decoder?.state}, queue: ${this.decoder?.decodeQueueSize}`,
+            );
+            reject(new Error(`Decode timeout at ${timeSeconds}s (index ${i})`));
+          }, 5000);
+
+          this.frameResolve = (frame) => {
+            clearTimeout(timeout);
+            this.lastDecodedIndex = i;
+            resolve(frame);
+          };
+
+          this.decoder!.decode(chunk);
+        });
+      } else {
+        this.decoder!.decode(chunk);
+        this.lastDecodedIndex = i;
+      }
+    }
+
+    throw new Error(`Failed to decode frame at ${timeSeconds}s`);
   }
 
   close(): void {
@@ -159,9 +259,6 @@ export class VideoSource implements FrameSource {
   }
 }
 
-/**
- * Image source that returns the same ImageBitmap for any requested time
- */
 export class ImageSource implements FrameSource {
   type: "image" = "image";
   width = 0;
@@ -191,7 +288,6 @@ export class ImageSource implements FrameSource {
     if (!this.bitmap) {
       throw new Error("ImageSource not initialized");
     }
-    // Return a copy since VideoFrame/ImageBitmap can be closed after use
     return createImageBitmap(this.bitmap);
   }
 
@@ -201,9 +297,6 @@ export class ImageSource implements FrameSource {
   }
 }
 
-/**
- * Solid color source - generates frames of a solid color
- */
 export class ColorSource implements FrameSource {
   type: "image" = "image";
   width: number;
@@ -233,14 +326,9 @@ export class ColorSource implements FrameSource {
     return createImageBitmap(this.canvas);
   }
 
-  close(): void {
-    // Nothing to clean up
-  }
+  close(): void {}
 }
 
-/**
- * Gradient source - generates gradient frames
- */
 export class GradientSource implements FrameSource {
   type: "image" = "image";
   width: number;

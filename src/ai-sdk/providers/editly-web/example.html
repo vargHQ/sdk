@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>editly-web example</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #status {
+      margin: 20px 0;
+      padding: 10px;
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+    video {
+      max-width: 100%;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+    }
+    .controls {
+      margin: 20px 0;
+    }
+    .file-input {
+      margin: 20px 0;
+    }
+    .file-input label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1>editly-web example</h1>
+  
+  <div class="file-input">
+    <label>select video files to combine:</label>
+    <input type="file" id="videoFiles" accept="video/*" multiple />
+  </div>
+  
+  <div class="controls">
+    <button id="generate">generate video</button>
+    <button id="download" disabled>download mp4</button>
+  </div>
+  <div id="status">select video files and click "generate video"</div>
+  <video id="preview" controls></video>
+  <script type="module" src="./example-runner.ts"></script>
+</body>
+</html>

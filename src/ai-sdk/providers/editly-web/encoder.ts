@@ -5,9 +5,14 @@ export interface EncoderConfig {
   bitrate?: number;
 }
 
+export interface ChunkWithMeta {
+  chunk: EncodedVideoChunk;
+  meta?: EncodedVideoChunkMetadata;
+}
+
 export class VideoEncoderWrapper {
   private encoder: VideoEncoder | null = null;
-  private chunks: EncodedVideoChunk[] = [];
+  private chunksWithMeta: ChunkWithMeta[] = [];
   private config: EncoderConfig;
   private frameCount = 0;
   private flushResolve: (() => void) | null = null;
@@ -20,16 +25,17 @@ export class VideoEncoderWrapper {
     const { width, height, fps, bitrate = 5_000_000 } = this.config;
 
     this.encoder = new VideoEncoder({
-      output: (chunk) => {
-        this.chunks.push(chunk);
+      output: (chunk, meta) => {
+        this.chunksWithMeta.push({ chunk, meta });
       },
       error: (e) => {
+        console.error(`[VideoEncoder] Error:`, e);
         throw new Error(`VideoEncoder error: ${e.message}`);
       },
     });
 
     const codecConfig: VideoEncoderConfig = {
-      codec: "avc1.640028", // H.264 High Profile Level 4.0
+      codec: "avc1.640028",
       width,
       height,
       bitrate,
@@ -40,6 +46,9 @@ export class VideoEncoderWrapper {
 
     const support = await VideoEncoder.isConfigSupported(codecConfig);
     if (!support.supported) {
+      console.log(
+        `[VideoEncoder] Hardware acceleration not supported, trying software`,
+      );
       codecConfig.hardwareAcceleration = "prefer-software";
       const softwareSupport = await VideoEncoder.isConfigSupported(codecConfig);
       if (!softwareSupport.supported) {
@@ -47,6 +56,9 @@ export class VideoEncoderWrapper {
       }
     }
 
+    console.log(
+      `[VideoEncoder] Configured: ${width}x${height} @ ${fps}fps, codec: ${codecConfig.codec}`,
+    );
     this.encoder.configure(codecConfig);
   }
 
@@ -55,33 +67,42 @@ export class VideoEncoderWrapper {
       throw new Error("Encoder not configured");
     }
 
-    const timestamp = (this.frameCount / this.config.fps) * 1_000_000;
-    const frameWithTimestamp = new VideoFrame(frame, { timestamp });
+    try {
+      const timestamp = (this.frameCount / this.config.fps) * 1_000_000;
+      const duration = (1 / this.config.fps) * 1_000_000;
+      const frameWithTimestamp = new VideoFrame(frame, { timestamp, duration });
 
-    const keyFrame = this.frameCount % 30 === 0;
-    this.encoder.encode(frameWithTimestamp, { keyFrame });
+      const keyFrame = this.frameCount % 30 === 0;
+      this.encoder.encode(frameWithTimestamp, { keyFrame });
 
-    frameWithTimestamp.close();
-    this.frameCount++;
+      frameWithTimestamp.close();
+      this.frameCount++;
+    } catch (e) {
+      console.error(
+        `[VideoEncoder] Encode error at frame ${this.frameCount}:`,
+        e,
+      );
+      throw e;
+    }
   }
 
-  async flush(): Promise<EncodedVideoChunk[]> {
+  async flush(): Promise<ChunkWithMeta[]> {
     if (!this.encoder) {
       throw new Error("Encoder not configured");
     }
 
     await this.encoder.flush();
-    return this.chunks;
+    return this.chunksWithMeta;
   }
 
-  getChunks(): EncodedVideoChunk[] {
-    return this.chunks;
+  getChunks(): ChunkWithMeta[] {
+    return this.chunksWithMeta;
   }
 
   close(): void {
     this.encoder?.close();
     this.encoder = null;
-    this.chunks = [];
+    this.chunksWithMeta = [];
     this.frameCount = 0;
   }
 }

@@ -67,10 +67,17 @@ async function processClips(
       if (layer.type === "video" && !clip.duration) {
         const videoLayer = layer as VideoLayer;
         const data = sources.get(videoLayer.path);
+        console.log(
+          `[processClips] Video layer path: ${videoLayer.path}, has data: ${!!data}, data size: ${data instanceof Blob ? data.size : data?.byteLength}`,
+        );
         if (data) {
+          console.log(`[processClips] Creating VideoSource to get duration...`);
           const source = await VideoSource.create({
             data: data instanceof Blob ? await data.arrayBuffer() : data,
           });
+          console.log(
+            `[processClips] VideoSource created, duration: ${source.duration}s`,
+          );
           const cutFrom = videoLayer.cutFrom ?? 0;
           const cutTo = videoLayer.cutTo ?? source.duration;
           duration = cutTo - cutFrom;
@@ -398,7 +405,9 @@ export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
   const height = config.height ?? DEFAULT_HEIGHT;
   const fps = config.fps ?? DEFAULT_FPS;
 
+  console.log("[editlyWeb] Processing clips...");
   const clips = await processClips(clipsIn, defaults, sources);
+  console.log("[editlyWeb] Processed clips:", clips.length);
 
   const compositor = new WebGLCompositor(width, height);
   const encoder = new VideoEncoderWrapper({ width, height, fps });
@@ -406,10 +415,15 @@ export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
 
   const frameDuration = 1 / fps;
 
-  for (const clip of clips) {
+  for (let clipIdx = 0; clipIdx < clips.length; clipIdx++) {
+    const clip = clips[clipIdx]!;
+    console.log(
+      `[editlyWeb] Processing clip ${clipIdx + 1}/${clips.length}, duration: ${clip.duration}s`,
+    );
     const clipSources: FrameSource[] = [];
 
     for (const layer of clip.layers) {
+      console.log(`[editlyWeb] Creating source for layer type: ${layer.type}`);
       const source = await createSource(
         layer,
         sources,
@@ -418,14 +432,22 @@ export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
         height,
       );
       if (source) {
+        console.log(
+          `[editlyWeb] Source created: ${source.width}x${source.height}, duration: ${source.duration}s`,
+        );
         clipSources.push(source);
       }
     }
 
     const frameCount = Math.ceil(clip.duration * fps);
+    console.log(`[editlyWeb] Encoding ${frameCount} frames...`);
 
     for (let frameIdx = 0; frameIdx < frameCount; frameIdx++) {
       const time = frameIdx * frameDuration;
+
+      if (frameIdx % 30 === 0) {
+        console.log(`[editlyWeb] Frame ${frameIdx}/${frameCount}`);
+      }
 
       compositor.clear("#000000");
 
