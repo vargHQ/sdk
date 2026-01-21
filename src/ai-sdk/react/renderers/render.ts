@@ -66,6 +66,7 @@ export async function renderRoot(
 
   const clipElements: VargElement<"clip">[] = [];
   const overlayElements: VargElement<"overlay">[] = [];
+  const musicElements: VargElement<"music">[] = [];
   const audioTracks: AudioTrack[] = [];
   let captionsResult: Awaited<ReturnType<typeof renderCaptions>> | undefined;
 
@@ -100,33 +101,7 @@ export async function renderRoot(
         mixVolume: speechProps.volume ?? 1,
       });
     } else if (childElement.type === "music") {
-      const musicProps = childElement.props as MusicProps;
-      const cutFrom = musicProps.cutFrom;
-      const cutTo =
-        musicProps.cutTo ??
-        (musicProps.duration !== undefined
-          ? (cutFrom ?? 0) + musicProps.duration
-          : undefined);
-
-      let path: string;
-      if (musicProps.src) {
-        path = resolvePath(musicProps.src);
-      } else if (musicProps.prompt && musicProps.model) {
-        const result = await renderMusic(
-          childElement as VargElement<"music">,
-          ctx,
-        );
-        path = result.path;
-      } else {
-        throw new Error("Music requires either src or prompt+model");
-      }
-
-      audioTracks.push({
-        path,
-        mixVolume: musicProps.volume ?? 1,
-        cutFrom,
-        cutTo,
-      });
+      musicElements.push(childElement as VargElement<"music">);
     }
   }
 
@@ -199,6 +174,36 @@ export async function renderRoot(
     if (i < clipElements.length - 1 && clip.transition) {
       currentTime -= clip.transition.duration ?? 0;
     }
+  }
+
+  const totalDuration = currentTime;
+
+  // process music after clips so we know total duration for auto-trim
+  for (const musicElement of musicElements) {
+    const musicProps = musicElement.props as MusicProps;
+    const cutFrom = musicProps.cutFrom ?? 0;
+    const cutTo =
+      musicProps.cutTo ??
+      (musicProps.duration !== undefined
+        ? cutFrom + musicProps.duration
+        : totalDuration); // auto-trim to video length
+
+    let path: string;
+    if (musicProps.src) {
+      path = resolvePath(musicProps.src);
+    } else if (musicProps.prompt && musicProps.model) {
+      const result = await renderMusic(musicElement, ctx);
+      path = result.path;
+    } else {
+      throw new Error("Music requires either src or prompt+model");
+    }
+
+    audioTracks.push({
+      path,
+      mixVolume: musicProps.volume ?? 1,
+      cutFrom,
+      cutTo,
+    });
   }
 
   const hasCaptions = captionsResult !== undefined;
