@@ -124,7 +124,10 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
       : data;
   // Use mediaType from file if available, otherwise detect from bytes or default to png
   const mediaType = file.mediaType ?? detectImageType(bytes) ?? "image/png";
-  return fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  // Create a proper ArrayBuffer copy to satisfy TS 5.9's stricter BlobPart type
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return fal.storage.upload(new Blob([buffer], { type: mediaType }));
 }
 
 async function uploadBuffer(buffer: ArrayBuffer): Promise<string> {

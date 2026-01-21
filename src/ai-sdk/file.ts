@@ -139,7 +139,10 @@ export class File {
 
   async blob(): Promise<Blob> {
     const data = await this.arrayBuffer();
-    return new Blob([data], { type: this._mediaType });
+    // Create a proper ArrayBuffer copy to satisfy TS 5.9's stricter BlobPart type
+    const buffer = new ArrayBuffer(data.byteLength);
+    new Uint8Array(buffer).set(data);
+    return new Blob([buffer], { type: this._mediaType });
   }
 
   async url(uploader?: (blob: Blob) => Promise<string>): Promise<string> {

@@ -1,4 +1,10 @@
-import type { Movie, MP4BoxBuffer, Sample, Track } from "mp4box";
+import type {
+  Movie,
+  MP4BoxBuffer,
+  Sample,
+  Track,
+  VisualSampleEntry,
+} from "mp4box";
 import * as MP4Box from "mp4box";
 
 console.log("[sources.ts] MP4Box module loaded");
@@ -75,14 +81,14 @@ export class VideoSource implements FrameSource {
         const trak = mp4box.getTrackById(videoTrack.id);
         if (trak) {
           for (const entry of trak.mdia.minf.stbl.stsd.entries) {
-            if (entry.avcC) {
+            const visualEntry = entry as VisualSampleEntry;
+            if (visualEntry.avcC) {
               const stream = new MP4Box.DataStream(
                 undefined,
                 0,
-                MP4Box.DataStream.BIG_ENDIAN,
+                MP4Box.Endianness.BIG_ENDIAN,
               );
-              entry.avcC.write(stream);
-              // Skip the 8-byte box header (size + type)
+              visualEntry.avcC.write(stream as MP4Box.MultiBufferStream);
               description = new Uint8Array(stream.buffer.slice(8));
               console.log(
                 `[VideoSource] Got avcC description, ${description.length} bytes, first bytes:`,
