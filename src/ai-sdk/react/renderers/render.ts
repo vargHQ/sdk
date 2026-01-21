@@ -10,6 +10,7 @@ import type {
   VideoLayer,
 } from "../../providers/editly/types";
 import type {
+  CaptionsProps,
   ClipProps,
   MusicProps,
   OverlayProps,
@@ -19,6 +20,7 @@ import type {
   VargElement,
 } from "../types";
 import { renderAnimate } from "./animate";
+import { renderCaptions } from "./captions";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
@@ -64,6 +66,7 @@ export async function renderRoot(
 
   const clipElements: VargElement<"clip">[] = [];
   const overlayElements: VargElement<"overlay">[] = [];
+  const captionsElements: VargElement<"captions">[] = [];
   const audioTracks: AudioTrack[] = [];
 
   for (const child of element.children) {
@@ -75,6 +78,8 @@ export async function renderRoot(
       clipElements.push(childElement as VargElement<"clip">);
     } else if (childElement.type === "overlay") {
       overlayElements.push(childElement as VargElement<"overlay">);
+    } else if (childElement.type === "captions") {
+      captionsElements.push(childElement as VargElement<"captions">);
     } else if (childElement.type === "speech") {
       const result = await renderSpeech(
         childElement as VargElement<"speech">,
@@ -187,13 +192,17 @@ export async function renderRoot(
     }
   }
 
-  const outPath = options.output ?? `output/varg-${Date.now()}.mp4`;
+  const hasCaptions = captionsElements.length > 0;
+  const tempOutPath = hasCaptions
+    ? `/tmp/varg-pre-captions-${Date.now()}.mp4`
+    : (options.output ?? `output/varg-${Date.now()}.mp4`);
+  const finalOutPath = options.output ?? `output/varg-${Date.now()}.mp4`;
 
   const editlyTaskId = addTask(progress, "editly", "ffmpeg");
   startTask(progress, editlyTaskId);
 
   await editly({
-    outPath,
+    outPath: tempOutPath,
     width: ctx.width,
     height: ctx.height,
     fps: ctx.fps,
@@ -203,6 +212,20 @@ export async function renderRoot(
 
   completeTask(progress, editlyTaskId);
 
-  const result = await Bun.file(outPath).arrayBuffer();
+  if (hasCaptions) {
+    const captionsTaskId = addTask(progress, "captions", "ffmpeg");
+    startTask(progress, captionsTaskId);
+
+    const captionsElement = captionsElements[0]!;
+    const captionsResult = await renderCaptions(captionsElement, ctx);
+
+    const { $ } = await import("bun");
+    await $`ffmpeg -y -i ${tempOutPath} -vf "ass=${captionsResult.assPath}" -c:a copy ${finalOutPath}`.quiet();
+
+    ctx.tempFiles.push(tempOutPath);
+    completeTask(progress, captionsTaskId);
+  }
+
+  const result = await Bun.file(finalOutPath).arrayBuffer();
   return new Uint8Array(result);
 }

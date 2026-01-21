@@ -4,7 +4,9 @@ export type GenerationType =
   | "animate"
   | "speech"
   | "music"
-  | "editly";
+  | "editly"
+  | "captions"
+  | "transcribe";
 
 export const TIME_ESTIMATES: Record<GenerationType, number> = {
   image: 30,
@@ -13,6 +15,8 @@ export const TIME_ESTIMATES: Record<GenerationType, number> = {
   speech: 5,
   music: 45,
   editly: 15,
+  captions: 10,
+  transcribe: 15,
 };
 
 export const MODEL_TIME_ESTIMATES: Record<string, number> = {

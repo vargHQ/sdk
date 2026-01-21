@@ -3,6 +3,7 @@ import { existsSync, unlinkSync } from "node:fs";
 import { fal } from "../fal-provider";
 import {
   Animate,
+  Captions,
   Clip,
   Image,
   Packshot,
@@ -279,4 +280,30 @@ describe("layout renderers", () => {
     expect(existsSync(outPath)).toBe(true);
     unlinkSync(outPath);
   });
+
+  test(
+    "Captions burns subtitles from SRT file",
+    async () => {
+      const root = Render({
+        width: 1280,
+        height: 720,
+        children: [
+          Clip({
+            duration: 3,
+            children: [Image({ src: testImage1 })],
+          }),
+          Captions({
+            srt: "media/dora-test.srt",
+            style: "tiktok",
+          }),
+        ],
+      });
+
+      const result = await render(root, { output: outPath, quiet: true });
+      expect(result).toBeInstanceOf(Uint8Array);
+      expect(existsSync(outPath)).toBe(true);
+      unlinkSync(outPath);
+    },
+    { timeout: 30000 },
+  );
 });
