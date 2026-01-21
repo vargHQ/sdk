@@ -76,7 +76,8 @@ export async function renderVideo(
     return props.src;
   }
 
-  if (!props.prompt) {
+  const prompt = props.prompt;
+  if (!prompt) {
     throw new Error("Video element requires either 'prompt' or 'src'");
   }
 
@@ -97,7 +98,7 @@ export async function renderVideo(
 
   // Create the render promise and store it for deduplication
   const renderPromise = (async () => {
-    const resolvedPrompt = await resolvePrompt(props.prompt!, ctx);
+    const resolvedPrompt = await resolvePrompt(prompt, ctx);
 
     const modelId = typeof model === "string" ? model : model.modelId;
     const taskId = ctx.progress

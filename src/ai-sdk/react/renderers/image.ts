@@ -49,7 +49,8 @@ export async function renderImage(
     return props.src;
   }
 
-  if (!props.prompt) {
+  const prompt = props.prompt;
+  if (!prompt) {
     throw new Error("Image element requires either 'prompt' or 'src'");
   }
 
@@ -70,7 +71,7 @@ export async function renderImage(
 
   // Create the render promise and store it for deduplication
   const renderPromise = (async () => {
-    const resolvedPrompt = await resolvePrompt(props.prompt!, ctx);
+    const resolvedPrompt = await resolvePrompt(prompt, ctx);
 
     const modelId = typeof model === "string" ? model : model.modelId;
     const taskId = ctx.progress
@@ -88,7 +89,11 @@ export async function renderImage(
 
     if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
-    const imageData = images[0]!.uint8Array;
+    const firstImage = images[0];
+    if (!firstImage?.uint8Array) {
+      throw new Error("Image generation returned no image data");
+    }
+    const imageData = firstImage.uint8Array;
     const tempPath = await File.toTemp({
       uint8Array: imageData,
       mimeType: "image/png",

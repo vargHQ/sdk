@@ -9,24 +9,26 @@ export async function renderMusic(
 ): Promise<{ path: string }> {
   const props = element.props as MusicProps;
 
-  if (!props.prompt || !props.model) {
+  const prompt = props.prompt;
+  const model = props.model;
+  if (!prompt || !model) {
     throw new Error("Music generation requires both prompt and model");
   }
 
   const cacheKey = JSON.stringify({
     type: "music",
-    prompt: props.prompt,
-    model: props.model.modelId,
+    prompt,
+    model: model.modelId,
     duration: props.duration,
   });
 
-  const modelId = props.model.modelId;
+  const modelId = model.modelId;
   const taskId = ctx.progress ? addTask(ctx.progress, "music", modelId) : null;
 
   const generateFn = async () => {
     const result = await generateMusic({
-      model: props.model!,
-      prompt: props.prompt!,
+      model,
+      prompt,
       duration: props.duration,
     });
     return result.audio.uint8Array;
