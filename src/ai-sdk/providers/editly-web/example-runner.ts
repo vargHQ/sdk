@@ -8,6 +8,9 @@ const previewEl = document.getElementById("preview") as HTMLVideoElement;
 const videoFilesInput = document.getElementById(
   "videoFiles",
 ) as HTMLInputElement;
+const useHTMLVideoCheckbox = document.getElementById(
+  "useHTMLVideo",
+) as HTMLInputElement;
 
 let videoBlob: Blob | null = null;
 
@@ -39,8 +42,14 @@ generateBtn.addEventListener("click", async () => {
       });
     }
 
-    statusEl.textContent = `encoding ${files.length} clip(s)...`;
-    console.log("[example] Starting editlyWeb with clips:", clips);
+    const useHTMLVideo = useHTMLVideoCheckbox.checked;
+    statusEl.textContent = `encoding ${files.length} clip(s)${useHTMLVideo ? " (using HTMLVideoSource)" : ""}...`;
+    console.log(
+      "[example] Starting editlyWeb with clips:",
+      clips,
+      "useHTMLVideo:",
+      useHTMLVideo,
+    );
     const startTime = performance.now();
 
     const mp4Data = await editlyWeb({
@@ -49,6 +58,7 @@ generateBtn.addEventListener("click", async () => {
       fps: 30,
       clips,
       sources,
+      useHTMLVideo,
     });
 
     const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);

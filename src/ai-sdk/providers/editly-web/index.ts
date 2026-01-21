@@ -22,6 +22,7 @@ import {
   ColorSource,
   type FrameSource,
   GradientSource,
+  HTMLVideoSource,
   ImageSource,
   VideoSource,
 } from "./sources.ts";
@@ -30,6 +31,7 @@ export type { EditlyConfig } from "../editly/types.ts";
 
 export interface EditlyWebConfig extends Omit<EditlyConfig, "outPath"> {
   sources: Map<string, ArrayBuffer | Blob>;
+  useHTMLVideo?: boolean;
 }
 
 const DEFAULT_DURATION = 4;
@@ -53,6 +55,7 @@ async function processClips(
   clips: Clip[],
   defaults: EditlyConfig["defaults"],
   sources: Map<string, ArrayBuffer | Blob>,
+  useHTMLVideo = false,
 ): Promise<ProcessedClip[]> {
   const processed: ProcessedClip[] = [];
   const defaultDuration = defaults?.duration ?? DEFAULT_DURATION;
@@ -71,12 +74,21 @@ async function processClips(
           `[processClips] Video layer path: ${videoLayer.path}, has data: ${!!data}, data size: ${data instanceof Blob ? data.size : data?.byteLength}`,
         );
         if (data) {
-          console.log(`[processClips] Creating VideoSource to get duration...`);
-          const source = await VideoSource.create({
-            data: data instanceof Blob ? await data.arrayBuffer() : data,
-          });
           console.log(
-            `[processClips] VideoSource created, duration: ${source.duration}s`,
+            `[processClips] Creating ${useHTMLVideo ? "HTMLVideoSource" : "VideoSource"} to get duration...`,
+          );
+
+          let source: { duration: number; close(): void };
+          if (useHTMLVideo) {
+            source = await HTMLVideoSource.create({ data });
+          } else {
+            source = await VideoSource.create({
+              data: data instanceof Blob ? await data.arrayBuffer() : data,
+            });
+          }
+
+          console.log(
+            `[processClips] Source created, duration: ${source.duration}s`,
           );
           const cutFrom = videoLayer.cutFrom ?? 0;
           const cutTo = videoLayer.cutTo ?? source.duration;
@@ -108,12 +120,18 @@ async function createSource(
   duration: number,
   width: number,
   height: number,
+  useHTMLVideo = false,
 ): Promise<FrameSource | null> {
   switch (layer.type) {
     case "video": {
       const videoLayer = layer as VideoLayer;
       const data = sources.get(videoLayer.path);
       if (!data) throw new Error(`Video source not found: ${videoLayer.path}`);
+
+      if (useHTMLVideo) {
+        return HTMLVideoSource.create({ data });
+      }
+
       return VideoSource.create({
         data: data instanceof Blob ? await data.arrayBuffer() : data,
       });
@@ -395,7 +413,7 @@ function parseVolume(vol: number | string): number {
 }
 
 export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
-  const { clips: clipsIn, defaults, sources } = config;
+  const { clips: clipsIn, defaults, sources, useHTMLVideo = false } = config;
 
   if (!clipsIn || clipsIn.length === 0) {
     throw new Error("At least one clip is required");
@@ -406,7 +424,7 @@ export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
   const fps = config.fps ?? DEFAULT_FPS;
 
   console.log("[editlyWeb] Processing clips...");
-  const clips = await processClips(clipsIn, defaults, sources);
+  const clips = await processClips(clipsIn, defaults, sources, useHTMLVideo);
   console.log("[editlyWeb] Processed clips:", clips.length);
 
   const compositor = new WebGLCompositor(width, height);
@@ -430,6 +448,7 @@ export async function editlyWeb(config: EditlyWebConfig): Promise<Uint8Array> {
         clip.duration,
         width,
         height,
+        useHTMLVideo,
       );
       if (source) {
         console.log(

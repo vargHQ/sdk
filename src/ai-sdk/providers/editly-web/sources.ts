@@ -1,10 +1,4 @@
-import type {
-  Movie,
-  MP4BoxBuffer,
-  Sample,
-  Track,
-  VisualSampleEntry,
-} from "mp4box";
+import type { Movie, MP4BoxBuffer, Sample, SampleEntry, Track } from "mp4box";
 import * as MP4Box from "mp4box";
 
 console.log("[sources.ts] MP4Box module loaded");
@@ -81,14 +75,13 @@ export class VideoSource implements FrameSource {
         const trak = mp4box.getTrackById(videoTrack.id);
         if (trak) {
           for (const entry of trak.mdia.minf.stbl.stsd.entries) {
-            const visualEntry = entry as VisualSampleEntry;
-            if (visualEntry.avcC) {
+            if (entry.avcC) {
               const stream = new MP4Box.DataStream(
                 undefined,
                 0,
-                MP4Box.Endianness.BIG_ENDIAN,
+                MP4Box.DataStream.BIG_ENDIAN,
               );
-              visualEntry.avcC.write(stream as MP4Box.MultiBufferStream);
+              entry.avcC.write(stream);
               description = new Uint8Array(stream.buffer.slice(8));
               console.log(
                 `[VideoSource] Got avcC description, ${description.length} bytes, first bytes:`,
@@ -387,4 +380,147 @@ export class GradientSource implements FrameSource {
   }
 
   close(): void {}
+}
+
+export interface HTMLVideoSourceOptions {
+  url?: string;
+  data?: ArrayBuffer | Blob;
+}
+
+export class HTMLVideoSource implements FrameSource {
+  type: "video" = "video";
+  width = 0;
+  height = 0;
+  duration = 0;
+  fps = 30;
+
+  private video: HTMLVideoElement | null = null;
+  private canvas: OffscreenCanvas | null = null;
+  private ctx: OffscreenCanvasRenderingContext2D | null = null;
+  private objectUrl: string | null = null;
+
+  static async create(
+    options: HTMLVideoSourceOptions,
+  ): Promise<HTMLVideoSource> {
+    const source = new HTMLVideoSource();
+    await source.init(options);
+    return source;
+  }
+
+  private async init(options: HTMLVideoSourceOptions): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.video = document.createElement("video");
+      this.video.muted = true;
+      this.video.playsInline = true;
+      this.video.preload = "auto";
+
+      this.video.onloadedmetadata = () => {
+        this.width = this.video!.videoWidth;
+        this.height = this.video!.videoHeight;
+        this.duration = this.video!.duration;
+
+        this.canvas = new OffscreenCanvas(this.width, this.height);
+        this.ctx = this.canvas.getContext("2d")!;
+
+        console.log(
+          `[HTMLVideoSource] Loaded: ${this.width}x${this.height}, duration=${this.duration}s`,
+        );
+        resolve();
+      };
+
+      this.video.onerror = () => {
+        const error = this.video?.error;
+        reject(
+          new Error(
+            `Failed to load video: ${error?.message ?? "unknown error"}`,
+          ),
+        );
+      };
+
+      if (options.url) {
+        this.video.src = options.url;
+      } else if (options.data) {
+        const blob =
+          options.data instanceof Blob
+            ? options.data
+            : new Blob([options.data], { type: "video/mp4" });
+        this.objectUrl = URL.createObjectURL(blob);
+        this.video.src = this.objectUrl;
+      } else {
+        reject(new Error("HTMLVideoSource requires url or data"));
+        return;
+      }
+
+      this.video.load();
+    });
+  }
+
+  async getFrame(timeSeconds: number): Promise<VideoFrame> {
+    if (!this.video || !this.canvas || !this.ctx) {
+      throw new Error("HTMLVideoSource not initialized");
+    }
+
+    const clampedTime = Math.max(
+      0,
+      Math.min(timeSeconds, this.duration - 0.001),
+    );
+
+    await this.seekTo(clampedTime);
+
+    this.ctx.drawImage(this.video, 0, 0, this.width, this.height);
+
+    const bitmap = await createImageBitmap(this.canvas);
+    const frame = new VideoFrame(bitmap, {
+      timestamp: clampedTime * 1_000_000,
+      duration: (1 / this.fps) * 1_000_000,
+    });
+    bitmap.close();
+
+    return frame;
+  }
+
+  private seekTo(timeSeconds: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.video) {
+        reject(new Error("Video not initialized"));
+        return;
+      }
+
+      if (Math.abs(this.video.currentTime - timeSeconds) < 0.001) {
+        resolve();
+        return;
+      }
+
+      const onSeeked = () => {
+        this.video!.removeEventListener("seeked", onSeeked);
+        this.video!.removeEventListener("error", onError);
+        resolve();
+      };
+
+      const onError = () => {
+        this.video!.removeEventListener("seeked", onSeeked);
+        this.video!.removeEventListener("error", onError);
+        reject(new Error(`Failed to seek to ${timeSeconds}s`));
+      };
+
+      this.video.addEventListener("seeked", onSeeked);
+      this.video.addEventListener("error", onError);
+      this.video.currentTime = timeSeconds;
+    });
+  }
+
+  close(): void {
+    if (this.objectUrl) {
+      URL.revokeObjectURL(this.objectUrl);
+      this.objectUrl = null;
+    }
+    if (this.video) {
+      this.video.pause();
+      this.video.src = "";
+      this.video.load();
+      this.video = null;
+    }
+    this.canvas = null;
+    this.ctx = null;
+  }
 }
