@@ -156,7 +156,7 @@ export class AudioSource {
         }
 
         // append to existing samples
-        const existing = this.samples[ch];
+        const existing = this.samples[ch]!;
         const combined = new Float32Array(existing.length + frameLength);
         combined.set(existing);
         combined.set(channelData, existing.length);
@@ -190,13 +190,13 @@ export class AudioSource {
     const result: Float32Array[] = [];
 
     for (let ch = 0; ch < this.numberOfChannels; ch++) {
-      const channelData = this.samples[ch];
+      const channelData = this.samples[ch]!;
       const output = new Float32Array(numSamples);
 
       for (let i = 0; i < numSamples; i++) {
         const srcIdx = startSample + i;
         if (srcIdx >= 0 && srcIdx < channelData.length) {
-          output[i] = channelData[srcIdx];
+          output[i] = channelData[srcIdx]!;
         }
         // else remains 0 (silence)
       }
@@ -215,7 +215,7 @@ export class AudioSource {
   }
 
   hasAudio(): boolean {
-    return this.samples.length > 0 && this.samples[0].length > 0;
+    return this.samples.length > 0 && (this.samples[0]?.length ?? 0) > 0;
   }
 
   close(): void {

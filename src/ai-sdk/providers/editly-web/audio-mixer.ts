@@ -45,18 +45,18 @@ export class AudioMixer {
         const trackChannel = track.samples[ch] ?? track.samples[0];
         if (!trackChannel) continue;
 
-        const outputChannel = output[ch];
+        const outputChannel = output[ch]!;
 
         for (let i = 0; i < trackChannel.length; i++) {
           const outputIdx = startSample + i;
           if (outputIdx < 0 || outputIdx >= totalSamples) continue;
 
-          let sample = trackChannel[i] * track.volume;
+          let sample = trackChannel[i]! * track.volume;
 
           const timeInTrack = i / this.sampleRate;
           sample = this.applyFades(sample, timeInTrack, track);
 
-          outputChannel[outputIdx] += sample;
+          outputChannel[outputIdx]! += sample;
         }
       }
     }
@@ -139,7 +139,7 @@ export class AudioMixer {
   private clipOutput(output: Float32Array[]): void {
     for (const channel of output) {
       for (let i = 0; i < channel.length; i++) {
-        channel[i] = Math.max(-1, Math.min(1, channel[i]));
+        channel[i] = Math.max(-1, Math.min(1, channel[i]!));
       }
     }
   }
@@ -160,7 +160,7 @@ export class AudioMixer {
     return samples.map((channel) => {
       const normalized = new Float32Array(channel.length);
       for (let i = 0; i < channel.length; i++) {
-        normalized[i] = channel[i] * gain;
+        normalized[i] = channel[i]! * gain;
       }
       return normalized;
     });
@@ -174,7 +174,7 @@ export class AudioMixer {
     return samples.map((channel) => {
       const adjusted = new Float32Array(channel.length);
       for (let i = 0; i < channel.length; i++) {
-        adjusted[i] = channel[i] * vol;
+        adjusted[i] = channel[i]! * vol;
       }
       return adjusted;
     });
