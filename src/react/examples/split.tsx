@@ -1,4 +1,4 @@
-import { fal } from "../../ai-sdk/fal-provider";
+import { fal } from "../../ai-sdk/providers/fal-provider";
 import { Clip, Image, Render, render, SplitLayout as Split, Title } from "..";
 
 async function main() {

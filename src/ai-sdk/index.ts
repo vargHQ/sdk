@@ -4,13 +4,6 @@ export {
   type WithCacheOptions,
   withCache,
 } from "./cache";
-export {
-  createElevenLabs,
-  type ElevenLabsProvider,
-  elevenlabs,
-  VOICES,
-} from "./elevenlabs-provider";
-export { createFal, type FalProvider, fal } from "./fal-provider";
 export { File, files } from "./file";
 export { fileCache } from "./file-cache";
 export {
@@ -44,6 +37,13 @@ export {
   editly,
   type Layer as EditlyLayer,
 } from "./providers/editly";
+export {
+  createElevenLabs,
+  type ElevenLabsProvider,
+  elevenlabs,
+  VOICES,
+} from "./providers/elevenlabs-provider";
+export { createFal, type FalProvider, fal } from "./providers/fal-provider";
 export {
   createHiggsfield,
   type HiggsfieldImageModelSettings,

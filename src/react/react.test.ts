@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
-import { fal } from "../ai-sdk/fal-provider";
+import { fal } from "../ai-sdk/providers/fal-provider";
 import {
   Animate,
   Captions,

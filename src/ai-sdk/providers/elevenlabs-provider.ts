@@ -9,7 +9,7 @@ import {
   type SpeechModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import type { MusicModelV3, MusicModelV3CallOptions } from "./music-model";
+import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
 
 const VOICES: Record<string, string> = {
   rachel: "21m00Tcm4TlvDq8ikWAM",
