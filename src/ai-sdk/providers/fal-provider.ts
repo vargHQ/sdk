@@ -11,7 +11,7 @@ import {
   type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
-import type { VideoModelV3, VideoModelV3CallOptions } from "./video-model";
+import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   "kling-v2.5": {
