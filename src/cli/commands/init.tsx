@@ -35,7 +35,8 @@ const log = {
     ),
 };
 
-const HELLO_TEMPLATE = `import { Render, Clip, Image, Video, assets } from "vargai/react";
+const HELLO_TEMPLATE = `/** @jsxImportSource vargai */
+import { Render, Clip, Image, Video, assets } from "vargai/react";
 import { fal } from "vargai/ai";
 
 const girl = Image({
