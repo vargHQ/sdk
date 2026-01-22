@@ -69,8 +69,8 @@ export default (
       <Clip key={char.name} duration={2.5}>
         <Video
           prompt={{
-            text: "character waves hello e nthusiastically, bounces up and down slightly, eyes squint with joy, tiny feet wiggle",
-            images: [characterImages[i]],
+            text: "character waves hello enthusiastically, bounces up and down slightly, eyes squint with joy, tiny feet wiggle",
+            images: [characterImages[i]!],
           }}
           model={fal.videoModel("kling-v2.5")}
           duration={5}
