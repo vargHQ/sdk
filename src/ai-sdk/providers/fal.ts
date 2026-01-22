@@ -124,7 +124,9 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
       : data;
   // Use mediaType from file if available, otherwise detect from bytes or default to png
   const mediaType = file.mediaType ?? detectImageType(bytes) ?? "image/png";
-  return fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  const url = await fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  console.log(`[fal] uploaded ${bytes.length} bytes (${mediaType}) -> ${url}`);
+  return url;
 }
 
 async function uploadBuffer(buffer: ArrayBuffer): Promise<string> {
@@ -363,12 +365,18 @@ class FalImageModel implements ImageModelV3 {
     const finalEndpoint = this.resolveEndpoint();
 
     // Debug: log the input being sent
-    if (IMAGE_SIZE_MODELS.has(this.modelId)) {
-      console.log(
-        "[fal-provider] seedream input:",
-        JSON.stringify(input, null, 2),
-      );
-    }
+    const urls = input.image_urls as string[] | undefined;
+    console.log(
+      `[fal-provider] ${this.modelId} input:`,
+      JSON.stringify(
+        {
+          ...input,
+          image_urls: urls?.map((u: string) => u.slice(0, 50) + "..."),
+        },
+        null,
+        2,
+      ),
+    );
 
     const result = await fal.subscribe(finalEndpoint, {
       input,
