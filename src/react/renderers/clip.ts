@@ -32,9 +32,15 @@ type PendingLayer =
   | { type: "sync"; layer: Layer }
   | { type: "async"; promise: Promise<Layer> };
 
+interface ClipLayerOptions {
+  cutFrom?: number;
+  cutTo?: number;
+}
+
 async function renderClipLayers(
   children: VargNode[],
   ctx: RenderContext,
+  clipOptions?: ClipLayerOptions,
 ): Promise<Layer[]> {
   const pending: PendingLayer[] = [];
 
@@ -86,8 +92,9 @@ async function renderClipLayers(
                 type: "video",
                 path,
                 resizeMode: props.resize,
-                cutFrom: props.cutFrom,
-                cutTo: props.cutTo,
+                // Video-level cutFrom/cutTo take precedence over clip-level
+                cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
+                cutTo: props.cutTo ?? clipOptions?.cutTo,
                 mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
                 left: props.left,
                 top: props.top,
@@ -220,7 +227,10 @@ export async function renderClip(
   ctx: RenderContext,
 ): Promise<Clip> {
   const props = element.props as ClipProps;
-  const layers = await renderClipLayers(element.children, ctx);
+  const layers = await renderClipLayers(element.children, ctx, {
+    cutFrom: props.cutFrom,
+    cutTo: props.cutTo,
+  });
 
   const isOverlayVideo = (l: Layer) =>
     l.type === "video" &&
