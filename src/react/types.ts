@@ -106,11 +106,7 @@ export type VideoPrompt =
       text?: string;
       images?: ImageInput[];
       audio?: Uint8Array | string | VargElement<"speech">;
-      video?:
-        | Uint8Array
-        | string
-        | VargElement<"animate">
-        | VargElement<"video">;
+      video?: Uint8Array | string | VargElement<"video">;
     };
 
 export type VideoProps = BaseProps &

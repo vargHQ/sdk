@@ -6,7 +6,6 @@ import type {
   VideoPrompt,
   VideoProps,
 } from "../types";
-import { renderAnimate } from "./animate";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { addTask, completeTask, startTask } from "./progress";
@@ -51,12 +50,7 @@ async function resolveAudioInput(
 }
 
 async function resolveVideoInput(
-  input:
-    | Uint8Array
-    | string
-    | VargElement<"animate">
-    | VargElement<"video">
-    | undefined,
+  input: Uint8Array | string | VargElement<"video"> | undefined,
   ctx: RenderContext,
 ): Promise<Uint8Array | undefined> {
   if (!input) return undefined;
@@ -65,12 +59,7 @@ async function resolveVideoInput(
     const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
   }
-  // It's an Animate or Video element - render it first
-  if (input.type === "animate") {
-    const path = await renderAnimate(input, ctx);
-    const response = await fetch(toFileUrl(path));
-    return new Uint8Array(await response.arrayBuffer());
-  }
+  // It's a Video element - render it first
   if (input.type === "video") {
     const path = await renderVideo(input, ctx);
     const response = await fetch(toFileUrl(path));
