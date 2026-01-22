@@ -6,11 +6,7 @@ import { Box, Text } from "ink";
 import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
 
-const CHARACTER_REF = "https://s3.varg.ai/uploads/images/1_0475e227.png";
-const BG_REF =
-  "https://s3.varg.ai/uploads/images/xyearp51qvve-zi3nrcve-zbno2hfgt5gergjrof_995f553d.png";
-
-const HELLO_TEMPLATE = `import { render, Render, Clip, Image, Video } from "vargai/react";
+const HELLO_TEMPLATE = `import { Render, Clip, Image, Video, assets } from "vargai/react";
 import { fal } from "vargai/ai";
 
 const girl = Image({
@@ -25,16 +21,13 @@ Preserve the outfit neckline and visible clothing details from reference.
 Background: Deep black with two contrasting orange gradient accents matching Reference 2. Soft gradient bleed, no hard edges.
 
 Shot on 85mm f/1.4 lens, shallow depth of field. Clean studio lighting — soft key light on face, subtle rim light on hair and shoulders for separation. High-end fashion editorial aesthetic.\`,
-    images: [
-      "${CHARACTER_REF}",
-      "${BG_REF}",
-    ],
+    images: [assets.characters.orangeGirl, assets.backgrounds.orangeGradient],
   },
   model: fal.imageModel("nano-banana-pro/edit"),
   aspectRatio: "9:16",
 });
 
-await render(
+export default (
   <Render width={1080} height={1920}>
     <Clip duration={5}>
       <Video
@@ -45,8 +38,7 @@ await render(
         model={fal.videoModel("kling-v2.5")}
       />
     </Clip>
-  </Render>,
-  { output: "output/hello.mp4" }
+  </Render>
 );
 `;
 

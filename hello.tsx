@@ -23,7 +23,7 @@ const voiceover = Speech({
   children: "Hey! Welcome to varg. Let's make some videos together!",
 });
 
-await render(
+export default (
   <Render width={1080} height={1920}>
     <Music
       prompt="upbeat electronic pop, energetic, modern"
@@ -42,6 +42,5 @@ await render(
     </Clip>
 
     <Captions src={voiceover} style="tiktok" color="#ffffff" />
-  </Render>,
-  { output: "output/hello.mp4" },
+  </Render>
 );
