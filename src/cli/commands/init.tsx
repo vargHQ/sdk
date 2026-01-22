@@ -79,7 +79,7 @@ license: MIT
 metadata:
   author: vargHQ
   version: "1.0.0"
-compatibility: Requires bun runtime. FAL_API_KEY required. Optional ELEVENLABS_API_KEY, REPLICATE_API_TOKEN, GROQ_API_KEY
+compatibility: Requires bun runtime. FAL_KEY required. Optional ELEVENLABS_API_KEY, REPLICATE_API_TOKEN, GROQ_API_KEY
 allowed-tools: Bash(bun:*) Bash(cat:*) Read Write Edit
 ---
 
@@ -102,10 +102,10 @@ Before generating videos, ensure the user has the required API keys configured.
 Run this command to check existing configuration:
 
 \`\`\`bash
-cat .env 2>/dev/null | grep -E "^(FAL_API_KEY|ELEVENLABS_API_KEY|REPLICATE_API_TOKEN|GROQ_API_KEY)=" || echo "No API keys found in .env"
+cat .env 2>/dev/null | grep -E "^(FAL_KEY|ELEVENLABS_API_KEY|REPLICATE_API_TOKEN|GROQ_API_KEY)=" || echo "No API keys found in .env"
 \`\`\`
 
-### Required: FAL_API_KEY
+### Required: FAL_KEY
 
 **This is the minimum requirement for video generation.**
 
@@ -116,7 +116,7 @@ cat .env 2>/dev/null | grep -E "^(FAL_API_KEY|ELEVENLABS_API_KEY|REPLICATE_API_T
 | Free tier | Yes (limited credits) |
 | Used for | Image generation (Flux), Video generation (Wan 2.5, Kling) |
 
-If user doesn't have \`FAL_API_KEY\`:
+If user doesn't have \`FAL_KEY\`:
 1. Direct them to https://fal.ai/dashboard/keys
 2. They need to create an account and generate an API key
 3. Add to \`.env\` file in project root
@@ -175,7 +175,7 @@ const ENV_TEMPLATE = `# Varg AI Video Generation - API Keys
 
 # REQUIRED - Fal.ai (image & video generation)
 # Get it: https://fal.ai/dashboard/keys
-FAL_API_KEY=
+FAL_KEY=
 
 # OPTIONAL - ElevenLabs (music & voice)
 # Get it: https://elevenlabs.io/app/settings/api-keys
@@ -252,7 +252,7 @@ ${COLORS.bold}AI Video Generation Setup${COLORS.reset}
       }
     }
 
-    // Step 2: Check/create .env and prompt for FAL_API_KEY
+    // Step 2: Check/create .env and prompt for FAL_KEY
     log.step("Checking API keys");
 
     const envPath = join(cwd, ".env");
@@ -261,12 +261,12 @@ ${COLORS.bold}AI Video Generation Setup${COLORS.reset}
 
     if (existsSync(envPath)) {
       envContent = readFileSync(envPath, "utf8");
-      hasFalKey = /^FAL_API_KEY=.+/m.test(envContent);
+      hasFalKey = /^FAL_KEY=.+/m.test(envContent);
 
       if (hasFalKey) {
-        log.success("FAL_API_KEY found in .env");
+        log.success("FAL_KEY found in .env");
       } else {
-        log.warn("FAL_API_KEY not found in .env");
+        log.warn("FAL_KEY not found in .env");
       }
 
       const hasElevenLabs = /^ELEVENLABS_API_KEY=.+/m.test(envContent);
@@ -283,12 +283,12 @@ ${COLORS.bold}AI Video Generation Setup${COLORS.reset}
 
     if (!hasFalKey) {
       console.log(`
-${COLORS.yellow}FAL_API_KEY is required for video generation.${COLORS.reset}
+${COLORS.yellow}FAL_KEY is required for video generation.${COLORS.reset}
 
 Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.reset}
 `);
 
-      process.stdout.write("Enter your FAL_API_KEY (or press Enter to skip): ");
+      process.stdout.write("Enter your FAL_KEY (or press Enter to skip): ");
 
       const falKey = await new Promise<string>((resolve) => {
         process.stdin.setEncoding("utf8");
@@ -299,17 +299,17 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
 
       if (falKey) {
         if (existsSync(envPath)) {
-          const newEnvContent = envContent.includes("FAL_API_KEY")
-            ? envContent.replace(/^FAL_API_KEY=.*/m, `FAL_API_KEY=${falKey}`)
-            : `${envContent}\nFAL_API_KEY=${falKey}`;
+          const newEnvContent = envContent.includes("FAL_KEY")
+            ? envContent.replace(/^FAL_KEY=.*/m, `FAL_KEY=${falKey}`)
+            : `${envContent}\nFAL_KEY=${falKey}`;
           writeFileSync(envPath, newEnvContent);
         } else {
           writeFileSync(
             envPath,
-            ENV_TEMPLATE.replace("FAL_API_KEY=", `FAL_API_KEY=${falKey}`),
+            ENV_TEMPLATE.replace("FAL_KEY=", `FAL_KEY=${falKey}`),
           );
         }
-        log.success("FAL_API_KEY saved to .env");
+        log.success("FAL_KEY saved to .env");
         hasFalKey = true;
       } else {
         if (!existsSync(envPath)) {
@@ -395,7 +395,7 @@ ${COLORS.bold}Next steps:${COLORS.reset}
 `);
 
     if (!hasFalKey) {
-      console.log(`  ${COLORS.yellow}1. Add FAL_API_KEY to .env${COLORS.reset}
+      console.log(`  ${COLORS.yellow}1. Add FAL_KEY to .env${COLORS.reset}
      Get it at: https://fal.ai/dashboard/keys
 `);
     }
