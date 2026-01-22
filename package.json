@@ -1,5 +1,5 @@
 {
-  "name": "@vargai/sdk",
+  "name": "vargai",
   "module": "src/index.ts",
   "type": "module",
   "bin": {
