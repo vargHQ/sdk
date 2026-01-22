@@ -6,7 +6,7 @@
     "module": "ESNext",
     "moduleDetection": "force",
     "jsx": "react-jsx",
-    "jsxImportSource": "@/react/runtime",
+    "jsxImportSource": "vargai",
     "allowJs": true,
 
     // Bundler mode
@@ -30,7 +30,9 @@
     // Base URL for imports
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "vargai/jsx-runtime": ["./src/react/runtime/jsx-runtime.ts"],
+      "vargai/jsx-dev-runtime": ["./src/react/runtime/jsx-dev-runtime.ts"]
     }
   },
   "include": ["src/**/*"],
