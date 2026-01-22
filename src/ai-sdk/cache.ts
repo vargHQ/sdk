@@ -106,7 +106,7 @@ function flatten(value: unknown): unknown {
  * });
  * ```
  */
-const DEFAULT_TTL = "1h";
+const DEFAULT_TTL = "7d";
 
 export function withCache<T extends object, R>(
   fn: (options: T) => Promise<R>,
