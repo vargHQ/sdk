@@ -49,6 +49,15 @@ run it:
 bun run hello.tsx
 ```
 
+## agent usage (confirmation before costs)
+
+when using the agent in this repo:
+
+- ask for confirmation before any command that triggers paid api calls
+- create tsx when needed, then run: `bun run src/cli/index.ts render <file.tsx> -o output/<name>.mp4`
+- use `bun run src/cli/index.ts preview <file.tsx>` for zero-cost checks
+- use single-step actions with: `bun run src/cli/index.ts run <action> ...`
+
 ## installation
 
 ```bash
@@ -533,5 +542,4 @@ see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
 ## license
 
 Apache-2.0 — see [LICENSE.md](LICENSE.md)
-
 

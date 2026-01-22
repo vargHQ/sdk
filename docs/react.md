@@ -22,6 +22,14 @@ await render(
 );
 ```
 
+## agent execution (confirmation before costs)
+
+when using the agent in this repo:
+
+- ask for confirmation before any command that triggers paid api calls
+- create tsx when needed, then run `bun run src/cli/index.ts render <file.tsx> -o output/<name>.mp4`
+- use `bun run src/cli/index.ts preview <file.tsx>` for zero-cost checks
+
 ## core concepts
 
 ### everything is cached

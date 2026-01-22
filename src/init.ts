@@ -238,11 +238,12 @@ const character = Image({ prompt: "blue robot" });
 `;
 
 // Example video file
-const EXAMPLE_VIDEO = `/**
+const EXAMPLE_VIDEO = `/** @jsxImportSource vargai */
+/**
  * Example: Simple animated video
  * Run: bun run examples/my-first-video.tsx
  */
-import { render, Render, Clip, Image, Animate } from "vargai/react";
+import { render, Render, Clip, Image, Video } from "vargai/react";
 import { fal } from "vargai/ai";
 
 async function main() {
@@ -251,13 +252,17 @@ async function main() {
   await render(
     <Render width={720} height={720}>
       <Clip duration={3}>
-        <Animate
-          image={Image({
-            prompt: "a friendly robot waving hello, cartoon style, blue colors",
-            model: fal.imageModel("flux-schnell"),
-            aspectRatio: "1:1",
-          })}
-          motion="robot waves hello, friendly gesture"
+        <Video
+          prompt={{
+            text: "robot waves hello, friendly gesture",
+            images: [
+              Image({
+                prompt: "a friendly robot waving hello, cartoon style, blue colors",
+                model: fal.imageModel("flux-schnell"),
+                aspectRatio: "1:1",
+              }),
+            ],
+          }}
           model={fal.videoModel("wan-2.5")}
           duration={3}
         />

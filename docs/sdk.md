@@ -39,6 +39,16 @@ const { video } = await generateVideo({
 });
 ```
 
+## agent execution (confirmation before costs)
+
+when using the agent in this repo:
+
+- ask for confirmation before any command that triggers paid api calls
+- prefer cli execution for outputs:
+  - `bun run src/cli/index.ts run <action> ...`
+  - `bun run src/cli/index.ts render <file.tsx> -o output/<name>.mp4`
+  - `bun run src/cli/index.ts preview <file.tsx>` for zero-cost checks
+
 ---
 
 ## core concepts

@@ -1,6 +1,6 @@
 ---
 name: varg-video-generation
-description: Generate AI videos using varg SDK React engine. Use when creating videos, animations, talking characters, slideshows, or social media content. Always run onboarding first to check API keys.
+description: This skill should be used when the user asks to "create a video", "generate a video", "render a tsx", "make a slideshow", "create a talking character", or "animate an image" using the varg React engine.
 license: MIT
 metadata:
   author: vargHQ
@@ -13,6 +13,14 @@ allowed-tools: Bash(bun:*) Bash(cat:*) Read Write Edit
 
 Generate AI videos using declarative JSX syntax with automatic caching and parallel generation.
 
+## Execution policy (must follow)
+
+- Ask for confirmation before running any command that triggers paid API calls.
+- Proceed without extra confirmation only when the user explicitly asks to run/render/generate now.
+- Prefer CLI execution after creating TSX; do not leave TSX files unrun.
+- Prefer `preview` for zero-cost checks before paid renders.
+- Write outputs to `output/` and do not commit new outputs.
+
 ## Quick Setup
 
 Run the setup script to initialize a project:
@@ -21,7 +29,7 @@ Run the setup script to initialize a project:
 bun scripts/setup.ts
 ```
 
-Or manually check API keys:
+Or check API keys directly:
 
 ```bash
 cat .env 2>/dev/null | grep -E "^(FAL_API_KEY|ELEVENLABS_API_KEY)=" || echo "No API keys found"
@@ -142,6 +150,13 @@ See [references/templates.md](references/templates.md) for more templates.
 ## Running Videos
 
 ```bash
+# preferred: render via CLI after creating TSX
+bun run src/cli/index.ts render your-video.tsx -o output/your-video.mp4
+
+# optional: fast, zero-cost preview
+bun run src/cli/index.ts preview your-video.tsx
+
+# direct execution (acceptable but less consistent)
 bun run your-video.tsx
 ```
 
