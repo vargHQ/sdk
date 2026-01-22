@@ -1,7 +1,5 @@
 ---
-name: varg-video-generation
-description: Generate AI videos using varg React engine. Use when user asks to create videos, animations, talking characters, slideshows, or social media content. ALWAYS run onboarding first for new users to ensure API keys are configured.
-allowed-tools: Read, Bash, Write, Edit
+description: Video generation quickstart and onboarding for varg SDK. Use when user asks to create videos, animations, talking characters, or social media content. ALWAYS run onboarding first for new users.
 ---
 
 # Video Generation with varg React Engine
