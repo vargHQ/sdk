@@ -1,9 +1,3 @@
-/**
- * KeyValue - Label-value pair display
- * Aligned key-value pairs with optional required marker
- */
-
-import { Box, Text } from "ink";
 import { theme } from "../theme.ts";
 
 interface KeyValueProps {
@@ -22,11 +16,11 @@ export function KeyValue({
   const paddedLabel = label.padEnd(labelWidth);
 
   return (
-    <Box>
-      <Text dimColor>{paddedLabel}</Text>
-      {required && <Text color={theme.colors.warning}>* </Text>}
-      <Text>{value}</Text>
-    </Box>
+    <box>
+      <text fg="gray">{paddedLabel}</text>
+      {required && <text fg={theme.colors.warning}>* </text>}
+      <text>{value}</text>
+    </box>
   );
 }
 

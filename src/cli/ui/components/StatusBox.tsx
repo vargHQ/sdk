@@ -1,9 +1,3 @@
-/**
- * StatusBox - Execution status display
- * Shows running/done/error state with params and results
- */
-
-import { Box, Text } from "ink";
 import { icons, theme } from "../theme.ts";
 import KeyValue from "./KeyValue.tsx";
 import VargBox from "./VargBox.tsx";
@@ -20,7 +14,7 @@ interface StatusBoxProps {
   output?: string;
   error?: string;
   duration?: number;
-  progress?: number; // 0-100, shows progress bar when provided
+  progress?: number;
 }
 
 const statusConfig: Record<
@@ -56,48 +50,42 @@ export function StatusBox({
 
   return (
     <VargBox title={title} variant="bordered">
-      {/* Status indicator */}
-      <Box marginY={1}>
+      <box style={{ marginTop: 1, marginBottom: 1 }}>
         {status === "running" ? (
           <VargSpinner label={config.label} />
         ) : (
-          <Text color={config.color}>
+          <text fg={config.color}>
             {config.icon} {config.label}
-          </Text>
+          </text>
         )}
-      </Box>
+      </box>
 
-      {/* Progress bar (when provided) */}
       {progress !== undefined && status === "running" && (
-        <Box marginBottom={1}>
+        <box style={{ marginBottom: 1 }}>
           <VargProgress value={progress} label="processing" />
-        </Box>
+        </box>
       )}
 
-      {/* Parameters */}
       {params && Object.keys(params).length > 0 && (
-        <Box flexDirection="column" marginBottom={1}>
+        <box style={{ flexDirection: "column", marginBottom: 1 }}>
           {Object.entries(params).map(([key, value]) => (
             <KeyValue key={key} label={key} value={value} />
           ))}
-        </Box>
+        </box>
       )}
 
-      {/* Output */}
       {output && (
-        <Box marginTop={1}>
+        <box style={{ marginTop: 1 }}>
           <KeyValue label="output" value={output} />
-        </Box>
+        </box>
       )}
 
-      {/* Error */}
       {error && (
-        <Box marginTop={1}>
+        <box style={{ marginTop: 1 }}>
           <VargText variant="error">error: {error}</VargText>
-        </Box>
+        </box>
       )}
 
-      {/* Duration */}
       {duration !== undefined && (
         <KeyValue label="time" value={formatDuration(duration)} />
       )}

@@ -1,9 +1,3 @@
-/**
- * HelpBlock - Command help and examples
- * Displays usage patterns and command examples
- */
-
-import { Box, Text } from "ink";
 import { VargText } from "./VargText.tsx";
 
 interface HelpBlockProps {
@@ -13,31 +7,34 @@ interface HelpBlockProps {
 
 export function HelpBlock({ usage, examples }: HelpBlockProps) {
   return (
-    <Box flexDirection="column">
+    <box style={{ flexDirection: "column" }}>
       {usage && (
-        <Box marginBottom={1}>
+        <box style={{ marginBottom: 1 }}>
           <VargText variant="muted">usage: </VargText>
           <VargText variant="accent">{usage}</VargText>
-        </Box>
+        </box>
       )}
 
       {examples && examples.length > 0 && (
-        <Box flexDirection="column">
+        <box style={{ flexDirection: "column" }}>
           {examples.map((ex) => (
-            <Box key={ex.command} flexDirection="column" marginBottom={1}>
+            <box
+              key={ex.command}
+              style={{ flexDirection: "column", marginBottom: 1 }}
+            >
               {ex.description && (
-                <Box paddingLeft={2}>
-                  <Text dimColor># {ex.description}</Text>
-                </Box>
+                <box style={{ paddingLeft: 2 }}>
+                  <text fg="gray"># {ex.description}</text>
+                </box>
               )}
-              <Box paddingLeft={2}>
+              <box style={{ paddingLeft: 2 }}>
                 <VargText variant="accent">{ex.command}</VargText>
-              </Box>
-            </Box>
+              </box>
+            </box>
           ))}
-        </Box>
+        </box>
       )}
-    </Box>
+    </box>
   );
 }
 

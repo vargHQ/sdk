@@ -1,9 +1,3 @@
-/**
- * DataTable - Table display component
- * Clean text-based table for listing items
- */
-
-import { Box, Text } from "ink";
 import { Badge } from "./Badge.tsx";
 import { VargText } from "./VargText.tsx";
 
@@ -21,30 +15,31 @@ interface DataTableProps {
 export function DataTable({ rows, showType = false }: DataTableProps) {
   if (rows.length === 0) {
     return (
-      <Box paddingLeft={2}>
+      <box style={{ paddingLeft: 2 }}>
         <VargText variant="muted">no items</VargText>
-      </Box>
+      </box>
     );
   }
 
-  // Calculate max name width for alignment
   const maxNameWidth = Math.max(...rows.map((r) => r.name.length), 12);
 
   return (
-    <Box flexDirection="column">
+    <box style={{ flexDirection: "column" }}>
       {rows.map((row) => (
-        <Box key={row.name} paddingLeft={2}>
+        <box key={row.name} style={{ paddingLeft: 2 }}>
           {showType && row.type && (
             <>
               <Badge type={row.type} />
-              <Text> </Text>
+              <text> </text>
             </>
           )}
-          <Text bold>{row.name.padEnd(maxNameWidth)}</Text>
+          <text>
+            <strong>{row.name.padEnd(maxNameWidth)}</strong>
+          </text>
           <VargText variant="muted"> {row.description}</VargText>
-        </Box>
+        </box>
       ))}
-    </Box>
+    </box>
   );
 }
 

@@ -3,7 +3,6 @@
  * Provides semantic text variants for consistent styling
  */
 
-import { Text } from "ink";
 import type { ReactNode } from "react";
 import { theme } from "../theme.ts";
 
@@ -45,12 +44,18 @@ export function VargText({
   children,
 }: VargTextProps) {
   const style = variantStyles[variant];
+  const isDim = dimColor ?? style.dimColor;
+  const fg = isDim ? "gray" : style.color;
 
-  return (
-    <Text color={style.color} dimColor={dimColor ?? style.dimColor} bold={bold}>
-      {children}
-    </Text>
-  );
+  if (bold) {
+    return (
+      <text>
+        <strong fg={fg}>{children}</strong>
+      </text>
+    );
+  }
+
+  return <text fg={fg}>{children}</text>;
 }
 
 export default VargText;

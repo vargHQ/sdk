@@ -3,11 +3,8 @@
  * Luxury minimal styled box with optional title and borders
  */
 
-import { Box, Text } from "ink";
 import type { ReactNode } from "react";
 import { theme } from "../theme.ts";
-
-type BorderStyle = "single" | "double" | "round" | "bold" | "classic";
 
 interface VargBoxProps {
   title?: string;
@@ -24,27 +21,32 @@ export function VargBox({
   width = theme.layout.maxWidth,
   children,
 }: VargBoxProps) {
-  const showBorder = variant === "bordered" || (variant === "default" && title);
+  const showBorder =
+    variant === "bordered" || (variant === "default" && !!title);
 
   return (
-    <Box
-      flexDirection="column"
-      width={width}
-      borderStyle={
-        showBorder ? (theme.borders.style as BorderStyle) : undefined
-      }
-      borderColor={theme.colors.border}
-      paddingX={theme.layout.boxPadding}
-      paddingY={variant === "minimal" ? 0 : 1}
+    <box
+      style={{
+        flexDirection: "column",
+        width,
+        paddingLeft: theme.layout.boxPadding,
+        paddingRight: theme.layout.boxPadding,
+        paddingTop: variant === "minimal" ? 0 : 1,
+        paddingBottom: variant === "minimal" ? 0 : 1,
+      }}
+      border={showBorder}
+      borderStyle={showBorder ? "rounded" : undefined}
     >
       {title && (
-        <Box marginBottom={1}>
-          <Text bold>{title}</Text>
-          {subtitle && <Text dimColor> {subtitle}</Text>}
-        </Box>
+        <box style={{ marginBottom: 1 }}>
+          <text>
+            <strong>{title}</strong>
+          </text>
+          {subtitle && <text fg="gray"> {subtitle}</text>}
+        </box>
       )}
       {children}
-    </Box>
+    </box>
   );
 }
 

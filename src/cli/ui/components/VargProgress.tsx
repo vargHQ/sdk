@@ -1,13 +1,7 @@
-/**
- * VargProgress - Progress bar component
- * Elegant thin progress visualization
- */
-
-import { Text } from "ink";
 import { theme } from "../theme.ts";
 
 interface VargProgressProps {
-  value: number; // 0-100
+  value: number;
   width?: number;
   showPercentage?: boolean;
   label?: string;
@@ -24,12 +18,12 @@ export function VargProgress({
   const empty = width - filled;
 
   return (
-    <Text>
-      <Text color={theme.colors.accent}>{"█".repeat(filled)}</Text>
-      <Text dimColor>{"░".repeat(empty)}</Text>
-      {showPercentage && <Text dimColor> {clampedValue}%</Text>}
-      {label && <Text dimColor> {label}</Text>}
-    </Text>
+    <text>
+      <span fg={theme.colors.accent}>{"█".repeat(filled)}</span>
+      <span fg="gray">{"░".repeat(empty)}</span>
+      {showPercentage && <span fg="gray"> {clampedValue}%</span>}
+      {label && <span fg="gray"> {label}</span>}
+    </text>
   );
 }
 

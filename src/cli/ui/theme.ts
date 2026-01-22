@@ -32,7 +32,7 @@ export const theme = {
   },
 
   borders: {
-    style: "round" as const, // Rounded corners: ╭╮╰╯
+    style: "rounded" as const,
   },
 
   animation: {

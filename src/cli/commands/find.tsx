@@ -1,10 +1,4 @@
-/**
- * varg find command
- * Ink-based search view
- */
-
 import { defineCommand } from "citty";
-import { Box, Text } from "ink";
 import { registry } from "../../core/registry/index.ts";
 import { DataTable, Header, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
@@ -25,70 +19,68 @@ function FindView({ query, results }: FindViewProps) {
         }))}
         showType
       />
-      <Box marginTop={1}>
+      <box style={{ marginTop: 1 }}>
         <VargText variant="muted">
           {results.length} result{results.length > 1 ? "s" : ""}
         </VargText>
-      </Box>
+      </box>
     </VargBox>
   );
 }
 
 function NoResultsView({ query }: { query: string }) {
   return (
-    <Box flexDirection="column" padding={1}>
+    <box style={{ flexDirection: "column", padding: 1 }}>
       <VargText variant="warning">no results found for</VargText>
-      <Text> '{query}'</Text>
-      <Box marginTop={1}>
+      <text> '{query}'</text>
+      <box style={{ marginTop: 1 }}>
         <VargText variant="muted">try </VargText>
         <VargText variant="accent">varg list</VargText>
         <VargText variant="muted"> to see all available items</VargText>
-      </Box>
-    </Box>
+      </box>
+    </box>
   );
 }
 
-/** Help view for find command */
 function FindHelpView() {
   return (
     <VargBox title="varg find">
-      <Box marginBottom={1}>
-        <Text>search for models, actions, and skills</Text>
-      </Box>
+      <box style={{ marginBottom: 1 }}>
+        <text>search for models, actions, and skills</text>
+      </box>
 
       <Header>USAGE</Header>
-      <Box paddingLeft={2} marginBottom={1}>
+      <box style={{ paddingLeft: 2, marginBottom: 1 }}>
         <VargText variant="accent">
           varg find {"<query>"} [--type type]
         </VargText>
-      </Box>
+      </box>
 
       <Header>ARGUMENTS</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        <Text>query search term to find</Text>
-      </Box>
+      <box style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}>
+        <text>query search term to find</text>
+      </box>
 
       <Header>OPTIONS</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        <Text>--type filter by type: model, action, skill</Text>
-      </Box>
+      <box style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}>
+        <text>--type filter by type: model, action, skill</text>
+      </box>
 
       <Header>EXAMPLES</Header>
-      <Box flexDirection="column" paddingLeft={2}>
-        <Box flexDirection="column" marginBottom={1}>
-          <Text dimColor># search for video-related items</Text>
+      <box style={{ flexDirection: "column", paddingLeft: 2 }}>
+        <box style={{ flexDirection: "column", marginBottom: 1 }}>
+          <text fg="gray"># search for video-related items</text>
           <VargText variant="accent">varg find video</VargText>
-        </Box>
-        <Box flexDirection="column">
-          <Text dimColor># search only in models</Text>
+        </box>
+        <box style={{ flexDirection: "column" }}>
+          <text fg="gray"># search only in models</text>
           <VargText variant="accent">varg find flux --type model</VargText>
-        </Box>
-      </Box>
+        </box>
+      </box>
     </VargBox>
   );
 }
 
-/** Show find command help */
 export function showFindHelp() {
   renderStatic(<FindHelpView />);
 }
@@ -110,7 +102,6 @@ export const findCmd = defineCommand({
     },
   },
   async run({ args, rawArgs }) {
-    // Handle --help
     if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
       showFindHelp();
       return;

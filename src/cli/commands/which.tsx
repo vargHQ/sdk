@@ -1,10 +1,4 @@
-/**
- * varg which command
- * Ink-based inspection view
- */
-
 import { defineCommand } from "citty";
-import { Box, Text } from "ink";
 import { resolve } from "../../core/registry/resolver.ts";
 import { getCliSchemaInfo, toJsonSchema } from "../../core/schema/helpers.ts";
 import type {
@@ -34,7 +28,7 @@ function InputSchemaView({ schema }: { schema: unknown }) {
   return (
     <>
       <Header>INPUT SCHEMA</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+      <box style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}>
         {Object.entries(properties).map(([key, prop]) => (
           <OptionRow
             key={key}
@@ -46,7 +40,7 @@ function InputSchemaView({ schema }: { schema: unknown }) {
             type={prop.type}
           />
         ))}
-      </Box>
+      </box>
     </>
   );
 }
@@ -57,9 +51,9 @@ function OutputSchemaView({ schema }: { schema: unknown }) {
   return (
     <>
       <Header>OUTPUT</Header>
-      <Box paddingLeft={2} marginBottom={1}>
-        <Text>{jsonSchema.description || "Output result"}</Text>
-      </Box>
+      <box style={{ paddingLeft: 2, marginBottom: 1 }}>
+        <text>{jsonSchema.description || "Output result"}</text>
+      </box>
     </>
   );
 }
@@ -67,75 +61,79 @@ function OutputSchemaView({ schema }: { schema: unknown }) {
 function WhichView({ item }: WhichViewProps) {
   return (
     <VargBox title={item.name}>
-      <Box marginBottom={1}>
-        <Text>{item.description}</Text>
-      </Box>
+      <box style={{ marginBottom: 1 }}>
+        <text>{item.description}</text>
+      </box>
 
       <Header>TYPE</Header>
-      <Box paddingLeft={2} marginBottom={1}>
+      <box style={{ paddingLeft: 2, marginBottom: 1 }}>
         <Badge type={item.type} />
-      </Box>
+      </box>
 
-      {/* Providers for models */}
       {item.type === "model" && (
         <>
           <Header>PROVIDERS</Header>
-          <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-            <Text>{(item as ModelDefinition).providers.join(", ")}</Text>
-            <Text dimColor>
+          <box
+            style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}
+          >
+            <text>{(item as ModelDefinition).providers.join(", ")}</text>
+            <text fg="gray">
               default: {(item as ModelDefinition).defaultProvider}
-            </Text>
-          </Box>
+            </text>
+          </box>
         </>
       )}
 
-      {/* Routes for actions */}
       {item.type === "action" &&
         (item as ActionDefinition).routes.length > 0 && (
           <>
             <Header>ROUTES</Header>
-            <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+            <box
+              style={{
+                flexDirection: "column",
+                paddingLeft: 2,
+                marginBottom: 1,
+              }}
+            >
               {(item as ActionDefinition).routes.map((route) => (
-                <Box key={route.target}>
-                  <Text>
+                <box key={route.target}>
+                  <text>
                     {"\u2192"} {route.target}
-                  </Text>
+                  </text>
                   {route.when && (
-                    <Text dimColor> when {JSON.stringify(route.when)}</Text>
+                    <text fg="gray"> when {JSON.stringify(route.when)}</text>
                   )}
-                </Box>
+                </box>
               ))}
-            </Box>
+            </box>
           </>
         )}
 
-      {/* Steps for skills */}
       {item.type === "skill" && (
         <>
           <Header>STEPS</Header>
-          <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+          <box
+            style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}
+          >
             {(item as SkillDefinition).steps.map((step, index) => (
-              <Box key={step.name}>
-                <Text>
+              <box key={step.name}>
+                <text>
                   {index + 1}. {step.name} {"\u2192"} {step.run}
-                </Text>
-              </Box>
+                </text>
+              </box>
             ))}
-          </Box>
+          </box>
         </>
       )}
 
-      {/* Input schema */}
       <InputSchemaView schema={item.schema.input} />
-
-      {/* Output */}
       <OutputSchemaView schema={item.schema.output} />
 
       <Separator />
-      <Box marginTop={1}>
-        <Text dimColor>run with </Text>
-        <Text color={theme.colors.accent}>varg run {item.name} [options]</Text>
-      </Box>
+      <box style={{ marginTop: 1 }}>
+        <text fg="gray">run with </text>
+        <text fg={theme.colors.accent}>varg run {item.name} [options]</text>
+      </box>
     </VargBox>
   );
 }
@@ -148,56 +146,54 @@ function NotFoundView({
   suggestions?: string[];
 }) {
   return (
-    <Box flexDirection="column" padding={1}>
+    <box style={{ flexDirection: "column", padding: 1 }}>
       <VargText variant="error">not found: '{name}'</VargText>
       {suggestions && suggestions.length > 0 && (
-        <Box marginTop={1}>
-          <Text>did you mean: {suggestions.slice(0, 3).join(", ")}?</Text>
-        </Box>
+        <box style={{ marginTop: 1 }}>
+          <text>did you mean: {suggestions.slice(0, 3).join(", ")}?</text>
+        </box>
       )}
-    </Box>
+    </box>
   );
 }
 
-/** Help view for which command */
 function WhichHelpView() {
   return (
     <VargBox title="varg which">
-      <Box marginBottom={1}>
-        <Text>inspect a model, action, or skill</Text>
-      </Box>
+      <box style={{ marginBottom: 1 }}>
+        <text>inspect a model, action, or skill</text>
+      </box>
 
       <Header>USAGE</Header>
-      <Box paddingLeft={2} marginBottom={1}>
+      <box style={{ paddingLeft: 2, marginBottom: 1 }}>
         <VargText variant="accent">varg which {"<name>"} [--json]</VargText>
-      </Box>
+      </box>
 
       <Header>ARGUMENTS</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        <Text>name name of item to inspect</Text>
-      </Box>
+      <box style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}>
+        <text>name name of item to inspect</text>
+      </box>
 
       <Header>OPTIONS</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        <Text>--json output as json</Text>
-      </Box>
+      <box style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}>
+        <text>--json output as json</text>
+      </box>
 
       <Header>EXAMPLES</Header>
-      <Box flexDirection="column" paddingLeft={2}>
-        <Box flexDirection="column" marginBottom={1}>
-          <Text dimColor># inspect video action</Text>
+      <box style={{ flexDirection: "column", paddingLeft: 2 }}>
+        <box style={{ flexDirection: "column", marginBottom: 1 }}>
+          <text fg="gray"># inspect video action</text>
           <VargText variant="accent">varg which video</VargText>
-        </Box>
-        <Box flexDirection="column">
-          <Text dimColor># get json schema</Text>
+        </box>
+        <box style={{ flexDirection: "column" }}>
+          <text fg="gray"># get json schema</text>
           <VargText variant="accent">varg which flux --json</VargText>
-        </Box>
-      </Box>
+        </box>
+      </box>
     </VargBox>
   );
 }
 
-/** Show which command help */
 export function showWhichHelp() {
   renderStatic(<WhichHelpView />);
 }
@@ -219,7 +215,6 @@ export const whichCmd = defineCommand({
     },
   },
   async run({ args, rawArgs }) {
-    // Handle --help
     if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
       showWhichHelp();
       return;

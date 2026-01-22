@@ -1,11 +1,5 @@
-/**
- * varg run command
- * Ink-based execution with live status updates
- */
-
 import { existsSync } from "node:fs";
 import { defineCommand } from "citty";
-import { Box, Text } from "ink";
 import { executor } from "../../core/executor/index.ts";
 import { resolve } from "../../core/registry/resolver.ts";
 import {
@@ -24,35 +18,27 @@ import {
 import { renderLive, renderStatic } from "../ui/render.ts";
 import { theme } from "../ui/theme.ts";
 
-/**
- * Extract detailed error message from provider errors
- * Handles fal.ai ApiError, Replicate errors, and generic errors
- */
 function extractErrorMessage(err: unknown): string {
   if (!(err instanceof Error)) {
     return String(err);
   }
 
-  // Check for fal.ai ApiError with body details
   const apiError = err as Error & {
     body?: { detail?: string | Array<{ msg: string; loc: string[] }> };
     status?: number;
   };
 
   if (apiError.body?.detail) {
-    // Handle validation errors (array of field errors)
     if (Array.isArray(apiError.body.detail)) {
       return apiError.body.detail
         .map((e) => `${e.loc?.join(".") || "field"}: ${e.msg}`)
         .join("; ");
     }
-    // Handle string detail
     if (typeof apiError.body.detail === "string") {
       return apiError.body.detail;
     }
   }
 
-  // Check for body as string or with message
   if (apiError.body) {
     const body = apiError.body as Record<string, unknown>;
     if (body.message && typeof body.message === "string") {
@@ -63,7 +49,6 @@ function extractErrorMessage(err: unknown): string {
     }
   }
 
-  // Add status code context if available
   if (apiError.status && apiError.message) {
     return `${apiError.message} (${apiError.status})`;
   }
@@ -118,7 +103,6 @@ function parseArgs(args: string[]): { target: string; options: RunOptions } {
     } else if (!target) {
       target = arg;
     } else {
-      // Positional args - check if it looks like a file
       if (existsSync(arg) || arg.startsWith("./") || arg.startsWith("/")) {
         if (!options.image && !options.audio) {
           options.image = arg;
@@ -138,7 +122,6 @@ interface HelpViewProps {
 
 function HelpView({ item }: HelpViewProps) {
   const { properties, required } = getCliSchemaInfo(item.schema.input);
-  // Only show truly required args (no default value)
   const trulyRequired = required.filter(
     (r) => properties[r]?.default === undefined,
   );
@@ -146,19 +129,19 @@ function HelpView({ item }: HelpViewProps) {
 
   return (
     <VargBox title={`${item.type}: ${item.name}`}>
-      <Box marginBottom={1}>
-        <Text wrap="wrap">{item.description}</Text>
-      </Box>
+      <box style={{ marginBottom: 1 }}>
+        <text>{item.description}</text>
+      </box>
 
       <Header>USAGE</Header>
-      <Box paddingLeft={2} marginBottom={1}>
+      <box style={{ paddingLeft: 2, marginBottom: 1 }}>
         <VargText variant="accent">
           varg run {item.name} {reqArgs} [options]
         </VargText>
-      </Box>
+      </box>
 
       <Header>OPTIONS</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+      <box style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}>
         {Object.entries(properties).map(([key, prop]) => {
           const hasDefault = prop.default !== undefined;
           return (
@@ -173,91 +156,90 @@ function HelpView({ item }: HelpViewProps) {
             />
           );
         })}
-      </Box>
+      </box>
 
       {item.type === "model" && (
-        <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <box
+          style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}
+        >
           <OptionRow name="provider" description="override default provider" />
-          <Box paddingLeft={theme.layout.optionNameWidth}>
-            <Text dimColor>available: {item.providers.join(", ")}</Text>
-          </Box>
-        </Box>
+          <box style={{ paddingLeft: theme.layout.optionNameWidth }}>
+            <text fg="gray">available: {item.providers.join(", ")}</text>
+          </box>
+        </box>
       )}
 
       <Header>GLOBAL OPTIONS</Header>
-      <Box flexDirection="column" paddingLeft={2}>
+      <box style={{ flexDirection: "column", paddingLeft: 2 }}>
         <OptionRow name="json" description="output result as json" />
         <OptionRow name="quiet" description="minimal output" />
         <OptionRow name="help, -h" description="show this help" />
-      </Box>
+      </box>
     </VargBox>
   );
 }
 
 function ErrorView({ message, hint }: { message: string; hint?: string }) {
   return (
-    <Box flexDirection="column" padding={1}>
+    <box style={{ flexDirection: "column", padding: 1 }}>
       <VargText variant="error">error: {message}</VargText>
       {hint && (
-        <Box marginTop={1}>
+        <box style={{ marginTop: 1 }}>
           <VargText variant="muted">run </VargText>
           <VargText variant="accent">{hint}</VargText>
           <VargText variant="muted"> for help</VargText>
-        </Box>
+        </box>
       )}
-    </Box>
+    </box>
   );
 }
 
-/** Help view for run command without target */
 function RunHelpView() {
   return (
     <VargBox title="varg run">
-      <Box marginBottom={1}>
-        <Text>run a model, action, or skill</Text>
-      </Box>
+      <box style={{ marginBottom: 1 }}>
+        <text>run a model, action, or skill</text>
+      </box>
 
       <Header>USAGE</Header>
-      <Box paddingLeft={2} marginBottom={1}>
+      <box style={{ paddingLeft: 2, marginBottom: 1 }}>
         <VargText variant="accent">varg run {"<target>"} [--options]</VargText>
-      </Box>
+      </box>
 
       <Header>OPTIONS</Header>
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-        <Text>--json output result as json</Text>
-        <Text>--quiet minimal output</Text>
-        <Text>--schema show target schema as json</Text>
-        <Text>--provider override default provider (models only)</Text>
-        <Text>--help, -h show this help</Text>
-      </Box>
+      <box style={{ flexDirection: "column", paddingLeft: 2, marginBottom: 1 }}>
+        <text>--json output result as json</text>
+        <text>--quiet minimal output</text>
+        <text>--schema show target schema as json</text>
+        <text>--provider override default provider (models only)</text>
+        <text>--help, -h show this help</text>
+      </box>
 
       <Header>EXAMPLES</Header>
-      <Box flexDirection="column" paddingLeft={2}>
-        <Box flexDirection="column" marginBottom={1}>
-          <Text dimColor># generate a video from text</Text>
+      <box style={{ flexDirection: "column", paddingLeft: 2 }}>
+        <box style={{ flexDirection: "column", marginBottom: 1 }}>
+          <text fg="gray"># generate a video from text</text>
           <VargText variant="accent">
             varg run video --prompt "ocean waves"
           </VargText>
-        </Box>
-        <Box flexDirection="column" marginBottom={1}>
-          <Text dimColor># get help for a specific target</Text>
+        </box>
+        <box style={{ flexDirection: "column", marginBottom: 1 }}>
+          <text fg="gray"># get help for a specific target</text>
           <VargText variant="accent">varg run video --help</VargText>
-        </Box>
-        <Box flexDirection="column">
-          <Text dimColor># see available targets</Text>
+        </box>
+        <box style={{ flexDirection: "column" }}>
+          <text fg="gray"># see available targets</text>
           <VargText variant="accent">varg list</VargText>
-        </Box>
-      </Box>
+        </box>
+      </box>
     </VargBox>
   );
 }
 
-/** Show run command help */
 export function showRunHelp() {
   renderStatic(<RunHelpView />);
 }
 
-/** Show target-specific help */
 export function showTargetHelp(target: string): boolean {
   const result = resolve(target, { fuzzy: true });
   if (result.definition) {
@@ -285,39 +267,36 @@ export const runCmd = defineCommand({
   async run({ rawArgs }) {
     const { target, options } = parseArgs(rawArgs);
 
-    // Show run help when no target or --help without target
     if (!target || (options.help && !target)) {
       showRunHelp();
       return;
     }
 
-    // Resolve the target
     const result = resolve(target, { fuzzy: true });
 
     if (!result.definition) {
       renderStatic(
-        <Box flexDirection="column" padding={1}>
+        <box style={{ flexDirection: "column", padding: 1 }}>
           <VargText variant="error">error: '{target}' not found</VargText>
           {result.suggestions && result.suggestions.length > 0 && (
-            <Box marginTop={1}>
-              <Text>
+            <box style={{ marginTop: 1 }}>
+              <text>
                 did you mean: {result.suggestions.slice(0, 3).join(", ")}?
-              </Text>
-            </Box>
+              </text>
+            </box>
           )}
-          <Box marginTop={1}>
+          <box style={{ marginTop: 1 }}>
             <VargText variant="muted">run </VargText>
             <VargText variant="accent">varg list</VargText>
             <VargText variant="muted"> to see available targets</VargText>
-          </Box>
-        </Box>,
+          </box>
+        </box>,
       );
       process.exit(1);
     }
 
     const item = result.definition;
 
-    // Show target-specific help
     if (options.help) {
       renderStatic(<HelpView item={item} />);
       return;
@@ -335,10 +314,8 @@ export const runCmd = defineCommand({
       return;
     }
 
-    // Get schema info for validation
     const { properties, required } = getCliSchemaInfo(item.schema.input);
 
-    // Validate required args (skip fields with default values)
     for (const req of required) {
       const prop = properties[req];
       const hasDefault = prop?.default !== undefined;
@@ -353,7 +330,6 @@ export const runCmd = defineCommand({
       }
     }
 
-    // Build params for display
     const params: Record<string, string> = {};
     for (const key of Object.keys(properties)) {
       if (options[key] && typeof options[key] === "string") {
@@ -363,7 +339,6 @@ export const runCmd = defineCommand({
 
     const startTime = Date.now();
 
-    // For quiet/json modes, no UI
     if (options.quiet || options.json) {
       try {
         const inputs: Record<string, unknown> = {};
@@ -414,8 +389,7 @@ export const runCmd = defineCommand({
       return;
     }
 
-    // Interactive mode with live status
-    const { rerender, unmount } = renderLive(
+    const { rerender, unmount } = await renderLive(
       <StatusBox title={target} status="running" params={params} />,
     );
 
@@ -438,37 +412,32 @@ export const runCmd = defineCommand({
 
       const elapsed = Date.now() - startTime;
 
-      // Extract URL from result
       const output = execResult.output as Record<string, unknown> | string;
       let url: string | null = null;
 
       if (typeof output === "string") {
         url = output;
       } else if (output) {
-        // Try common URL fields
         url =
           (output.imageUrl as string) ||
           (output.videoUrl as string) ||
           (output.url as string) ||
           null;
 
-        // Handle images array (nano-banana-pro, flux, etc.)
         if (!url && Array.isArray(output.images) && output.images.length > 0) {
           const firstImage = output.images[0] as Record<string, unknown>;
           url = (firstImage?.url as string) || null;
         }
 
-        // Handle video object
         if (!url && output.video && typeof output.video === "object") {
           url = (output.video as Record<string, unknown>).url as string;
         }
       }
 
-      // Clear and show done state
       process.stdout.write("\x1b[2J\x1b[H");
 
       rerender(
-        <Box flexDirection="column">
+        <box style={{ flexDirection: "column" }}>
           <StatusBox
             title={target}
             status="done"
@@ -476,15 +445,13 @@ export const runCmd = defineCommand({
             output={url ? url : "done"}
             duration={elapsed}
           />
-        </Box>,
+        </box>,
       );
 
-      // Also log the URL to console for easy copying
       if (url) {
         console.log(`\n${url}`);
       }
 
-      // Allow render to complete then unmount
       setTimeout(() => unmount(), 100);
     } catch (err) {
       const elapsed = Date.now() - startTime;

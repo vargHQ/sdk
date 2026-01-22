@@ -1,10 +1,4 @@
-/**
- * varg help command
- * Ink-based help display
- */
-
 import { defineCommand } from "citty";
-import { Box, Text } from "ink";
 import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
 
@@ -15,10 +9,10 @@ interface CommandRowProps {
 
 function CommandRow({ name, description }: CommandRowProps) {
   return (
-    <Box paddingLeft={2}>
+    <box style={{ paddingLeft: 2 }}>
       <VargText variant="accent">{name.padEnd(12)}</VargText>
-      <Text>{description}</Text>
-    </Box>
+      <text>{description}</text>
+    </box>
   );
 }
 
@@ -45,12 +39,12 @@ function HelpView() {
 
   return (
     <VargBox title="varg">
-      <Box marginBottom={1}>
-        <Text>ai video infrastructure from your terminal</Text>
-      </Box>
+      <box style={{ marginBottom: 1 }}>
+        <text>ai video infrastructure from your terminal</text>
+      </box>
 
       <Header>COMMANDS</Header>
-      <Box flexDirection="column" marginY={1}>
+      <box style={{ flexDirection: "column", marginTop: 1, marginBottom: 1 }}>
         <CommandRow name="run" description="run a model, action, or skill" />
         <CommandRow name="list" description="discover what's available" />
         <CommandRow
@@ -59,17 +53,16 @@ function HelpView() {
         />
         <CommandRow name="which" description="inspect a specific item" />
         <CommandRow name="help" description="show this help" />
-      </Box>
+      </box>
 
       <Header>EXAMPLES</Header>
-      <Box marginTop={1}>
+      <box style={{ marginTop: 1 }}>
         <HelpBlock examples={examples} />
-      </Box>
+      </box>
     </VargBox>
   );
 }
 
-/** Render help view - can be called directly */
 export function showHelp() {
   renderStatic(<HelpView />);
 }

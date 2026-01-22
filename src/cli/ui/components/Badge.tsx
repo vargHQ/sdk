@@ -1,9 +1,3 @@
-/**
- * Badge - Type indicator badge
- * Shows [model] [action] [skill] with appropriate styling
- */
-
-import { Text } from "ink";
 import { theme } from "../theme.ts";
 
 type BadgeType = "model" | "action" | "skill";
@@ -20,9 +14,9 @@ const badgeColors: Record<BadgeType, string> = {
 
 export function Badge({ type }: BadgeProps) {
   return (
-    <Text color={badgeColors[type]} dimColor>
-      [{type}]
-    </Text>
+    <text fg={badgeColors[type]}>
+      <span fg="gray">[{type}]</span>
+    </text>
   );
 }
 

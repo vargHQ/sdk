@@ -1,9 +1,3 @@
-/**
- * VargSpinner - Animated loading indicator
- * Elegant braille spinner with label
- */
-
-import { Text } from "ink";
 import { useEffect, useState } from "react";
 import { theme } from "../theme.ts";
 
@@ -24,10 +18,10 @@ export function VargSpinner({ label }: VargSpinnerProps) {
   }, [frames.length]);
 
   return (
-    <Text>
-      <Text color={theme.colors.accent}>{frames[frame]}</Text>
-      {label && <Text> {label}</Text>}
-    </Text>
+    <text>
+      <span fg={theme.colors.accent}>{frames[frame]}</span>
+      {label && ` ${label}`}
+    </text>
   );
 }
 

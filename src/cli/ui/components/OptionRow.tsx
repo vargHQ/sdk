@@ -1,9 +1,3 @@
-/**
- * OptionRow - CLI option display with better spacing
- * Shows option name, description, type hints, defaults, and enums
- */
-
-import { Box, Text } from "ink";
 import { theme } from "../theme.ts";
 
 interface OptionRowProps {
@@ -29,12 +23,10 @@ export function OptionRow({
   const hasDefault = defaultValue !== undefined;
   const hasEnum = enumValues && enumValues.length > 0;
 
-  // Format enum values - if many values, show abbreviated
   const formatEnums = (values: (string | number)[]) => {
     const stringValues = values.map(String);
     const joined = stringValues.join(", ");
     if (joined.length > 50) {
-      // Show first few and count
       const shown = stringValues.slice(0, 4).join(", ");
       return `${shown}, ... (${values.length} options)`;
     }
@@ -42,39 +34,36 @@ export function OptionRow({
   };
 
   return (
-    <Box flexDirection="column" marginBottom={1}>
-      {/* Main line: name + description + required */}
-      <Box>
-        <Text color={theme.colors.accent}>{paddedName}</Text>
-        <Text>{description || ""}</Text>
-        {required && <Text color={theme.colors.warning}> (required)</Text>}
-      </Box>
+    <box style={{ flexDirection: "column", marginBottom: 1 }}>
+      <box>
+        <text fg={theme.colors.accent}>{paddedName}</text>
+        <text>{description || ""}</text>
+        {required && <text fg={theme.colors.warning}> (required)</text>}
+      </box>
 
-      {/* Type and default on same line if compact */}
       {(type || hasDefault) && (
-        <Box paddingLeft={nameWidth}>
+        <box style={{ paddingLeft: nameWidth }}>
           {type && (
-            <Text dimColor>
+            <text fg="gray">
               {"<"}
               {type}
               {">"}
-            </Text>
+            </text>
           )}
           {hasDefault && (
-            <Text dimColor>
+            <text fg="gray">
               {type ? " " : ""}default: {String(defaultValue)}
-            </Text>
+            </text>
           )}
-        </Box>
+        </box>
       )}
 
-      {/* Enum values on separate line for readability */}
       {hasEnum && (
-        <Box paddingLeft={nameWidth}>
-          <Text dimColor>[{formatEnums(enumValues)}]</Text>
-        </Box>
+        <box style={{ paddingLeft: nameWidth }}>
+          <text fg="gray">[{formatEnums(enumValues)}]</text>
+        </box>
       )}
-    </Box>
+    </box>
   );
 }
 
