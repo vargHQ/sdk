@@ -9,7 +9,6 @@
  */
 import { elevenlabs, fal, higgsfield } from "vargai/ai";
 import {
-  Animate,
   Captions,
   Clip,
   Image,
@@ -20,16 +19,17 @@ import {
 } from "vargai/react";
 
 // === VOICEOVER SCRIPT ===
-const VOICEOVER_SCRIPT = "With varg, you can create anything at scale.";
+const VOICEOVER_SCRIPT =
+  "With varg, you can create any videos anything at scale!";
 
 // === VOICE SETTINGS ===
-const VOICE_ID = "bella"; // friendly female voice
+const VOICE_ID = "5l5f8iK3YPeGga21rQIX"; // friendly female voice
 
 // === CHARACTER PROMPT ===
-const CHARACTER_BASE_PROMPT = `A close, spontaneous iPhone selfie of a beautiful East Asian woman in her early 20s with sleek jet-black chin-length bob hair and porcelain skin. She wears a fitted orange tank top, with dewy, natural skin textures and almond-shaped dark brown eyes filling the frame. The soft morning light filters through a minimalist Scandinavian bedroom with blurred details, including simple, natural wood furniture and neutral textiles. Her calm, inviting expression appears relaxed and looking at camera, with a casual, slightly off-center framing emphasizing genuine intimacy. The image embodies authentic iPhone lighting and texture, capturing an intimate, natural moment with understated elegance.`;
+const CHARACTER_BASE_PROMPT = `A close, spontaneous iPhone selfie of a beautiful East Asian woman in her early 20s with sleek jet-black chin-length bob hair and porcelain skin. She wears a fitted black t-shirt, with dewy, natural skin textures and almond-shaped dark brown eyes filling the frame. The soft morning light filters through a minimalist Scandinavian bedroom with blurred details, including simple, natural wood furniture and neutral textiles. Her calm, inviting expression appears relaxed and looking at camera, with a casual, slightly off-center framing emphasizing genuine intimacy. The image embodies authentic iPhone lighting and texture, capturing an intimate, natural moment with understated elegance.`;
 
 // === CLOTHING MODIFICATION PROMPT ===
-const CLOTHING_EDIT_PROMPT = `Same woman, same pose, same lighting. Her orange tank top now has a stylish geometric pattern printed on it. Keep everything else identical - face, hair, expression, background.`;
+const CLOTHING_EDIT_PROMPT = `Same woman, same pose, same lighting. Her black tank t-shirt now has a stylish geometric pattern printed on it. Keep everything else identical - face, hair, expression, background.`;
 
 // === VARG PATTERN REFERENCE ===
 const VARG_PATTERN_URL =
@@ -60,16 +60,17 @@ const brandedCharacter = Image({
 });
 
 // === ANIMATED CHARACTER (image-to-video) ===
-const animatedCharacter = Animate({
-  src: brandedCharacter,
+const animatedCharacter = Video({
+  prompt: {
+    text: MOTION_PROMPT,
+    images: [brandedCharacter],
+  },
   model: fal.videoModel("kling-v2.5"),
-  motion: MOTION_PROMPT,
-  duration: 5,
 });
 
 // === VOICEOVER ===
 const voiceover = Speech({
-  model: elevenlabs.speechModel("eleven_multilingual_v2"),
+  model: elevenlabs.speechModel("eleven_v3"),
   voice: VOICE_ID,
   children: VOICEOVER_SCRIPT,
 });
@@ -96,7 +97,7 @@ export default (
           video: animatedCharacter,
           audio: voiceover,
         }}
-        model={fal.videoModel("sync-v2")}
+        model={fal.videoModel("sync-v2-pro")}
       />
     </Clip>
 

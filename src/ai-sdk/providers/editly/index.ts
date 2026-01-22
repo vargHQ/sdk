@@ -796,6 +796,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
     "-r",
     String(fps),
     ...outputArgs,
+    ...(config.shortest ? ["-shortest"] : []),
     "-y",
     outPath,
   ];

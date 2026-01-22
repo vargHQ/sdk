@@ -309,6 +309,8 @@ export interface EditlyConfig {
   audioNorm?: AudioNormalizationOptions;
   verbose?: boolean;
   enableFfmpegLog?: boolean;
+  /** End output when shortest stream ends (video or audio) */
+  shortest?: boolean;
 }
 
 // Internal types used by our implementation
