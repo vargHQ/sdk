@@ -27,7 +27,8 @@ async function loadComponent(filePath: string): Promise<VargElement> {
     return mod.default;
   }
 
-  const tmpDir = `${process.cwd()}/.cache/varg-render`;
+  const pkgDir = new URL("../../..", import.meta.url).pathname;
+  const tmpDir = `${pkgDir}/.cache/varg-render`;
   if (!existsSync(tmpDir)) {
     mkdirSync(tmpDir, { recursive: true });
   }

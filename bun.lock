@@ -44,6 +44,7 @@
       "peerDependencies": {
         "ai": "^6.0.0",
         "typescript": "^5",
+        "zod": "^3.25.76 || ^4.1.8",
       },
     },
   },
