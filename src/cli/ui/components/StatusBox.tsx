@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * StatusBox - Execution status display
  * Shows running/done/error state with params and results

@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * varg run command
  * Ink-based execution with live status updates

@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * VargProgress - Progress bar component
  * Elegant thin progress visualization

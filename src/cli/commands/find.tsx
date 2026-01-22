@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * varg find command
  * Ink-based search view
