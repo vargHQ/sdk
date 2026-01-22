@@ -1,6 +1,43 @@
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { defineCommand } from "citty";
 import { render } from "../../react/render";
 import type { RenderMode, VargElement } from "../../react/types";
+
+const AUTO_IMPORTS = `import { Animate, Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid, SplitLayout } from "vargai/react";
+import { fal, elevenlabs, replicate } from "vargai/ai";
+`;
+
+async function loadComponent(filePath: string): Promise<VargElement> {
+  const resolvedPath = resolve(filePath);
+  const source = await Bun.file(resolvedPath).text();
+
+  const hasImports =
+    source.includes("from 'vargai") ||
+    source.includes('from "vargai') ||
+    source.includes("from '@vargai") ||
+    source.includes('from "@vargai');
+
+  if (hasImports) {
+    const mod = await import(resolvedPath);
+    return mod.default;
+  }
+
+  const tmpDir = ".cache/varg-render";
+  if (!existsSync(tmpDir)) {
+    mkdirSync(tmpDir, { recursive: true });
+  }
+
+  const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
+  await Bun.write(tmpFile, AUTO_IMPORTS + source);
+
+  try {
+    const mod = await import(resolve(tmpFile));
+    return mod.default;
+  } finally {
+    (await Bun.file(tmpFile).exists()) && (await Bun.write(tmpFile, ""));
+  }
+}
 
 export const renderCmd = defineCommand({
   meta: {
@@ -49,21 +86,18 @@ export const renderCmd = defineCommand({
       process.exit(1);
     }
 
-    const resolvedPath = Bun.resolveSync(file, process.cwd());
-    const mod = await import(resolvedPath);
-    const component: VargElement = mod.default;
+    const component = await loadComponent(file);
 
     if (!component || component.type !== "render") {
       console.error("error: default export must be a <Render> element");
       process.exit(1);
     }
 
-    const outputPath =
-      args.output ??
-      `output/${file
-        .replace(/\.tsx?$/, "")
-        .split("/")
-        .pop()}.mp4`;
+    const basename = file
+      .replace(/\.tsx?$/, "")
+      .split("/")
+      .pop();
+    const outputPath = args.output ?? `output/${basename}.mp4`;
 
     const mode: RenderMode = args.strict
       ? "strict"
