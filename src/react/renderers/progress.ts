@@ -103,7 +103,7 @@ export function completeTask(tracker: ProgressTracker, id: string): void {
 }
 
 function getEstimate(task: ProgressTask): number {
-  const modelLower = task.model.toLowerCase();
+  const modelLower = task.model?.toLowerCase() ?? "";
   for (const [key, estimate] of Object.entries(MODEL_TIME_ESTIMATES)) {
     if (modelLower.includes(key.toLowerCase())) {
       return estimate;

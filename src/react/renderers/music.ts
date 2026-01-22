@@ -22,7 +22,7 @@ export async function renderMusic(
     duration: props.duration,
   });
 
-  const modelId = model.modelId;
+  const modelId = model.modelId ?? "music";
   const taskId = ctx.progress ? addTask(ctx.progress, "music", modelId) : null;
 
   const generateFn = async () => {
