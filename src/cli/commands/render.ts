@@ -127,8 +127,7 @@ async function runRender(
   const outputPath = (args.output as string) ?? `output/${basename}.mp4`;
 
   if (!args.quiet) {
-    const modeLabel =
-      mode === "preview" ? " (fast)" : mode === "strict" ? "" : " (preview)";
+    const modeLabel = mode === "preview" ? " (fast)" : "";
     console.log(`rendering ${file} → ${outputPath}${modeLabel}`);
   }
 
@@ -163,21 +162,10 @@ export const renderCmd = defineCommand({
 export const previewCmd = defineCommand({
   meta: {
     name: "preview",
-    description: "render with fallback placeholders on errors",
-  },
-  args: sharedArgs,
-  async run({ args }) {
-    await runRender(args, "default", "preview");
-  },
-});
-
-export const fastCmd = defineCommand({
-  meta: {
-    name: "fast",
     description: "render with all placeholders (no generation)",
   },
   args: sharedArgs,
   async run({ args }) {
-    await runRender(args, "preview", "fast");
+    await runRender(args, "preview", "preview");
   },
 });

@@ -1,7 +1,7 @@
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 import { generatePlaceholder } from "./placeholder";
 
-export type RenderMode = "strict" | "default" | "preview";
+export type RenderMode = "strict" | "preview";
 
 export interface VideoModelMiddleware {
   transformParams?: (options: {
@@ -55,11 +55,11 @@ export interface PlaceholderFallbackOptions {
 export function placeholderFallbackMiddleware(
   options: PlaceholderFallbackOptions,
 ): VideoModelMiddleware {
-  const { mode, onFallback } = options;
+  const { mode } = options;
 
   return {
     wrapGenerate: async ({ doGenerate, params, model }) => {
-      const createPlaceholderResult = async () => {
+      if (mode === "preview") {
         const [width, height] = (params.resolution?.split("x").map(Number) ?? [
           1080, 1920,
         ]) as [number, number];
@@ -76,7 +76,7 @@ export function placeholderFallbackMiddleware(
           warnings: [
             {
               type: "other" as const,
-              message: "placeholder: provider skipped or failed",
+              message: "placeholder: preview mode",
             },
           ],
           response: {
@@ -85,21 +85,9 @@ export function placeholderFallbackMiddleware(
             headers: undefined,
           },
         };
-      };
-
-      if (mode === "preview") {
-        return createPlaceholderResult();
       }
 
-      try {
-        return await doGenerate();
-      } catch (e) {
-        if (mode === "strict") throw e;
-
-        const error = e instanceof Error ? e : new Error(String(e));
-        onFallback?.(error, params.prompt);
-        return createPlaceholderResult();
-      }
+      return doGenerate();
     },
   };
 }

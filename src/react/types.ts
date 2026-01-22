@@ -202,7 +202,7 @@ export interface PackshotProps extends BaseProps {
   duration?: number;
 }
 
-export type RenderMode = "strict" | "default" | "preview";
+export type RenderMode = "strict" | "preview";
 
 export interface DefaultModels {
   image?: ImageModelV3;

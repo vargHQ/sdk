@@ -15,12 +15,12 @@ export interface ImagePlaceholderFallbackOptions {
 export function imagePlaceholderFallbackMiddleware(
   options: ImagePlaceholderFallbackOptions,
 ): ImageModelV3Middleware {
-  const { mode, onFallback } = options;
+  const { mode } = options;
 
   return {
     specificationVersion: "v3",
     wrapGenerate: async ({ doGenerate, params, model }) => {
-      const createPlaceholderResult = async () => {
+      if (mode === "preview") {
         const [width, height] = (params.size?.split("x").map(Number) ?? [
           1024, 1024,
         ]) as [number, number];
@@ -42,7 +42,7 @@ export function imagePlaceholderFallbackMiddleware(
           warnings: [
             {
               type: "other" as const,
-              message: "placeholder: provider skipped or failed",
+              message: "placeholder: preview mode",
             },
           ],
           response: {
@@ -51,26 +51,9 @@ export function imagePlaceholderFallbackMiddleware(
             headers: undefined,
           },
         };
-      };
-
-      if (mode === "preview") {
-        return createPlaceholderResult();
       }
 
-      try {
-        return await doGenerate();
-      } catch (e) {
-        if (mode === "strict") throw e;
-
-        const error = e instanceof Error ? e : new Error(String(e));
-        const promptText =
-          typeof params.prompt === "string"
-            ? params.prompt
-            : ((params.prompt as { text?: string } | undefined)?.text ??
-              "placeholder");
-        onFallback?.(error, promptText);
-        return createPlaceholderResult();
-      }
+      return doGenerate();
     },
   };
 }

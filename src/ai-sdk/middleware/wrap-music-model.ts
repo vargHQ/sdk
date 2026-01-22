@@ -53,11 +53,11 @@ export interface MusicPlaceholderFallbackOptions {
 export function musicPlaceholderFallbackMiddleware(
   options: MusicPlaceholderFallbackOptions,
 ): MusicModelMiddleware {
-  const { mode, onFallback } = options;
+  const { mode } = options;
 
   return {
     wrapGenerate: async ({ doGenerate, params, model }) => {
-      const createPlaceholderResult = async () => {
+      if (mode === "preview") {
         const placeholder = await generatePlaceholder({
           type: "audio",
           prompt: params.prompt,
@@ -69,7 +69,7 @@ export function musicPlaceholderFallbackMiddleware(
           warnings: [
             {
               type: "other" as const,
-              message: "placeholder: provider skipped or failed",
+              message: "placeholder: preview mode",
             },
           ],
           response: {
@@ -78,21 +78,9 @@ export function musicPlaceholderFallbackMiddleware(
             headers: undefined,
           },
         };
-      };
-
-      if (mode === "preview") {
-        return createPlaceholderResult();
       }
 
-      try {
-        return await doGenerate();
-      } catch (e) {
-        if (mode === "strict") throw e;
-
-        const error = e instanceof Error ? e : new Error(String(e));
-        onFallback?.(error, params.prompt);
-        return createPlaceholderResult();
-      }
+      return doGenerate();
     },
   };
 }
