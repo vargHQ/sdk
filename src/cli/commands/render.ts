@@ -85,6 +85,11 @@ export const renderCmd = defineCommand({
       description: "skip all generation, use placeholders only",
       default: false,
     },
+    "no-cache": {
+      type: "boolean",
+      description: "disable cache (don't read or write)",
+      default: false,
+    },
   },
   async run({ args }) {
     const file = args.file as string;
@@ -123,9 +128,11 @@ export const renderCmd = defineCommand({
       console.log(`rendering ${file} → ${outputPath}${modeLabel}`);
     }
 
+    const useCache = !args["no-cache"] && mode !== "preview";
+
     const buffer = await render(component, {
       output: outputPath,
-      cache: args.cache,
+      cache: useCache ? args.cache : undefined,
       mode,
     });
 
