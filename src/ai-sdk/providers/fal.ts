@@ -58,7 +58,12 @@ const IMAGE_MODELS: Record<string, string> = {
 };
 
 // Models that use image_size instead of aspect_ratio
-const IMAGE_SIZE_MODELS = new Set(["seedream-v4.5/edit"]);
+const IMAGE_SIZE_MODELS = new Set([
+  "flux-schnell",
+  "flux-dev",
+  "flux-pro",
+  "seedream-v4.5/edit",
+]);
 
 // Map aspect ratio strings to image_size enum values
 const ASPECT_RATIO_TO_IMAGE_SIZE: Record<string, string> = {
