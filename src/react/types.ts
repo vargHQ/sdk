@@ -127,7 +127,7 @@ export type VideoProps = BaseProps &
 // Image-to-video animation
 export interface AnimateProps extends BaseProps, PositionProps {
   image?: VargElement<"image">;
-  src?: string | VargElement<"image">;
+  src?: string;
   model?: VideoModelV3;
   motion?: string;
   duration?: number;
