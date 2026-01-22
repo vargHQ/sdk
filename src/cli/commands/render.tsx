@@ -4,7 +4,8 @@ import { defineCommand } from "citty";
 import { render } from "../../react/render";
 import type { RenderMode, VargElement } from "../../react/types";
 
-const AUTO_IMPORTS = `import { Animate, Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid, SplitLayout } from "vargai/react";
+const AUTO_IMPORTS = `/** @jsxImportSource vargai */
+import { Animate, Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid, SplitLayout } from "vargai/react";
 import { fal, elevenlabs, replicate } from "vargai/ai";
 `;
 
