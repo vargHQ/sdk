@@ -206,10 +206,13 @@ export interface PackshotProps extends BaseProps {
   duration?: number;
 }
 
+export type RenderMode = "strict" | "default" | "preview";
+
 export interface RenderOptions {
   output?: string;
   cache?: string;
   quiet?: boolean;
+  mode?: RenderMode;
 }
 
 export interface ElementPropsMap {

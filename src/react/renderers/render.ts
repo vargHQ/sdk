@@ -1,7 +1,12 @@
-import { generateImage } from "ai";
+import { generateImage, wrapImageModel } from "ai";
 import { withCache } from "../../ai-sdk/cache";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { generateVideo } from "../../ai-sdk/generate-video";
+import {
+  imagePlaceholderFallbackMiddleware,
+  placeholderFallbackMiddleware,
+  wrapVideoModel,
+} from "../../ai-sdk/middleware";
 import { editly } from "../../ai-sdk/providers/editly";
 import type {
   AudioTrack,
@@ -14,6 +19,7 @@ import type {
   ClipProps,
   MusicProps,
   OverlayProps,
+  RenderMode,
   RenderOptions,
   RenderProps,
   SpeechProps,
@@ -48,17 +54,75 @@ export async function renderRoot(
   const props = element.props as RenderProps;
   const progress = createProgressTracker(options.quiet ?? false);
 
+  const mode: RenderMode = options.mode ?? "default";
+  const placeholderCount = { images: 0, videos: 0, total: 0 };
+
+  const onFallback = (error: Error, prompt: string) => {
+    if (!options.quiet) {
+      console.warn(
+        `\x1b[33m⚠ provider failed: ${error.message} → placeholder\x1b[0m`,
+      );
+    }
+  };
+
+  const trackPlaceholder = (type: "image" | "video") => {
+    placeholderCount[type === "image" ? "images" : "videos"]++;
+    placeholderCount.total++;
+  };
+
+  const wrapGenerateImage: typeof generateImage = async (opts) => {
+    if (
+      typeof opts.model === "string" ||
+      opts.model.specificationVersion !== "v3"
+    ) {
+      return generateImage(opts);
+    }
+    const wrappedModel = wrapImageModel({
+      model: opts.model,
+      middleware: imagePlaceholderFallbackMiddleware({
+        mode,
+        onFallback: (error, prompt) => {
+          trackPlaceholder("image");
+          onFallback(error, prompt);
+        },
+      }),
+    });
+    const result = await generateImage({ ...opts, model: wrappedModel });
+    if (mode === "preview") trackPlaceholder("image");
+    return result;
+  };
+
+  const wrapGenerateVideo: typeof generateVideo = async (opts) => {
+    const wrappedModel = wrapVideoModel({
+      model: opts.model,
+      middleware: placeholderFallbackMiddleware({
+        mode,
+        onFallback: (error, prompt) => {
+          trackPlaceholder("video");
+          onFallback(error, prompt);
+        },
+      }),
+    });
+    const result = await generateVideo({ ...opts, model: wrappedModel });
+    if (mode === "preview") trackPlaceholder("video");
+    return result;
+  };
+
   const ctx: RenderContext = {
     width: props.width ?? 1920,
     height: props.height ?? 1080,
     fps: props.fps ?? 30,
     cache: options.cache ? fileCache({ dir: options.cache }) : undefined,
     generateImage: options.cache
-      ? withCache(generateImage, { storage: fileCache({ dir: options.cache }) })
-      : generateImage,
+      ? withCache(wrapGenerateImage, {
+          storage: fileCache({ dir: options.cache }),
+        })
+      : wrapGenerateImage,
     generateVideo: options.cache
-      ? withCache(generateVideo, { storage: fileCache({ dir: options.cache }) })
-      : generateVideo,
+      ? withCache(wrapGenerateVideo, {
+          storage: fileCache({ dir: options.cache }),
+        })
+      : wrapGenerateVideo,
     tempFiles: [],
     progress,
     pending: new Map(),
@@ -236,6 +300,18 @@ export async function renderRoot(
 
     ctx.tempFiles.push(tempOutPath);
     completeTask(progress, captionsTaskId);
+  }
+
+  if (!options.quiet && placeholderCount.total > 0) {
+    if (mode === "preview") {
+      console.log(
+        `\x1b[36mℹ preview mode: ${placeholderCount.total} placeholders used (${placeholderCount.images} images, ${placeholderCount.videos} videos)\x1b[0m`,
+      );
+    } else {
+      console.warn(
+        `\x1b[33m⚠ ${placeholderCount.total} elements used placeholders - run with --strict for production\x1b[0m`,
+      );
+    }
   }
 
   const result = await Bun.file(finalOutPath).arrayBuffer();

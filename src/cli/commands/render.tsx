@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
 import { render } from "../../react/render";
-import type { VargElement } from "../../react/types";
+import type { RenderMode, VargElement } from "../../react/types";
 
 export const renderCmd = defineCommand({
   meta: {
@@ -30,6 +30,16 @@ export const renderCmd = defineCommand({
       description: "minimal output",
       default: false,
     },
+    strict: {
+      type: "boolean",
+      description: "fail on provider errors (no fallback)",
+      default: false,
+    },
+    preview: {
+      type: "boolean",
+      description: "skip all generation, use placeholders only",
+      default: false,
+    },
   },
   async run({ args }) {
     const file = args.file as string;
@@ -55,13 +65,26 @@ export const renderCmd = defineCommand({
         .split("/")
         .pop()}.mp4`;
 
+    const mode: RenderMode = args.strict
+      ? "strict"
+      : args.preview
+        ? "preview"
+        : "default";
+
     if (!args.quiet) {
-      console.log(`rendering ${file} → ${outputPath}`);
+      const modeLabel =
+        mode === "preview"
+          ? " (preview)"
+          : mode === "strict"
+            ? " (strict)"
+            : "";
+      console.log(`rendering ${file} → ${outputPath}${modeLabel}`);
     }
 
     const buffer = await render(component, {
       output: outputPath,
       cache: args.cache,
+      mode,
     });
 
     if (!args.quiet) {
