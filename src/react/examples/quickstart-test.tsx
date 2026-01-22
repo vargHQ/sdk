@@ -9,7 +9,7 @@
  */
 
 import { fal } from "../../ai-sdk/providers/fal";
-import { Animate, Clip, Image, Render, render } from "..";
+import { Clip, Image, Render, render, Video } from "..";
 
 async function main() {
   console.log("=== Varg Video Generation - Setup Verification ===\n");
@@ -49,16 +49,19 @@ async function main() {
   const video = (
     <Render width={720} height={720}>
       <Clip duration={3}>
-        <Animate
-          image={Image({
-            prompt:
-              "a friendly robot waving hello, simple cartoon style, blue and white colors, clean background",
-            model: fal.imageModel("flux-schnell"),
-            aspectRatio: "1:1",
-          })}
-          motion="robot waves hello, friendly gesture, slight head tilt"
+        <Video
+          prompt={{
+            text: "robot waves hello, friendly gesture, slight head tilt",
+            images: [
+              Image({
+                prompt:
+                  "a friendly robot waving hello, simple cartoon style, blue and white colors, clean background",
+                model: fal.imageModel("flux-schnell"),
+                aspectRatio: "1:1",
+              }),
+            ],
+          }}
           model={fal.videoModel("wan-2.5")}
-          duration={3}
         />
       </Clip>
     </Render>

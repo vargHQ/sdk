@@ -105,8 +105,8 @@ export type VideoPrompt =
   | {
       text?: string;
       images?: ImageInput[];
-      audio?: Uint8Array | string;
-      video?: Uint8Array | string;
+      audio?: Uint8Array | string | VargElement<"speech">;
+      video?: Uint8Array | string | VargElement<"video">;
     };
 
 export type VideoProps = BaseProps &
@@ -160,6 +160,8 @@ export type MusicProps = BaseProps &
     src?: string;
     loop?: boolean;
     ducking?: boolean;
+    /** End output when video ends, trimming longer audio */
+    shortest?: boolean;
   };
 
 export interface CaptionsProps extends BaseProps {

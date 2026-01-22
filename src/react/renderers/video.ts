@@ -9,6 +9,7 @@ import type {
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { addTask, completeTask, startTask } from "./progress";
+import { renderSpeech } from "./speech";
 import { computeCacheKey, toFileUrl } from "./utils";
 
 async function resolveImageInput(
@@ -27,13 +28,46 @@ async function resolveImageInput(
   return new Uint8Array(await response.arrayBuffer());
 }
 
-async function resolveMediaInput(
-  input: Uint8Array | string | undefined,
+async function resolveAudioInput(
+  input: Uint8Array | string | VargElement<"speech"> | undefined,
+  ctx: RenderContext,
 ): Promise<Uint8Array | undefined> {
   if (!input) return undefined;
   if (input instanceof Uint8Array) return input;
-  const response = await fetch(toFileUrl(input));
-  return new Uint8Array(await response.arrayBuffer());
+  if (typeof input === "string") {
+    const response = await fetch(toFileUrl(input));
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  // It's a Speech element - render it first
+  if (input.type === "speech") {
+    const { path } = await renderSpeech(input, ctx);
+    const response = await fetch(toFileUrl(path));
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  throw new Error(
+    `Unsupported audio input type: ${(input as VargElement).type}`,
+  );
+}
+
+async function resolveVideoInput(
+  input: Uint8Array | string | VargElement<"video"> | undefined,
+  ctx: RenderContext,
+): Promise<Uint8Array | undefined> {
+  if (!input) return undefined;
+  if (input instanceof Uint8Array) return input;
+  if (typeof input === "string") {
+    const response = await fetch(toFileUrl(input));
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  // It's a Video element - render it first
+  if (input.type === "video") {
+    const path = await renderVideo(input, ctx);
+    const response = await fetch(toFileUrl(path));
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  throw new Error(
+    `Unsupported video input type: ${(input as VargElement).type}`,
+  );
 }
 
 async function resolvePrompt(
@@ -55,8 +89,8 @@ async function resolvePrompt(
     prompt.images
       ? Promise.all(prompt.images.map((img) => resolveImageInput(img, ctx)))
       : undefined,
-    resolveMediaInput(prompt.audio),
-    resolveMediaInput(prompt.video),
+    resolveAudioInput(prompt.audio, ctx),
+    resolveVideoInput(prompt.video, ctx),
   ]);
   return {
     text: prompt.text,

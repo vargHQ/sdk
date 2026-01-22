@@ -146,6 +146,7 @@ export async function renderRoot(
   const musicElements: VargElement<"music">[] = [];
   const audioTracks: AudioTrack[] = [];
   let captionsResult: Awaited<ReturnType<typeof renderCaptions>> | undefined;
+  let useShortest = false;
 
   for (const child of element.children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
@@ -278,6 +279,10 @@ export async function renderRoot(
       cutFrom,
       cutTo,
     });
+
+    if (musicProps.shortest) {
+      useShortest = true;
+    }
   }
 
   const hasCaptions = captionsResult !== undefined;
@@ -297,6 +302,7 @@ export async function renderRoot(
     fps: ctx.fps,
     clips,
     audioTracks: audioTracks.length > 0 ? audioTracks : undefined,
+    shortest: useShortest,
     verbose: options.verbose,
   });
 
