@@ -111,6 +111,6 @@ export const initCmd = defineCommand({
       console.log(`created ${helloPath}`);
     }
 
-    console.log(`\ndone! run: varg render hello.tsx`);
+    console.log(`\ndone! run: bunx vargai render hello.tsx`);
   },
 });
