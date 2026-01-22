@@ -1,19 +1,19 @@
 /**
  * OnlyFans-style selfie video workflow (React DSL)
  *
- * 1. Generate base girl image using Higgsfield Soul
+ * 1. Generate base girl image using fal nano-banana-pro
  * 2. Edit bra color using nano-banana-pro/edit
  * 3. Generate 5 photos with different angles using nano-banana
  * 4. Animate all with prompts (step back, turn left/right)
  * 5. Concatenate into ~10 second video
  *
- * Run: bun run src/ai-sdk/react/cli.ts src/ai-sdk/examples/onlyfans-1m/workflow.tsx -o output/onlyfans-1m.mp4
+ * Run: bun run src/cli/index.ts render src/react/examples/onlyfans-1m/workflow.tsx -o output/onlyfans-1m.mp4
  *
- * Required env: HIGGSFIELD_API_KEY, HIGGSFIELD_SECRET, FAL_KEY
+ * Required env: FAL_API_KEY (or FAL_KEY)
  */
 
-import { fal, higgsfield } from "../../../ai-sdk";
-import { Clip, Image, Render, Video } from "../..";
+import { fal } from "vargai/ai";
+import { Clip, Image, Render, Video } from "vargai/react";
 
 // ============================================================================
 // CHARACTER DEFINITION
@@ -21,14 +21,11 @@ import { Clip, Image, Render, Video } from "../..";
 
 const NEW_BRA_COLOR = "deep purple";
 
-// Base character prompt for Higgsfield
+// Base character prompt (seedream edit requires an image input)
 const baseCharacter = Image({
   prompt:
     "A beautiful Slavic woman in her late 20s with platinum blonde hair, icy blue eyes, and perfect skin. She bends very close to the phone lens, her chest framed by a white sports bra with a bold neckline, and she is wearing high-waisted athletic shorts in pale grey that accentuate her figure. Her expression is confident and slightly teasing. The background shows a modern apartment with soft daylight through large windows, reinforcing the natural homemade vibe",
-  model: higgsfield.imageModel("soul", {
-    quality: "1080p",
-    styleId: higgsfield.styles.CAM_360,
-  }),
+  model: fal.imageModel("nano-banana-pro"),
   aspectRatio: "9:16",
 });
 
