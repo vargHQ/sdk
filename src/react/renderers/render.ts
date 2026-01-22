@@ -269,11 +269,11 @@ export async function renderRoot(
     let path: string;
     if (musicProps.src) {
       path = resolvePath(musicProps.src);
-    } else if (musicProps.prompt && musicProps.model) {
+    } else if (musicProps.prompt) {
       const result = await renderMusic(musicElement, ctx);
       path = result.path;
     } else {
-      throw new Error("Music requires either src or prompt+model");
+      throw new Error("Music requires either src or prompt");
     }
 
     audioTracks.push({
