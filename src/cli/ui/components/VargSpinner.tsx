@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * VargSpinner - Animated loading indicator
  * Elegant braille spinner with label

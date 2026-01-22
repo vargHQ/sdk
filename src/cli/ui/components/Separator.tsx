@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * Separator - Horizontal divider line
  * Minimal visual separator between sections

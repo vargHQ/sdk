@@ -70,42 +70,63 @@ export async function renderRoot(
     placeholderCount.total++;
   };
 
+  const cachedGenerateImage = options.cache
+    ? withCache(generateImage, { storage: fileCache({ dir: options.cache }) })
+    : generateImage;
+
+  const cachedGenerateVideo = options.cache
+    ? withCache(generateVideo, { storage: fileCache({ dir: options.cache }) })
+    : generateVideo;
+
   const wrapGenerateImage: typeof generateImage = async (opts) => {
     if (
       typeof opts.model === "string" ||
       opts.model.specificationVersion !== "v3"
     ) {
-      return generateImage(opts);
+      return cachedGenerateImage(opts);
     }
-    const wrappedModel = wrapImageModel({
-      model: opts.model,
-      middleware: imagePlaceholderFallbackMiddleware({
-        mode,
-        onFallback: (error, prompt) => {
-          trackPlaceholder("image");
-          onFallback(error, prompt);
-        },
-      }),
-    });
-    const result = await generateImage({ ...opts, model: wrappedModel });
-    if (mode === "preview") trackPlaceholder("image");
-    return result;
+
+    if (mode === "preview") {
+      trackPlaceholder("image");
+    }
+
+    try {
+      return await cachedGenerateImage(opts);
+    } catch (error) {
+      if (mode === "strict") throw error;
+      trackPlaceholder("image");
+      onFallback(error as Error, String(opts.prompt));
+      const wrappedModel = wrapImageModel({
+        model: opts.model,
+        middleware: imagePlaceholderFallbackMiddleware({
+          mode: "preview",
+          onFallback: () => {},
+        }),
+      });
+      return generateImage({ ...opts, model: wrappedModel });
+    }
   };
 
   const wrapGenerateVideo: typeof generateVideo = async (opts) => {
-    const wrappedModel = wrapVideoModel({
-      model: opts.model,
-      middleware: placeholderFallbackMiddleware({
-        mode,
-        onFallback: (error, prompt) => {
-          trackPlaceholder("video");
-          onFallback(error, prompt);
-        },
-      }),
-    });
-    const result = await generateVideo({ ...opts, model: wrappedModel });
-    if (mode === "preview") trackPlaceholder("video");
-    return result;
+    if (mode === "preview") {
+      trackPlaceholder("video");
+    }
+
+    try {
+      return await cachedGenerateVideo(opts);
+    } catch (error) {
+      if (mode === "strict") throw error;
+      trackPlaceholder("video");
+      onFallback(error as Error, String(opts.prompt));
+      const wrappedModel = wrapVideoModel({
+        model: opts.model,
+        middleware: placeholderFallbackMiddleware({
+          mode: "preview",
+          onFallback: () => {},
+        }),
+      });
+      return generateVideo({ ...opts, model: wrappedModel });
+    }
   };
 
   const ctx: RenderContext = {
@@ -113,19 +134,12 @@ export async function renderRoot(
     height: props.height ?? 1080,
     fps: props.fps ?? 30,
     cache: options.cache ? fileCache({ dir: options.cache }) : undefined,
-    generateImage: options.cache
-      ? withCache(wrapGenerateImage, {
-          storage: fileCache({ dir: options.cache }),
-        })
-      : wrapGenerateImage,
-    generateVideo: options.cache
-      ? withCache(wrapGenerateVideo, {
-          storage: fileCache({ dir: options.cache }),
-        })
-      : wrapGenerateVideo,
+    generateImage: wrapGenerateImage,
+    generateVideo: wrapGenerateVideo,
     tempFiles: [],
     progress,
     pending: new Map(),
+    defaults: options.defaults,
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -256,11 +270,11 @@ export async function renderRoot(
     let path: string;
     if (musicProps.src) {
       path = resolvePath(musicProps.src);
-    } else if (musicProps.prompt && musicProps.model) {
+    } else if (musicProps.prompt) {
       const result = await renderMusic(musicElement, ctx);
       path = result.path;
     } else {
-      throw new Error("Music requires either src or prompt+model");
+      throw new Error("Music requires either src or prompt");
     }
 
     audioTracks.push({
@@ -293,6 +307,7 @@ export async function renderRoot(
     clips,
     audioTracks: audioTracks.length > 0 ? audioTracks : undefined,
     shortest: useShortest,
+    verbose: options.verbose,
   });
 
   completeTask(progress, editlyTaskId);

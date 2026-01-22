@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * HelpBlock - Command help and examples
  * Displays usage patterns and command examples

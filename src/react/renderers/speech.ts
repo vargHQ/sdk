@@ -21,9 +21,9 @@ export async function renderSpeech(
     throw new Error("Speech element requires text content");
   }
 
-  const model = props.model;
+  const model = props.model ?? ctx.defaults?.speech;
   if (!model) {
-    throw new Error("Speech element requires 'model' prop");
+    throw new Error("Speech requires 'model' prop (or set defaults.speech)");
   }
 
   const cacheKey = computeCacheKey(element);

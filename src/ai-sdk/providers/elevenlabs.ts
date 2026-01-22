@@ -196,8 +196,16 @@ export function createElevenLabs(
   };
 }
 
-export const elevenlabs_provider = createElevenLabs();
-export { elevenlabs_provider as elevenlabs, VOICES };
+let _elevenlabs: ElevenLabsProvider | undefined;
+export const elevenlabs = new Proxy({} as ElevenLabsProvider, {
+  get(_, prop) {
+    if (!_elevenlabs) {
+      _elevenlabs = createElevenLabs();
+    }
+    return _elevenlabs[prop as keyof ElevenLabsProvider];
+  },
+});
+export { VOICES };
 
 export interface GenerateMusicOptions {
   prompt: string;

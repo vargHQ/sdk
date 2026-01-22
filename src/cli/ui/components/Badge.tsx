@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * Badge - Type indicator badge
  * Shows [model] [action] [skill] with appropriate styling

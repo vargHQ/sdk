@@ -218,11 +218,20 @@ export interface PackshotProps extends BaseProps {
 
 export type RenderMode = "strict" | "default" | "preview";
 
+export interface DefaultModels {
+  image?: ImageModelV3;
+  video?: VideoModelV3;
+  speech?: SpeechModelV3;
+  music?: MusicModelV3;
+}
+
 export interface RenderOptions {
   output?: string;
   cache?: string;
   quiet?: boolean;
+  verbose?: boolean;
   mode?: RenderMode;
+  defaults?: DefaultModels;
 }
 
 export interface ElementPropsMap {

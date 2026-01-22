@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * Header - Section header component
  * Bold dimmed text for section titles

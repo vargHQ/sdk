@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * VargText - Typography component
  * Provides semantic text variants for consistent styling

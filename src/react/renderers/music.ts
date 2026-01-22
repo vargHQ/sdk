@@ -10,9 +10,9 @@ export async function renderMusic(
   const props = element.props as MusicProps;
 
   const prompt = props.prompt;
-  const model = props.model;
+  const model = props.model ?? ctx.defaults?.music;
   if (!prompt || !model) {
-    throw new Error("Music generation requires both prompt and model");
+    throw new Error("Music requires prompt and model (or set defaults.music)");
   }
 
   const cacheKey = JSON.stringify({
@@ -22,7 +22,7 @@ export async function renderMusic(
     duration: props.duration,
   });
 
-  const modelId = model.modelId;
+  const modelId = model.modelId ?? "music";
   const taskId = ctx.progress ? addTask(ctx.progress, "music", modelId) : null;
 
   const generateFn = async () => {

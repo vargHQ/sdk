@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * varg list command
  * Ink-based discovery view

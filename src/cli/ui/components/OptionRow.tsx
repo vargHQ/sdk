@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * OptionRow - CLI option display with better spacing
  * Shows option name, description, type hints, defaults, and enums

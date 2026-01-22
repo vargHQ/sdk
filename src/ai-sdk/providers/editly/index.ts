@@ -137,6 +137,15 @@ function isOverlayLayer(layer: Layer): boolean {
   return isVideoOverlayLayer(layer) || isImageOverlayLayer(layer);
 }
 
+function isTextOverlayLayer(layer: Layer): boolean {
+  return (
+    layer.type === "title" ||
+    layer.type === "subtitle" ||
+    layer.type === "news-title" ||
+    layer.type === "slide-in-text"
+  );
+}
+
 function buildBaseClipFilter(
   clip: ProcessedClip,
   clipIndex: number,
@@ -164,7 +173,10 @@ function buildBaseClipFilter(
   let baseLabel = "";
   let inputIdx = inputOffset;
 
-  const baseLayers = clip.layers.filter((l) => l && !isOverlayLayer(l));
+  // Filter out overlay layers AND text overlay layers (text will be applied after image overlays)
+  const baseLayers = clip.layers.filter(
+    (l) => l && !isOverlayLayer(l) && !isTextOverlayLayer(l),
+  );
 
   for (let i = 0; i < baseLayers.length; i++) {
     const layer = baseLayers[i];
@@ -200,58 +212,6 @@ function buildBaseClipFilter(
         }
         inputIdx++;
       }
-    }
-
-    if (layer.type === "title") {
-      const titleFilter = getTitleFilter(
-        layer as TitleLayer,
-        baseLabel,
-        width,
-        height,
-        clip.duration,
-      );
-      const newLabel = `title${clipIndex}_${i}`;
-      filters.push(`${titleFilter}[${newLabel}]`);
-      baseLabel = newLabel;
-    }
-
-    if (layer.type === "subtitle") {
-      const subtitleFilter = getSubtitleFilter(
-        layer as SubtitleLayer,
-        baseLabel,
-        width,
-        height,
-        clip.duration,
-      );
-      const newLabel = `sub${clipIndex}_${i}`;
-      filters.push(`${subtitleFilter}[${newLabel}]`);
-      baseLabel = newLabel;
-    }
-
-    if (layer.type === "news-title") {
-      const newsFilter = getNewsTitleFilter(
-        layer as NewsTitleLayer,
-        baseLabel,
-        width,
-        height,
-        clip.duration,
-      );
-      const newLabel = `news${clipIndex}_${i}`;
-      filters.push(`${newsFilter}[${newLabel}]`);
-      baseLabel = newLabel;
-    }
-
-    if (layer.type === "slide-in-text") {
-      const slideFilter = getSlideInTextFilter(
-        layer as SlideInTextLayer,
-        baseLabel,
-        width,
-        height,
-        clip.duration,
-      );
-      const newLabel = `slide${clipIndex}_${i}`;
-      filters.push(`${slideFilter}[${newLabel}]`);
-      baseLabel = newLabel;
     }
   }
 
@@ -356,6 +316,41 @@ function collectAudioLayers(
   }
 
   return audioLayers;
+}
+
+type TextLayer = TitleLayer | SubtitleLayer | NewsTitleLayer | SlideInTextLayer;
+
+interface TimedTextLayer {
+  layer: TextLayer;
+  startTime: number;
+  duration: number;
+}
+
+function collectTextLayers(clips: ProcessedClip[]): TimedTextLayer[] {
+  const textLayers: TimedTextLayer[] = [];
+  let currentTime = 0;
+
+  for (let i = 0; i < clips.length; i++) {
+    const clip = clips[i];
+    if (!clip) continue;
+
+    for (const layer of clip.layers) {
+      if (layer && isTextOverlayLayer(layer)) {
+        textLayers.push({
+          layer: layer as TextLayer,
+          startTime: currentTime,
+          duration: clip.duration,
+        });
+      }
+    }
+
+    currentTime += clip.duration;
+    if (i < clips.length - 1) {
+      currentTime -= clip.transition.duration;
+    }
+  }
+
+  return textLayers;
 }
 
 function buildTransitionFilter(
@@ -739,6 +734,67 @@ export async function editly(config: EditlyConfig): Promise<void> {
 
       currentBase = outputLabel;
       imgOverlayIdx++;
+    }
+
+    finalVideoLabel = currentBase;
+  }
+
+  const textLayers = collectTextLayers(clips);
+  if (textLayers.length > 0) {
+    let currentBase = finalVideoLabel;
+
+    for (let i = 0; i < textLayers.length; i++) {
+      const timedLayer = textLayers[i];
+      if (!timedLayer) continue;
+
+      const { layer, startTime, duration } = timedLayer;
+      const outputLabel = `vwithtext${i}`;
+
+      const timedLayerWithEnable = {
+        ...layer,
+        start: layer.start ?? startTime,
+        stop: layer.stop ?? startTime + duration,
+      };
+
+      if (layer.type === "title") {
+        const titleFilter = getTitleFilter(
+          timedLayerWithEnable as TitleLayer,
+          currentBase,
+          width,
+          height,
+          totalDuration,
+        );
+        allFilters.push(`${titleFilter}[${outputLabel}]`);
+      } else if (layer.type === "subtitle") {
+        const subtitleFilter = getSubtitleFilter(
+          timedLayerWithEnable as SubtitleLayer,
+          currentBase,
+          width,
+          height,
+          totalDuration,
+        );
+        allFilters.push(`${subtitleFilter}[${outputLabel}]`);
+      } else if (layer.type === "news-title") {
+        const newsFilter = getNewsTitleFilter(
+          timedLayerWithEnable as NewsTitleLayer,
+          currentBase,
+          width,
+          height,
+          totalDuration,
+        );
+        allFilters.push(`${newsFilter}[${outputLabel}]`);
+      } else if (layer.type === "slide-in-text") {
+        const slideFilter = getSlideInTextFilter(
+          timedLayerWithEnable as SlideInTextLayer,
+          currentBase,
+          width,
+          height,
+          totalDuration,
+        );
+        allFilters.push(`${slideFilter}[${outputLabel}]`);
+      }
+
+      currentBase = outputLabel;
     }
 
     finalVideoLabel = currentBase;
