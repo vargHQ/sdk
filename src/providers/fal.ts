@@ -7,6 +7,11 @@ import { fal } from "@fal-ai/client";
 import type { JobStatusUpdate, ProviderConfig } from "../core/schema/types";
 import { BaseProvider, ensureUrl } from "./base";
 
+const falApiKey = process.env.FAL_API_KEY ?? process.env.FAL_KEY;
+if (falApiKey) {
+  fal.config({ credentials: falApiKey });
+}
+
 export class FalProvider extends BaseProvider {
   readonly name = "fal";
 

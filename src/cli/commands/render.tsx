@@ -17,7 +17,8 @@ import { fal, elevenlabs, replicate } from "vargai/ai";
 async function detectDefaultModels(): Promise<DefaultModels | undefined> {
   const defaults: DefaultModels = {};
 
-  if (process.env.FAL_KEY) {
+  const falKey = process.env.FAL_API_KEY ?? process.env.FAL_KEY;
+  if (falKey) {
     const { fal } = await import("../../ai-sdk/providers/fal");
     defaults.image = fal.imageModel("flux-schnell");
     defaults.video = fal.videoModel("wan-2.5");
