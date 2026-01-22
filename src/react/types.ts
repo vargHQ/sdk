@@ -118,6 +118,7 @@ export type VideoProps = BaseProps &
     src?: string;
     model?: VideoModelV3;
     resize?: ResizeMode;
+    aspectRatio?: `${number}:${number}`;
   };
 
 export interface SpeechProps extends BaseProps, VolumeProps {
