@@ -53,16 +53,8 @@ export async function renderRoot(
   const props = element.props as RenderProps;
   const progress = createProgressTracker(options.quiet ?? false);
 
-  const mode: RenderMode = options.mode ?? "default";
+  const mode: RenderMode = options.mode ?? "strict";
   const placeholderCount = { images: 0, videos: 0, total: 0 };
-
-  const onFallback = (error: Error, prompt: string) => {
-    if (!options.quiet) {
-      console.warn(
-        `\x1b[33m⚠ provider failed: ${error.message} → placeholder\x1b[0m`,
-      );
-    }
-  };
 
   const trackPlaceholder = (type: "image" | "video") => {
     placeholderCount[type === "image" ? "images" : "videos"]++;
@@ -87,14 +79,6 @@ export async function renderRoot(
 
     if (mode === "preview") {
       trackPlaceholder("image");
-    }
-
-    try {
-      return await cachedGenerateImage(opts);
-    } catch (error) {
-      if (mode === "strict") throw error;
-      trackPlaceholder("image");
-      onFallback(error as Error, String(opts.prompt));
       const wrappedModel = wrapImageModel({
         model: opts.model,
         middleware: imagePlaceholderFallbackMiddleware({
@@ -104,19 +88,13 @@ export async function renderRoot(
       });
       return generateImage({ ...opts, model: wrappedModel });
     }
+
+    return cachedGenerateImage(opts);
   };
 
   const wrapGenerateVideo: typeof generateVideo = async (opts) => {
     if (mode === "preview") {
       trackPlaceholder("video");
-    }
-
-    try {
-      return await cachedGenerateVideo(opts);
-    } catch (error) {
-      if (mode === "strict") throw error;
-      trackPlaceholder("video");
-      onFallback(error as Error, String(opts.prompt));
       const wrappedModel = wrapVideoModel({
         model: opts.model,
         middleware: placeholderFallbackMiddleware({
@@ -126,6 +104,8 @@ export async function renderRoot(
       });
       return generateVideo({ ...opts, model: wrappedModel });
     }
+
+    return cachedGenerateVideo(opts);
   };
 
   const ctx: RenderContext = {
@@ -314,16 +294,10 @@ export async function renderRoot(
     completeTask(progress, captionsTaskId);
   }
 
-  if (!options.quiet && placeholderCount.total > 0) {
-    if (mode === "preview") {
-      console.log(
-        `\x1b[36mℹ preview mode: ${placeholderCount.total} placeholders used (${placeholderCount.images} images, ${placeholderCount.videos} videos)\x1b[0m`,
-      );
-    } else {
-      console.warn(
-        `\x1b[33m⚠ ${placeholderCount.total} elements used placeholders - run with --strict for production\x1b[0m`,
-      );
-    }
+  if (!options.quiet && mode === "preview" && placeholderCount.total > 0) {
+    console.log(
+      `\x1b[36mℹ preview mode: ${placeholderCount.total} placeholders used (${placeholderCount.images} images, ${placeholderCount.videos} videos)\x1b[0m`,
+    );
   }
 
   const result = await Bun.file(finalOutPath).arrayBuffer();

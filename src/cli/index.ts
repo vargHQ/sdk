@@ -12,7 +12,6 @@ import { defineCommand, runMain } from "citty";
 import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
 import {
-  fastCmd,
   findCmd,
   helpCmd,
   listCmd,
@@ -107,7 +106,6 @@ const main = defineCommand({
     run: runCmd,
     render: renderCmd,
     preview: previewCmd,
-    fast: fastCmd,
     studio: studioCmd,
     list: listCmd,
     ls: listCmd,
