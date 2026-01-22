@@ -14,13 +14,17 @@ import { allDefinitions } from "../definitions";
 import {
   findCmd,
   helpCmd,
+  initCmd,
   listCmd,
   previewCmd,
   renderCmd,
   runCmd,
   showFindHelp,
   showHelp,
+  showInitHelp,
   showListHelp,
+  showPreviewHelp,
+  showRenderHelp,
   showRunHelp,
   showTargetHelp,
   showWhichHelp,
@@ -46,9 +50,11 @@ for (const provider of providers.all()) {
 const args = process.argv.slice(2);
 const hasHelp = args.includes("--help") || args.includes("-h");
 
-// Map subcommands to their help functions
 const subcommandHelp: Record<string, () => void> = {
   run: showRunHelp,
+  render: showRenderHelp,
+  preview: showPreviewHelp,
+  init: showInitHelp,
   list: showListHelp,
   ls: showListHelp,
   find: showFindHelp,
@@ -103,10 +109,11 @@ const main = defineCommand({
     description: "ai video infrastructure from your terminal",
   },
   subCommands: {
-    run: runCmd,
+    init: initCmd,
     render: renderCmd,
     preview: previewCmd,
     studio: studioCmd,
+    run: runCmd,
     list: listCmd,
     ls: listCmd,
     find: findCmd,

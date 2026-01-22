@@ -1,4 +1,5 @@
 export type { SizeValue } from "../ai-sdk/providers/editly/types";
+export { assets } from "./assets";
 export {
   Captions,
   Clip,

@@ -1,8 +1,13 @@
+/** @jsxImportSource react */
+
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
+import { Box, Text } from "ink";
 import { render } from "../../react/render";
 import type { DefaultModels, RenderMode, VargElement } from "../../react/types";
+import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
+import { renderStatic } from "../ui/render.ts";
 
 const AUTO_IMPORTS = `/** @jsxImportSource vargai */
 import { Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid, SplitLayout } from "vargai/react";
@@ -169,3 +174,133 @@ export const previewCmd = defineCommand({
     await runRender(args, "preview", "preview");
   },
 });
+
+function RenderHelpView() {
+  const examples = [
+    {
+      command: "varg render video.tsx",
+      description: "render component to output/video.mp4",
+    },
+    {
+      command: "varg render video.tsx -o my-video.mp4",
+      description: "custom output path",
+    },
+    {
+      command: "varg preview video.tsx",
+      description: "fast preview with placeholders",
+    },
+  ];
+
+  return (
+    <VargBox title="varg render">
+      <Box marginBottom={1}>
+        <Text>
+          render jsx components to video. the react engine for ai video.
+        </Text>
+      </Box>
+
+      <Header>USAGE</Header>
+      <Box paddingLeft={2} marginBottom={1}>
+        <VargText variant="accent">
+          varg render {"<file.tsx>"} [options]
+        </VargText>
+      </Box>
+
+      <Header>OPTIONS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <Text>
+          <VargText variant="accent">-o, --output </VargText>output path
+          (default: output/{"<name>"}.mp4)
+        </Text>
+        <Text>
+          <VargText variant="accent">-c, --cache </VargText>cache directory
+          (default: .cache/ai)
+        </Text>
+        <Text>
+          <VargText variant="accent">--no-cache </VargText>disable cache
+        </Text>
+        <Text>
+          <VargText variant="accent">-q, --quiet </VargText>minimal output
+        </Text>
+        <Text>
+          <VargText variant="accent">-v, --verbose </VargText>show ffmpeg
+          commands
+        </Text>
+      </Box>
+
+      <Header>COMPONENTS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <Text>{"<Render>"} root container (width, height, fps)</Text>
+        <Text>{"<Clip>"} time segment with duration</Text>
+        <Text>{"<Video>"} ai-generated or source video</Text>
+        <Text>{"<Image>"} ai-generated or static image</Text>
+        <Text>{"<Speech>"} text-to-speech audio</Text>
+        <Text>{"<Music>"} background music</Text>
+        <Text>{"<Captions>"} auto-generated subtitles</Text>
+      </Box>
+
+      <Header>EXAMPLES</Header>
+      <Box marginTop={1}>
+        <HelpBlock examples={examples} />
+      </Box>
+    </VargBox>
+  );
+}
+
+function PreviewHelpView() {
+  const examples = [
+    {
+      command: "varg preview video.tsx",
+      description: "quick test without ai calls",
+    },
+    {
+      command: "varg preview video.tsx -o test.mp4",
+      description: "preview to custom path",
+    },
+  ];
+
+  return (
+    <VargBox title="varg preview">
+      <Box marginBottom={1}>
+        <Text>
+          fast preview mode - uses placeholders instead of ai generation.
+        </Text>
+      </Box>
+
+      <Header>USAGE</Header>
+      <Box paddingLeft={2} marginBottom={1}>
+        <VargText variant="accent">
+          varg preview {"<file.tsx>"} [options]
+        </VargText>
+      </Box>
+
+      <Header>OPTIONS</Header>
+      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+        <Text>
+          <VargText variant="accent">-o, --output </VargText>output path
+          (default: output/{"<name>"}.mp4)
+        </Text>
+        <Text>
+          <VargText variant="accent">-q, --quiet </VargText>minimal output
+        </Text>
+        <Text>
+          <VargText variant="accent">-v, --verbose </VargText>show ffmpeg
+          commands
+        </Text>
+      </Box>
+
+      <Header>EXAMPLES</Header>
+      <Box marginTop={1}>
+        <HelpBlock examples={examples} />
+      </Box>
+    </VargBox>
+  );
+}
+
+export function showRenderHelp() {
+  renderStatic(<RenderHelpView />);
+}
+
+export function showPreviewHelp() {
+  renderStatic(<PreviewHelpView />);
+}
