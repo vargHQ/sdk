@@ -300,17 +300,13 @@ export function getImageFilter(
       );
       filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
     } else {
-      // Default: contain behavior (letterbox)
+      // Default: fast path - zoompan at target resolution directly
       filters.push(
-        `scale=${zoomSize}:${zoomSize}:force_original_aspect_ratio=increase`,
+        `scale=${zoomWidth}:${zoomHeight}:force_original_aspect_ratio=increase`,
       );
       filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${zoomSize}x${zoomSize}:fps=30`,
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${width}x${height}:fps=30`,
       );
-      filters.push(
-        `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
-      );
-      filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
     }
   } else {
     filters.push(`loop=loop=-1:size=1:start=0`);
