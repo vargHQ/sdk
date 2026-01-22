@@ -54,9 +54,11 @@ export async function renderImage(
     throw new Error("Image element requires either 'prompt' or 'src'");
   }
 
-  const model = props.model;
+  const model = props.model ?? ctx.defaults?.image;
   if (!model) {
-    throw new Error("Image element requires 'model' prop when using prompt");
+    throw new Error(
+      "Image element requires 'model' prop (or set defaults.image in render options)",
+    );
   }
 
   // Compute cache key for deduplication

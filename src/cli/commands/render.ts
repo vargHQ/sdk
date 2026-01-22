@@ -1,13 +1,31 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { render } from "../../react/render";
-import type { RenderMode, VargElement } from "../../react/types";
+import type { DefaultModels, RenderMode, VargElement } from "../../react/types";
 
 const AUTO_IMPORTS = `/** @jsxImportSource vargai */
 import { Animate, Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid, SplitLayout } from "vargai/react";
 import { fal, elevenlabs, replicate } from "vargai/ai";
 `;
+
+async function detectDefaultModels(): Promise<DefaultModels | undefined> {
+  const defaults: DefaultModels = {};
+
+  if (process.env.FAL_KEY) {
+    const { fal } = await import("../../ai-sdk/providers/fal");
+    defaults.image = fal.imageModel("flux-schnell");
+    defaults.video = fal.videoModel("wan-2.5");
+  }
+
+  if (process.env.ELEVENLABS_API_KEY) {
+    const { elevenlabs } = await import("../../ai-sdk/providers/elevenlabs");
+    defaults.speech = elevenlabs.speechModel("eleven_multilingual_v2");
+    defaults.music = elevenlabs.musicModel("music_v1");
+  }
+
+  return Object.keys(defaults).length > 0 ? defaults : undefined;
+}
 
 async function loadComponent(filePath: string): Promise<VargElement> {
   const resolvedPath = resolve(filePath);
@@ -130,10 +148,13 @@ export const renderCmd = defineCommand({
 
     const useCache = !args["no-cache"] && mode !== "preview";
 
+    const defaults = await detectDefaultModels();
+
     const buffer = await render(component, {
       output: outputPath,
       cache: useCache ? args.cache : undefined,
       mode,
+      defaults,
     });
 
     if (!args.quiet) {

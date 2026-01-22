@@ -126,6 +126,7 @@ export async function renderRoot(
     tempFiles: [],
     progress,
     pending: new Map(),
+    defaults: options.defaults,
   };
 
   const clipElements: VargElement<"clip">[] = [];
