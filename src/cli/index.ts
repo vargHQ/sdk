@@ -9,6 +9,7 @@
 import "./quiet";
 
 import { defineCommand, runMain } from "citty";
+import pkg from "../../package.json";
 import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
 import {
@@ -94,7 +95,7 @@ if (hasHelp) {
 const main = defineCommand({
   meta: {
     name: "varg",
-    version: "0.3.0",
+    version: pkg.version,
     description: "ai video infrastructure from your terminal",
   },
   subCommands: {
