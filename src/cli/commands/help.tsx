@@ -1,7 +1,4 @@
-/**
- * varg help command
- * Ink-based help display
- */
+/** @jsxImportSource react */
 
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";

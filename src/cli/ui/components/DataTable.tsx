@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * DataTable - Table display component
  * Clean text-based table for listing items

@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * varg which command
  * Ink-based inspection view

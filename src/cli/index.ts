@@ -9,13 +9,15 @@
 import "./quiet";
 
 import { defineCommand, runMain } from "citty";
-import pkg from "../../package.json";
 import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
 import {
+  fastCmd,
   findCmd,
   helpCmd,
   listCmd,
+  previewCmd,
+  renderCmd,
   runCmd,
   showFindHelp,
   showHelp,
@@ -23,6 +25,7 @@ import {
   showRunHelp,
   showTargetHelp,
   showWhichHelp,
+  studioCmd,
   whichCmd,
 } from "./commands";
 
@@ -92,6 +95,8 @@ if (hasHelp) {
   }
 }
 
+const pkg = await import("../../package.json");
+
 const main = defineCommand({
   meta: {
     name: "varg",
@@ -100,6 +105,10 @@ const main = defineCommand({
   },
   subCommands: {
     run: runCmd,
+    render: renderCmd,
+    preview: previewCmd,
+    fast: fastCmd,
+    studio: studioCmd,
     list: listCmd,
     ls: listCmd,
     find: findCmd,

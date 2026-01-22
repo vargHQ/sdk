@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * KeyValue - Label-value pair display
  * Aligned key-value pairs with optional required marker

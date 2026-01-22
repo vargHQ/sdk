@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 /**
  * VargBox - Container component
  * Luxury minimal styled box with optional title and borders
