@@ -223,6 +223,7 @@ export interface RenderOptions {
   output?: string;
   cache?: string;
   quiet?: boolean;
+  verbose?: boolean;
   mode?: RenderMode;
   defaults?: DefaultModels;
 }

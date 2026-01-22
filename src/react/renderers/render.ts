@@ -301,6 +301,7 @@ export async function renderRoot(
     fps: ctx.fps,
     clips,
     audioTracks: audioTracks.length > 0 ? audioTracks : undefined,
+    verbose: options.verbose,
   });
 
   completeTask(progress, editlyTaskId);
