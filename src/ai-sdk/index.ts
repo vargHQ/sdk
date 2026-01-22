@@ -25,6 +25,25 @@ export {
   type GenerateVideoResult,
   generateVideo,
 } from "./generate-video";
+export {
+  generatePlaceholder,
+  type ImagePlaceholderFallbackOptions,
+  imagePlaceholderFallbackMiddleware,
+  type MusicModelMiddleware,
+  type MusicPlaceholderFallbackOptions,
+  musicPlaceholderFallbackMiddleware,
+  type PlaceholderFallbackOptions,
+  type PlaceholderOptions,
+  type PlaceholderResult,
+  placeholderFallbackMiddleware,
+  type RenderMode,
+  type VideoModelMiddleware,
+  withImagePlaceholderFallback,
+  withMusicPlaceholderFallback,
+  withPlaceholderFallback,
+  wrapMusicModel,
+  wrapVideoModel,
+} from "./middleware";
 export type {
   MusicModelV3,
   MusicModelV3CallOptions,
