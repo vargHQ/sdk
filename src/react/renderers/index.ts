@@ -1,4 +1,3 @@
-export { renderAnimate } from "./animate";
 export { renderCaptions } from "./captions";
 export { renderClip } from "./clip";
 export type { RenderContext } from "./context";
