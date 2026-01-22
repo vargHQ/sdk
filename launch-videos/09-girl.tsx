@@ -100,6 +100,7 @@ const vid1 = Video({
   },
   model: fal.videoModel("kling-v2.5"),
   duration: 5,
+  aspectRatio: "9:16",
 });
 
 const vid2 = Video({
@@ -109,6 +110,7 @@ const vid2 = Video({
   },
   model: fal.videoModel("kling-v2.5"),
   duration: 5,
+  aspectRatio: "9:16",
 });
 
 const vid3 = Video({
@@ -118,6 +120,7 @@ const vid3 = Video({
   },
   model: fal.videoModel("kling-v2.5"),
   duration: 5,
+  aspectRatio: "9:16",
 });
 
 const vid4 = Video({
@@ -127,6 +130,7 @@ const vid4 = Video({
   },
   model: fal.videoModel("kling-v2.5"),
   duration: 5,
+  aspectRatio: "9:16",
 });
 
 // ============ FINAL RENDER ============
