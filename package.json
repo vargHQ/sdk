@@ -3,8 +3,7 @@
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "varg": "./src/cli/index.ts",
-    "vargai": "./src/init.ts"
+    "vargai": "./src/cli/index.ts"
   },
   "scripts": {
     "check": "biome check . && tsc --noEmit",
