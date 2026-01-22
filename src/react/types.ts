@@ -14,7 +14,6 @@ export type VargElementType =
   | "overlay"
   | "image"
   | "video"
-  | "animate"
   | "speech"
   | "talking-head"
   | "title"
@@ -124,15 +123,6 @@ export type VideoProps = BaseProps &
     resize?: ResizeMode;
   };
 
-// Image-to-video animation
-export interface AnimateProps extends BaseProps, PositionProps {
-  image?: VargElement<"image">;
-  src?: string;
-  model?: VideoModelV3;
-  motion?: string;
-  duration?: number;
-}
-
 export interface SpeechProps extends BaseProps, VolumeProps {
   voice?: string;
   model?: SpeechModelV3;
@@ -240,7 +230,6 @@ export interface ElementPropsMap {
   overlay: OverlayProps;
   image: ImageProps;
   video: VideoProps;
-  animate: AnimateProps;
   speech: SpeechProps;
   "talking-head": TalkingHeadProps;
   title: TitleProps;

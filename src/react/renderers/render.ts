@@ -25,7 +25,6 @@ import type {
   SpeechProps,
   VargElement,
 } from "../types";
-import { renderAnimate } from "./animate";
 import { renderCaptions } from "./captions";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
@@ -192,13 +191,10 @@ export async function renderRoot(
       const childElement = child as VargElement;
 
       let path: string | undefined;
-      const isVideo =
-        childElement.type === "video" || childElement.type === "animate";
+      const isVideo = childElement.type === "video";
 
       if (childElement.type === "video") {
         path = await renderVideo(childElement as VargElement<"video">, ctx);
-      } else if (childElement.type === "animate") {
-        path = await renderAnimate(childElement as VargElement<"animate">, ctx);
       } else if (childElement.type === "image") {
         path = await renderImage(childElement as VargElement<"image">, ctx);
       }

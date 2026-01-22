@@ -8,7 +8,6 @@ import type {
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
 import type {
-  AnimateProps,
   ClipProps,
   ImageProps,
   SpeechProps,
@@ -16,7 +15,6 @@ import type {
   VargNode,
   VideoProps,
 } from "../types";
-import { renderAnimate } from "./animate";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderPackshot } from "./packshot";
@@ -96,25 +94,6 @@ async function renderClipLayers(
                 cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
                 cutTo: props.cutTo ?? clipOptions?.cutTo,
                 mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
-                left: props.left,
-                top: props.top,
-                width: props.width,
-                height: props.height,
-              }) as VideoLayer,
-          ),
-        });
-        break;
-      }
-
-      case "animate": {
-        const props = element.props as AnimateProps;
-        pending.push({
-          type: "async",
-          promise: renderAnimate(element as VargElement<"animate">, ctx).then(
-            (path) =>
-              ({
-                type: "video",
-                path,
                 left: props.left,
                 top: props.top,
                 width: props.width,

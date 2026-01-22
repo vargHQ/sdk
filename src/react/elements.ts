@@ -1,5 +1,4 @@
 import type {
-  AnimateProps,
   CaptionsProps,
   ClipProps,
   ImageProps,
@@ -69,10 +68,6 @@ export function Image(props: ImageProps): VargElement<"image"> {
 
 export function Video(props: VideoProps): VargElement<"video"> {
   return createElement("video", props as Record<string, unknown>, undefined);
-}
-
-export function Animate(props: AnimateProps): VargElement<"animate"> {
-  return createElement("animate", props as Record<string, unknown>, undefined);
 }
 
 export function Speech(props: SpeechProps): VargElement<"speech"> {
