@@ -66,7 +66,7 @@
     "vargai": "^0.4.0-alpha11",
     "zod": "^4.2.1"
   },
-  "version": "0.4.0-alpha17",
+  "version": "0.4.0-alpha18",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",
