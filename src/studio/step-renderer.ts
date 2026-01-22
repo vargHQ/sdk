@@ -2,7 +2,6 @@ import { generateImage } from "ai";
 import { withCache } from "../ai-sdk/cache";
 import { fileCache } from "../ai-sdk/file-cache";
 import { generateVideo } from "../ai-sdk/generate-video";
-import { renderAnimate } from "../react/renderers/animate";
 import type { RenderContext } from "../react/renderers/context";
 import { renderImage } from "../react/renderers/image";
 import { renderMusic } from "../react/renderers/music";
@@ -113,20 +112,6 @@ export async function executeStage(
       case "video": {
         const path = await renderVideo(
           stage.element as VargElement<"video">,
-          session.ctx,
-        );
-        result = {
-          type: "video",
-          path,
-          previewUrl: `/api/step/preview/${session.id}/${stageId}`,
-          mimeType: "video/mp4",
-        };
-        break;
-      }
-
-      case "animate": {
-        const path = await renderAnimate(
-          stage.element as VargElement<"animate">,
           session.ctx,
         );
         result = {

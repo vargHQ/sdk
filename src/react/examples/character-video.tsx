@@ -1,6 +1,6 @@
 import { elevenlabs } from "../../ai-sdk/providers/elevenlabs";
 import { fal } from "../../ai-sdk/providers/fal";
-import { Animate, Clip, Image, Music, Render, render } from "..";
+import { Clip, Image, Music, Render, render, Video } from "..";
 
 const MADI_REF =
   "https://s3.varg.ai/fellowers/madi/character_shots/madi_shot_03_closeup.png";
@@ -54,16 +54,19 @@ async function main() {
 
       {SCENES.map((scene) => (
         <Clip key={scene.prompt} duration={2}>
-          <Animate
-            image={Image({
-              prompt: { text: scene.prompt, images: [MADI_REF] },
-              model: fal.imageModel("nano-banana-pro/edit"),
-              aspectRatio: "9:16",
-              resize: "cover",
-            })}
-            motion={scene.motion}
+          <Video
+            prompt={{
+              text: scene.motion,
+              images: [
+                Image({
+                  prompt: { text: scene.prompt, images: [MADI_REF] },
+                  model: fal.imageModel("nano-banana-pro/edit"),
+                  aspectRatio: "9:16",
+                  resize: "cover",
+                }),
+              ],
+            }}
             model={fal.videoModel("wan-2.5")}
-            duration={5}
           />
         </Clip>
       ))}

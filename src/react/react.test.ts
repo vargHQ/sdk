@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
 import { fal } from "../ai-sdk/providers/fal";
 import {
-  Animate,
   Captions,
   Clip,
   Image,
@@ -80,19 +79,20 @@ describe("varg-react elements", () => {
     expect(element.children).toContain("I'M IN DANGER");
   });
 
-  test("Animate creates correct element with nested image", () => {
+  test("Video creates correct element with nested image", () => {
     const image = Image({ prompt: "luigi in wheelchair" });
-    const element = Animate({
-      image,
+    const element = Video({
+      prompt: { text: "wheels spinning fast", images: [image] },
       model: fal.videoModel("wan-2.5"),
-      motion: "wheels spinning fast",
-      duration: 5,
     });
 
-    expect(element.type).toBe("animate");
-    expect(element.props.image).toBe(image);
-    expect(element.props.motion).toBe("wheels spinning fast");
-    expect(element.props.duration).toBe(5);
+    expect(element.type).toBe("video");
+    expect((element.props.prompt as { images: unknown[] }).images[0]).toBe(
+      image,
+    );
+    expect((element.props.prompt as { text: string }).text).toBe(
+      "wheels spinning fast",
+    );
   });
 
   test("nested composition builds correct tree", () => {

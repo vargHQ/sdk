@@ -1,6 +1,6 @@
 import { elevenlabs } from "../../ai-sdk/providers/elevenlabs";
 import { fal } from "../../ai-sdk/providers/fal";
-import { Animate, Clip, Image, Render, Speech, Title } from "..";
+import { Clip, Image, Render, Speech, Title, Video } from "..";
 
 // Non-linear tree: multiple clips with independent branches
 // Clip 1: TalkingHead (Image -> Animate + Speech)
@@ -35,10 +35,12 @@ export default (
   <Render width={1080} height={1920}>
     {/* Clip 1: Talking head intro */}
     <Clip duration={5}>
-      <Animate
-        image={character}
+      <Video
+        prompt={{
+          text: "talking naturally, slight head movements, friendly expression",
+          images: [character],
+        }}
         model={fal.videoModel("wan-2.5")}
-        motion="talking naturally, slight head movements, friendly expression"
       />
       <Speech voice="adam" model={elevenlabs.speechModel("turbo")}>
         Hey everyone! Today we're looking at the biggest smartphone upgrade of

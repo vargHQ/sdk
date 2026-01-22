@@ -1,7 +1,6 @@
 export type GenerationType =
   | "image"
   | "video"
-  | "animate"
   | "speech"
   | "music"
   | "editly"
@@ -11,7 +10,6 @@ export type GenerationType =
 export const TIME_ESTIMATES: Record<GenerationType, number> = {
   image: 30,
   video: 120,
-  animate: 90,
   speech: 5,
   music: 45,
   editly: 15,

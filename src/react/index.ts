@@ -1,6 +1,5 @@
 export type { SizeValue } from "../ai-sdk/providers/editly/types";
 export {
-  Animate,
   Captions,
   Clip,
   Image,
@@ -20,7 +19,6 @@ export {
 export { Grid, SplitLayout } from "./layouts";
 export { render, renderStream } from "./render";
 export type {
-  AnimateProps,
   CaptionsProps,
   ClipProps,
   ImageProps,

@@ -1,6 +1,6 @@
 import type { VargElement, VargNode } from "../react/types";
 
-export type StageType = "image" | "video" | "animate" | "speech" | "music";
+export type StageType = "image" | "video" | "speech" | "music";
 
 export interface RenderStage {
   id: string;
@@ -70,11 +70,6 @@ export function extractStages(element: VargElement): ExtractedStages {
       return "video";
     }
 
-    if (type === "animate") {
-      const motion = props.motion;
-      return motion ? `animate: ${motion}` : "animate";
-    }
-
     if (type === "speech") {
       const text = getTextContent(element.children);
       return `speech: ${text.slice(0, 30)}${text.length > 30 ? "..." : ""}`;
@@ -120,13 +115,7 @@ export function extractStages(element: VargElement): ExtractedStages {
     const collectedDeps: string[] = [...parentDeps];
 
     // Check if this is a renderable stage
-    const stageTypes: StageType[] = [
-      "image",
-      "video",
-      "animate",
-      "speech",
-      "music",
-    ];
+    const stageTypes: StageType[] = ["image", "video", "speech", "music"];
 
     if (stageTypes.includes(element.type as StageType)) {
       const stageType = element.type as StageType;
@@ -137,10 +126,10 @@ export function extractStages(element: VargElement): ExtractedStages {
         return [];
       }
 
-      // For video/animate with image inputs, we need to find dependent images first
+      // For video with image inputs, we need to find dependent images first
       const imageDeps: string[] = [];
 
-      if (stageType === "video" || stageType === "animate") {
+      if (stageType === "video") {
         // Check prompt.images for nested Image elements
         const prompt = props.prompt as { images?: VargNode[] } | undefined;
         if (prompt?.images) {
@@ -156,15 +145,6 @@ export function extractStages(element: VargElement): ExtractedStages {
                 imageDeps.push(...deps);
               }
             }
-          }
-        }
-
-        // Check for image prop in animate
-        if (stageType === "animate" && props.image) {
-          const imgElement = props.image as VargElement;
-          if (imgElement.type === "image") {
-            const deps = walkTree(imgElement, currentPath, collectedDeps);
-            imageDeps.push(...deps);
           }
         }
       }
