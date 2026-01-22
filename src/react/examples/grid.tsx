@@ -1,4 +1,4 @@
-import { fal } from "../../ai-sdk/providers/fal-provider";
+import { fal } from "../../ai-sdk/providers/fal";
 import { Clip, Grid, Image, Render, render, Title } from "..";
 
 const CHARACTER_PROMPTS = [

@@ -1,4 +1,4 @@
-import { elevenlabs } from "../../ai-sdk/providers/elevenlabs-provider";
+import { elevenlabs } from "../../ai-sdk/providers/elevenlabs";
 import { Clip, Image, Music, Render, render } from "..";
 
 async function main() {

@@ -1,5 +1,5 @@
-import { elevenlabs } from "../../ai-sdk/providers/elevenlabs-provider";
-import { fal } from "../../ai-sdk/providers/fal-provider";
+import { elevenlabs } from "../../ai-sdk/providers/elevenlabs";
+import { fal } from "../../ai-sdk/providers/fal";
 import { Animate, Clip, Image, Music, Render } from "..";
 
 const MADI_REF =
