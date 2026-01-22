@@ -3,8 +3,7 @@
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "varg": "./src/cli/index.ts",
-    "vargai": "./src/init.ts"
+    "vargai": "./src/cli/index.ts"
   },
   "scripts": {
     "check": "biome check . && tsc --noEmit",
@@ -66,7 +65,7 @@
     "vargai": "^0.4.0-alpha11",
     "zod": "^4.2.1"
   },
-  "version": "0.4.0-alpha19",
+  "version": "0.4.0-alpha22",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",

@@ -1,11 +1,11 @@
 ---
 name: varg-video-generation
-description: Generate AI videos using varg SDK React engine. Use when creating videos, animations, talking characters, slideshows, or social media content. Always run onboarding first to check API keys.
+description: Generate AI videos using varg SDK React engine. Use when creating videos, animations, talking characters, slideshows, or social media content.
 license: MIT
 metadata:
   author: vargHQ
   version: "1.0.0"
-compatibility: Requires bun runtime. FAL_API_KEY required. Optional ELEVENLABS_API_KEY, REPLICATE_API_TOKEN, GROQ_API_KEY
+compatibility: Requires bun runtime. FAL_KEY required. Optional ELEVENLABS_API_KEY, REPLICATE_API_TOKEN, GROQ_API_KEY
 allowed-tools: Bash(bun:*) Bash(cat:*) Read Write Edit
 ---
 
@@ -15,21 +15,27 @@ Generate AI videos using declarative JSX syntax with automatic caching and paral
 
 ## Quick Setup
 
-Run the setup script to initialize a project:
+Initialize a new project:
 
 ```bash
-bun scripts/setup.ts
+bunx vargai init
 ```
 
-Or manually check API keys:
+Or just create hello.tsx starter:
 
 ```bash
-cat .env 2>/dev/null | grep -E "^(FAL_API_KEY|ELEVENLABS_API_KEY)=" || echo "No API keys found"
+bunx vargai hello
+```
+
+Check existing API keys:
+
+```bash
+cat .env 2>/dev/null | grep -E "^(FAL_KEY|ELEVENLABS_API_KEY)=" || echo "No API keys found"
 ```
 
 ## Required API Keys
 
-### FAL_API_KEY (Required)
+### FAL_KEY (Required)
 
 | Detail | Value |
 |--------|-------|
@@ -38,10 +44,10 @@ cat .env 2>/dev/null | grep -E "^(FAL_API_KEY|ELEVENLABS_API_KEY)=" || echo "No 
 | Free tier | Yes (limited credits) |
 | Used for | Image generation (Flux), Video generation (Wan 2.5, Kling) |
 
-If user doesn't have `FAL_API_KEY`:
+If user doesn't have `FAL_KEY`:
 1. Direct them to https://fal.ai/dashboard/keys
 2. Create account and generate API key
-3. Add to `.env` file: `FAL_API_KEY=fal_xxxxx`
+3. Add to `.env` file: `FAL_KEY=fal_xxxxx`
 
 ### Optional Keys
 
@@ -76,73 +82,78 @@ If user doesn't have `FAL_API_KEY`:
 ### Simple Slideshow (FAL only)
 
 ```tsx
-import { render, Render, Clip, Image } from "vargai/react";
+/** @jsxImportSource vargai */
+import { Render, Clip, Image } from "vargai/react";
 
 const SCENES = ["sunset over ocean", "mountain peaks", "city at night"];
 
-await render(
+export default (
   <Render width={1080} height={1920}>
     {SCENES.map((prompt, i) => (
       <Clip key={i} duration={3} transition={{ name: "fade", duration: 0.5 }}>
         <Image prompt={prompt} zoom="in" />
       </Clip>
     ))}
-  </Render>,
-  { output: "output/slideshow.mp4" }
+  </Render>
 );
 ```
 
 ### Animated Video (FAL + ElevenLabs)
 
 ```tsx
-import { render, Render, Clip, Image, Animate, Music } from "vargai/react";
+/** @jsxImportSource vargai */
+import { Render, Clip, Image, Video, Music } from "vargai/react";
 import { fal, elevenlabs } from "vargai/ai";
 
-await render(
+const cat = Image({ prompt: "cute cat on windowsill" });
+
+export default (
   <Render width={1080} height={1920}>
-    <Music prompt="upbeat electronic" model={elevenlabs.musicModel()} duration={10} />
+    <Music prompt="upbeat electronic" model={elevenlabs.musicModel()} />
     <Clip duration={5}>
-      <Animate
-        image={Image({ prompt: "cute cat on windowsill" })}
-        motion="cat turns head, blinks slowly"
+      <Video
+        prompt={{ text: "cat turns head, blinks slowly", images: [cat] }}
         model={fal.videoModel("wan-2.5")}
-        duration={5}
       />
     </Clip>
-  </Render>,
-  { output: "output/video.mp4" }
+  </Render>
 );
 ```
 
 ### Talking Character
 
 ```tsx
-import { render, Render, Clip, Image, Animate, Speech } from "vargai/react";
+/** @jsxImportSource vargai */
+import { Render, Clip, Image, Video, Speech, Captions } from "vargai/react";
 import { fal, elevenlabs } from "vargai/ai";
 
-await render(
+const robot = Image({ prompt: "friendly robot, blue metallic", aspectRatio: "9:16" });
+
+const voiceover = Speech({
+  model: elevenlabs.speechModel("eleven_multilingual_v2"),
+  voice: "adam",
+  children: "Hello! I'm your AI assistant. Let's create something amazing!",
+});
+
+export default (
   <Render width={1080} height={1920}>
-    <Clip duration="auto">
-      <Animate
-        image={Image({ prompt: "friendly robot, blue metallic", aspectRatio: "9:16" })}
-        motion="robot talking, subtle head movements"
+    <Clip duration={5}>
+      <Video
+        prompt={{ text: "robot talking, subtle head movements", images: [robot] }}
         model={fal.videoModel("wan-2.5")}
       />
-      <Speech voice="adam" model={elevenlabs.speechModel("turbo")}>
-        Hello! I'm your AI assistant. Let's create something amazing!
-      </Speech>
     </Clip>
-  </Render>,
-  { output: "output/talking-robot.mp4" }
+    <Captions src={voiceover} style="tiktok" />
+  </Render>
 );
 ```
 
-See [references/templates.md](references/templates.md) for more templates.
+
 
 ## Running Videos
 
 ```bash
-bun run your-video.tsx
+bunx vargai render your-video.tsx
 ```
 
 ## Key Components
@@ -190,7 +201,7 @@ const character = Image({ prompt: "blue robot" });
 
 ## Troubleshooting
 
-### "FAL_API_KEY not found"
+### "FAL_KEY not found"
 - Check `.env` file exists in project root
 - Ensure no spaces around `=` sign
 - Restart terminal after adding keys
@@ -207,7 +218,7 @@ const character = Image({ prompt: "blue robot" });
 
 ## Next Steps
 
-1. Run `bun scripts/setup.ts` to initialize project
-2. Add your FAL_API_KEY to `.env`
-3. Run `bun run examples/my-first-video.tsx`
+1. Run `bunx vargai init` to initialize project
+2. Add your FAL_KEY to `.env`
+3. Run `bunx vargai render hello.tsx`
 4. Or ask the agent: "create a 10 second tiktok video about cats"

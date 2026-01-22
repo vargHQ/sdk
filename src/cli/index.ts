@@ -13,6 +13,7 @@ import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
 import {
   findCmd,
+  helloCmd,
   helpCmd,
   initCmd,
   listCmd,
@@ -104,11 +105,12 @@ const pkg = await import("../../package.json");
 
 const main = defineCommand({
   meta: {
-    name: "varg",
+    name: "vargai",
     version: pkg.version,
-    description: "ai video infrastructure from your terminal",
+    description: "ai video generation sdk",
   },
   subCommands: {
+    hello: helloCmd,
     init: initCmd,
     render: renderCmd,
     preview: previewCmd,
