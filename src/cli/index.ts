@@ -23,6 +23,7 @@ import {
   showRunHelp,
   showTargetHelp,
   showWhichHelp,
+  studioCmd,
   whichCmd,
 } from "./commands";
 
@@ -92,15 +93,18 @@ if (hasHelp) {
   }
 }
 
+const pkg = await import("../../package.json");
+
 const main = defineCommand({
   meta: {
     name: "varg",
-    version: "0.3.0",
+    version: pkg.version,
     description: "ai video infrastructure from your terminal",
   },
   subCommands: {
     run: runCmd,
     render: renderCmd,
+    studio: studioCmd,
     list: listCmd,
     ls: listCmd,
     find: findCmd,
