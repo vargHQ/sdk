@@ -65,7 +65,7 @@
     "replicate": "^1.4.0",
     "zod": "^4.2.1"
   },
-  "version": "0.4.0-alpha8",
+  "version": "0.4.0-alpha9",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",
