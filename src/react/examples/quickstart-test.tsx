@@ -11,6 +11,29 @@
 import { fal } from "../../ai-sdk/providers/fal";
 import { Clip, Image, Render, render, Video } from "..";
 
+const quickstartVideo = (
+  <Render width={720} height={720}>
+    <Clip duration={3}>
+      <Video
+        prompt={{
+          text: "robot waves hello, friendly gesture, slight head tilt",
+          images: [
+            Image({
+              prompt:
+                "a friendly robot waving hello, simple cartoon style, blue and white colors, clean background",
+              model: fal.imageModel("flux-schnell"),
+              aspectRatio: "1:1",
+            }),
+          ],
+        }}
+        model={fal.videoModel("wan-2.5")}
+      />
+    </Clip>
+  </Render>
+);
+
+export default quickstartVideo;
+
 async function main() {
   console.log("=== Varg Video Generation - Setup Verification ===\n");
 
@@ -46,29 +69,8 @@ async function main() {
   console.log("Generating a simple 3-second animation...");
   console.log("This may take 30-60 seconds on first run.\n");
 
-  const video = (
-    <Render width={720} height={720}>
-      <Clip duration={3}>
-        <Video
-          prompt={{
-            text: "robot waves hello, friendly gesture, slight head tilt",
-            images: [
-              Image({
-                prompt:
-                  "a friendly robot waving hello, simple cartoon style, blue and white colors, clean background",
-                model: fal.imageModel("flux-schnell"),
-                aspectRatio: "1:1",
-              }),
-            ],
-          }}
-          model={fal.videoModel("wan-2.5")}
-        />
-      </Clip>
-    </Render>
-  );
-
   try {
-    const buffer = await render(video, {
+    const buffer = await render(quickstartVideo, {
       output: "output/quickstart-test.mp4",
       cache: ".cache/ai",
     });
@@ -94,4 +96,6 @@ async function main() {
   }
 }
 
-main();
+if (import.meta.main) {
+  main();
+}
