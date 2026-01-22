@@ -68,6 +68,7 @@ export interface RenderProps extends BaseProps {
   height?: number;
   fps?: number;
   normalize?: boolean;
+  shortest?: boolean;
   children?: VargNode;
 }
 
@@ -160,8 +161,6 @@ export type MusicProps = BaseProps &
     src?: string;
     loop?: boolean;
     ducking?: boolean;
-    /** End output when video ends, trimming longer audio */
-    shortest?: boolean;
   };
 
 export interface CaptionsProps extends BaseProps {
