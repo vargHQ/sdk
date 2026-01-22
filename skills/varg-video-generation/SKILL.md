@@ -26,7 +26,7 @@ Generate AI videos using declarative JSX syntax with automatic caching and paral
 Run the setup script to initialize a project:
 
 ```bash
-bun scripts/setup.ts
+bun run src/init.ts
 ```
 
 Or check API keys directly:
@@ -222,7 +222,7 @@ const character = Image({ prompt: "blue robot" });
 
 ## Next Steps
 
-1. Run `bun scripts/setup.ts` to initialize project
+1. Run `bun run src/init.ts` to initialize project
 2. Add your FAL_API_KEY to `.env`
 3. Run `bun run examples/my-first-video.tsx`
 4. Or ask the agent: "create a 10 second tiktok video about cats"
