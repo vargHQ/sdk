@@ -6,36 +6,45 @@ import { Box, Text } from "ink";
 import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
 
-const HELLO_TEMPLATE = `import { render, Render, Clip, Image, Video, Speech, Music, Captions } from "vargai/react";
-import { fal, elevenlabs } from "vargai/ai";
+const CHARACTER_REF = "https://s3.varg.ai/uploads/images/1_0475e227.png";
+const BG_REF =
+  "https://s3.varg.ai/uploads/images/xyearp51qvve-zi3nrcve-zbno2hfgt5gergjrof_995f553d.png";
+
+const HELLO_TEMPLATE = `import { render, Render, Clip, Image, Video } from "vargai/react";
+import { fal } from "vargai/ai";
 
 const girl = Image({
-  prompt: "young woman, short dark brown bob with wispy bangs, oval face, fair skin, large dark brown eyes, full lips, silver hoop earrings. deep black background, dramatic orange rim lighting, noir premium aesthetic. 85mm portrait, shallow depth of field",
-  model: fal.imageModel("flux-schnell"),
-  aspectRatio: "9:16",
-});
+  prompt: {
+    text: \`Using the attached reference images, generate a photorealistic three-quarter editorial portrait of the exact same character — maintain identical face, hairstyle, and proportions from Image 1.
 
-const voiceover = Speech({
-  model: elevenlabs.speechModel("eleven_multilingual_v2"),
-  voice: "rachel",
-  children: "Hey! Welcome to varg. Let's make some videos together!",
+Framing: Head and shoulders, cropped at upper chest. Direct eye contact with camera.
+
+Natural confident expression, relaxed shoulders.
+Preserve the outfit neckline and visible clothing details from reference.
+
+Background: Deep black with two contrasting orange gradient accents matching Reference 2. Soft gradient bleed, no hard edges.
+
+Shot on 85mm f/1.4 lens, shallow depth of field. Clean studio lighting — soft key light on face, subtle rim light on hair and shoulders for separation. High-end fashion editorial aesthetic.\`,
+    images: [
+      "${CHARACTER_REF}",
+      "${BG_REF}",
+    ],
+  },
+  model: fal.imageModel("nano-banana-pro/edit"),
+  aspectRatio: "9:16",
 });
 
 await render(
   <Render width={1080} height={1920}>
-    <Music prompt="upbeat electronic pop, energetic, modern" model={elevenlabs.musicModel()} volume={0.15} />
-
-    <Clip duration={4}>
+    <Clip duration={5}>
       <Video
         prompt={{
-          text: "woman waves hello enthusiastically, warm smile, friendly expression, studio lighting",
+          text: "She waves hello warmly, natural smile, friendly expression. Studio lighting, authentic confident slightly playful atmosphere. Camera static. Intense orange lighting.",
           images: [girl],
         }}
         model={fal.videoModel("kling-v2.5")}
       />
     </Clip>
-
-    <Captions src={voiceover} style="tiktok" color="#ffffff" />
   </Render>,
   { output: "output/hello.mp4" }
 );
