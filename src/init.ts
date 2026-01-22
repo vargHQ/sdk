@@ -8,15 +8,18 @@
  *
  * This script:
  * 1. Checks/creates .env with required API keys
- * 2. Installs Claude Code rules for video generation
+ * 2. Installs Claude Code + Codex skills for video generation
  * 3. Creates example files
  * 4. Verifies the setup works
  */
 
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  statSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
@@ -49,193 +52,50 @@ const log = {
     ),
 };
 
-// Agent Skills format SKILL.md
-const SKILL_MD = `---
-name: varg-video-generation
-description: Generate AI videos using varg SDK React engine. Use when creating videos, animations, talking characters, slideshows, or social media content. Always run onboarding first to check API keys.
-license: MIT
-metadata:
-  author: vargHQ
-  version: "1.0.0"
-compatibility: Requires bun runtime. FAL_API_KEY required. Optional ELEVENLABS_API_KEY, REPLICATE_API_TOKEN, GROQ_API_KEY
-allowed-tools: Bash(bun:*) Bash(cat:*) Read Write Edit
----
+function resolveCodexHome(cwd: string): string {
+  const env = process.env.CODEX_HOME;
+  const home = process.env.HOME ?? cwd;
+  if (!env) return join(home, ".codex");
+  if (env === "~") return home;
+  if (env.startsWith("~/")) {
+    return join(home, env.slice(2));
+  }
+  return env;
+}
 
-# Video Generation with varg React Engine
+function copyDirSync(srcDir: string, destDir: string): void {
+  if (!existsSync(destDir)) {
+    mkdirSync(destDir, { recursive: true });
+  }
 
-## Overview
+  for (const entry of readdirSync(srcDir)) {
+    const srcPath = join(srcDir, entry);
+    const destPath = join(destDir, entry);
+    const stats = statSync(srcPath);
 
-This rule helps you generate AI videos using the varg SDK's React engine. It provides:
-- Declarative JSX syntax for video composition
-- Automatic caching (same props = instant cache hit)
-- Parallel generation where possible
-- Support for images, video, music, voice, and captions
+    if (stats.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
-## Step 1: Onboarding (REQUIRED for new users)
+function installSkillFromRepo(
+  cwd: string,
+  skillName: string,
+  destBase: string,
+): string | null {
+  const srcDir = join(cwd, "skills", skillName);
+  if (!existsSync(srcDir)) {
+    log.warn(`Skill source not found: ${srcDir}`);
+    return null;
+  }
 
-Before generating videos, ensure the user has the required API keys configured.
-
-### Check Current Setup
-
-Run this command to check existing configuration:
-
-\`\`\`bash
-cat .env 2>/dev/null | grep -E "^(FAL_API_KEY|ELEVENLABS_API_KEY|REPLICATE_API_TOKEN|GROQ_API_KEY)=" || echo "No API keys found in .env"
-\`\`\`
-
-### Required: FAL_API_KEY
-
-**This is the minimum requirement for video generation.**
-
-| Detail | Value |
-|--------|-------|
-| Provider | Fal.ai |
-| Get it | https://fal.ai/dashboard/keys |
-| Free tier | Yes (limited credits) |
-| Used for | Image generation (Flux), Video generation (Wan 2.5, Kling) |
-
-If user doesn't have \`FAL_API_KEY\`:
-1. Direct them to https://fal.ai/dashboard/keys
-2. They need to create an account and generate an API key
-3. Add to \`.env\` file in project root
-
-### Optional Keys (warn if missing, but continue)
-
-| Feature | Required Key | Provider | Get It |
-|---------|-------------|----------|--------|
-| Music generation | \`ELEVENLABS_API_KEY\` | ElevenLabs | https://elevenlabs.io/app/settings/api-keys |
-| Voice/Speech | \`ELEVENLABS_API_KEY\` | ElevenLabs | https://elevenlabs.io/app/settings/api-keys |
-| Lipsync | \`REPLICATE_API_TOKEN\` | Replicate | https://replicate.com/account/api-tokens |
-| Transcription | \`GROQ_API_KEY\` | Groq | https://console.groq.com/keys |
-
-**When keys are missing, inform user what features are unavailable.**
-
-## Step 2: Quick Templates
-
-### Simple Slideshow (FAL only)
-
-\`\`\`tsx
-import { render, Render, Clip, Image } from "vargai/react";
-
-const SCENES = [
-  "sunset over ocean, cinematic",
-  "mountain peaks at dawn, misty",
-  "city skyline at night, neon",
-];
-
-await render(
-  <Render width={1080} height={1920}>
-    {SCENES.map((prompt, i) => (
-      <Clip key={i} duration={3} transition={{ name: "fade", duration: 0.5 }}>
-        <Image prompt={prompt} zoom="in" />
-      </Clip>
-    ))}
-  </Render>,
-  { output: "output/slideshow.mp4" }
-);
-\`\`\`
-
-### Animated Video (FAL + ElevenLabs)
-
-\`\`\`tsx
-import { render, Render, Clip, Image, Animate, Music } from "vargai/react";
-import { fal, elevenlabs } from "vargai/ai";
-
-await render(
-  <Render width={1080} height={1920}>
-    <Music prompt="upbeat electronic" model={elevenlabs.musicModel()} duration={10} />
-    <Clip duration={5}>
-      <Animate
-        image={Image({ prompt: "cute cat on windowsill" })}
-        motion="cat turns head, blinks slowly"
-        model={fal.videoModel("wan-2.5")}
-        duration={5}
-      />
-    </Clip>
-  </Render>,
-  { output: "output/video.mp4" }
-);
-\`\`\`
-
-### Talking Character
-
-\`\`\`tsx
-import { render, Render, Clip, Image, Animate, Speech } from "vargai/react";
-import { fal, elevenlabs } from "vargai/ai";
-
-await render(
-  <Render width={1080} height={1920}>
-    <Clip duration="auto">
-      <Animate
-        image={Image({ prompt: "friendly robot, blue metallic", aspectRatio: "9:16" })}
-        motion="robot talking, subtle head movements"
-        model={fal.videoModel("wan-2.5")}
-      />
-      <Speech voice="adam" model={elevenlabs.speechModel("turbo")}>
-        Hello! I'm your AI assistant. Let's create something amazing!
-      </Speech>
-    </Clip>
-  </Render>,
-  { output: "output/talking-robot.mp4" }
-);
-\`\`\`
-
-## Step 3: Running Videos
-
-\`\`\`bash
-bun run your-video.tsx
-\`\`\`
-
-## Key Components
-
-| Component | Purpose | Required Key |
-|-----------|---------|--------------|
-| \`<Render>\` | Root container | - |
-| \`<Clip>\` | Sequential segment | - |
-| \`<Image>\` | AI image | FAL |
-| \`<Animate>\` | Image-to-video | FAL |
-| \`<Music>\` | Background music | ElevenLabs |
-| \`<Speech>\` | Text-to-speech | ElevenLabs |
-
-## Common Patterns
-
-### Character Consistency
-\`\`\`tsx
-const character = Image({ prompt: "blue robot" });
-// Reuse same reference for consistent appearance
-<Animate image={character} motion="waving" />
-<Animate image={character} motion="dancing" />
-\`\`\`
-
-### Transitions
-\`\`\`tsx
-<Clip transition={{ name: "fade", duration: 0.5 }}>
-// Options: fade, crossfade, wipeleft, cube, slideup, etc.
-\`\`\`
-
-### Aspect Ratios
-- \`9:16\` - TikTok, Reels, Shorts (vertical)
-- \`16:9\` - YouTube (horizontal)
-- \`1:1\` - Instagram (square)
-
-## Troubleshooting
-
-### "FAL_API_KEY not found"
-- Check \`.env\` file exists in project root
-- Ensure no spaces around \`=\` sign
-- Restart terminal after adding keys
-
-### "Rate limit exceeded"
-- Free tier has limited credits
-- Wait or upgrade plan
-- Use caching to avoid regenerating
-
-## Next Steps
-
-1. Add your FAL_API_KEY to \`.env\`
-2. Run \`bun run examples/my-first-video.tsx\`
-3. Or ask the agent: "create a 10 second tiktok video about cats"
-`;
+  const destDir = join(destBase, "skills", skillName);
+  copyDirSync(srcDir, destDir);
+  return destDir;
+}
 
 // Example video file
 const EXAMPLE_VIDEO = `/** @jsxImportSource vargai */
@@ -424,19 +284,34 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
     }
   }
 
-  // Step 3: Install Agent Skills (SKILL.md) + Claude Code symlink
+  // Step 3: Install Agent Skills (from repo) + Claude Code symlink
   log.step("Installing Agent Skills");
 
-  // Create .claude/skills/varg-video-generation/ (Agent Skills format)
-  const skillsDir = join(cwd, ".claude/skills/varg-video-generation");
-  const skillPath = join(skillsDir, "SKILL.md");
+  const skillsToInstall = [
+    "varg-video-generation",
+    "vargai-pipeline-cookbooks",
+  ];
+  const claudeBase = join(cwd, ".claude");
+  const localCodexHome = join(cwd, ".codex");
+  const codexHome = resolveCodexHome(cwd);
+  const codexDisplayBase = codexHome === localCodexHome ? ".codex" : codexHome;
 
-  if (!existsSync(skillsDir)) {
-    mkdirSync(skillsDir, { recursive: true });
+  const installedClaudeSkills: string[] = [];
+  const installedCodexSkills: string[] = [];
+
+  for (const skillName of skillsToInstall) {
+    const claudeDest = installSkillFromRepo(cwd, skillName, claudeBase);
+    if (claudeDest) {
+      installedClaudeSkills.push(`.claude/skills/${skillName}/`);
+      log.success(`Installed ${skillName} for Claude Code`);
+    }
+
+    const codexDest = installSkillFromRepo(cwd, skillName, codexHome);
+    if (codexDest) {
+      installedCodexSkills.push(`${codexDisplayBase}/skills/${skillName}/`);
+      log.success(`Installed ${skillName} for Codex (${codexDisplayBase})`);
+    }
   }
-
-  writeFileSync(skillPath, SKILL_MD);
-  log.success("Installed SKILL.md (Agent Skills format)");
 
   // Create .claude/rules/ symlink for Claude Code compatibility
   const rulesDir = join(cwd, ".claude/rules");
@@ -495,8 +370,19 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
 ${COLORS.green}${COLORS.bold}Setup complete!${COLORS.reset}
 
 ${COLORS.bold}What was installed:${COLORS.reset}
-  ${COLORS.dim}├─${COLORS.reset} .claude/skills/varg-video-generation/SKILL.md ${COLORS.dim}(Agent Skills)${COLORS.reset}
+  ${installedClaudeSkills
+    .map(
+      (path) =>
+        `${COLORS.dim}├─${COLORS.reset} ${path} ${COLORS.dim}(Claude skill)${COLORS.reset}`,
+    )
+    .join("\n  ")}
   ${COLORS.dim}├─${COLORS.reset} .claude/rules/video-generation.md ${COLORS.dim}(symlink for Claude Code)${COLORS.reset}
+  ${installedCodexSkills
+    .map(
+      (path) =>
+        `${COLORS.dim}├─${COLORS.reset} ${path} ${COLORS.dim}(Codex skill)${COLORS.reset}`,
+    )
+    .join("\n  ")}
   ${COLORS.dim}├─${COLORS.reset} examples/my-first-video.tsx ${COLORS.dim}(starter example)${COLORS.reset}
   ${COLORS.dim}├─${COLORS.reset} output/ ${COLORS.dim}(video output folder)${COLORS.reset}
   ${COLORS.dim}└─${COLORS.reset} .cache/ai/ ${COLORS.dim}(generation cache)${COLORS.reset}
