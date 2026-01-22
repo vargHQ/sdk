@@ -5,8 +5,45 @@ AI video generation from your terminal.
 ## Quick Start
 
 ```bash
-bun install @vargai/sdk
+bun install vargai ai
 ```
+
+### SDK Usage
+
+```typescript
+import { generateImage } from "ai";
+import { File, fal, generateElement, generateVideo, scene } from "vargai";
+
+// generate a character from reference image
+const { element: character } = await generateElement({
+  model: fal.imageModel("nano-banana-pro/edit"),
+  type: "character",
+  prompt: {
+    text: "cartoon character, simple style",
+    images: [await File.fromPath("media/reference.jpg").arrayBuffer()],
+  },
+});
+
+// generate scene with character
+const { image: frame } = await generateImage({
+  model: fal.imageModel("nano-banana-pro"),
+  prompt: scene`${character} walks through a forest`,
+});
+
+// animate the frame
+const { video } = await generateVideo({
+  model: fal.videoModel("wan-2.5"),
+  prompt: {
+    text: `${character.text} walks through a forest`,
+    images: [frame.base64],
+  },
+  duration: 5,
+});
+
+await Bun.write("output/scene.mp4", video.uint8Array);
+```
+
+### CLI Usage
 
 ```bash
 varg run image --prompt "cyberpunk cityscape at night"

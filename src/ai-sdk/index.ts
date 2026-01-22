@@ -61,8 +61,8 @@ export {
   type ElevenLabsProvider,
   elevenlabs,
   VOICES,
-} from "./providers/elevenlabs-provider";
-export { createFal, type FalProvider, fal } from "./providers/fal-provider";
+} from "./providers/elevenlabs";
+export { createFal, type FalProvider, fal } from "./providers/fal";
 export {
   createHiggsfield,
   type HiggsfieldImageModelSettings,
