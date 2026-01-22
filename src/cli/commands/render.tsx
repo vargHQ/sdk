@@ -19,21 +19,27 @@ async function loadComponent(filePath: string): Promise<VargElement> {
     source.includes("from '@vargai") ||
     source.includes('from "@vargai');
 
-  if (hasImports) {
+  const hasJsxPragma =
+    source.includes("@jsxImportSource") || source.includes("@jsx ");
+
+  if (hasImports && hasJsxPragma) {
     const mod = await import(resolvedPath);
     return mod.default;
   }
 
-  const tmpDir = ".cache/varg-render";
+  const tmpDir = `${process.cwd()}/.cache/varg-render`;
   if (!existsSync(tmpDir)) {
     mkdirSync(tmpDir, { recursive: true });
   }
 
+  const prepended = hasImports
+    ? `/** @jsxImportSource vargai */\n`
+    : AUTO_IMPORTS;
   const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
-  await Bun.write(tmpFile, AUTO_IMPORTS + source);
+  await Bun.write(tmpFile, prepended + source);
 
   try {
-    const mod = await import(resolve(tmpFile));
+    const mod = await import(tmpFile);
     return mod.default;
   } finally {
     (await Bun.file(tmpFile).exists()) && (await Bun.write(tmpFile, ""));
