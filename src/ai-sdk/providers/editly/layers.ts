@@ -261,6 +261,11 @@ export function getImageFilter(
       yExpr = "trunc((ih-ih/zoom)/2)";
     }
 
+    // DO NOT REMOVE: zoompan needs high resolution to avoid shaking at zoom edges.
+    // cover mode: use output aspect ratio (4x) - faster, ~40s for 3 clips at 1080x1920
+    // contain mode: use square (maxDim * 4) - slower but handles any input aspect ratio
+    // we tried animated crop instead of zoompan but ffmpeg's crop filter doesn't
+    // support frame-based expressions properly with looped static images.
     const zoomWidth = width * 4;
     const zoomHeight = height * 4;
     const maxDim = Math.max(width, height);
@@ -268,11 +273,11 @@ export function getImageFilter(
 
     if (layer.resizeMode === "cover") {
       filters.push(
-        `scale=${zoomSize}:${zoomSize}:force_original_aspect_ratio=increase`,
+        `scale=${zoomWidth}:${zoomHeight}:force_original_aspect_ratio=increase`,
       );
-      filters.push(`crop=${zoomSize}:${zoomSize}`);
+      filters.push(`crop=${zoomWidth}:${zoomHeight}`);
       filters.push(
-        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${zoomSize}x${zoomSize}:fps=30`,
+        `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=${zoomWidth}x${zoomHeight}:fps=30`,
       );
       filters.push(
         `scale=${width}:${height}:force_original_aspect_ratio=increase`,
