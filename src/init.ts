@@ -13,7 +13,14 @@
  * 4. Verifies the setup works
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 const COLORS = {
@@ -42,9 +49,16 @@ const log = {
     ),
 };
 
-// Claude Code rule for video generation
-const VIDEO_GENERATION_RULE = `---
-description: Video generation quickstart and onboarding for varg SDK. Use when user asks to create videos, animations, talking characters, or social media content.
+// Agent Skills format SKILL.md
+const SKILL_MD = `---
+name: varg-video-generation
+description: Generate AI videos using varg SDK React engine. Use when creating videos, animations, talking characters, slideshows, or social media content. Always run onboarding first to check API keys.
+license: MIT
+metadata:
+  author: vargHQ
+  version: "1.0.0"
+compatibility: Requires bun runtime. FAL_API_KEY required. Optional ELEVENLABS_API_KEY, REPLICATE_API_TOKEN, GROQ_API_KEY
+allowed-tools: Bash(bun:*) Bash(cat:*) Read Write Edit
 ---
 
 # Video Generation with varg React Engine
@@ -203,6 +217,24 @@ const character = Image({ prompt: "blue robot" });
 - \`9:16\` - TikTok, Reels, Shorts (vertical)
 - \`16:9\` - YouTube (horizontal)
 - \`1:1\` - Instagram (square)
+
+## Troubleshooting
+
+### "FAL_API_KEY not found"
+- Check \`.env\` file exists in project root
+- Ensure no spaces around \`=\` sign
+- Restart terminal after adding keys
+
+### "Rate limit exceeded"
+- Free tier has limited credits
+- Wait or upgrade plan
+- Use caching to avoid regenerating
+
+## Next Steps
+
+1. Add your FAL_API_KEY to \`.env\`
+2. Run \`bun run examples/my-first-video.tsx\`
+3. Or ask the agent: "create a 10 second tiktok video about cats"
 `;
 
 // Example video file
@@ -299,7 +331,7 @@ ${COLORS.bold}AI Video Generation Setup${COLORS.reset}
   // Step 1: Check/create directories
   log.step("Setting up project structure");
 
-  const dirs = ["output", ".cache/ai", ".claude/rules", "examples"];
+  const dirs = ["output", ".cache/ai", "examples"];
   for (const dir of dirs) {
     const path = join(cwd, dir);
     if (!existsSync(path)) {
@@ -387,9 +419,21 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
     }
   }
 
-  // Step 3: Install Claude Code rules
-  log.step("Installing Claude Code rules");
+  // Step 3: Install Agent Skills (SKILL.md) + Claude Code symlink
+  log.step("Installing Agent Skills");
 
+  // Create .claude/skills/varg-video-generation/ (Agent Skills format)
+  const skillsDir = join(cwd, ".claude/skills/varg-video-generation");
+  const skillPath = join(skillsDir, "SKILL.md");
+
+  if (!existsSync(skillsDir)) {
+    mkdirSync(skillsDir, { recursive: true });
+  }
+
+  writeFileSync(skillPath, SKILL_MD);
+  log.success("Installed SKILL.md (Agent Skills format)");
+
+  // Create .claude/rules/ symlink for Claude Code compatibility
   const rulesDir = join(cwd, ".claude/rules");
   const rulePath = join(rulesDir, "video-generation.md");
 
@@ -397,8 +441,14 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
     mkdirSync(rulesDir, { recursive: true });
   }
 
-  writeFileSync(rulePath, VIDEO_GENERATION_RULE);
-  log.success("Installed video-generation rule");
+  // Remove existing file/symlink if present
+  if (existsSync(rulePath)) {
+    unlinkSync(rulePath);
+  }
+
+  // Create relative symlink
+  symlinkSync("../skills/varg-video-generation/SKILL.md", rulePath);
+  log.success("Created Claude Code rules symlink");
 
   // Step 4: Create example file
   log.step("Creating example files");
@@ -440,7 +490,8 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
 ${COLORS.green}${COLORS.bold}Setup complete!${COLORS.reset}
 
 ${COLORS.bold}What was installed:${COLORS.reset}
-  ${COLORS.dim}├─${COLORS.reset} .claude/rules/video-generation.md ${COLORS.dim}(Claude Code rule)${COLORS.reset}
+  ${COLORS.dim}├─${COLORS.reset} .claude/skills/varg-video-generation/SKILL.md ${COLORS.dim}(Agent Skills)${COLORS.reset}
+  ${COLORS.dim}├─${COLORS.reset} .claude/rules/video-generation.md ${COLORS.dim}(symlink for Claude Code)${COLORS.reset}
   ${COLORS.dim}├─${COLORS.reset} examples/my-first-video.tsx ${COLORS.dim}(starter example)${COLORS.reset}
   ${COLORS.dim}├─${COLORS.reset} output/ ${COLORS.dim}(video output folder)${COLORS.reset}
   ${COLORS.dim}└─${COLORS.reset} .cache/ai/ ${COLORS.dim}(generation cache)${COLORS.reset}
