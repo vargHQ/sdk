@@ -36,27 +36,42 @@ async function loadComponent(filePath: string): Promise<VargElement> {
   const resolvedPath = resolve(filePath);
   const source = await Bun.file(resolvedPath).text();
 
-  const hasAnyImport = source.includes(" from ");
   const hasVargaiImport =
     source.includes("from 'vargai") ||
     source.includes('from "vargai') ||
-    source.includes("from '@vargai") ||
-    source.includes('from "@vargai');
+    source.includes("@jsxImportSource vargai");
 
-  const hasJsxPragma =
-    source.includes("@jsxImportSource") || source.includes("@jsx ");
+  const hasRelativeImport =
+    source.includes("from './") || source.includes('from "./');
 
-  // file has imports (relative or absolute) - import directly to preserve paths
-  if (hasAnyImport) {
+  const pkgDir = new URL("../../..", import.meta.url).pathname;
+  const tmpDir = `${pkgDir}/.cache/varg-render`;
+
+  if (!existsSync(tmpDir)) {
+    mkdirSync(tmpDir, { recursive: true });
+  }
+
+  if (hasRelativeImport) {
     const mod = await import(resolvedPath);
     return mod.default;
   }
 
-  // no imports - inject auto-imports and jsx pragma
-  const pkgDir = new URL("../../..", import.meta.url).pathname;
-  const tmpDir = `${pkgDir}/.cache/varg-render`;
-  if (!existsSync(tmpDir)) {
-    mkdirSync(tmpDir, { recursive: true });
+  if (hasVargaiImport) {
+    const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
+    await Bun.write(tmpFile, source);
+
+    try {
+      const mod = await import(tmpFile);
+      return mod.default;
+    } finally {
+      (await Bun.file(tmpFile).exists()) && (await Bun.write(tmpFile, ""));
+    }
+  }
+
+  const hasAnyImport = source.includes(" from ");
+  if (hasAnyImport) {
+    const mod = await import(resolvedPath);
+    return mod.default;
   }
 
   const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
