@@ -75,6 +75,10 @@ export interface RenderProps extends BaseProps {
 export interface ClipProps extends BaseProps {
   duration?: number | "auto";
   transition?: TransitionOptions;
+  /** Start trim point in seconds (e.g., 1 to start from 1 second) */
+  cutFrom?: number;
+  /** End trim point in seconds (e.g., 3 to end at 3 seconds) */
+  cutTo?: number;
   children?: VargNode;
 }
 

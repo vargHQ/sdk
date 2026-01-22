@@ -48,3 +48,5 @@ lib
 
 output
 .worktrees
+
+src/ai-sdk/private_examples/

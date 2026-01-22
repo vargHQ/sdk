@@ -1,6 +1,13 @@
 {
   "permissions": {
-    "allow": ["Bash(bun run:*)", "WebFetch(domain:fal.ai)"],
+    "allow": [
+      "Bash(bun run:*)",
+      "WebFetch(domain:fal.ai)",
+      "Bash(cd:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(ffprobe:*)",
+      "Bash(open:*)"
+    ],
     "deny": [],
     "ask": []
   }
