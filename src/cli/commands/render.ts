@@ -65,100 +65,119 @@ async function loadComponent(filePath: string): Promise<VargElement> {
   }
 }
 
+const sharedArgs = {
+  file: {
+    type: "positional" as const,
+    description: "component file (.tsx)",
+    required: true,
+  },
+  output: {
+    type: "string" as const,
+    alias: "o",
+    description: "output path",
+  },
+  cache: {
+    type: "string" as const,
+    alias: "c",
+    description: "cache directory",
+    default: ".cache/ai",
+  },
+  quiet: {
+    type: "boolean" as const,
+    alias: "q",
+    description: "minimal output",
+    default: false,
+  },
+  "no-cache": {
+    type: "boolean" as const,
+    description: "disable cache (don't read or write)",
+    default: false,
+  },
+  verbose: {
+    type: "boolean" as const,
+    alias: "v",
+    description: "show ffmpeg commands",
+    default: false,
+  },
+};
+
+async function runRender(
+  args: Record<string, unknown>,
+  mode: RenderMode,
+  commandName: string,
+) {
+  const file = args.file as string;
+
+  if (!file) {
+    console.error(`usage: varg ${commandName} <component.tsx> [-o output.mp4]`);
+    process.exit(1);
+  }
+
+  const component = await loadComponent(file);
+
+  if (!component || component.type !== "render") {
+    console.error("error: default export must be a <Render> element");
+    process.exit(1);
+  }
+
+  const basename = file
+    .replace(/\.tsx?$/, "")
+    .split("/")
+    .pop();
+  const outputPath = (args.output as string) ?? `output/${basename}.mp4`;
+
+  if (!args.quiet) {
+    const modeLabel =
+      mode === "preview" ? " (fast)" : mode === "strict" ? "" : " (preview)";
+    console.log(`rendering ${file} → ${outputPath}${modeLabel}`);
+  }
+
+  const useCache = !args["no-cache"] && mode !== "preview";
+
+  const defaults = await detectDefaultModels();
+
+  const buffer = await render(component, {
+    output: outputPath,
+    cache: useCache ? (args.cache as string) : undefined,
+    mode,
+    defaults,
+    verbose: args.verbose as boolean,
+  });
+
+  if (!args.quiet) {
+    console.log(`done! ${buffer.byteLength} bytes → ${outputPath}`);
+  }
+}
+
 export const renderCmd = defineCommand({
   meta: {
     name: "render",
-    description: "render a react component to video",
+    description: "render to video (strict mode - fails on errors)",
   },
-  args: {
-    file: {
-      type: "positional",
-      description: "component file (.tsx)",
-      required: true,
-    },
-    output: {
-      type: "string",
-      alias: "o",
-      description: "output path",
-    },
-    cache: {
-      type: "string",
-      alias: "c",
-      description: "cache directory",
-      default: ".cache/ai",
-    },
-    quiet: {
-      type: "boolean",
-      alias: "q",
-      description: "minimal output",
-      default: false,
-    },
-    strict: {
-      type: "boolean",
-      description: "fail on provider errors (no fallback)",
-      default: false,
-    },
-    preview: {
-      type: "boolean",
-      description: "skip all generation, use placeholders only",
-      default: false,
-    },
-    "no-cache": {
-      type: "boolean",
-      description: "disable cache (don't read or write)",
-      default: false,
-    },
-  },
+  args: sharedArgs,
   async run({ args }) {
-    const file = args.file as string;
+    await runRender(args, "strict", "render");
+  },
+});
 
-    if (!file) {
-      console.error("usage: varg render <component.tsx> [-o output.mp4]");
-      process.exit(1);
-    }
+export const previewCmd = defineCommand({
+  meta: {
+    name: "preview",
+    description: "render with fallback placeholders on errors",
+  },
+  args: sharedArgs,
+  async run({ args }) {
+    await runRender(args, "default", "preview");
+  },
+});
 
-    const component = await loadComponent(file);
-
-    if (!component || component.type !== "render") {
-      console.error("error: default export must be a <Render> element");
-      process.exit(1);
-    }
-
-    const basename = file
-      .replace(/\.tsx?$/, "")
-      .split("/")
-      .pop();
-    const outputPath = args.output ?? `output/${basename}.mp4`;
-
-    const mode: RenderMode = args.strict
-      ? "strict"
-      : args.preview
-        ? "preview"
-        : "default";
-
-    if (!args.quiet) {
-      const modeLabel =
-        mode === "preview"
-          ? " (preview)"
-          : mode === "strict"
-            ? " (strict)"
-            : "";
-      console.log(`rendering ${file} → ${outputPath}${modeLabel}`);
-    }
-
-    const useCache = !args["no-cache"] && mode !== "preview";
-
-    const defaults = await detectDefaultModels();
-
-    const buffer = await render(component, {
-      output: outputPath,
-      cache: useCache ? args.cache : undefined,
-      mode,
-      defaults,
-    });
-
-    if (!args.quiet) {
-      console.log(`done! ${buffer.byteLength} bytes → ${outputPath}`);
-    }
+export const fastCmd = defineCommand({
+  meta: {
+    name: "fast",
+    description: "render with all placeholders (no generation)",
+  },
+  args: sharedArgs,
+  async run({ args }) {
+    await runRender(args, "preview", "fast");
   },
 });
