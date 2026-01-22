@@ -106,8 +106,12 @@ export type VideoPrompt =
   | {
       text?: string;
       images?: ImageInput[];
-      audio?: Uint8Array | string;
-      video?: Uint8Array | string;
+      audio?: Uint8Array | string | VargElement<"speech">;
+      video?:
+        | Uint8Array
+        | string
+        | VargElement<"animate">
+        | VargElement<"video">;
     };
 
 export type VideoProps = BaseProps &
@@ -123,7 +127,7 @@ export type VideoProps = BaseProps &
 // Image-to-video animation
 export interface AnimateProps extends BaseProps, PositionProps {
   image?: VargElement<"image">;
-  src?: string;
+  src?: string | VargElement<"image">;
   model?: VideoModelV3;
   motion?: string;
   duration?: number;
@@ -170,6 +174,8 @@ export type MusicProps = BaseProps &
     src?: string;
     loop?: boolean;
     ducking?: boolean;
+    /** End output when video ends, trimming longer audio */
+    shortest?: boolean;
   };
 
 export interface CaptionsProps extends BaseProps {

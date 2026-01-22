@@ -14,7 +14,16 @@ export async function renderAnimate(
 
   let imagePath: string;
   if (props.src) {
-    imagePath = props.src;
+    // src can be a string path or an Image element
+    if (typeof props.src === "string") {
+      imagePath = props.src;
+    } else if (props.src.type === "image") {
+      imagePath = await renderImage(props.src as VargElement<"image">, ctx);
+    } else {
+      throw new Error(
+        `Animate 'src' prop must be a string or <Image /> element, got <${props.src.type} />`,
+      );
+    }
   } else if (props.image) {
     if (props.image.type !== "image") {
       throw new Error(
