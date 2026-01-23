@@ -48,3 +48,4 @@ lib
 
 output
 *.mp4
+.worktrees
