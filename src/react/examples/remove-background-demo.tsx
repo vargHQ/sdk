@@ -28,13 +28,13 @@ const pipDemo = (
       />
     </Clip>
     {/* foreground overlay with green screen removal */}
-    <Overlay left="55%" top="5%" width="40%" height="40%">
+    <Overlay left="55%" top="55%" width="40%" height="40%">
       <Video
         prompt={{
           text: "woman applying lipstick, looking in mirror, makeup tutorial, beauty influencer",
           images: [influencer],
         }}
-        model={fal.videoModel("kling-v2.5")}
+        model={fal.videoModel("wan-2.5")}
         removeBackground={{ color: "#00FF00", tolerance: 0.15 }}
       />
     </Overlay>
