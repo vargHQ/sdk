@@ -1,53 +1,68 @@
 import { fal } from "../../ai-sdk/providers/fal";
-import { Clip, Image, Render, render, Video } from "..";
+import { Clip, Image, Overlay, Render, render, Video } from "..";
 
-const removeBackgroundVideo = (
-  <Render width={720} height={720}>
-    <Clip duration={3}>
+// background: construction worker
+const constructionWorker = Image({
+  prompt: "construction worker in hard hat and orange vest, working on building site, holding tools, industrial background, realistic photo",
+  model: fal.imageModel("flux-schnell"),
+  aspectRatio: "9:16",
+});
+
+// foreground: influencer doing makeup (will be on green screen)
+const influencer = Image({
+  prompt: "young woman instagram influencer doing makeup tutorial, holding makeup brush, looking at camera, beauty vlogger style, portrait",
+  model: fal.imageModel("flux-schnell"),
+  aspectRatio: "9:16",
+});
+
+const pipDemo = (
+  <Render width={1080} height={1920}>
+    <Clip duration={5}>
+      {/* background video */}
       <Video
         prompt={{
-          text: "robot waves hello, friendly gesture, slight head tilt",
-          images: [
-            Image({
-              prompt:
-                "a friendly robot waving hello, simple cartoon style, blue and white colors",
-              model: fal.imageModel("flux-schnell"),
-              aspectRatio: "1:1",
-            }),
-          ],
+          text: "construction worker hammering, building, hard work, sweat on forehead",
+          images: [constructionWorker],
         }}
-        model={fal.videoModel("wan-2.5")}
-        removeBackground={true}
+        model={fal.videoModel("kling-v2.5")}
       />
+      {/* foreground overlay with green screen removal */}
+      <Overlay left="55%" top="5%" width="40%" height="40%">
+        <Video
+          prompt={{
+            text: "woman applying lipstick, looking in mirror, makeup tutorial, beauty influencer",
+            images: [influencer],
+          }}
+          model={fal.videoModel("kling-v2.5")}
+          removeBackground={{ color: "#00FF00", tolerance: 0.15 }}
+        />
+      </Overlay>
     </Clip>
   </Render>
 );
 
-export default removeBackgroundVideo;
+export default pipDemo;
 
 async function main() {
-  console.log("=== Remove Background Demo ===\n");
+  console.log("=== PiP Green Screen Demo ===\n");
+  console.log("background: construction worker");
+  console.log("foreground: influencer doing makeup (green screen removed)\n");
 
   if (!process.env.FAL_API_KEY) {
     console.error("ERROR: FAL_API_KEY not found");
     process.exit(1);
   }
 
-  console.log("generating video with green screen background...");
-  console.log("the ai will generate a green background, then ffmpeg removes it\n");
-
   try {
-    const buffer = await render(removeBackgroundVideo, {
-      output: "output/remove-background-demo.mov",
+    const buffer = await render(pipDemo, {
+      output: "output/pip-greenscreen-demo.mp4",
       cache: ".cache/ai",
     });
 
     console.log("\n=== SUCCESS ===");
     console.log(
-      `output: output/remove-background-demo.mov (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`,
+      `output: output/pip-greenscreen-demo.mp4 (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`,
     );
-    console.log("\nthe output has transparent background (alpha channel)");
-    console.log("you can use it as an overlay in video editing software");
   } catch (error) {
     console.error("\n=== FAILED ===");
     console.error("error:", error instanceof Error ? error.message : error);
