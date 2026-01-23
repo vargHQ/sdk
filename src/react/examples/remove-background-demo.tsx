@@ -10,7 +10,7 @@ const constructionWorker = Image({
 
 // foreground: influencer doing makeup (will be on green screen)
 const influencer = Image({
-  prompt: "young woman instagram influencer doing makeup tutorial, holding makeup brush, looking at camera, beauty vlogger style, portrait",
+  prompt: "young woman instagram influencer doing makeup tutorial, holding makeup brush, looking at camera, beauty vlogger style, portrait. IMPORTANT: replace background with solid #00FF00 green screen background for chroma key compositing",
   model: fal.imageModel("flux-schnell"),
   aspectRatio: "9:16",
 });
