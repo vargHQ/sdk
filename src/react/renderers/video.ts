@@ -89,13 +89,13 @@ function appendGreenScreenInstruction(
   prompt: VideoPrompt,
   color: string,
 ): VideoPrompt {
-  const instruction = `Generate with a solid ${color} background for chroma key compositing.`;
+  const instruction = `IMPORTANT: replace video background with solid ${color} background for chroma key compositing.`;
   if (typeof prompt === "string") {
-    return `${prompt} ${instruction}`;
+    return `${prompt}. ${instruction}`;
   }
   return {
     ...prompt,
-    text: prompt.text ? `${prompt.text} ${instruction}` : instruction,
+    text: prompt.text ? `${prompt.text}. ${instruction}` : instruction,
   };
 }
 
