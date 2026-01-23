@@ -250,44 +250,6 @@ export class FFmpegProvider extends BaseProvider {
     });
   }
 
-  async applyColorKey(options: {
-    input: string;
-    output: string;
-    color?: string;
-    similarity?: number;
-    blend?: number;
-  }): Promise<string> {
-    const {
-      input,
-      output,
-      color = "0x00FF00",
-      similarity = 0.1,
-      blend = 0.05,
-    } = options;
-
-    if (!existsSync(input)) {
-      throw new Error(`input file not found: ${input}`);
-    }
-
-    console.log(`[ffmpeg] applying colorkey filter (${color})...`);
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(input)
-        .videoFilters([
-          `colorkey=${color}:${similarity}:${blend}`,
-          "format=yuva420p",
-        ])
-        .outputOptions(["-c:v", "png", "-pix_fmt", "rgba"])
-        .output(output)
-        .on("end", () => {
-          console.log(`[ffmpeg] saved to ${output}`);
-          resolve(output);
-        })
-        .on("error", reject)
-        .run();
-    });
-  }
-
   async fadeVideo(options: {
     input: string;
     output: string;
@@ -580,6 +542,3 @@ export const xfadeVideos = (
 export const splitAtTimestamps = (
   options: Parameters<FFmpegProvider["splitAtTimestamps"]>[0],
 ) => ffmpegProvider.splitAtTimestamps(options);
-export const applyColorKey = (
-  options: Parameters<FFmpegProvider["applyColorKey"]>[0],
-) => ffmpegProvider.applyColorKey(options);
