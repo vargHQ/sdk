@@ -136,12 +136,7 @@ export async function renderVideo(
   const props = element.props as VideoProps;
 
   if (props.src && !props.prompt) {
-    if (props.removeBackground) {
-      throw new Error(
-        "removeBackground prop is only supported with prompt mode, not with src",
-      );
-    }
-    return props.src;
+return props.src;
   }
 
   const prompt = props.prompt;
