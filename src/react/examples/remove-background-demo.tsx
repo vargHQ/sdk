@@ -17,8 +17,8 @@ const influencer = Image({
 
 const pipDemo = (
   <Render width={1080} height={1920}>
+    {/* background video */}
     <Clip duration={5}>
-      {/* background video */}
       <Video
         prompt={{
           text: "construction worker hammering, building, hard work, sweat on forehead",
@@ -26,18 +26,18 @@ const pipDemo = (
         }}
         model={fal.videoModel("kling-v2.5")}
       />
-      {/* foreground overlay with green screen removal */}
-      <Overlay left="55%" top="5%" width="40%" height="40%">
-        <Video
-          prompt={{
-            text: "woman applying lipstick, looking in mirror, makeup tutorial, beauty influencer",
-            images: [influencer],
-          }}
-          model={fal.videoModel("kling-v2.5")}
-          removeBackground={{ color: "#00FF00", tolerance: 0.15 }}
-        />
-      </Overlay>
     </Clip>
+    {/* foreground overlay with green screen removal */}
+    <Overlay left="55%" top="5%" width="40%" height="40%">
+      <Video
+        prompt={{
+          text: "woman applying lipstick, looking in mirror, makeup tutorial, beauty influencer",
+          images: [influencer],
+        }}
+        model={fal.videoModel("kling-v2.5")}
+        removeBackground={{ color: "#00FF00", tolerance: 0.15 }}
+      />
+    </Overlay>
   </Render>
 );
 
@@ -48,8 +48,8 @@ async function main() {
   console.log("background: construction worker");
   console.log("foreground: influencer doing makeup (green screen removed)\n");
 
-  if (!process.env.FAL_API_KEY) {
-    console.error("ERROR: FAL_API_KEY not found");
+  if (!process.env.FAL_API_KEY && !process.env.FAL_KEY) {
+    console.error("ERROR: FAL_API_KEY or FAL_KEY not found");
     process.exit(1);
   }
 
@@ -57,6 +57,7 @@ async function main() {
     const buffer = await render(pipDemo, {
       output: "output/pip-greenscreen-demo.mp4",
       cache: ".cache/ai",
+      verbose: true,
     });
 
     console.log("\n=== SUCCESS ===");
