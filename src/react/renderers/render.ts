@@ -50,8 +50,8 @@ interface RenderedOverlay {
   chromaKey?: ChromaKeyOptions;
 }
 
-function hexToFFmpegColor(hex: string): string {
-  return `0x${hex.replace("#", "")}`;
+function hexToFFmpegColor(hex: `#${string}`): `0x${string}` {
+  return `0x${hex.slice(1)}` as `0x${string}`;
 }
 
 export async function renderRoot(
