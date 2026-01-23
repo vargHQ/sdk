@@ -91,6 +91,12 @@ export interface TextLayer extends BaseLayer {
  * For video layers, if parent `clip.duration` is specified, the video will be slowed/sped-up to match `clip.duration`.
  * If `cutFrom`/`cutTo` is set, the resulting segment (`cutTo`-`cutFrom`) will be slowed/sped-up to fit `clip.duration`.
  */
+export interface ChromaKeyOptions {
+  color?: string;
+  similarity?: number;
+  blend?: number;
+}
+
 export interface VideoLayer extends BaseLayer {
   type: "video";
   path: string;
@@ -104,6 +110,7 @@ export interface VideoLayer extends BaseLayer {
   originX?: OriginX;
   originY?: OriginY;
   mixVolume?: number | string;
+  chromaKey?: ChromaKeyOptions;
 }
 
 /**

@@ -10,6 +10,7 @@ import {
 import { editly } from "../../ai-sdk/providers/editly";
 import type {
   AudioTrack,
+  ChromaKeyOptions,
   Clip,
   Layer,
   VideoLayer,
@@ -19,11 +20,13 @@ import type {
   ClipProps,
   MusicProps,
   OverlayProps,
+  RemoveBackgroundOptions,
   RenderMode,
   RenderOptions,
   RenderProps,
   SpeechProps,
   VargElement,
+  VideoProps,
 } from "../types";
 import { renderCaptions } from "./captions";
 import { renderClip } from "./clip";
@@ -44,6 +47,11 @@ interface RenderedOverlay {
   path: string;
   props: OverlayProps;
   isVideo: boolean;
+  chromaKey?: ChromaKeyOptions;
+}
+
+function hexToFFmpegColor(hex: string): string {
+  return `0x${hex.replace("#", "")}`;
 }
 
 export async function renderRoot(
@@ -170,16 +178,28 @@ export async function renderRoot(
       const childElement = child as VargElement;
 
       let path: string | undefined;
+      let chromaKey: ChromaKeyOptions | undefined;
       const isVideo = childElement.type === "video";
 
       if (childElement.type === "video") {
         path = await renderVideo(childElement as VargElement<"video">, ctx);
+        const videoProps = childElement.props as VideoProps;
+        if (videoProps.removeBackground) {
+          const rbOpts = videoProps.removeBackground === true 
+            ? {} 
+            : videoProps.removeBackground;
+          chromaKey = {
+            color: rbOpts.color ? hexToFFmpegColor(rbOpts.color) : "0x00FF00",
+            similarity: rbOpts.tolerance ?? 0.1,
+            blend: rbOpts.blend ?? 0.05,
+          };
+        }
       } else if (childElement.type === "image") {
         path = await renderImage(childElement as VargElement<"image">, ctx);
       }
 
       if (path) {
-        renderedOverlays.push({ path, props: overlayProps, isVideo });
+        renderedOverlays.push({ path, props: overlayProps, isVideo, chromaKey });
 
         if (isVideo && overlayProps.keepAudio) {
           audioTracks.push({
@@ -218,6 +238,7 @@ export async function renderRoot(
         top: overlay.props.top,
         width: overlay.props.width,
         height: overlay.props.height,
+        chromaKey: overlay.chromaKey,
       };
       clip.layers.push(overlayLayer as Layer);
     }

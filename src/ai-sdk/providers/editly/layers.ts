@@ -72,6 +72,13 @@ export function getVideoFilter(
     filters.push(
       `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
     );
+    if (layer.chromaKey) {
+      const color = layer.chromaKey.color ?? "0x00FF00";
+      const similarity = layer.chromaKey.similarity ?? 0.1;
+      const blend = layer.chromaKey.blend ?? 0.05;
+      filters.push(`colorkey=${color}:${similarity}:${blend}`);
+      filters.push("format=yuva420p");
+    }
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
@@ -124,6 +131,13 @@ export function getVideoFilter(
 
   filters.push(scaleFilter);
   filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`);
+  if (layer.chromaKey) {
+    const color = layer.chromaKey.color ?? "0x00FF00";
+    const similarity = layer.chromaKey.similarity ?? 0.1;
+    const blend = layer.chromaKey.blend ?? 0.05;
+    filters.push(`colorkey=${color}:${similarity}:${blend}`);
+    filters.push("format=yuva420p");
+  }
   filters.push("setsar=1");
   filters.push("fps=30");
   filters.push("settb=1/30");
@@ -164,6 +178,13 @@ export function getVideoFilterWithTrim(
     filters.push(
       `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
     );
+    if (layer.chromaKey) {
+      const color = layer.chromaKey.color ?? "0x00FF00";
+      const similarity = layer.chromaKey.similarity ?? 0.1;
+      const blend = layer.chromaKey.blend ?? 0.05;
+      filters.push(`colorkey=${color}:${similarity}:${blend}`);
+      filters.push("format=yuva420p");
+    }
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
@@ -177,6 +198,13 @@ export function getVideoFilterWithTrim(
 
     filters.push(scaleFilter);
     filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`);
+    if (layer.chromaKey) {
+      const color = layer.chromaKey.color ?? "0x00FF00";
+      const similarity = layer.chromaKey.similarity ?? 0.1;
+      const blend = layer.chromaKey.blend ?? 0.05;
+      filters.push(`colorkey=${color}:${similarity}:${blend}`);
+      filters.push("format=yuva420p");
+    }
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");

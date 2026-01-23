@@ -1,6 +1,5 @@
 import { File } from "../../ai-sdk/file";
 import type { generateVideo } from "../../ai-sdk/generate-video";
-import { applyColorKey } from "../../providers/ffmpeg";
 import type {
   RemoveBackgroundOptions,
   ImageInput,
@@ -84,11 +83,6 @@ function parseRemoveBackgroundOptions(
     tolerance: removeBackground.tolerance ?? 0.1,
     blend: removeBackground.blend ?? 0.05,
   };
-}
-
-function hexToFFmpeg(hex: string): string {
-  const clean = hex.replace("#", "");
-  return `0x${clean}`;
 }
 
 function appendGreenScreenInstruction(
@@ -195,21 +189,8 @@ export async function renderVideo(
 
     if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
-    let tempPath = await File.toTemp(video);
+    const tempPath = await File.toTemp(video);
     ctx.tempFiles.push(tempPath);
-
-    if (removeBackgroundConfig) {
-      const colorKeyOutput = tempPath.replace(/\.[^.]+$/, "_colorkey.mov");
-      await applyColorKey({
-        input: tempPath,
-        output: colorKeyOutput,
-        color: hexToFFmpeg(removeBackgroundConfig.color ?? "#00FF00"),
-        similarity: removeBackgroundConfig.tolerance,
-        blend: removeBackgroundConfig.blend,
-      });
-      ctx.tempFiles.push(colorKeyOutput);
-      tempPath = colorKeyOutput;
-    }
 
     return tempPath;
   })();
