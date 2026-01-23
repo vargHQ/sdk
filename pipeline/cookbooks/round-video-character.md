@@ -321,7 +321,7 @@ see all voices: `bun run lib/elevenlabs.ts voices`
 ```bash
 # required api keys
 export ELEVENLABS_API_KEY="your_key"
-export FAL_KEY="your_key"  # for wan-25 and image generation
+export FAL_API_KEY="your_key"  # for wan-25 and image generation (or set FAL_KEY)
 ```
 
 ## changelog

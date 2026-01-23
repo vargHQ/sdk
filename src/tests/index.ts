@@ -20,7 +20,7 @@ Available test files:
   bun run src/tests/all.test.ts
     Comprehensive tests including live API calls.
     Requires API keys set in environment variables:
-    - FAL_KEY
+    - FAL_API_KEY (or FAL_KEY)
     - REPLICATE_API_TOKEN  
     - ELEVENLABS_API_KEY
     - GROQ_API_KEY

@@ -483,8 +483,10 @@ export interface FalProvider extends ProviderV3 {
 }
 
 export function createFal(settings: FalProviderSettings = {}): FalProvider {
-  if (settings.apiKey) {
-    fal.config({ credentials: settings.apiKey });
+  const apiKey =
+    settings.apiKey ?? process.env.FAL_API_KEY ?? process.env.FAL_KEY;
+  if (apiKey) {
+    fal.config({ credentials: apiKey });
   }
 
   return {

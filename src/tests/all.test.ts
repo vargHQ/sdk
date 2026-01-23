@@ -5,7 +5,7 @@
  * Run with: bun run src/tests/all.test.ts
  *
  * Note: Most tests require API keys to be set in environment variables:
- * - FAL_KEY
+ * - FAL_API_KEY (or FAL_KEY)
  * - REPLICATE_API_TOKEN
  * - ELEVENLABS_API_KEY
  * - GROQ_API_KEY
@@ -318,7 +318,7 @@ await test(
     }
     console.log(`   Generated: ${result.data.images[0].url}`);
   },
-  !hasApiKey("FAL_KEY"),
+  !hasApiKey(["FAL_API_KEY", "FAL_KEY"]),
 );
 
 await test(
@@ -334,7 +334,7 @@ await test(
     }
     console.log(`   Generated: ${result.data.video.url}`);
   },
-  !hasApiKey("FAL_KEY"),
+  !hasApiKey(["FAL_API_KEY", "FAL_KEY"]),
 );
 
 // Replicate tests
@@ -455,7 +455,7 @@ await test(
     }
     console.log(`   Output: ${JSON.stringify(result.output).slice(0, 100)}...`);
   },
-  !hasApiKey("FAL_KEY"),
+  !hasApiKey(["FAL_API_KEY", "FAL_KEY"]),
 );
 
 await test(
