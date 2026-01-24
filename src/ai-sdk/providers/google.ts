@@ -192,6 +192,7 @@ class GoogleVideoModel implements VideoModelV3 {
   readonly maxVideosPerCall = 1;
 
   private client: GoogleGenAI;
+  private apiKey: string;
   private pollIntervalMs: number;
   private maxPollDurationMs: number;
   private onProgress?: (progress: number, operationName: string) => void;
@@ -201,9 +202,9 @@ class GoogleVideoModel implements VideoModelV3 {
     options: { apiKey?: string; polling?: GooglePollingConfig } = {},
   ) {
     this.modelId = modelId;
-    const apiKey =
+    this.apiKey =
       options.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? "";
-    this.client = new GoogleGenAI({ apiKey });
+    this.client = new GoogleGenAI({ apiKey: this.apiKey });
     this.pollIntervalMs =
       options.polling?.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
     this.maxPollDurationMs =
@@ -333,9 +334,7 @@ class GoogleVideoModel implements VideoModelV3 {
       const videoUri = video.video?.uri;
       if (!videoUri) continue;
 
-      // append api key to URI for authentication
-      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? "";
-      const videoUrl = `${videoUri}&key=${apiKey}`;
+      const videoUrl = `${videoUri}&key=${this.apiKey}`;
 
       const response = await fetch(videoUrl, { signal: abortSignal });
       if (!response.ok) {
