@@ -126,26 +126,47 @@ export function extractStages(element: VargElement): ExtractedStages {
         return [];
       }
 
-      // For video with image inputs, we need to find dependent images first
-      const imageDeps: string[] = [];
+      const nestedDeps: string[] = [];
+      const prompt = props.prompt as Record<string, unknown> | undefined;
 
-      if (stageType === "video") {
-        // Check prompt.images for nested Image elements
-        const prompt = props.prompt as { images?: VargNode[] } | undefined;
-        if (prompt?.images) {
-          for (const imgInput of prompt.images) {
-            if (
-              imgInput &&
-              typeof imgInput === "object" &&
-              "type" in imgInput
-            ) {
-              const imgElement = imgInput as VargElement;
-              if (imgElement.type === "image") {
-                const deps = walkTree(imgElement, currentPath, collectedDeps);
-                imageDeps.push(...deps);
-              }
+      if (prompt && typeof prompt === "object") {
+        if (Array.isArray(prompt.images)) {
+          for (const input of prompt.images) {
+            if (input && typeof input === "object" && "type" in input) {
+              const deps = walkTree(
+                input as VargElement,
+                currentPath,
+                collectedDeps,
+              );
+              nestedDeps.push(...deps);
             }
           }
+        }
+
+        if (
+          prompt.video &&
+          typeof prompt.video === "object" &&
+          "type" in prompt.video
+        ) {
+          const deps = walkTree(
+            prompt.video as VargElement,
+            currentPath,
+            collectedDeps,
+          );
+          nestedDeps.push(...deps);
+        }
+
+        if (
+          prompt.audio &&
+          typeof prompt.audio === "object" &&
+          "type" in prompt.audio
+        ) {
+          const deps = walkTree(
+            prompt.audio as VargElement,
+            currentPath,
+            collectedDeps,
+          );
+          nestedDeps.push(...deps);
         }
       }
 
@@ -156,7 +177,7 @@ export function extractStages(element: VargElement): ExtractedStages {
         label: getLabel(stageType, element),
         element,
         path: currentPath,
-        dependsOn: [...new Set([...collectedDeps, ...imageDeps])],
+        dependsOn: [...new Set([...collectedDeps, ...nestedDeps])],
         status: "pending",
       };
 

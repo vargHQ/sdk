@@ -120,6 +120,11 @@ const sharedArgs = {
     description: "show ffmpeg commands",
     default: false,
   },
+  open: {
+    type: "boolean" as const,
+    description: "open video after generation",
+    default: false,
+  },
 };
 
 async function runRender(
@@ -166,6 +171,11 @@ async function runRender(
 
   if (!args.quiet) {
     console.log(`done! ${buffer.byteLength} bytes → ${outputPath}`);
+  }
+
+  if (args.open) {
+    const { $ } = await import("bun");
+    await $`open ${outputPath}`.quiet();
   }
 }
 
@@ -242,6 +252,10 @@ function RenderHelpView() {
           <VargText variant="accent">-v, --verbose </VargText>show ffmpeg
           commands
         </Text>
+        <Text>
+          <VargText variant="accent">--open </VargText>open video after
+          generation
+        </Text>
       </Box>
 
       <Header>COMPONENTS</Header>
@@ -302,6 +316,10 @@ function PreviewHelpView() {
         <Text>
           <VargText variant="accent">-v, --verbose </VargText>show ffmpeg
           commands
+        </Text>
+        <Text>
+          <VargText variant="accent">--open </VargText>open video after
+          generation
         </Text>
       </Box>
 

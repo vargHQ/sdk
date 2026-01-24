@@ -43,6 +43,8 @@ interface StoryboardElement {
   voice?: string;
   model?: string;
   details: Record<string, unknown>;
+  imageDataUrl?: string;
+  _element?: VargElement;
 }
 
 interface Storyboard {
@@ -123,10 +125,36 @@ function getModelName(model: unknown): string | undefined {
   return undefined;
 }
 
+function extractNestedFromPrompt(prompt: unknown): StoryboardElement[] {
+  if (!prompt || typeof prompt !== "object") return [];
+
+  const nested: StoryboardElement[] = [];
+  const p = prompt as Record<string, unknown>;
+
+  if (p.images && Array.isArray(p.images)) {
+    for (const img of p.images) {
+      if (img && typeof img === "object" && "type" in img) {
+        nested.push(extractElementInfo(img as VargElement));
+      }
+    }
+  }
+
+  if (p.video && typeof p.video === "object" && "type" in p.video) {
+    nested.push(extractElementInfo(p.video as VargElement));
+  }
+
+  if (p.audio && typeof p.audio === "object" && "type" in p.audio) {
+    nested.push(extractElementInfo(p.audio as VargElement));
+  }
+
+  return nested;
+}
+
 function extractElementInfo(element: VargElement): StoryboardElement {
   const base: StoryboardElement = {
     type: element.type,
     details: {},
+    _element: element,
   };
 
   switch (element.type) {
@@ -135,11 +163,13 @@ function extractElementInfo(element: VargElement): StoryboardElement {
       base.prompt = getPromptText(props.prompt);
       base.src = props.src;
       base.model = getModelName(props.model);
+      const nestedFromPrompt = extractNestedFromPrompt(props.prompt);
       base.details = {
         aspectRatio: props.aspectRatio,
         zoom: props.zoom,
         resize: props.resize,
         removeBackground: props.removeBackground,
+        children: nestedFromPrompt.length > 0 ? nestedFromPrompt : undefined,
       };
       break;
     }
@@ -149,12 +179,14 @@ function extractElementInfo(element: VargElement): StoryboardElement {
       base.prompt = getPromptText(props.prompt);
       base.src = props.src;
       base.model = getModelName(props.model);
+      const nestedFromPrompt = extractNestedFromPrompt(props.prompt);
       base.details = {
         aspectRatio: props.aspectRatio,
         resize: props.resize,
         cutFrom: props.cutFrom,
         cutTo: props.cutTo,
         volume: props.volume,
+        children: nestedFromPrompt.length > 0 ? nestedFromPrompt : undefined,
       };
       break;
     }
@@ -333,119 +365,189 @@ function parseStoryboard(element: VargElement): Storyboard {
   return storyboard;
 }
 
+const TYPE_COLORS: Record<string, string> = {
+  image: "#34d399",
+  video: "#60a5fa",
+  speech: "#c084fc",
+  music: "#fbbf24",
+  title: "#f472b6",
+  subtitle: "#94a3b8",
+  captions: "#a78bfa",
+  "talking-head": "#22d3ee",
+  packshot: "#a855f7",
+  split: "#818cf8",
+  slider: "#2dd4bf",
+  swipe: "#fb923c",
+};
+
+function escapeHtml(str: string): string {
+  return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function generateHtml(storyboard: Storyboard, sourceFile: string): string {
-  const escapedSourceFile = sourceFile
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escapedSourceFile = escapeHtml(sourceFile);
 
-  const renderElement = (el: StoryboardElement, depth = 0): string => {
-    const indent = "  ".repeat(depth);
-    const typeColors: Record<string, string> = {
-      image: "#4CAF50",
-      video: "#2196F3",
-      speech: "#9C27B0",
-      music: "#FF9800",
-      title: "#E91E63",
-      subtitle: "#607D8B",
-      captions: "#795548",
-      "talking-head": "#00BCD4",
-      packshot: "#673AB7",
-      split: "#3F51B5",
-      slider: "#009688",
-      swipe: "#FF5722",
-    };
+  const renderTreeNode = (
+    el: StoryboardElement,
+    depth: number,
+    isLast: boolean,
+    parentPrefix: string,
+  ): string => {
+    const color = TYPE_COLORS[el.type] || "#666";
+    const connector = depth === 0 ? "" : isLast ? "└─ " : "├─ ";
+    const childPrefix =
+      depth === 0 ? "" : parentPrefix + (isLast ? "   " : "│  ");
 
-    const color = typeColors[el.type] || "#666";
+    const promptOrText = el.prompt || el.text || el.src || "";
+    const shortPrompt = promptOrText ? escapeHtml(promptOrText) : "";
 
-    let html = `${indent}<div class="element" style="border-left: 4px solid ${color}">
-${indent}  <div class="element-header">
-${indent}    <span class="element-type" style="background: ${color}">${el.type}</span>`;
+    const children =
+      (el.details.children as StoryboardElement[] | undefined) || [];
+    const childrenHtml = children
+      .map((child, i) =>
+        renderTreeNode(
+          child,
+          depth + 1,
+          i === children.length - 1,
+          childPrefix,
+        ),
+      )
+      .join("");
 
-    if (el.model) {
-      html += `
-${indent}    <span class="element-model">${el.model}</span>`;
-    }
-
-    html += `
-${indent}  </div>`;
-
-    if (el.prompt) {
-      html += `
-${indent}  <div class="element-prompt">
-${indent}    <strong>Prompt:</strong> ${el.prompt.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-${indent}  </div>`;
-    }
-
-    if (el.text) {
-      html += `
-${indent}  <div class="element-text">
-${indent}    <strong>Text:</strong> "${el.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}"
-${indent}  </div>`;
-    }
-
-    if (el.src) {
-      html += `
-${indent}  <div class="element-src">
-${indent}    <strong>Source:</strong> ${el.src}
-${indent}  </div>`;
-    }
-
-    if (el.voice) {
-      html += `
-${indent}  <div class="element-voice">
-${indent}    <strong>Voice:</strong> ${el.voice}
-${indent}  </div>`;
-    }
-
-    const detailsToShow = Object.entries(el.details).filter(
-      ([key, val]) => val !== undefined && key !== "children",
-    );
-
-    if (detailsToShow.length > 0) {
-      html += `
-${indent}  <div class="element-details">`;
-      for (const [key, val] of detailsToShow) {
-        const displayVal =
-          typeof val === "object" ? JSON.stringify(val) : String(val);
-        html += `
-${indent}    <span class="detail"><strong>${key}:</strong> ${displayVal}</span>`;
-      }
-      html += `
-${indent}  </div>`;
-    }
-
-    // render nested children if any
-    if (el.details.children && Array.isArray(el.details.children)) {
-      html += `
-${indent}  <div class="nested-children">`;
-      for (const child of el.details.children as StoryboardElement[]) {
-        html += renderElement(child, depth + 2);
-      }
-      html += `
-${indent}  </div>`;
-    }
-
-    html += `
-${indent}</div>`;
-
-    return html;
+    return `
+      <div class="tree-node" style="--depth: ${depth}">
+        <span class="tree-prefix">${parentPrefix}${connector}</span>
+        <span class="type-tag" style="background: ${color}">${el.type}</span>
+        ${el.model ? `<span class="model-tag">${el.model}</span>` : ""}
+        ${shortPrompt ? `<span class="tree-prompt">${shortPrompt}</span>` : ""}
+      </div>${childrenHtml}`;
   };
+
+  const renderCardBack = (elements: StoryboardElement[]): string => {
+    return elements
+      .map((el) => {
+        const treeHtml = renderTreeNode(el, 0, true, "");
+        return `<div class="tree-view">${treeHtml}</div>`;
+      })
+      .join("");
+  };
+
+  const aspectRatio = `${storyboard.width} / ${storyboard.height}`;
 
   const clipsHtml = storyboard.clips
     .map((clip) => {
-      const elementsHtml = clip.elements
-        .map((el) => renderElement(el, 3))
-        .join("\n");
+      const durationText =
+        clip.duration === "auto" ? "auto" : `${clip.duration}s`;
+
+      const mainEl = clip.elements[0];
+      const previewImage = mainEl
+        ? mainEl.type === "image"
+          ? mainEl.imageDataUrl
+          : getFirstNestedImage(mainEl)
+        : undefined;
 
       return `
-      <div class="clip">
-        <div class="clip-header">
-          <span class="clip-number">Clip ${clip.index + 1}</span>
-          <span class="clip-duration">${clip.duration === "auto" ? "auto" : `${clip.duration}s`}</span>
-          ${clip.transition ? `<span class="clip-transition">→ ${clip.transition}</span>` : ""}
+      <div class="card-wrapper">
+        <div class="card-meta">
+          <span class="clip-num">${clip.index + 1}</span>
+          <span class="duration">${durationText}</span>
+          ${clip.transition ? `<span class="transition">→ ${clip.transition}</span>` : ""}
         </div>
-        <div class="clip-elements">
-          ${elementsHtml}
+        <div class="flip-card" style="aspect-ratio: ${aspectRatio}">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="card-placeholder"></div>'}
+            </div>
+            <div class="flip-card-back">
+              ${renderCardBack(clip.elements)}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    })
+    .join("\n");
+
+  const renderNestedTree = (
+    children: StoryboardElement[],
+    depth = 1,
+  ): string => {
+    return children
+      .map((child, i) => {
+        const isLast = i === children.length - 1;
+        const connector = isLast ? "└─" : "├─";
+        const color = TYPE_COLORS[child.type] || "#666";
+        const childPrompt = child.prompt || child.text || "";
+        const grandChildren =
+          (child.details.children as StoryboardElement[]) || [];
+
+        return `
+          <div class="timeline-nested">
+            <span class="nested-connector">${connector}</span>
+            <span class="nested-type" style="background: ${color}">${child.type}</span>
+            ${child.model ? `<span class="nested-model">${child.model}</span>` : ""}
+            ${childPrompt ? `<p class="nested-prompt">${escapeHtml(childPrompt)}</p>` : ""}
+          </div>
+          ${grandChildren.length > 0 ? renderNestedTree(grandChildren, depth + 1) : ""}`;
+      })
+      .join("");
+  };
+
+  const timelineHtml = storyboard.clips
+    .map((clip) => {
+      const mainEl = clip.elements[0];
+      if (!mainEl) return "";
+
+      const durationText =
+        clip.duration === "auto" ? "auto" : `${clip.duration}s`;
+
+      const previewImage =
+        mainEl.type === "image"
+          ? mainEl.imageDataUrl
+          : getFirstNestedImage(mainEl);
+
+      const videoPrompt = mainEl.prompt || "";
+      const speechEl = clip.elements.find((e) => e.type === "speech");
+      const speechText = speechEl?.text || "";
+      const nestedChildren =
+        (mainEl.details.children as StoryboardElement[]) || [];
+
+      const color = TYPE_COLORS[mainEl.type] || "#666";
+
+      return `
+      <div class="timeline-row">
+        <div class="timeline-image" style="aspect-ratio: ${aspectRatio}">
+          ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="timeline-placeholder"></div>'}
+        </div>
+        <div class="timeline-info">
+          <div class="timeline-header">
+            <span class="clip-num">${clip.index + 1}</span>
+            <span class="duration">${durationText}</span>
+            ${clip.transition ? `<span class="transition">→ ${clip.transition}</span>` : ""}
+          </div>
+          <div class="timeline-section">
+            <div class="timeline-type-row">
+              <span class="timeline-type" style="background: ${color}">${mainEl.type}</span>
+              ${mainEl.model ? `<span class="timeline-model">${mainEl.model}</span>` : ""}
+            </div>
+            ${videoPrompt ? `<p class="timeline-text">${escapeHtml(videoPrompt)}</p>` : ""}
+          </div>
+          ${
+            nestedChildren.length > 0
+              ? `
+          <div class="timeline-children">
+            ${renderNestedTree(nestedChildren)}
+          </div>`
+              : ""
+          }
+          ${
+            speechText
+              ? `
+          <div class="timeline-section">
+            <span class="timeline-label">vo:</span>
+            <p class="timeline-text">${escapeHtml(speechText)}</p>
+          </div>`
+              : ""
+          }
         </div>
       </div>`;
     })
@@ -454,11 +556,17 @@ ${indent}</div>`;
   const globalHtml =
     storyboard.globalElements.length > 0
       ? `
-    <div class="global-section">
-      <h2>Global Elements</h2>
-      <div class="global-elements">
-        ${storyboard.globalElements.map((el) => renderElement(el, 2)).join("\n")}
-      </div>
+    <div class="global-bar">
+      <span class="global-label">Global:</span>
+      ${storyboard.globalElements
+        .map((el) => {
+          const color = TYPE_COLORS[el.type] || "#666";
+          const label = el.prompt || el.text || el.type;
+          const shortLabel =
+            label.length > 40 ? `${label.slice(0, 40)}...` : label;
+          return `<span class="global-tag" style="border-color: ${color}"><span class="global-type" style="background: ${color}">${el.type}</span>${escapeHtml(shortLabel)}</span>`;
+        })
+        .join("")}
     </div>`
       : "";
 
@@ -469,255 +577,737 @@ ${indent}</div>`;
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Storyboard - ${escapedSourceFile}</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      /* dark theme (default) */
+      --bg-primary: #0d0d0f;
+      --bg-card: #18181c;
+      --bg-card-header: #1e1e24;
+      --bg-elevated: #252530;
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --border-soft: rgba(255, 255, 255, 0.1);
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent-mint: #6ee7b7;
+      --accent-peach: #fda4af;
+      --accent-lavender: #c4b5fd;
+      --accent-sky: #7dd3fc;
+      --accent-amber: #fcd34d;
+      --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+      --radius-squishy: 16px;
+      --radius-pill: 24px;
+      --radius-tag: 10px;
+      --toggle-icon: "☀";
+    }
+    
+    [data-theme="light"] {
+      --bg-primary: #f8f8fa;
+      --bg-card: #ffffff;
+      --bg-card-header: #f3f4f6;
+      --bg-elevated: #e8e9ed;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --border-soft: rgba(0, 0, 0, 0.1);
+      --text-primary: #18181b;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --accent-mint: #059669;
+      --accent-peach: #e11d48;
+      --accent-lavender: #7c3aed;
+      --accent-sky: #0284c7;
+      --accent-amber: #d97706;
+      --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.03);
+      --toggle-icon: "☾";
+    }
+    
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg-primary: #f8f8fa;
+        --bg-card: #ffffff;
+        --bg-card-header: #f3f4f6;
+        --bg-elevated: #e8e9ed;
+        --border-subtle: rgba(0, 0, 0, 0.06);
+        --border-soft: rgba(0, 0, 0, 0.1);
+        --text-primary: #18181b;
+        --text-secondary: #52525b;
+        --text-muted: #71717a;
+        --accent-mint: #059669;
+        --accent-peach: #e11d48;
+        --accent-lavender: #7c3aed;
+        --accent-sky: #0284c7;
+        --accent-amber: #d97706;
+        --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+        --shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.03);
+        --toggle-icon: "☾";
+      }
+    }
+    
+    body, .card, .card-header, .card-element, .global-bar, .global-tag, .summary span, .meta span, .model-tag {
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
     }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: #0d0d0d;
-      color: #e0e0e0;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      background-image: 
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(110, 231, 183, 0.04), transparent),
+        radial-gradient(ellipse 60% 50% at 80% 100%, rgba(196, 181, 253, 0.03), transparent);
+      color: var(--text-primary);
       line-height: 1.6;
       padding: 2rem;
+      min-height: 100vh;
     }
     
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
+    .theme-toggle {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
     }
     
-    header {
+    .theme-toggle:hover {
+      background: var(--bg-card-header);
+      border-color: var(--border-soft);
+      transform: scale(1.05);
+    }
+    
+    .theme-toggle:active {
+      transform: scale(0.95);
+    }
+    
+    .theme-icon::before {
+      content: var(--toggle-icon);
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid #333;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
     }
     
-    h1 {
-      color: #fff;
-      font-size: 1.75rem;
-      margin-bottom: 0.5rem;
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
     }
     
     .meta {
-      color: #888;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     
     .meta span {
-      margin-right: 1.5rem;
+      padding: 0.35rem 0.75rem;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-tag);
+      border: 1px solid var(--border-subtle);
     }
     
-    .meta strong {
-      color: #aaa;
-    }
-    
-    .clips {
-      display: flex;
-      flex-direction: column;
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 1.5rem;
     }
     
-    .clip {
-      background: #1a1a1a;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    
-    .clip-header {
-      background: #252525;
-      padding: 0.75rem 1rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    
-    .clip-number {
-      font-weight: 600;
-      color: #fff;
-    }
-    
-    .clip-duration {
-      background: #333;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      color: #4CAF50;
-    }
-    
-    .clip-transition {
-      color: #FF9800;
-      font-size: 0.85rem;
-    }
-    
-    .clip-elements {
-      padding: 1rem;
+    .card-wrapper {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.5rem;
     }
     
-    .element {
-      background: #222;
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      padding-left: calc(1rem + 4px);
-      margin-left: -4px;
-    }
-    
-    .element-header {
+    .card-meta {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 0.5rem;
+      gap: 0.5rem;
+      padding: 0 0.25rem;
     }
     
-    .element-type {
-      color: #fff;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
+    .clip-num {
+      background: linear-gradient(135deg, var(--accent-mint), #34d399);
+      color: #0d0d0f;
+      font-weight: 700;
+      font-size: 0.7rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: var(--radius-tag);
+      box-shadow: 0 2px 8px rgba(110, 231, 183, 0.25);
+    }
+    
+    .duration {
       font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--accent-mint);
+    }
+    
+    .transition {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--accent-amber);
+      margin-left: auto;
+      padding: 0.2rem 0.5rem;
+      background: rgba(252, 211, 77, 0.1);
+      border-radius: 8px;
+    }
+    
+    .flip-card {
+      perspective: 1000px;
+      cursor: pointer;
+    }
+    
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s ease;
+      transform-style: preserve-3d;
+    }
+    
+    .flip-card:hover .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: var(--radius-squishy);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+    
+    .flip-card-front {
+      background: var(--bg-card);
+    }
+    
+    .flip-card-front img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .card-placeholder {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 2rem;
+    }
+    
+    .card-placeholder::after {
+      content: "▶";
+    }
+    
+    .flip-card-back {
+      background: var(--bg-card);
+      transform: rotateY(180deg);
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    
+    .flip-card-back .tree-view {
+      font-size: 0.7rem;
+    }
+    
+    .flip-card-back .tree-prompt {
+      font-size: 0.75rem;
+    }
+    
+    .element-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.65rem;
+    }
+    
+    .card-element:not(:has(.preview-image)) .element-info {
+      padding: 0;
+    }
+    
+    .tree-view {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+    }
+    
+    .tree-node {
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    
+    .tree-prefix {
+      color: var(--text-muted);
+      white-space: pre;
+      user-select: none;
+    }
+    
+    .tree-prompt {
+      color: var(--text-secondary);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 0.8rem;
+      margin-left: 0.25rem;
+    }
+    
+    .type-tag {
+      color: #fff;
+      font-size: 0.65rem;
       font-weight: 600;
       text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 0.3rem 0.55rem;
+      border-radius: 8px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     }
     
-    .element-model {
-      color: #888;
-      font-size: 0.85rem;
-      font-family: monospace;
+    .model-tag {
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      background: var(--bg-card);
+      padding: 0.25rem 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
     }
     
-    .element-prompt,
-    .element-text,
-    .element-src,
-    .element-voice {
-      margin-top: 0.5rem;
-      color: #ccc;
-      font-size: 0.9rem;
+    .nested {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
     }
     
-    .element-prompt strong,
-    .element-text strong,
-    .element-src strong,
-    .element-voice strong {
-      color: #999;
+    .nested-tag {
+      font-size: 0.55rem;
+      font-weight: 600;
+      color: #fff;
+      padding: 0.2rem 0.4rem;
+      border-radius: 6px;
+      opacity: 0.85;
     }
     
-    .element-details {
-      margin-top: 0.5rem;
+    .prompt {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      width: 100%;
+      margin-top: 0.25rem;
+    }
+    
+    .global-bar {
+      margin-top: 2rem;
+      padding: 1rem 1.25rem;
+      background: var(--bg-card);
+      border-radius: var(--radius-squishy);
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem 1rem;
+      align-items: center;
+      gap: 0.65rem;
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-soft), var(--shadow-glow);
     }
     
-    .detail {
-      font-size: 0.8rem;
-      color: #888;
+    .global-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
     
-    .detail strong {
-      color: #666;
+    .global-tag {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      padding: 0.35rem 0.65rem;
+      padding-left: 0;
+      border-radius: var(--radius-tag);
+      border: 1px solid;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      overflow: hidden;
+      background: var(--bg-elevated);
     }
     
-    .nested-children {
-      margin-top: 0.75rem;
-      padding-left: 1rem;
-      border-left: 2px solid #333;
-    }
-    
-    .global-section {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #333;
-    }
-    
-    .global-section h2 {
+    .global-type {
+      font-size: 0.6rem;
       color: #fff;
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
-    }
-    
-    .global-elements {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+      padding: 0.35rem 0.55rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
     
     .summary {
-      margin-top: 2rem;
-      padding: 1rem;
-      background: #1a1a1a;
-      border-radius: 8px;
-    }
-    
-    .summary h3 {
-      color: #fff;
-      font-size: 1rem;
-      margin-bottom: 0.75rem;
-    }
-    
-    .summary-stats {
+      margin-top: 1.5rem;
       display: flex;
-      gap: 2rem;
       flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
     
-    .stat {
-      color: #888;
+    .summary span {
+      padding: 0.5rem 0.85rem;
+      background: var(--bg-card);
+      border-radius: var(--radius-tag);
+      border: 1px solid var(--border-subtle);
+      transition: border-color 0.2s ease;
+    }
+    
+    .summary span:hover {
+      border-color: var(--border-soft);
+    }
+    
+    .summary strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    
+    .render-btn {
+      background: linear-gradient(135deg, var(--accent-mint), #34d399);
+      border: none;
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #0d0d0f;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 2px 8px rgba(110, 231, 183, 0.3);
+    }
+    
+    .render-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(110, 231, 183, 0.4);
+    }
+    
+    .render-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .render-btn.copied {
+      background: linear-gradient(135deg, var(--accent-lavender), #a78bfa);
+      box-shadow: 0 2px 8px rgba(167, 139, 250, 0.3);
+    }
+    
+    .render-icon {
+      font-size: 0.7rem;
+    }
+    
+    .view-toggle {
+      display: flex;
+      background: var(--bg-elevated);
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+    
+    .view-toggle button {
+      background: none;
+      border: none;
+      padding: 0.4rem 0.6rem;
+      cursor: pointer;
+      color: var(--text-muted);
       font-size: 0.9rem;
+      transition: background 0.15s ease, color 0.15s ease;
     }
     
-    .stat strong {
-      color: #4CAF50;
-      font-size: 1.25rem;
-      display: block;
+    .view-toggle button:hover {
+      color: var(--text-secondary);
+    }
+    
+    .view-toggle button.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+    
+    .timeline {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .timeline.active {
+      display: flex;
+    }
+    
+    .grid.active {
+      display: grid;
+    }
+    
+    .grid:not(.active) {
+      display: none;
+    }
+    
+    .timeline-row {
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) 1fr;
+      gap: 2rem;
+      padding: 2rem 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .timeline-row:last-child {
+      border-bottom: none;
+    }
+    
+    .timeline-image {
+      border-radius: var(--radius-squishy);
+      overflow: hidden;
+      background: var(--bg-card);
+      max-width: 500px;
+    }
+    
+    .timeline-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .timeline-placeholder {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-elevated);
+    }
+    
+    .timeline-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+    }
+    
+    .timeline-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-lavender);
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+    
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .timeline-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    
+    .timeline-type-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .timeline-type {
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+    
+    .timeline-model {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    
+    .timeline-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    
+    .timeline-text {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    
+    .timeline-children {
+      padding-left: 0.5rem;
+      border-left: 2px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .timeline-nested {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
+    
+    .nested-connector {
+      color: var(--text-muted);
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+    
+    .nested-type {
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+    }
+    
+    .nested-model {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    
+    .nested-prompt {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      width: 100%;
+      margin-top: 0.25rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Storyboard</h1>
-      <div class="meta">
-        <span><strong>Source:</strong> ${escapedSourceFile}</span>
-        <span><strong>Resolution:</strong> ${storyboard.width}x${storyboard.height}</span>
-        <span><strong>FPS:</strong> ${storyboard.fps}</span>
+  <div class="header">
+    <h1>Storyboard</h1>
+    <div class="meta">
+      <span>${escapedSourceFile}</span>
+      <span>${storyboard.width}×${storyboard.height}</span>
+      <span>${storyboard.fps}fps</span>
+      <div class="view-toggle">
+        <button class="active" onclick="setView('grid')" aria-label="Grid view">▦</button>
+        <button onclick="setView('timeline')" aria-label="Timeline view">☰</button>
       </div>
-    </header>
-    
-    <div class="clips">
-      ${clipsHtml}
-    </div>
-    
-    ${globalHtml}
-    
-    <div class="summary">
-      <h3>Summary</h3>
-      <div class="summary-stats">
-        <div class="stat">
-          <strong>${storyboard.clips.length}</strong>
-          clips
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "video")}</strong>
-          videos
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "image")}</strong>
-          images
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "speech")}</strong>
-          speech
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "music")}</strong>
-          music
-        </div>
-      </div>
+      <button class="render-btn" onclick="copyRenderCommand()" aria-label="Copy render command">
+        <span class="render-icon">▶</span>
+        <span class="render-text">Render</span>
+      </button>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <span class="theme-icon"></span>
+      </button>
     </div>
   </div>
+  
+  <div class="grid active">
+    ${clipsHtml}
+  </div>
+  
+  <div class="timeline">
+    ${timelineHtml}
+  </div>
+  
+  ${globalHtml}
+  
+  <div class="summary">
+    <span><strong>${storyboard.clips.length}</strong> clips</span>
+    <span><strong>${countElements(storyboard, "video")}</strong> videos</span>
+    <span><strong>${countElements(storyboard, "image")}</strong> images</span>
+    <span><strong>${countElements(storyboard, "speech")}</strong> speech</span>
+    <span><strong>${countElements(storyboard, "music")}</strong> music</span>
+  </div>
+  
+  <script>
+    (function() {
+      const root = document.documentElement;
+      const stored = localStorage.getItem('storyboard-theme');
+      if (stored) {
+        root.setAttribute('data-theme', stored);
+      }
+    })();
+    
+    function toggleTheme() {
+      const root = document.documentElement;
+      const current = root.getAttribute('data-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      let next;
+      if (current === 'light') {
+        next = 'dark';
+      } else if (current === 'dark') {
+        next = 'light';
+      } else {
+        next = prefersDark ? 'light' : 'dark';
+      }
+      
+      root.setAttribute('data-theme', next);
+      localStorage.setItem('storyboard-theme', next);
+    }
+    
+    function copyRenderCommand() {
+      const cmd = "bunx vargai render ${sourceFile}";
+      navigator.clipboard.writeText(cmd).then(() => {
+        const btn = document.querySelector('.render-btn');
+        const text = btn.querySelector('.render-text');
+        btn.classList.add('copied');
+        text.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          text.textContent = 'Render';
+        }, 2000);
+      });
+    }
+    
+    function setView(view) {
+      const grid = document.querySelector('.grid');
+      const timeline = document.querySelector('.timeline');
+      const buttons = document.querySelectorAll('.view-toggle button');
+      
+      if (view === 'grid') {
+        grid.classList.add('active');
+        timeline.classList.remove('active');
+        buttons[0].classList.add('active');
+        buttons[1].classList.remove('active');
+      } else {
+        grid.classList.remove('active');
+        timeline.classList.add('active');
+        buttons[0].classList.remove('active');
+        buttons[1].classList.add('active');
+      }
+      
+      localStorage.setItem('storyboard-view', view);
+    }
+    
+    (function() {
+      const stored = localStorage.getItem('storyboard-view');
+      if (stored) setView(stored);
+    })();
+  </script>
 </body>
 </html>`;
 }
@@ -742,6 +1332,71 @@ function countElements(storyboard: Storyboard, type: string): number {
   return count;
 }
 
+async function populateCachedImages(
+  storyboard: Storyboard,
+  cacheDir: string,
+): Promise<number> {
+  const { computeCacheKey } = await import("../../react/renderers/utils");
+  const { fileCache } = await import("../../ai-sdk/file-cache");
+  const cache = fileCache({ dir: cacheDir });
+
+  let foundCount = 0;
+
+  async function lookupImage(el: StoryboardElement): Promise<void> {
+    if (el.type === "image" && el._element) {
+      const cacheKeyParts = computeCacheKey(el._element);
+      const cacheKey = `generateImage:${cacheKeyParts.map((d) => String(d ?? "")).join(":")}`;
+      const cached = (await cache.get(cacheKey)) as
+        | { images?: Array<{ uint8Array?: Uint8Array }> }
+        | undefined;
+
+      if (cached?.images?.[0]?.uint8Array) {
+        const base64 = Buffer.from(cached.images[0].uint8Array).toString(
+          "base64",
+        );
+        el.imageDataUrl = `data:image/png;base64,${base64}`;
+        foundCount++;
+      }
+    }
+
+    if (el.details.children && Array.isArray(el.details.children)) {
+      for (const child of el.details.children as StoryboardElement[]) {
+        await lookupImage(child);
+      }
+    }
+  }
+
+  async function processElements(elements: StoryboardElement[]): Promise<void> {
+    for (const el of elements) {
+      await lookupImage(el);
+
+      if (el.details.children && Array.isArray(el.details.children)) {
+        await processElements(el.details.children as StoryboardElement[]);
+      }
+    }
+  }
+
+  for (const clip of storyboard.clips) {
+    await processElements(clip.elements);
+  }
+  await processElements(storyboard.globalElements);
+
+  return foundCount;
+}
+
+function getFirstNestedImage(el: StoryboardElement): string | undefined {
+  if (el.imageDataUrl) return el.imageDataUrl;
+
+  if (el.details.children && Array.isArray(el.details.children)) {
+    for (const child of el.details.children as StoryboardElement[]) {
+      const found = getFirstNestedImage(child);
+      if (found) return found;
+    }
+  }
+
+  return undefined;
+}
+
 export const storyboardCmd = defineCommand({
   meta: {
     name: "storyboard",
@@ -757,6 +1412,12 @@ export const storyboardCmd = defineCommand({
       type: "string" as const,
       alias: "o",
       description: "output html path",
+    },
+    cache: {
+      type: "string" as const,
+      alias: "c",
+      description: "cache directory for image lookup",
+      default: ".cache/ai",
     },
     quiet: {
       type: "boolean" as const,
@@ -789,7 +1450,6 @@ export const storyboardCmd = defineCommand({
     const outputPath =
       (args.output as string) ?? `output/${baseName}-storyboard.html`;
 
-    // ensure output directory exists
     const outputDir = dirname(outputPath);
     if (!existsSync(outputDir)) {
       mkdirSync(outputDir, { recursive: true });
@@ -800,6 +1460,13 @@ export const storyboardCmd = defineCommand({
     }
 
     const storyboard = parseStoryboard(component);
+
+    const cacheDir = resolve(args.cache as string);
+    let cachedCount = 0;
+    if (existsSync(cacheDir)) {
+      cachedCount = await populateCachedImages(storyboard, cacheDir);
+    }
+
     const html = generateHtml(storyboard, file);
 
     await Bun.write(outputPath, html);
@@ -809,6 +1476,9 @@ export const storyboardCmd = defineCommand({
       console.log(
         `  ${storyboard.clips.length} clips, ${storyboard.width}x${storyboard.height}`,
       );
+      if (cachedCount > 0) {
+        console.log(`  ${cachedCount} cached images found`);
+      }
     }
 
     if (args.open) {
