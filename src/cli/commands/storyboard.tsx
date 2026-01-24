@@ -123,6 +123,31 @@ function getModelName(model: unknown): string | undefined {
   return undefined;
 }
 
+function extractNestedFromPrompt(prompt: unknown): StoryboardElement[] {
+  if (!prompt || typeof prompt !== "object") return [];
+
+  const nested: StoryboardElement[] = [];
+  const p = prompt as Record<string, unknown>;
+
+  if (p.images && Array.isArray(p.images)) {
+    for (const img of p.images) {
+      if (img && typeof img === "object" && "type" in img) {
+        nested.push(extractElementInfo(img as VargElement));
+      }
+    }
+  }
+
+  if (p.video && typeof p.video === "object" && "type" in p.video) {
+    nested.push(extractElementInfo(p.video as VargElement));
+  }
+
+  if (p.audio && typeof p.audio === "object" && "type" in p.audio) {
+    nested.push(extractElementInfo(p.audio as VargElement));
+  }
+
+  return nested;
+}
+
 function extractElementInfo(element: VargElement): StoryboardElement {
   const base: StoryboardElement = {
     type: element.type,
@@ -135,11 +160,13 @@ function extractElementInfo(element: VargElement): StoryboardElement {
       base.prompt = getPromptText(props.prompt);
       base.src = props.src;
       base.model = getModelName(props.model);
+      const nestedFromPrompt = extractNestedFromPrompt(props.prompt);
       base.details = {
         aspectRatio: props.aspectRatio,
         zoom: props.zoom,
         resize: props.resize,
         removeBackground: props.removeBackground,
+        children: nestedFromPrompt.length > 0 ? nestedFromPrompt : undefined,
       };
       break;
     }
@@ -149,12 +176,14 @@ function extractElementInfo(element: VargElement): StoryboardElement {
       base.prompt = getPromptText(props.prompt);
       base.src = props.src;
       base.model = getModelName(props.model);
+      const nestedFromPrompt = extractNestedFromPrompt(props.prompt);
       base.details = {
         aspectRatio: props.aspectRatio,
         resize: props.resize,
         cutFrom: props.cutFrom,
         cutTo: props.cutTo,
         volume: props.volume,
+        children: nestedFromPrompt.length > 0 ? nestedFromPrompt : undefined,
       };
       break;
     }
