@@ -87,6 +87,10 @@ export interface TextLayer extends BaseLayer {
   fontFamily?: string;
 }
 
+/**
+ * Crop position anchor for cover mode.
+ * NOTE: This is a varg extension to editly, not in the original.
+ */
 export type CropPosition =
   | "center"
   | "top"
