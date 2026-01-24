@@ -182,6 +182,9 @@ const VIDEO_MODELS: Record<string, string> = {
   "veo-2": "veo-2.0-generate-001",
 };
 
+const DEFAULT_POLL_INTERVAL_MS = 10000;
+const DEFAULT_MAX_POLL_DURATION_MS = 300000; // 5 minutes
+
 class GoogleVideoModel implements VideoModelV3 {
   readonly specificationVersion = "v3" as const;
   readonly provider = "google";
@@ -189,12 +192,23 @@ class GoogleVideoModel implements VideoModelV3 {
   readonly maxVideosPerCall = 1;
 
   private client: GoogleGenAI;
+  private pollIntervalMs: number;
+  private maxPollDurationMs: number;
+  private onProgress?: (progress: number, operationName: string) => void;
 
-  constructor(modelId: string, options: { apiKey?: string } = {}) {
+  constructor(
+    modelId: string,
+    options: { apiKey?: string; polling?: GooglePollingConfig } = {},
+  ) {
     this.modelId = modelId;
     const apiKey =
       options.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? "";
     this.client = new GoogleGenAI({ apiKey });
+    this.pollIntervalMs =
+      options.polling?.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+    this.maxPollDurationMs =
+      options.polling?.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS;
+    this.onProgress = options.polling?.onProgress;
   }
 
   async doGenerate(options: VideoModelV3CallOptions) {
@@ -264,7 +278,6 @@ class GoogleVideoModel implements VideoModelV3 {
       }
     }
 
-    // start video generation operation
     let operation = await this.client.models.generateVideos({
       model,
       prompt,
@@ -272,25 +285,33 @@ class GoogleVideoModel implements VideoModelV3 {
       config,
     });
 
-    console.log(`[google] video generation started: ${operation.name}`);
+    const operationName = operation.name ?? "unknown";
+    this.onProgress?.(0, operationName);
 
-    // poll for completion
+    const startTime = Date.now();
+
     while (!operation.done) {
       if (abortSignal?.aborted) {
         throw new Error("Video generation aborted");
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      const elapsed = Date.now() - startTime;
+      if (elapsed > this.maxPollDurationMs) {
+        throw new Error(
+          `Video generation timed out after ${Math.round(elapsed / 1000)}s (max: ${Math.round(this.maxPollDurationMs / 1000)}s)`,
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, this.pollIntervalMs));
       operation = await this.client.operations.getVideosOperation({
         operation,
       });
 
       if (operation.metadata?.progress) {
-        console.log(`[google] progress: ${operation.metadata.progress}%`);
+        this.onProgress?.(operation.metadata.progress as number, operationName);
       }
     }
 
-    // check for errors
     if (operation.error) {
       throw new Error(
         `Google video generation failed: ${operation.error.message}`,
@@ -351,8 +372,15 @@ class GoogleVideoModel implements VideoModelV3 {
 // Provider
 // ============================================================================
 
+export interface GooglePollingConfig {
+  pollIntervalMs?: number;
+  maxPollDurationMs?: number;
+  onProgress?: (progress: number, operationName: string) => void;
+}
+
 export interface GoogleProviderSettings {
   apiKey?: string;
+  polling?: GooglePollingConfig;
 }
 
 export interface GoogleProvider extends ProviderV3 {
@@ -364,6 +392,7 @@ export function createGoogle(
   settings: GoogleProviderSettings = {},
 ): GoogleProvider {
   const apiKey = settings.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  const polling = settings.polling;
 
   return {
     specificationVersion: "v3",
@@ -371,7 +400,7 @@ export function createGoogle(
       return new GoogleImageModel(modelId, { apiKey });
     },
     videoModel(modelId: string): GoogleVideoModel {
-      return new GoogleVideoModel(modelId, { apiKey });
+      return new GoogleVideoModel(modelId, { apiKey, polling });
     },
     languageModel(modelId: string): LanguageModelV3 {
       throw new NoSuchModelError({
