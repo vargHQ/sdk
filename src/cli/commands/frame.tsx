@@ -6,9 +6,9 @@ import { generateImage, wrapImageModel } from "ai";
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";
 import { withCache } from "../../ai-sdk/cache";
-import { File } from "../../ai-sdk/file";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { imagePlaceholderFallbackMiddleware } from "../../ai-sdk/middleware";
+import { computeCacheKey } from "../../react/renderers/utils";
 import type {
   ClipProps,
   ImageInput,
@@ -16,7 +16,6 @@ import type {
   ImageProps,
   RenderProps,
   VargElement,
-  VargNode,
   VideoProps,
 } from "../../react/types";
 import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
@@ -35,6 +34,7 @@ interface FrameInfo {
   aspectRatio?: string;
   duration: number;
   startTime: number;
+  imageElement?: VargElement<"image">;
 }
 
 async function loadComponent(filePath: string): Promise<VargElement> {
@@ -101,7 +101,15 @@ function toFileUrl(pathOrUrl: string): string {
   return `file://${resolved}`;
 }
 
-async function resolveImageInput(input: ImageInput): Promise<Uint8Array> {
+interface ImageGeneratorContext {
+  generateImage: typeof generateImage;
+  defaultModel?: unknown;
+}
+
+async function resolveImageInput(
+  input: ImageInput,
+  ctx: ImageGeneratorContext,
+): Promise<Uint8Array> {
   if (input instanceof Uint8Array) {
     return input;
   }
@@ -123,7 +131,34 @@ async function resolveImageInput(input: ImageInput): Promise<Uint8Array> {
       return new Uint8Array(await response.arrayBuffer());
     }
 
-    return null as unknown as Uint8Array;
+    if (props.prompt) {
+      const model = props.model ?? ctx.defaultModel;
+      if (!model) {
+        throw new Error("Nested image requires model");
+      }
+
+      const resolvedPrompt = await resolvePromptForGeneration(
+        props.prompt,
+        ctx,
+      );
+      const cacheKey = computeCacheKey(imageElement);
+
+      const { images } = await ctx.generateImage({
+        model: model as Parameters<typeof generateImage>[0]["model"],
+        prompt: resolvedPrompt,
+        aspectRatio: props.aspectRatio as `${number}:${number}` | undefined,
+        n: 1,
+        cacheKey,
+      } as Parameters<typeof generateImage>[0]);
+
+      const firstImage = images[0];
+      if (!firstImage?.uint8Array) {
+        throw new Error("Nested image generation returned no data");
+      }
+      return firstImage.uint8Array;
+    }
+
+    throw new Error("Image element requires prompt or src");
   }
   throw new Error("Unknown image input type");
 }
@@ -202,6 +237,7 @@ function extractFrames(element: VargElement): FrameInfo[] {
             aspectRatio: props.aspectRatio,
             duration,
             startTime: currentTime,
+            imageElement: clipChildElement as VargElement<"image">,
           });
           break;
         }
@@ -222,6 +258,7 @@ function extractFrames(element: VargElement): FrameInfo[] {
               aspectRatio: imageProps.aspectRatio ?? videoProps.aspectRatio,
               duration,
               startTime: currentTime,
+              imageElement: nestedImage,
             });
           } else if (prompt) {
             frames.push({
@@ -268,6 +305,7 @@ async function detectDefaultImageModel() {
 
 async function resolvePromptForGeneration(
   prompt: ImagePrompt,
+  ctx: ImageGeneratorContext,
 ): Promise<string | { text?: string; images: Uint8Array[] }> {
   if (typeof prompt === "string") {
     return prompt;
@@ -275,7 +313,7 @@ async function resolvePromptForGeneration(
 
   const resolvedImages: Uint8Array[] = [];
   for (const img of prompt.images) {
-    const resolved = await resolveImageInput(img);
+    const resolved = await resolveImageInput(img, ctx);
     if (resolved) {
       resolvedImages.push(resolved);
     }
@@ -455,14 +493,27 @@ export const frameCmd = defineCommand({
         process.exit(1);
       }
 
-      const resolvedPrompt = await resolvePromptForGeneration(frame.prompt);
+      const generatorCtx: ImageGeneratorContext = {
+        generateImage: wrapGenerateImage,
+        defaultModel,
+      };
+
+      const resolvedPrompt = await resolvePromptForGeneration(
+        frame.prompt,
+        generatorCtx,
+      );
+
+      const cacheKey = frame.imageElement
+        ? computeCacheKey(frame.imageElement)
+        : undefined;
 
       const { images } = await wrapGenerateImage({
         model: model as Parameters<typeof generateImage>[0]["model"],
         prompt: resolvedPrompt,
         aspectRatio: frame.aspectRatio as `${number}:${number}` | undefined,
         n: 1,
-      });
+        cacheKey,
+      } as Parameters<typeof generateImage>[0]);
 
       const firstImage = images[0];
       if (!firstImage?.uint8Array) {
