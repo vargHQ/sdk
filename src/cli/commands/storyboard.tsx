@@ -333,119 +333,81 @@ function parseStoryboard(element: VargElement): Storyboard {
   return storyboard;
 }
 
+const TYPE_COLORS: Record<string, string> = {
+  image: "#4CAF50",
+  video: "#2196F3",
+  speech: "#9C27B0",
+  music: "#FF9800",
+  title: "#E91E63",
+  subtitle: "#607D8B",
+  captions: "#795548",
+  "talking-head": "#00BCD4",
+  packshot: "#673AB7",
+  split: "#3F51B5",
+  slider: "#009688",
+  swipe: "#FF5722",
+};
+
+function escapeHtml(str: string): string {
+  return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function generateHtml(storyboard: Storyboard, sourceFile: string): string {
-  const escapedSourceFile = sourceFile
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escapedSourceFile = escapeHtml(sourceFile);
 
-  const renderElement = (el: StoryboardElement, depth = 0): string => {
-    const indent = "  ".repeat(depth);
-    const typeColors: Record<string, string> = {
-      image: "#4CAF50",
-      video: "#2196F3",
-      speech: "#9C27B0",
-      music: "#FF9800",
-      title: "#E91E63",
-      subtitle: "#607D8B",
-      captions: "#795548",
-      "talking-head": "#00BCD4",
-      packshot: "#673AB7",
-      split: "#3F51B5",
-      slider: "#009688",
-      swipe: "#FF5722",
-    };
+  const renderNestedElements = (elements: StoryboardElement[]): string => {
+    return elements
+      .map((el) => {
+        const color = TYPE_COLORS[el.type] || "#666";
+        return `<span class="nested-tag" style="background: ${color}">${el.type}</span>`;
+      })
+      .join(" ");
+  };
 
-    const color = typeColors[el.type] || "#666";
+  const renderCardContent = (elements: StoryboardElement[]): string => {
+    return elements
+      .map((el) => {
+        const color = TYPE_COLORS[el.type] || "#666";
+        const hasNested =
+          el.details.children && Array.isArray(el.details.children);
+        const nestedHtml = hasNested
+          ? `<div class="nested">${renderNestedElements(el.details.children as StoryboardElement[])}</div>`
+          : "";
 
-    let html = `${indent}<div class="element" style="border-left: 4px solid ${color}">
-${indent}  <div class="element-header">
-${indent}    <span class="element-type" style="background: ${color}">${el.type}</span>`;
+        const promptOrText = el.prompt || el.text || el.src || "";
+        const displayText = promptOrText
+          ? escapeHtml(
+              promptOrText.length > 120
+                ? `${promptOrText.slice(0, 120)}...`
+                : promptOrText,
+            )
+          : "";
 
-    if (el.model) {
-      html += `
-${indent}    <span class="element-model">${el.model}</span>`;
-    }
-
-    html += `
-${indent}  </div>`;
-
-    if (el.prompt) {
-      html += `
-${indent}  <div class="element-prompt">
-${indent}    <strong>Prompt:</strong> ${el.prompt.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-${indent}  </div>`;
-    }
-
-    if (el.text) {
-      html += `
-${indent}  <div class="element-text">
-${indent}    <strong>Text:</strong> "${el.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}"
-${indent}  </div>`;
-    }
-
-    if (el.src) {
-      html += `
-${indent}  <div class="element-src">
-${indent}    <strong>Source:</strong> ${el.src}
-${indent}  </div>`;
-    }
-
-    if (el.voice) {
-      html += `
-${indent}  <div class="element-voice">
-${indent}    <strong>Voice:</strong> ${el.voice}
-${indent}  </div>`;
-    }
-
-    const detailsToShow = Object.entries(el.details).filter(
-      ([key, val]) => val !== undefined && key !== "children",
-    );
-
-    if (detailsToShow.length > 0) {
-      html += `
-${indent}  <div class="element-details">`;
-      for (const [key, val] of detailsToShow) {
-        const displayVal =
-          typeof val === "object" ? JSON.stringify(val) : String(val);
-        html += `
-${indent}    <span class="detail"><strong>${key}:</strong> ${displayVal}</span>`;
-      }
-      html += `
-${indent}  </div>`;
-    }
-
-    // render nested children if any
-    if (el.details.children && Array.isArray(el.details.children)) {
-      html += `
-${indent}  <div class="nested-children">`;
-      for (const child of el.details.children as StoryboardElement[]) {
-        html += renderElement(child, depth + 2);
-      }
-      html += `
-${indent}  </div>`;
-    }
-
-    html += `
-${indent}</div>`;
-
-    return html;
+        return `
+        <div class="card-element">
+          <span class="type-tag" style="background: ${color}">${el.type}</span>
+          ${el.model ? `<span class="model-tag">${el.model}</span>` : ""}
+          ${nestedHtml}
+          ${displayText ? `<p class="prompt">${displayText}</p>` : ""}
+        </div>`;
+      })
+      .join("");
   };
 
   const clipsHtml = storyboard.clips
     .map((clip) => {
-      const elementsHtml = clip.elements
-        .map((el) => renderElement(el, 3))
-        .join("\n");
+      const durationText =
+        clip.duration === "auto" ? "auto" : `${clip.duration}s`;
 
       return `
-      <div class="clip">
-        <div class="clip-header">
-          <span class="clip-number">Clip ${clip.index + 1}</span>
-          <span class="clip-duration">${clip.duration === "auto" ? "auto" : `${clip.duration}s`}</span>
-          ${clip.transition ? `<span class="clip-transition">→ ${clip.transition}</span>` : ""}
+      <div class="card">
+        <div class="card-header">
+          <span class="clip-num">${clip.index + 1}</span>
+          <span class="duration">${durationText}</span>
+          ${clip.transition ? `<span class="transition">→ ${clip.transition}</span>` : ""}
         </div>
-        <div class="clip-elements">
-          ${elementsHtml}
+        <div class="card-content">
+          ${renderCardContent(clip.elements)}
         </div>
       </div>`;
     })
@@ -454,11 +416,17 @@ ${indent}</div>`;
   const globalHtml =
     storyboard.globalElements.length > 0
       ? `
-    <div class="global-section">
-      <h2>Global Elements</h2>
-      <div class="global-elements">
-        ${storyboard.globalElements.map((el) => renderElement(el, 2)).join("\n")}
-      </div>
+    <div class="global-bar">
+      <span class="global-label">Global:</span>
+      ${storyboard.globalElements
+        .map((el) => {
+          const color = TYPE_COLORS[el.type] || "#666";
+          const label = el.prompt || el.text || el.type;
+          const shortLabel =
+            label.length > 40 ? `${label.slice(0, 40)}...` : label;
+          return `<span class="global-tag" style="border-color: ${color}"><span class="global-type" style="background: ${color}">${el.type}</span>${escapeHtml(shortLabel)}</span>`;
+        })
+        .join("")}
     </div>`
       : "";
 
@@ -469,254 +437,209 @@ ${indent}</div>`;
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Storyboard - ${escapedSourceFile}</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: #0d0d0d;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0a0a;
       color: #e0e0e0;
-      line-height: 1.6;
-      padding: 2rem;
+      line-height: 1.5;
+      padding: 1.5rem;
     }
     
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    header {
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid #333;
-    }
-    
-    h1 {
-      color: #fff;
-      font-size: 1.75rem;
-      margin-bottom: 0.5rem;
-    }
-    
-    .meta {
-      color: #888;
-      font-size: 0.9rem;
-    }
-    
-    .meta span {
-      margin-right: 1.5rem;
-    }
-    
-    .meta strong {
-      color: #aaa;
-    }
-    
-    .clips {
+    .header {
       display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-    
-    .clip {
-      background: #1a1a1a;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    
-    .clip-header {
-      background: #252525;
-      padding: 0.75rem 1rem;
-      display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #222;
     }
     
-    .clip-number {
+    .header h1 {
+      font-size: 1.25rem;
       font-weight: 600;
       color: #fff;
     }
     
-    .clip-duration {
+    .meta {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    
+    .meta span { margin-left: 1rem; }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    
+    .card {
+      background: #141414;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #222;
+    }
+    
+    .card-header {
+      background: #1a1a1a;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid #222;
+    }
+    
+    .clip-num {
       background: #333;
-      padding: 0.25rem 0.5rem;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
       border-radius: 4px;
-      font-size: 0.85rem;
+    }
+    
+    .duration {
+      font-size: 0.75rem;
       color: #4CAF50;
     }
     
-    .clip-transition {
+    .transition {
+      font-size: 0.7rem;
       color: #FF9800;
-      font-size: 0.85rem;
+      margin-left: auto;
     }
     
-    .clip-elements {
-      padding: 1rem;
+    .card-content {
+      padding: 0.75rem;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.6rem;
     }
     
-    .element {
-      background: #222;
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      padding-left: calc(1rem + 4px);
-      margin-left: -4px;
-    }
-    
-    .element-header {
+    .card-element {
       display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0.4rem;
     }
     
-    .element-type {
+    .type-tag {
       color: #fff;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    
+    .model-tag {
+      font-size: 0.65rem;
+      color: #666;
+      font-family: monospace;
+      background: #1a1a1a;
+      padding: 0.1rem 0.3rem;
+      border-radius: 2px;
+    }
+    
+    .nested {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+    }
+    
+    .nested-tag {
+      font-size: 0.55rem;
+      color: #fff;
+      padding: 0.1rem 0.3rem;
+      border-radius: 2px;
+      opacity: 0.8;
+    }
+    
+    .prompt {
+      font-size: 0.8rem;
+      color: #999;
+      line-height: 1.4;
+      width: 100%;
+      margin-top: 0.25rem;
+    }
+    
+    .global-bar {
+      margin-top: 1.5rem;
+      padding: 0.75rem;
+      background: #141414;
+      border-radius: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid #222;
+    }
+    
+    .global-label {
       font-size: 0.75rem;
+      color: #666;
+      font-weight: 600;
+    }
+    
+    .global-tag {
+      font-size: 0.75rem;
+      color: #888;
+      padding: 0.25rem 0.5rem;
+      padding-left: 0;
+      border-radius: 4px;
+      border: 1px solid;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      overflow: hidden;
+    }
+    
+    .global-type {
+      font-size: 0.6rem;
+      color: #fff;
+      padding: 0.25rem 0.4rem;
       font-weight: 600;
       text-transform: uppercase;
     }
     
-    .element-model {
-      color: #888;
-      font-size: 0.85rem;
-      font-family: monospace;
-    }
-    
-    .element-prompt,
-    .element-text,
-    .element-src,
-    .element-voice {
-      margin-top: 0.5rem;
-      color: #ccc;
-      font-size: 0.9rem;
-    }
-    
-    .element-prompt strong,
-    .element-text strong,
-    .element-src strong,
-    .element-voice strong {
-      color: #999;
-    }
-    
-    .element-details {
-      margin-top: 0.5rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1rem;
-    }
-    
-    .detail {
-      font-size: 0.8rem;
-      color: #888;
-    }
-    
-    .detail strong {
-      color: #666;
-    }
-    
-    .nested-children {
-      margin-top: 0.75rem;
-      padding-left: 1rem;
-      border-left: 2px solid #333;
-    }
-    
-    .global-section {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #333;
-    }
-    
-    .global-section h2 {
-      color: #fff;
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
-    }
-    
-    .global-elements {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-    
     .summary {
-      margin-top: 2rem;
-      padding: 1rem;
-      background: #1a1a1a;
-      border-radius: 8px;
-    }
-    
-    .summary h3 {
-      color: #fff;
-      font-size: 1rem;
-      margin-bottom: 0.75rem;
-    }
-    
-    .summary-stats {
+      margin-top: 1rem;
       display: flex;
-      gap: 2rem;
-      flex-wrap: wrap;
+      gap: 1.5rem;
+      font-size: 0.75rem;
+      color: #555;
     }
     
-    .stat {
+    .summary strong {
       color: #888;
-      font-size: 0.9rem;
-    }
-    
-    .stat strong {
-      color: #4CAF50;
-      font-size: 1.25rem;
-      display: block;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Storyboard</h1>
-      <div class="meta">
-        <span><strong>Source:</strong> ${escapedSourceFile}</span>
-        <span><strong>Resolution:</strong> ${storyboard.width}x${storyboard.height}</span>
-        <span><strong>FPS:</strong> ${storyboard.fps}</span>
-      </div>
-    </header>
-    
-    <div class="clips">
-      ${clipsHtml}
+  <div class="header">
+    <h1>Storyboard</h1>
+    <div class="meta">
+      <span>${escapedSourceFile}</span>
+      <span>${storyboard.width}×${storyboard.height}</span>
+      <span>${storyboard.fps}fps</span>
     </div>
-    
-    ${globalHtml}
-    
-    <div class="summary">
-      <h3>Summary</h3>
-      <div class="summary-stats">
-        <div class="stat">
-          <strong>${storyboard.clips.length}</strong>
-          clips
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "video")}</strong>
-          videos
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "image")}</strong>
-          images
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "speech")}</strong>
-          speech
-        </div>
-        <div class="stat">
-          <strong>${countElements(storyboard, "music")}</strong>
-          music
-        </div>
-      </div>
-    </div>
+  </div>
+  
+  <div class="grid">
+    ${clipsHtml}
+  </div>
+  
+  ${globalHtml}
+  
+  <div class="summary">
+    <span><strong>${storyboard.clips.length}</strong> clips</span>
+    <span><strong>${countElements(storyboard, "video")}</strong> videos</span>
+    <span><strong>${countElements(storyboard, "image")}</strong> images</span>
+    <span><strong>${countElements(storyboard, "speech")}</strong> speech</span>
+    <span><strong>${countElements(storyboard, "music")}</strong> music</span>
   </div>
 </body>
 </html>`;
