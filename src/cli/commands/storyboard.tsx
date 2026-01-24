@@ -471,6 +471,7 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     :root {
+      /* dark theme (default) */
       --bg-primary: #0d0d0f;
       --bg-card: #18181c;
       --bg-card-header: #1e1e24;
@@ -490,6 +491,53 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       --radius-squishy: 16px;
       --radius-pill: 24px;
       --radius-tag: 10px;
+      --toggle-icon: "☀";
+    }
+    
+    [data-theme="light"] {
+      --bg-primary: #f8f8fa;
+      --bg-card: #ffffff;
+      --bg-card-header: #f3f4f6;
+      --bg-elevated: #e8e9ed;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --border-soft: rgba(0, 0, 0, 0.1);
+      --text-primary: #18181b;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --accent-mint: #059669;
+      --accent-peach: #e11d48;
+      --accent-lavender: #7c3aed;
+      --accent-sky: #0284c7;
+      --accent-amber: #d97706;
+      --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.03);
+      --toggle-icon: "☾";
+    }
+    
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg-primary: #f8f8fa;
+        --bg-card: #ffffff;
+        --bg-card-header: #f3f4f6;
+        --bg-elevated: #e8e9ed;
+        --border-subtle: rgba(0, 0, 0, 0.06);
+        --border-soft: rgba(0, 0, 0, 0.1);
+        --text-primary: #18181b;
+        --text-secondary: #52525b;
+        --text-muted: #71717a;
+        --accent-mint: #059669;
+        --accent-peach: #e11d48;
+        --accent-lavender: #7c3aed;
+        --accent-sky: #0284c7;
+        --accent-amber: #d97706;
+        --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+        --shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.03);
+        --toggle-icon: "☾";
+      }
+    }
+    
+    body, .card, .card-header, .card-element, .global-bar, .global-tag, .summary span, .meta span, .model-tag {
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
     }
     
     body {
@@ -502,6 +550,34 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       line-height: 1.6;
       padding: 2rem;
       min-height: 100vh;
+    }
+    
+    .theme-toggle {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+    
+    .theme-toggle:hover {
+      background: var(--bg-card-header);
+      border-color: var(--border-soft);
+      transform: scale(1.05);
+    }
+    
+    .theme-toggle:active {
+      transform: scale(0.95);
+    }
+    
+    .theme-icon::before {
+      content: var(--toggle-icon);
     }
     
     .header {
@@ -735,6 +811,9 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       <span>${escapedSourceFile}</span>
       <span>${storyboard.width}×${storyboard.height}</span>
       <span>${storyboard.fps}fps</span>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <span class="theme-icon"></span>
+      </button>
     </div>
   </div>
   
@@ -751,6 +830,34 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     <span><strong>${countElements(storyboard, "speech")}</strong> speech</span>
     <span><strong>${countElements(storyboard, "music")}</strong> music</span>
   </div>
+  
+  <script>
+    (function() {
+      const root = document.documentElement;
+      const stored = localStorage.getItem('storyboard-theme');
+      if (stored) {
+        root.setAttribute('data-theme', stored);
+      }
+    })();
+    
+    function toggleTheme() {
+      const root = document.documentElement;
+      const current = root.getAttribute('data-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      let next;
+      if (current === 'light') {
+        next = 'dark';
+      } else if (current === 'dark') {
+        next = 'light';
+      } else {
+        next = prefersDark ? 'light' : 'dark';
+      }
+      
+      root.setAttribute('data-theme', next);
+      localStorage.setItem('storyboard-theme', next);
+    }
+  </script>
 </body>
 </html>`;
 }
