@@ -1,4 +1,5 @@
 import type {
+  BatchProps,
   CaptionsProps,
   ClipProps,
   ImageProps,
@@ -36,6 +37,14 @@ function createElement<T extends VargElement["type"]>(
     props: restProps,
     children: normalizeChildren(children ?? props.children),
   };
+}
+
+export function Batch(props: BatchProps): VargElement<"batch"> {
+  return createElement(
+    "batch",
+    props as Record<string, unknown>,
+    props.children,
+  );
 }
 
 export function Render(props: RenderProps): VargElement<"render"> {

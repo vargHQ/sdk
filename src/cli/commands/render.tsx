@@ -4,8 +4,13 @@ import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";
-import { render } from "../../react/render";
-import type { DefaultModels, RenderMode, VargElement } from "../../react/types";
+import { render, renderBatch } from "../../react/render";
+import type {
+  BatchProps,
+  DefaultModels,
+  RenderMode,
+  VargElement,
+} from "../../react/types";
 import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
 
@@ -33,7 +38,9 @@ async function detectDefaultModels(): Promise<DefaultModels | undefined> {
   return Object.keys(defaults).length > 0 ? defaults : undefined;
 }
 
-async function loadComponent(filePath: string): Promise<VargElement> {
+async function loadComponent(
+  filePath: string,
+): Promise<VargElement<"render"> | VargElement<"batch">> {
   const resolvedPath = resolve(filePath);
   const source = await Bun.file(resolvedPath).text();
 
@@ -141,9 +148,58 @@ async function runRender(
 
   const component = await loadComponent(file);
 
-  if (!component || component.type !== "render") {
-    console.error("error: default export must be a <Render> element");
+  if (
+    !component ||
+    (component.type !== "render" && component.type !== "batch")
+  ) {
+    console.error(
+      "error: default export must be a <Render> or <Batch> element",
+    );
     process.exit(1);
+  }
+
+  const useCache = !args["no-cache"] && mode !== "preview";
+  const defaults = await detectDefaultModels();
+
+  if (component.type === "batch") {
+    const batchProps = component.props as BatchProps;
+    const basename = file
+      .replace(/\.tsx?$/, "")
+      .split("/")
+      .pop();
+    const outputDir =
+      (args.output as string) ?? batchProps.output ?? `output/${basename}`;
+
+    if (!args.quiet) {
+      const modeLabel = mode === "preview" ? " (fast)" : "";
+      const parallel = batchProps.parallel ?? 1;
+      console.log(`batch rendering ${file} → ${outputDir}/${modeLabel}`);
+      console.log(`  concurrency: ${parallel}`);
+    }
+
+    const results = await renderBatch(component as VargElement<"batch">, {
+      output: outputDir,
+      cache: useCache ? (args.cache as string) : undefined,
+      mode,
+      defaults,
+      verbose: args.verbose as boolean,
+      quiet: args.quiet as boolean,
+    });
+
+    if (!args.quiet) {
+      const totalBytes = results.reduce(
+        (sum, r) => sum + r.buffer.byteLength,
+        0,
+      );
+      console.log(`done! ${results.length} videos, ${totalBytes} bytes total`);
+    }
+
+    if (args.open) {
+      const { $ } = await import("bun");
+      await $`open ${outputDir}`.quiet();
+    }
+
+    return;
   }
 
   const basename = file
@@ -156,10 +212,6 @@ async function runRender(
     const modeLabel = mode === "preview" ? " (fast)" : "";
     console.log(`rendering ${file} → ${outputPath}${modeLabel}`);
   }
-
-  const useCache = !args["no-cache"] && mode !== "preview";
-
-  const defaults = await detectDefaultModels();
 
   const buffer = await render(component, {
     output: outputPath,
