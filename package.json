@@ -77,6 +77,7 @@
     "./providers": "./src/providers/index.ts",
     "./definitions": "./src/definitions/index.ts",
     "./react": "./src/react/index.ts",
+    "./react/layouts": "./src/react/layouts/index.ts",
     "./studio": "./src/studio/index.ts",
     "./jsx-runtime": "./src/react/runtime/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/react/runtime/jsx-dev-runtime.ts"
