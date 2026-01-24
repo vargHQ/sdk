@@ -1,6 +1,7 @@
 import { File } from "../../ai-sdk/file";
 import type { generateVideo } from "../../ai-sdk/generate-video";
 import type {
+  RemoveBackgroundOptions,
   ImageInput,
   VargElement,
   VideoPrompt,
@@ -70,6 +71,34 @@ async function resolveVideoInput(
   );
 }
 
+function parseRemoveBackgroundOptions(
+  removeBackground: boolean | RemoveBackgroundOptions | undefined,
+): RemoveBackgroundOptions | null {
+  if (!removeBackground) return null;
+  if (removeBackground === true) {
+    return { color: "#00FF00", tolerance: 0.1, blend: 0.05 };
+  }
+  return {
+    color: removeBackground.color ?? "#00FF00",
+    tolerance: removeBackground.tolerance ?? 0.1,
+    blend: removeBackground.blend ?? 0.05,
+  };
+}
+
+function appendGreenScreenInstruction(
+  prompt: VideoPrompt,
+  color: string,
+): VideoPrompt {
+  const instruction = `IMPORTANT: replace video background with solid ${color} background for chroma key compositing.`;
+  if (typeof prompt === "string") {
+    return `${prompt}. ${instruction}`;
+  }
+  return {
+    ...prompt,
+    text: prompt.text ? `${prompt.text}. ${instruction}` : instruction,
+  };
+}
+
 async function resolvePrompt(
   prompt: VideoPrompt,
   ctx: RenderContext,
@@ -107,7 +136,7 @@ export async function renderVideo(
   const props = element.props as VideoProps;
 
   if (props.src && !props.prompt) {
-    return props.src;
+return props.src;
   }
 
   const prompt = props.prompt;
@@ -122,19 +151,22 @@ export async function renderVideo(
     );
   }
 
-  // Compute cache key for deduplication
+  const removeBackgroundConfig = parseRemoveBackgroundOptions(props.removeBackground);
+
   const cacheKey = computeCacheKey(element);
   const cacheKeyStr = JSON.stringify(cacheKey);
 
-  // Check if this element is already being rendered (deduplication)
   const pendingRender = ctx.pending.get(cacheKeyStr);
   if (pendingRender) {
     return pendingRender;
   }
 
-  // Create the render promise and store it for deduplication
   const renderPromise = (async () => {
-    const resolvedPrompt = await resolvePrompt(prompt, ctx);
+    const promptToUse = removeBackgroundConfig
+      ? appendGreenScreenInstruction(prompt, removeBackgroundConfig.color ?? "#00FF00")
+      : prompt;
+
+    const resolvedPrompt = await resolvePrompt(promptToUse, ctx);
 
     const modelId = typeof model === "string" ? model : model.modelId;
     const taskId = ctx.progress

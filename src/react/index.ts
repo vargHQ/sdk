@@ -22,6 +22,7 @@ export { render, renderStream } from "./render";
 export type {
   CaptionsProps,
   ClipProps,
+  RemoveBackgroundOptions,
   ImageProps,
   MusicProps,
   OverlayProps,

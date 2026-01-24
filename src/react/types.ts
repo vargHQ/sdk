@@ -119,6 +119,7 @@ export type VideoProps = BaseProps &
     model?: VideoModelV3;
     resize?: ResizeMode;
     aspectRatio?: `${number}:${number}`;
+    removeBackground?: boolean | RemoveBackgroundOptions;
   };
 
 export interface SpeechProps extends BaseProps, VolumeProps {
@@ -152,6 +153,15 @@ export interface TitleProps extends BaseProps {
 export interface SubtitleProps extends BaseProps {
   backgroundColor?: string;
   children?: string;
+}
+
+export interface RemoveBackgroundOptions {
+  /** Chroma key color to remove (default: '#00FF00' green) */
+  color?: string;
+  /** Tolerance for color matching 0-1 (default: 0.1) */
+  tolerance?: number;
+  /** Edge blend amount 0-1 (default: 0.05) */
+  blend?: number;
 }
 
 export type MusicProps = BaseProps &
