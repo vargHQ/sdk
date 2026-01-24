@@ -25,6 +25,8 @@ export type { GoogleGenerativeAIProviderSettings };
 const IMAGE_MODELS: Record<string, string> = {
   "gemini-3-pro-image": "gemini-3-pro-image-preview",
   "gemini-2-flash-image": "gemini-2.0-flash-preview-image-generation",
+  "nano-banana-pro": "gemini-3-pro-image-preview",
+  "nano-banana-pro/edit": "gemini-3-pro-image-preview",
 };
 
 class GoogleImageModel implements ImageModelV3 {
