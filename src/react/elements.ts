@@ -5,6 +5,7 @@ import type {
   MusicProps,
   OverlayProps,
   PackshotProps,
+  RawProps,
   RenderProps,
   SliderProps,
   SpeechProps,
@@ -138,4 +139,12 @@ export function Swipe(props: SwipeProps): VargElement<"swipe"> {
 
 export function Packshot(props: PackshotProps): VargElement<"packshot"> {
   return createElement("packshot", props as Record<string, unknown>, undefined);
+}
+
+export function Raw(props: RawProps): VargElement<"raw"> {
+  return createElement(
+    "raw",
+    props as unknown as Record<string, unknown>,
+    undefined,
+  );
 }

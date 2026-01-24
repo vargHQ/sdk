@@ -23,7 +23,8 @@ export type VargElementType =
   | "split"
   | "slider"
   | "swipe"
-  | "packshot";
+  | "packshot"
+  | "raw";
 
 export interface VargElement<T extends VargElementType = VargElementType> {
   type: T;
@@ -115,7 +116,7 @@ export type VideoProps = BaseProps &
   AudioProps &
   TrimProps & {
     prompt?: VideoPrompt;
-    src?: string;
+    src?: string | VargElement<"raw">;
     model?: VideoModelV3;
     resize?: ResizeMode;
     aspectRatio?: `${number}:${number}`;
@@ -202,6 +203,19 @@ export interface PackshotProps extends BaseProps {
   duration?: number;
 }
 
+export type RawInput =
+  | string
+  | Uint8Array
+  | VargElement<"image">
+  | VargElement<"video">
+  | VargElement<"raw">;
+
+export interface RawProps extends BaseProps {
+  inputs: RawInput[];
+  args: string[];
+  output?: string;
+}
+
 export type RenderMode = "strict" | "preview";
 
 export interface DefaultModels {
@@ -236,4 +250,5 @@ export interface ElementPropsMap {
   slider: SliderProps;
   swipe: SwipeProps;
   packshot: PackshotProps;
+  raw: RawProps;
 }
