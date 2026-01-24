@@ -465,6 +465,59 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     })
     .join("\n");
 
+  const renderTimelineContent = (elements: StoryboardElement[]): string => {
+    const mainEl = elements[0];
+    if (!mainEl) return "";
+
+    const previewImage =
+      mainEl.type === "image"
+        ? mainEl.imageDataUrl
+        : getFirstNestedImage(mainEl);
+
+    const videoPrompt = mainEl.prompt || "";
+    const speechText = elements.find((e) => e.type === "speech")?.text || "";
+    const nestedChildren =
+      (mainEl.details.children as StoryboardElement[]) || [];
+
+    return `
+      <div class="timeline-image">
+        ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="timeline-placeholder"></div>'}
+      </div>
+      <div class="timeline-info">
+        <div class="timeline-section">
+          <span class="timeline-label">clip ${elements[0]?._element ? "" : ""}:</span>
+          <p class="timeline-text">${escapeHtml(videoPrompt)}</p>
+        </div>
+        ${
+          nestedChildren.length > 0
+            ? `
+        <div class="timeline-section">
+          <span class="timeline-label">image:</span>
+          <p class="timeline-text">${escapeHtml(nestedChildren[0]?.prompt || "")}</p>
+        </div>`
+            : ""
+        }
+        ${
+          speechText
+            ? `
+        <div class="timeline-section">
+          <span class="timeline-label">vo:</span>
+          <p class="timeline-text">${escapeHtml(speechText)}</p>
+        </div>`
+            : ""
+        }
+      </div>`;
+  };
+
+  const timelineHtml = storyboard.clips
+    .map((clip) => {
+      return `
+      <div class="timeline-row">
+        ${renderTimelineContent(clip.elements)}
+      </div>`;
+    })
+    .join("\n");
+
   const globalHtml =
     storyboard.globalElements.length > 0
       ? `
@@ -914,6 +967,109 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     .render-icon {
       font-size: 0.7rem;
     }
+    
+    .view-toggle {
+      display: flex;
+      background: var(--bg-elevated);
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+    
+    .view-toggle button {
+      background: none;
+      border: none;
+      padding: 0.4rem 0.6rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    
+    .view-toggle button:hover {
+      color: var(--text-secondary);
+    }
+    
+    .view-toggle button.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+    
+    .timeline {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .timeline.active {
+      display: flex;
+    }
+    
+    .grid.active {
+      display: grid;
+    }
+    
+    .grid:not(.active) {
+      display: none;
+    }
+    
+    .timeline-row {
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) 1fr;
+      gap: 2rem;
+      padding: 2rem 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .timeline-row:last-child {
+      border-bottom: none;
+    }
+    
+    .timeline-image {
+      aspect-ratio: 16/9;
+      border-radius: var(--radius-squishy);
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+    
+    .timeline-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .timeline-placeholder {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-elevated);
+    }
+    
+    .timeline-info {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      padding-top: 0.5rem;
+    }
+    
+    .timeline-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .timeline-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    
+    .timeline-text {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -923,6 +1079,10 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       <span>${escapedSourceFile}</span>
       <span>${storyboard.width}×${storyboard.height}</span>
       <span>${storyboard.fps}fps</span>
+      <div class="view-toggle">
+        <button class="active" onclick="setView('grid')" aria-label="Grid view">▦</button>
+        <button onclick="setView('timeline')" aria-label="Timeline view">☰</button>
+      </div>
       <button class="render-btn" onclick="copyRenderCommand()" aria-label="Copy render command">
         <span class="render-icon">▶</span>
         <span class="render-text">Render</span>
@@ -933,8 +1093,12 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     </div>
   </div>
   
-  <div class="grid">
+  <div class="grid active">
     ${clipsHtml}
+  </div>
+  
+  <div class="timeline">
+    ${timelineHtml}
   </div>
   
   ${globalHtml}
@@ -987,6 +1151,31 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
         }, 2000);
       });
     }
+    
+    function setView(view) {
+      const grid = document.querySelector('.grid');
+      const timeline = document.querySelector('.timeline');
+      const buttons = document.querySelectorAll('.view-toggle button');
+      
+      if (view === 'grid') {
+        grid.classList.add('active');
+        timeline.classList.remove('active');
+        buttons[0].classList.add('active');
+        buttons[1].classList.remove('active');
+      } else {
+        grid.classList.remove('active');
+        timeline.classList.add('active');
+        buttons[0].classList.remove('active');
+        buttons[1].classList.add('active');
+      }
+      
+      localStorage.setItem('storyboard-view', view);
+    }
+    
+    (function() {
+      const stored = localStorage.getItem('storyboard-view');
+      if (stored) setView(stored);
+    })();
   </script>
 </body>
 </html>`;
