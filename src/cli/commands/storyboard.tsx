@@ -886,6 +886,40 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       color: var(--text-primary);
       font-weight: 600;
     }
+    
+    .render-btn {
+      background: linear-gradient(135deg, var(--accent-mint), #34d399);
+      border: none;
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #0d0d0f;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 2px 8px rgba(110, 231, 183, 0.3);
+    }
+    
+    .render-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(110, 231, 183, 0.4);
+    }
+    
+    .render-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .render-btn.copied {
+      background: linear-gradient(135deg, var(--accent-lavender), #a78bfa);
+      box-shadow: 0 2px 8px rgba(167, 139, 250, 0.3);
+    }
+    
+    .render-icon {
+      font-size: 0.7rem;
+    }
   </style>
 </head>
 <body>
@@ -895,6 +929,10 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       <span>${escapedSourceFile}</span>
       <span>${storyboard.width}×${storyboard.height}</span>
       <span>${storyboard.fps}fps</span>
+      <button class="render-btn" onclick="copyRenderCommand()" aria-label="Copy render command">
+        <span class="render-icon">▶</span>
+        <span class="render-text">Render</span>
+      </button>
       <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
         <span class="theme-icon"></span>
       </button>
@@ -940,6 +978,20 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       
       root.setAttribute('data-theme', next);
       localStorage.setItem('storyboard-theme', next);
+    }
+    
+    function copyRenderCommand() {
+      const cmd = "bunx vargai render ${sourceFile}";
+      navigator.clipboard.writeText(cmd).then(() => {
+        const btn = document.querySelector('.render-btn');
+        const text = btn.querySelector('.render-text');
+        btn.classList.add('copied');
+        text.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          text.textContent = 'Render';
+        }, 2000);
+      });
     }
   </script>
 </body>
