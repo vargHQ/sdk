@@ -194,11 +194,21 @@ export interface PackshotProps extends BaseProps {
   logo?: string;
   logoPosition?: Position;
   logoSize?: SizeValue;
+  /** CTA button text */
   cta?: string;
+  /** CTA button position on screen */
   ctaPosition?: Position;
+  /** CTA button background color (hex, default: "#FF6B00") */
   ctaColor?: string;
-  ctaSize?: number;
+  /** CTA button text color (hex, default: "#FFFFFF") */
+  ctaTextColor?: string;
+  /** CTA button size in pixels { width, height } */
+  ctaSize?: { width: number; height: number };
+  /** Enable blinking animation (scale + brightness pulse) */
   blinkCta?: boolean;
+  /** Blink animation cycle duration in seconds (default: 0.8) */
+  blinkFrequency?: number;
+  /** Packshot duration in seconds */
   duration?: number;
 }
 
