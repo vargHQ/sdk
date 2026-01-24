@@ -13,6 +13,7 @@ import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
 import {
   findCmd,
+  frameCmd,
   helloCmd,
   helpCmd,
   initCmd,
@@ -21,6 +22,7 @@ import {
   renderCmd,
   runCmd,
   showFindHelp,
+  showFrameHelp,
   showHelp,
   showInitHelp,
   showListHelp,
@@ -57,6 +59,7 @@ const subcommandHelp: Record<string, () => void> = {
   run: showRunHelp,
   render: showRenderHelp,
   preview: showPreviewHelp,
+  frame: showFrameHelp,
   storyboard: showStoryboardHelp,
   init: showInitHelp,
   list: showListHelp,
@@ -117,6 +120,7 @@ const main = defineCommand({
     init: initCmd,
     render: renderCmd,
     preview: previewCmd,
+    frame: frameCmd,
     storyboard: storyboardCmd,
     studio: studioCmd,
     run: runCmd,
