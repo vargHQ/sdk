@@ -1,9 +1,54 @@
 import { editly } from "../../ai-sdk/providers/editly";
-import type { Clip, Layer } from "../../ai-sdk/providers/editly/types";
-import type { SplitProps, VargElement } from "../types";
+import type {
+  Clip,
+  CropPosition,
+  Layer,
+  ResizeMode,
+} from "../../ai-sdk/providers/editly/types";
+import type { SlotProps, SplitProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { type ParsedSlotOptions, resolveSlotOptions } from "./slot-parser";
 import { renderVideo } from "./video";
+
+interface SlotChild {
+  path: string;
+  isVideo: boolean;
+  options: ParsedSlotOptions;
+}
+
+/**
+ * Convert SlotFit to editly ResizeMode
+ */
+function slotFitToResizeMode(
+  fit: ParsedSlotOptions["fit"],
+  options: ParsedSlotOptions,
+): ResizeMode {
+  switch (fit) {
+    case "cover":
+      return "cover";
+    case "contain":
+      if (options.bgBlur !== undefined) {
+        return "contain-blur";
+      }
+      return "contain";
+    case "fill":
+      return "stretch";
+    case "none":
+      return "contain";
+    default:
+      return "cover";
+  }
+}
+
+/**
+ * Convert SlotPosition to CropPosition
+ */
+function slotPositionToCropPosition(
+  position: ParsedSlotOptions["position"],
+): CropPosition {
+  return position as CropPosition;
+}
 
 export async function renderSplit(
   element: VargElement<"split">,
@@ -12,30 +57,68 @@ export async function renderSplit(
   const props = element.props as SplitProps;
   const direction = props.direction ?? "horizontal";
 
-  const childPaths: string[] = [];
+  const slotChildren: SlotChild[] = [];
 
   for (const child of element.children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
     const childElement = child as VargElement;
 
-    if (childElement.type === "image") {
+    // Handle Slot wrapper
+    if (childElement.type === "slot") {
+      const slotProps = childElement.props as SlotProps;
+      const options = resolveSlotOptions(slotProps);
+
+      for (const slotChild of childElement.children) {
+        if (
+          !slotChild ||
+          typeof slotChild !== "object" ||
+          !("type" in slotChild)
+        )
+          continue;
+        const contentElement = slotChild as VargElement;
+
+        if (contentElement.type === "image") {
+          const path = await renderImage(
+            contentElement as VargElement<"image">,
+            ctx,
+          );
+          slotChildren.push({ path, isVideo: false, options });
+        } else if (contentElement.type === "video") {
+          const path = await renderVideo(
+            contentElement as VargElement<"video">,
+            ctx,
+          );
+          slotChildren.push({ path, isVideo: true, options });
+        }
+      }
+    }
+    // Handle direct image/video children (backwards compatible)
+    else if (childElement.type === "image") {
       const path = await renderImage(childElement as VargElement<"image">, ctx);
-      childPaths.push(path);
+      slotChildren.push({
+        path,
+        isVideo: false,
+        options: { fit: "cover", position: "center" },
+      });
     } else if (childElement.type === "video") {
       const path = await renderVideo(childElement as VargElement<"video">, ctx);
-      childPaths.push(path);
+      slotChildren.push({
+        path,
+        isVideo: true,
+        options: { fit: "cover", position: "center" },
+      });
     }
   }
 
-  if (childPaths.length === 0) {
+  if (slotChildren.length === 0) {
     throw new Error("Split element requires at least one image or video child");
   }
 
-  if (childPaths.length === 1) {
-    return childPaths[0]!;
+  if (slotChildren.length === 1) {
+    return slotChildren[0]!.path;
   }
 
-  const numChildren = childPaths.length;
+  const numChildren = slotChildren.length;
   const cellWidth =
     direction === "horizontal"
       ? Math.floor(ctx.width / numChildren)
@@ -45,10 +128,11 @@ export async function renderSplit(
       ? Math.floor(ctx.height / numChildren)
       : ctx.height;
 
-  const layers: Layer[] = childPaths.map((path, i) => {
-    const isVideo = path.endsWith(".mp4") || path.endsWith(".webm");
+  const layers: Layer[] = slotChildren.map(({ path, isVideo, options }, i) => {
     const left = direction === "horizontal" ? cellWidth * i : 0;
     const top = direction === "vertical" ? cellHeight * i : 0;
+    const resizeMode = slotFitToResizeMode(options.fit, options);
+    const cropPosition = slotPositionToCropPosition(options.position);
 
     if (isVideo) {
       return {
@@ -58,6 +142,8 @@ export async function renderSplit(
         top,
         width: cellWidth,
         height: cellHeight,
+        resizeMode,
+        cropPosition,
       };
     }
     return {
