@@ -14,6 +14,11 @@ import { fal } from "@fal-ai/client";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
+  // Kling v2.6 - latest with native audio generation
+  "kling-v2.6": {
+    t2v: "fal-ai/kling-video/v2.6/pro/text-to-video",
+    i2v: "fal-ai/kling-video/v2.6/pro/image-to-video",
+  },
   "kling-v2.5": {
     t2v: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
     i2v: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
@@ -38,6 +43,13 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     t2v: "fal-ai/minimax-video/text-to-video",
     i2v: "fal-ai/minimax-video/image-to-video",
   },
+};
+
+// Motion control models - video-to-video with motion transfer
+const MOTION_CONTROL_MODELS: Record<string, string> = {
+  "kling-v2.6-motion": "fal-ai/kling-video/v2.6/pro/motion-control",
+  "kling-v2.6-motion-standard":
+    "fal-ai/kling-video/v2.6/standard/motion-control",
 };
 
 // lipsync models - video + audio input
@@ -157,7 +169,7 @@ class FalVideoModel implements VideoModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
-    const _hasVideoInput = files?.some((f) =>
+    const hasVideoInput = files?.some((f) =>
       getMediaType(f)?.startsWith("video/"),
     );
     const hasImageInput = files?.some((f) =>
@@ -168,15 +180,21 @@ class FalVideoModel implements VideoModelV3 {
     );
 
     const isLipsync = LIPSYNC_MODELS[this.modelId] !== undefined;
+    const isMotionControl = MOTION_CONTROL_MODELS[this.modelId] !== undefined;
+    const isKlingV26 = this.modelId === "kling-v2.6";
+
     const endpoint = isLipsync
       ? this.resolveLipsyncEndpoint()
-      : this.resolveEndpoint(hasImageInput ?? false);
+      : isMotionControl
+        ? this.resolveMotionControlEndpoint()
+        : this.resolveEndpoint(hasImageInput ?? false);
 
     const input: Record<string, unknown> = {
       ...(providerOptions?.fal ?? {}),
     };
 
     if (isLipsync) {
+      // Lipsync: video + audio input
       const videoFile = files?.find((f) =>
         getMediaType(f)?.startsWith("video/"),
       );
@@ -190,19 +208,68 @@ class FalVideoModel implements VideoModelV3 {
       if (audioFile) {
         input.audio_url = await fileToUrl(audioFile);
       }
+    } else if (isMotionControl) {
+      // Motion control: image + reference video input
+      if (prompt) {
+        input.prompt = prompt;
+      }
+
+      const imageFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("image/"),
+      );
+      const videoFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("video/"),
+      );
+
+      if (imageFile) {
+        input.image_url = await fileToUrl(imageFile);
+      }
+      if (videoFile) {
+        input.video_url = await fileToUrl(videoFile);
+      }
+
+      // Default character orientation to 'video' for better motion matching
+      if (!input.character_orientation) {
+        input.character_orientation = "video";
+      }
+
+      // Default to keeping original sound
+      if (input.keep_original_sound === undefined) {
+        input.keep_original_sound = true;
+      }
     } else {
+      // Standard video generation
       input.prompt = prompt;
-      input.duration = duration ?? 5;
+
+      // Duration must be string "5" or "10" for Kling v2.6
+      if (isKlingV26) {
+        input.duration = String(duration ?? 5);
+      } else {
+        input.duration = duration ?? 5;
+      }
 
       if (hasImageInput && files) {
-        const imageFile = files.find((f) =>
+        const imageFiles = files.filter((f) =>
           getMediaType(f)?.startsWith("image/"),
         );
-        if (imageFile) {
-          input.image_url = await fileToUrl(imageFile);
+        if (imageFiles.length > 0) {
+          // First image is start image
+          input.image_url = await fileToUrl(imageFiles[0]!);
+          // Second image (if provided) is end image for Kling v2.6
+          if (isKlingV26 && imageFiles.length > 1) {
+            input.end_image_url = await fileToUrl(imageFiles[1]!);
+          }
         }
       } else {
         input.aspect_ratio = aspectRatio ?? "16:9";
+      }
+
+      // Kling v2.6 supports native audio generation
+      if (isKlingV26) {
+        // Default to generating audio unless explicitly disabled
+        if (input.generate_audio === undefined) {
+          input.generate_audio = true;
+        }
       }
 
       const audioFile = files?.find((f) =>
@@ -282,6 +349,14 @@ class FalVideoModel implements VideoModelV3 {
     }
 
     return LIPSYNC_MODELS[this.modelId] ?? this.modelId;
+  }
+
+  private resolveMotionControlEndpoint(): string {
+    if (this.modelId.startsWith("raw:")) {
+      return this.modelId.slice(4);
+    }
+
+    return MOTION_CONTROL_MODELS[this.modelId] ?? this.modelId;
   }
 }
 
