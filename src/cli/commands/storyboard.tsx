@@ -519,6 +519,7 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
           ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="timeline-placeholder"></div>'}
         </div>
         <div class="timeline-info">
+          <div class="timeline-title">&lt;Clip&gt;</div>
           <div class="timeline-header">
             <span class="clip-num">${clip.index + 1}</span>
             <span class="duration">${durationText}</span>
@@ -1100,15 +1101,21 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     .timeline-info {
       display: flex;
       flex-direction: column;
+      justify-content: center;
       gap: 1rem;
-      padding-top: 0.25rem;
+    }
+    
+    .timeline-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-lavender);
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
     }
     
     .timeline-header {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      margin-bottom: 0.5rem;
     }
     
     .timeline-section {
