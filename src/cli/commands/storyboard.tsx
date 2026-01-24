@@ -519,7 +519,6 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
           ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="timeline-placeholder"></div>'}
         </div>
         <div class="timeline-info">
-          <div class="timeline-title">&lt;Clip&gt;</div>
           <div class="timeline-header">
             <span class="clip-num">${clip.index + 1}</span>
             <span class="duration">${durationText}</span>
