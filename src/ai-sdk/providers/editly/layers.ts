@@ -161,9 +161,14 @@ export function getVideoFilterWithTrim(
   const layerHeight = parseSize(layer.height, height);
 
   if (isOverlay) {
-    filters.push(
-      `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
-    );
+    // Respect resizeMode for overlay videos (used by Split element)
+    let scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`;
+    if (layer.resizeMode === "cover") {
+      scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=increase,crop=${layerWidth}:${layerHeight}`;
+    } else if (layer.resizeMode === "stretch") {
+      scaleFilter = `scale=${layerWidth}:${layerHeight}`;
+    }
+    filters.push(scaleFilter);
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");

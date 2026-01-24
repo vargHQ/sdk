@@ -58,6 +58,7 @@ export async function renderSplit(
         top,
         width: cellWidth,
         height: cellHeight,
+        resizeMode: "cover" as const,
       };
     }
     return {
