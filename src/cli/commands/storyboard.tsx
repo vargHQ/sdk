@@ -399,13 +399,7 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       depth === 0 ? "" : parentPrefix + (isLast ? "   " : "│  ");
 
     const promptOrText = el.prompt || el.text || el.src || "";
-    const shortPrompt = promptOrText
-      ? escapeHtml(
-          promptOrText.length > 80
-            ? `${promptOrText.slice(0, 80)}...`
-            : promptOrText,
-        )
-      : "";
+    const shortPrompt = promptOrText ? escapeHtml(promptOrText) : "";
 
     const children =
       (el.details.children as StoryboardElement[] | undefined) || [];
