@@ -56,7 +56,6 @@ class GoogleImageModel implements ImageModelV3 {
       { type: "text"; text: string } | { type: "image"; image: Buffer | URL }
     > = [{ type: "text", text: prompt ?? "" }];
 
-    // add input images if provided
     if (files && files.length > 0) {
       for (const file of files) {
         if (file.type === "file") {

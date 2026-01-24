@@ -1,16 +1,14 @@
 import { generateImage } from "ai";
-import { google } from "../providers/google";
+import { File, google } from "../index";
 
 async function main() {
   console.log("testing google image generation via varg provider...\n");
 
-  // test 1: text-to-image
   console.log("1. text-to-image with nano-banana-pro...");
   try {
     const { images, warnings } = await generateImage({
       model: google.imageModel("nano-banana-pro"),
-      prompt:
-        "a beautiful mountain landscape with snow peaks and a calm lake reflecting the mountains",
+      prompt: "a beautiful mountain landscape with snow peaks and a calm lake",
     });
 
     console.log(`   generated ${images.length} image(s)`);
@@ -28,17 +26,16 @@ async function main() {
     console.error("   error:", error.message || error);
   }
 
-  // test 2: image-to-image (edit)
   console.log("\n2. image-to-image with nano-banana-pro/edit...");
   try {
-    const sourceImage = await Bun.file(
-      "output/google-mountain.png",
-    ).arrayBuffer();
+    const sourceFile = File.fromPath("output/google-mountain.png");
 
     const { images, warnings } = await generateImage({
       model: google.imageModel("nano-banana-pro/edit"),
-      prompt:
-        "transform this into a sunset scene with warm orange and pink colors in the sky",
+      prompt: {
+        text: "transform into a sunset scene with warm orange and pink sky",
+        images: [await sourceFile.data()],
+      },
     });
 
     console.log(`   generated ${images.length} image(s)`);
