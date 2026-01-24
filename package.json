@@ -43,6 +43,7 @@
     "@ai-sdk/groq": "^3.0.12",
     "@ai-sdk/openai": "^3.0.9",
     "@ai-sdk/provider": "^3.0.2",
+    "@ai-sdk/provider-utils": "^4.0.4",
     "@ai-sdk/replicate": "^2.0.5",
     "@aws-sdk/client-s3": "^3.937.0",
     "@aws-sdk/s3-request-presigner": "^3.937.0",
@@ -65,7 +66,7 @@
     "vargai": "^0.4.0-alpha11",
     "zod": "^4.2.1"
   },
-  "version": "0.4.0-alpha27",
+  "version": "0.4.0-alpha28",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",
