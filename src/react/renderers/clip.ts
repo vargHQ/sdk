@@ -90,7 +90,7 @@ async function renderClipLayers(
                 type: "video",
                 path,
                 resizeMode: props.resize,
-                // Video-level cutFrom/cutTo take precedence over clip-level
+                cropPosition: props.cropPosition,
                 cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
                 cutTo: props.cutTo ?? clipOptions?.cutTo,
                 mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
