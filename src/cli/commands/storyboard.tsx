@@ -387,34 +387,51 @@ function escapeHtml(str: string): string {
 function generateHtml(storyboard: Storyboard, sourceFile: string): string {
   const escapedSourceFile = escapeHtml(sourceFile);
 
-  const renderNestedElements = (elements: StoryboardElement[]): string => {
-    return elements
-      .map((el) => {
-        const color = TYPE_COLORS[el.type] || "#666";
-        return `<span class="nested-tag" style="background: ${color}">${el.type}</span>`;
-      })
-      .join(" ");
+  const renderTreeNode = (
+    el: StoryboardElement,
+    depth: number,
+    isLast: boolean,
+    parentPrefix: string,
+  ): string => {
+    const color = TYPE_COLORS[el.type] || "#666";
+    const connector = depth === 0 ? "" : isLast ? "└─ " : "├─ ";
+    const childPrefix =
+      depth === 0 ? "" : parentPrefix + (isLast ? "   " : "│  ");
+
+    const promptOrText = el.prompt || el.text || el.src || "";
+    const shortPrompt = promptOrText
+      ? escapeHtml(
+          promptOrText.length > 80
+            ? `${promptOrText.slice(0, 80)}...`
+            : promptOrText,
+        )
+      : "";
+
+    const children =
+      (el.details.children as StoryboardElement[] | undefined) || [];
+    const childrenHtml = children
+      .map((child, i) =>
+        renderTreeNode(
+          child,
+          depth + 1,
+          i === children.length - 1,
+          childPrefix,
+        ),
+      )
+      .join("");
+
+    return `
+      <div class="tree-node" style="--depth: ${depth}">
+        <span class="tree-prefix">${parentPrefix}${connector}</span>
+        <span class="type-tag" style="background: ${color}">${el.type}</span>
+        ${el.model ? `<span class="model-tag">${el.model}</span>` : ""}
+        ${shortPrompt ? `<span class="tree-prompt">${shortPrompt}</span>` : ""}
+      </div>${childrenHtml}`;
   };
 
   const renderCardContent = (elements: StoryboardElement[]): string => {
     return elements
       .map((el) => {
-        const color = TYPE_COLORS[el.type] || "#666";
-        const hasNested =
-          el.details.children && Array.isArray(el.details.children);
-        const nestedHtml = hasNested
-          ? `<div class="nested">${renderNestedElements(el.details.children as StoryboardElement[])}</div>`
-          : "";
-
-        const promptOrText = el.prompt || el.text || el.src || "";
-        const displayText = promptOrText
-          ? escapeHtml(
-              promptOrText.length > 120
-                ? `${promptOrText.slice(0, 120)}...`
-                : promptOrText,
-            )
-          : "";
-
         const previewImage =
           el.type === "image" ? el.imageDataUrl : getFirstNestedImage(el);
 
@@ -422,14 +439,13 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
           ? `<div class="preview-image"><img src="${previewImage}" alt="preview" /></div>`
           : "";
 
+        const treeHtml = renderTreeNode(el, 0, true, "");
+
         return `
         <div class="card-element">
           ${imageHtml}
           <div class="element-info">
-            <span class="type-tag" style="background: ${color}">${el.type}</span>
-            ${el.model ? `<span class="model-tag">${el.model}</span>` : ""}
-            ${nestedHtml}
-            ${displayText ? `<p class="prompt">${displayText}</p>` : ""}
+            <div class="tree-view">${treeHtml}</div>
           </div>
         </div>`;
       })
@@ -720,14 +736,39 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     
     .element-info {
       display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      gap: 0.5rem;
+      flex-direction: column;
+      gap: 0.25rem;
       padding: 0.65rem;
     }
     
     .card-element:not(:has(.preview-image)) .element-info {
       padding: 0;
+    }
+    
+    .tree-view {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+    }
+    
+    .tree-node {
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    
+    .tree-prefix {
+      color: var(--text-muted);
+      white-space: pre;
+      user-select: none;
+    }
+    
+    .tree-prompt {
+      color: var(--text-secondary);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 0.8rem;
+      margin-left: 0.25rem;
     }
     
     .type-tag {
