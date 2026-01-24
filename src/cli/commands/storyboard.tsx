@@ -479,8 +479,10 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     const nestedChildren =
       (mainEl.details.children as StoryboardElement[]) || [];
 
+    const aspectRatio = `${storyboard.width} / ${storyboard.height}`;
+
     return `
-      <div class="timeline-image">
+      <div class="timeline-image" style="aspect-ratio: ${aspectRatio}">
         ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="timeline-placeholder"></div>'}
       </div>
       <div class="timeline-info">
@@ -1026,10 +1028,10 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     }
     
     .timeline-image {
-      aspect-ratio: 16/9;
       border-radius: var(--radius-squishy);
       overflow: hidden;
       background: var(--bg-card);
+      max-width: 500px;
     }
     
     .timeline-image img {
