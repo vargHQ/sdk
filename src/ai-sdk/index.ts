@@ -64,6 +64,12 @@ export {
 } from "./providers/elevenlabs";
 export { createFal, type FalProvider, fal } from "./providers/fal";
 export {
+  createGoogle,
+  type GoogleProvider,
+  type GoogleProviderSettings,
+  google,
+} from "./providers/google";
+export {
   createHiggsfield,
   type HiggsfieldImageModelSettings,
   type HiggsfieldProvider,
