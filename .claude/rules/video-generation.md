@@ -1,1 +1,1 @@
-../../skills/varg-video-generation/SKILL.md
+../skills/varg-video-generation/SKILL.md

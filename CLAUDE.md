@@ -123,3 +123,38 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+## Varg Studio Workflow
+
+When user provides a vargai video example code:
+1. Write the code to `video.tsx` (use proper imports from `vargai/react` and `vargai/ai`)
+2. Run BOTH commands in parallel:
+   - `bun run src/cli/index.ts render video.tsx --verbose` (renders the video)
+   - `bun run src/cli/index.ts studio video.tsx` (opens studio UI)
+
+**File format** - always include imports:
+```tsx
+import { Clip, Image, Render, Video } from "vargai/react";
+import { fal } from "vargai/ai";
+
+const myImage = Image({
+  prompt: "description here",
+  model: fal.imageModel("flux-schnell"),
+});
+
+export default (
+  <Render width={1080} height={1920}>
+    <Clip duration={5}>
+      <Video
+        prompt={{ text: "motion description", images: [myImage] }}
+        model={fal.videoModel("kling-v2.5")}
+      />
+    </Clip>
+  </Render>
+);
+```
+
+**Key patterns**:
+- `Image({...})` is a function call, not JSX
+- `model` props use `fal.imageModel("model-name")` or `fal.videoModel("model-name")`
+- Prompts with reference images use `{ text: "...", images: [...] }` format
