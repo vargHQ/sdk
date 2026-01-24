@@ -25,11 +25,14 @@ export const Split = ({
 }: {
   direction?: "horizontal" | "vertical";
   children: VargElement[];
-}) => (
-  <Grid
-    columns={direction === "horizontal" ? children.length : 1}
-    rows={direction === "vertical" ? children.length : 1}
-  >
-    {children}
-  </Grid>
-);
+}) => {
+  if (children.length === 0) return null;
+  return (
+    <Grid
+      columns={direction === "horizontal" ? children.length : 1}
+      rows={direction === "vertical" ? children.length : 1}
+    >
+      {children}
+    </Grid>
+  );
+};
