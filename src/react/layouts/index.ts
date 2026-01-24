@@ -1,2 +1,3 @@
 export { Grid } from "./grid";
-export { SplitLayout } from "./split";
+export { Slot } from "./slot";
+export { Split, SplitLayout } from "./split";

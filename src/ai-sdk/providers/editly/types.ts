@@ -87,6 +87,17 @@ export interface TextLayer extends BaseLayer {
   fontFamily?: string;
 }
 
+export type CropPosition =
+  | "center"
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
+
 /**
  * For video layers, if parent `clip.duration` is specified, the video will be slowed/sped-up to match `clip.duration`.
  * If `cutFrom`/`cutTo` is set, the resulting segment (`cutTo`-`cutFrom`) will be slowed/sped-up to fit `clip.duration`.
@@ -95,6 +106,7 @@ export interface VideoLayer extends BaseLayer {
   type: "video";
   path: string;
   resizeMode?: ResizeMode;
+  cropPosition?: CropPosition;
   cutFrom?: number;
   cutTo?: number;
   width?: SizeValue;
