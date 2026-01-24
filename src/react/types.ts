@@ -1,6 +1,7 @@
 import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
 import type { MusicModelV3 } from "../ai-sdk/music-model";
 import type {
+  CropPosition,
   Position,
   ResizeMode,
   SizeValue,
@@ -119,6 +120,7 @@ export type VideoProps = BaseProps &
     src?: string;
     model?: VideoModelV3;
     resize?: ResizeMode;
+    cropPosition?: CropPosition;
     aspectRatio?: `${number}:${number}`;
   };
 
