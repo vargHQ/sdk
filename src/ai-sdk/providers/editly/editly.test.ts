@@ -1105,4 +1105,50 @@ describe("editly", () => {
     expect(info.height).toBe(1920);
     expect(info.duration).toBeCloseTo(3, 0);
   });
+
+  test("video overlay with cropPosition", async () => {
+    const outPath = "output/editly-test-crop-position.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#000000" },
+            {
+              type: "video",
+              path: VIDEO_1,
+              width: 1080,
+              height: 960,
+              left: 0,
+              top: 0,
+              resizeMode: "cover",
+              cropPosition: "top",
+            },
+            {
+              type: "video",
+              path: VIDEO_2,
+              width: 1080,
+              height: 960,
+              left: 0,
+              top: 960,
+              resizeMode: "cover",
+              cropPosition: "bottom",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.width).toBe(1080);
+    expect(info.height).toBe(1920);
+    expect(info.duration).toBeCloseTo(3, 0);
+  });
 });
