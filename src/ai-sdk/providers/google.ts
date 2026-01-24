@@ -268,8 +268,12 @@ class GoogleVideoModel implements VideoModelV3 {
             mimeType: imageFile.mediaType ?? "image/png",
           };
         } else {
-          // download image from URL
           const response = await fetch(imageFile.url, { signal: abortSignal });
+          if (!response.ok) {
+            throw new Error(
+              `Failed to fetch image from ${imageFile.url}: ${response.status} ${response.statusText}`,
+            );
+          }
           const buffer = await response.arrayBuffer();
           const base64 = Buffer.from(buffer).toString("base64");
           const mimeType = response.headers.get("content-type") ?? "image/png";
