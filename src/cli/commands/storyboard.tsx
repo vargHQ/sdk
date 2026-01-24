@@ -423,99 +423,132 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       </div>${childrenHtml}`;
   };
 
-  const renderCardContent = (elements: StoryboardElement[]): string => {
+  const renderCardBack = (elements: StoryboardElement[]): string => {
     return elements
       .map((el) => {
-        const previewImage =
-          el.type === "image" ? el.imageDataUrl : getFirstNestedImage(el);
-
-        const imageHtml = previewImage
-          ? `<div class="preview-image"><img src="${previewImage}" alt="preview" /></div>`
-          : "";
-
         const treeHtml = renderTreeNode(el, 0, true, "");
-
-        return `
-        <div class="card-element">
-          ${imageHtml}
-          <div class="element-info">
-            <div class="tree-view">${treeHtml}</div>
-          </div>
-        </div>`;
+        return `<div class="tree-view">${treeHtml}</div>`;
       })
       .join("");
   };
+
+  const aspectRatio = `${storyboard.width} / ${storyboard.height}`;
 
   const clipsHtml = storyboard.clips
     .map((clip) => {
       const durationText =
         clip.duration === "auto" ? "auto" : `${clip.duration}s`;
 
+      const mainEl = clip.elements[0];
+      const previewImage = mainEl
+        ? mainEl.type === "image"
+          ? mainEl.imageDataUrl
+          : getFirstNestedImage(mainEl)
+        : undefined;
+
       return `
-      <div class="card">
-        <div class="card-header">
+      <div class="card-wrapper">
+        <div class="card-meta">
           <span class="clip-num">${clip.index + 1}</span>
           <span class="duration">${durationText}</span>
           ${clip.transition ? `<span class="transition">→ ${clip.transition}</span>` : ""}
         </div>
-        <div class="card-content">
-          ${renderCardContent(clip.elements)}
+        <div class="flip-card" style="aspect-ratio: ${aspectRatio}">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="card-placeholder"></div>'}
+            </div>
+            <div class="flip-card-back">
+              ${renderCardBack(clip.elements)}
+            </div>
+          </div>
         </div>
       </div>`;
     })
     .join("\n");
 
-  const renderTimelineContent = (elements: StoryboardElement[]): string => {
-    const mainEl = elements[0];
-    if (!mainEl) return "";
+  const renderNestedTree = (
+    children: StoryboardElement[],
+    depth = 1,
+  ): string => {
+    return children
+      .map((child, i) => {
+        const isLast = i === children.length - 1;
+        const connector = isLast ? "└─" : "├─";
+        const color = TYPE_COLORS[child.type] || "#666";
+        const childPrompt = child.prompt || child.text || "";
+        const grandChildren =
+          (child.details.children as StoryboardElement[]) || [];
 
-    const previewImage =
-      mainEl.type === "image"
-        ? mainEl.imageDataUrl
-        : getFirstNestedImage(mainEl);
-
-    const videoPrompt = mainEl.prompt || "";
-    const speechText = elements.find((e) => e.type === "speech")?.text || "";
-    const nestedChildren =
-      (mainEl.details.children as StoryboardElement[]) || [];
-
-    const aspectRatio = `${storyboard.width} / ${storyboard.height}`;
-
-    return `
-      <div class="timeline-image" style="aspect-ratio: ${aspectRatio}">
-        ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="timeline-placeholder"></div>'}
-      </div>
-      <div class="timeline-info">
-        <div class="timeline-section">
-          <span class="timeline-label">clip ${elements[0]?._element ? "" : ""}:</span>
-          <p class="timeline-text">${escapeHtml(videoPrompt)}</p>
-        </div>
-        ${
-          nestedChildren.length > 0
-            ? `
-        <div class="timeline-section">
-          <span class="timeline-label">image:</span>
-          <p class="timeline-text">${escapeHtml(nestedChildren[0]?.prompt || "")}</p>
-        </div>`
-            : ""
-        }
-        ${
-          speechText
-            ? `
-        <div class="timeline-section">
-          <span class="timeline-label">vo:</span>
-          <p class="timeline-text">${escapeHtml(speechText)}</p>
-        </div>`
-            : ""
-        }
-      </div>`;
+        return `
+          <div class="timeline-nested">
+            <span class="nested-connector">${connector}</span>
+            <span class="nested-type" style="background: ${color}">${child.type}</span>
+            ${child.model ? `<span class="nested-model">${child.model}</span>` : ""}
+            ${childPrompt ? `<p class="nested-prompt">${escapeHtml(childPrompt)}</p>` : ""}
+          </div>
+          ${grandChildren.length > 0 ? renderNestedTree(grandChildren, depth + 1) : ""}`;
+      })
+      .join("");
   };
 
   const timelineHtml = storyboard.clips
     .map((clip) => {
+      const mainEl = clip.elements[0];
+      if (!mainEl) return "";
+
+      const durationText =
+        clip.duration === "auto" ? "auto" : `${clip.duration}s`;
+
+      const previewImage =
+        mainEl.type === "image"
+          ? mainEl.imageDataUrl
+          : getFirstNestedImage(mainEl);
+
+      const videoPrompt = mainEl.prompt || "";
+      const speechEl = clip.elements.find((e) => e.type === "speech");
+      const speechText = speechEl?.text || "";
+      const nestedChildren =
+        (mainEl.details.children as StoryboardElement[]) || [];
+
+      const color = TYPE_COLORS[mainEl.type] || "#666";
+
       return `
       <div class="timeline-row">
-        ${renderTimelineContent(clip.elements)}
+        <div class="timeline-image" style="aspect-ratio: ${aspectRatio}">
+          ${previewImage ? `<img src="${previewImage}" alt="frame" />` : '<div class="timeline-placeholder"></div>'}
+        </div>
+        <div class="timeline-info">
+          <div class="timeline-header">
+            <span class="clip-num">${clip.index + 1}</span>
+            <span class="duration">${durationText}</span>
+            ${clip.transition ? `<span class="transition">→ ${clip.transition}</span>` : ""}
+          </div>
+          <div class="timeline-section">
+            <div class="timeline-type-row">
+              <span class="timeline-type" style="background: ${color}">${mainEl.type}</span>
+              ${mainEl.model ? `<span class="timeline-model">${mainEl.model}</span>` : ""}
+            </div>
+            ${videoPrompt ? `<p class="timeline-text">${escapeHtml(videoPrompt)}</p>` : ""}
+          </div>
+          ${
+            nestedChildren.length > 0
+              ? `
+          <div class="timeline-children">
+            ${renderNestedTree(nestedChildren)}
+          </div>`
+              : ""
+          }
+          ${
+            speechText
+              ? `
+          <div class="timeline-section">
+            <span class="timeline-label">vo:</span>
+            <p class="timeline-text">${escapeHtml(speechText)}</p>
+          </div>`
+              : ""
+          }
+        </div>
       </div>`;
     })
     .join("\n");
@@ -691,34 +724,21 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.25rem;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem;
     }
     
-    .card {
-      background: var(--bg-card);
-      border-radius: var(--radius-squishy);
-      overflow: hidden;
-      border: 1px solid var(--border-subtle);
-      box-shadow: var(--shadow-soft), var(--shadow-glow);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    .card-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
     
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.5), 
-        0 4px 16px rgba(0, 0, 0, 0.4),
-        var(--shadow-glow);
-    }
-    
-    .card-header {
-      background: var(--bg-card-header);
-      padding: 0.75rem 1rem;
+    .card-meta {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-      border-bottom: 1px solid var(--border-subtle);
+      gap: 0.5rem;
+      padding: 0 0.25rem;
     }
     
     .clip-num {
@@ -747,40 +767,71 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       border-radius: 8px;
     }
     
-    .card-content {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.85rem;
+    .flip-card {
+      perspective: 1000px;
+      cursor: pointer;
     }
     
-    .card-element {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      padding: 0.65rem;
-      background: var(--bg-elevated);
-      border-radius: 12px;
-      border: 1px solid var(--border-subtle);
-    }
-    
-    .card-element.has-preview {
-      padding: 0;
-      overflow: hidden;
-    }
-    
-    .preview-image {
+    .flip-card-inner {
+      position: relative;
       width: 100%;
-      aspect-ratio: 9/16;
-      max-height: 200px;
-      overflow: hidden;
-      background: var(--bg-card-header);
+      height: 100%;
+      transition: transform 0.6s ease;
+      transform-style: preserve-3d;
     }
     
-    .preview-image img {
+    .flip-card:hover .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: var(--radius-squishy);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+    
+    .flip-card-front {
+      background: var(--bg-card);
+    }
+    
+    .flip-card-front img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+    
+    .card-placeholder {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 2rem;
+    }
+    
+    .card-placeholder::after {
+      content: "▶";
+    }
+    
+    .flip-card-back {
+      background: var(--bg-card);
+      transform: rotateY(180deg);
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    
+    .flip-card-back .tree-view {
+      font-size: 0.7rem;
+    }
+    
+    .flip-card-back .tree-prompt {
+      font-size: 0.75rem;
     }
     
     .element-info {
@@ -1049,14 +1100,42 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     .timeline-info {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
-      padding-top: 0.5rem;
+      gap: 1rem;
+      padding-top: 0.25rem;
+    }
+    
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
     }
     
     .timeline-section {
       display: flex;
       flex-direction: column;
+      gap: 0.4rem;
+    }
+    
+    .timeline-type-row {
+      display: flex;
+      align-items: center;
       gap: 0.5rem;
+    }
+    
+    .timeline-type {
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+    
+    .timeline-model {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: monospace;
     }
     
     .timeline-label {
@@ -1068,9 +1147,53 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     }
     
     .timeline-text {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--text-secondary);
-      line-height: 1.6;
+      line-height: 1.5;
+    }
+    
+    .timeline-children {
+      padding-left: 0.5rem;
+      border-left: 2px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .timeline-nested {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
+    
+    .nested-connector {
+      color: var(--text-muted);
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+    
+    .nested-type {
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+    }
+    
+    .nested-model {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    
+    .nested-prompt {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      width: 100%;
+      margin-top: 0.25rem;
     }
   </style>
 </head>
