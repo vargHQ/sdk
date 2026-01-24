@@ -22,7 +22,6 @@ export type VargElementType =
   | "music"
   | "captions"
   | "split"
-  | "slot"
   | "slider"
   | "swipe"
   | "packshot";
@@ -178,39 +177,6 @@ export interface CaptionsProps extends BaseProps {
 
 export interface SplitProps extends BaseProps {
   direction?: "horizontal" | "vertical";
-  children?: VargNode;
-}
-
-/** Position anchor for fit-cover cropping */
-export type SlotPosition =
-  | "center"
-  | "top"
-  | "bottom"
-  | "left"
-  | "right"
-  | "top-left"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-right";
-
-/** Fit mode for video in slot */
-export type SlotFit = "cover" | "contain" | "fill" | "none";
-
-export interface SlotProps extends BaseProps {
-  /** Tailwind-style class string: "fit-cover pos-center bg-blur-24" */
-  class?: string;
-  /** Fit mode (or use class="fit-cover") */
-  fit?: SlotFit;
-  /** Position anchor (or use class="pos-center") */
-  position?: SlotPosition;
-  /** Blur intensity 0-100 for contain mode background (or use class="bg-blur-24") */
-  bgBlur?: number;
-  /** Dim intensity 0-100 for contain mode background (or use class="bg-dim-25") */
-  bgDim?: number;
-  /** Scale 100-200 for blurred background zoom (or use class="bg-scale-115") */
-  bgScale?: number;
-  /** Solid color fallback for contain mode (or use class="bg-color-000000") */
-  bgColor?: string;
   children?: VargNode;
 }
 
