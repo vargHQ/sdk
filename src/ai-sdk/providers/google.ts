@@ -23,14 +23,19 @@ export type { GoogleGenerativeAIProviderSettings };
 // ============================================================================
 
 const IMAGE_MODELS: Record<string, string> = {
+  // gemini 3 models (use imageConfig for aspectRatio)
+  "gemini-3-pro-image": "gemini-3-pro-image-preview",
+  "nano-banana-pro": "gemini-3-pro-image-preview",
+  "nano-banana-pro/edit": "gemini-3-pro-image-preview",
+  // gemini 2 models (use responseModalities)
   "gemini-2.0-flash-exp-image-generation":
     "gemini-2.0-flash-exp-image-generation",
   "gemini-2-flash-image": "gemini-2.0-flash-exp-image-generation",
-  "nano-banana-pro": "gemini-2.0-flash-exp-image-generation",
-  "nano-banana-pro/edit": "gemini-2.0-flash-exp-image-generation",
 };
 
-const MODELS_WITH_ASPECT_RATIO = new Set(["imagen-3.0-generate-002"]);
+const GEMINI_3_MODELS = new Set(["gemini-3-pro-image-preview"]);
+
+const GEMINI_2_MODELS = new Set(["gemini-2.0-flash-exp-image-generation"]);
 
 class GoogleImageModel implements ImageModelV3 {
   readonly specificationVersion = "v3" as const;
@@ -80,10 +85,19 @@ class GoogleImageModel implements ImageModelV3 {
       string,
       unknown
     >;
-    const imageConfig = (googleOptions.imageConfig ?? {}) as Record<
-      string,
-      unknown
-    >;
+
+    // gemini 3 uses imageConfig for aspectRatio, gemini 2 uses responseModalities
+    const isGemini3 = GEMINI_3_MODELS.has(model);
+    const providerOpts: Record<string, unknown> = { ...googleOptions };
+
+    if (isGemini3) {
+      providerOpts.imageConfig = {
+        ...(aspectRatio ? { aspectRatio } : {}),
+        ...((googleOptions.imageConfig as Record<string, unknown>) ?? {}),
+      };
+    } else {
+      providerOpts.responseModalities = ["TEXT", "IMAGE"];
+    }
 
     const result = await generateText({
       model: googleProvider(model) as unknown as Parameters<
@@ -96,13 +110,10 @@ class GoogleImageModel implements ImageModelV3 {
         },
       ],
       providerOptions: {
-        google: {
-          ...googleOptions,
-          responseModalities: ["TEXT", "IMAGE"],
-          ...(MODELS_WITH_ASPECT_RATIO.has(model) && aspectRatio
-            ? { imageConfig: { aspectRatio } }
-            : {}),
-        },
+        google: providerOpts as Record<
+          string,
+          string | string[] | Record<string, string>
+        >,
       },
     });
 
@@ -140,11 +151,11 @@ class GoogleImageModel implements ImageModelV3 {
       });
     }
 
-    if (aspectRatio && !MODELS_WITH_ASPECT_RATIO.has(model)) {
+    if (aspectRatio && GEMINI_2_MODELS.has(model)) {
       warnings.push({
         type: "unsupported",
         feature: "aspectRatio",
-        details: `aspectRatio not supported by ${model}`,
+        details: `aspectRatio not supported by ${model}, use gemini-3-pro-image instead`,
       });
     }
 
