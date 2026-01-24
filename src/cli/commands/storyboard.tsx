@@ -43,6 +43,8 @@ interface StoryboardElement {
   voice?: string;
   model?: string;
   details: Record<string, unknown>;
+  imageDataUrl?: string;
+  _element?: VargElement;
 }
 
 interface Storyboard {
@@ -152,6 +154,7 @@ function extractElementInfo(element: VargElement): StoryboardElement {
   const base: StoryboardElement = {
     type: element.type,
     details: {},
+    _element: element,
   };
 
   switch (element.type) {
@@ -412,12 +415,22 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
             )
           : "";
 
+        const previewImage =
+          el.type === "image" ? el.imageDataUrl : getFirstNestedImage(el);
+
+        const imageHtml = previewImage
+          ? `<div class="preview-image"><img src="${previewImage}" alt="preview" /></div>`
+          : "";
+
         return `
         <div class="card-element">
-          <span class="type-tag" style="background: ${color}">${el.type}</span>
-          ${el.model ? `<span class="model-tag">${el.model}</span>` : ""}
-          ${nestedHtml}
-          ${displayText ? `<p class="prompt">${displayText}</p>` : ""}
+          ${imageHtml}
+          <div class="element-info">
+            <span class="type-tag" style="background: ${color}">${el.type}</span>
+            ${el.model ? `<span class="model-tag">${el.model}</span>` : ""}
+            ${nestedHtml}
+            ${displayText ? `<p class="prompt">${displayText}</p>` : ""}
+          </div>
         </div>`;
       })
       .join("");
@@ -678,13 +691,43 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     
     .card-element {
       display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      gap: 0.5rem;
+      flex-direction: column;
+      gap: 0.65rem;
       padding: 0.65rem;
       background: var(--bg-elevated);
       border-radius: 12px;
       border: 1px solid var(--border-subtle);
+    }
+    
+    .card-element.has-preview {
+      padding: 0;
+      overflow: hidden;
+    }
+    
+    .preview-image {
+      width: 100%;
+      aspect-ratio: 9/16;
+      max-height: 200px;
+      overflow: hidden;
+      background: var(--bg-card-header);
+    }
+    
+    .preview-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .element-info {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.65rem;
+    }
+    
+    .card-element:not(:has(.preview-image)) .element-info {
+      padding: 0;
     }
     
     .type-tag {
@@ -882,6 +925,71 @@ function countElements(storyboard: Storyboard, type: string): number {
   return count;
 }
 
+async function populateCachedImages(
+  storyboard: Storyboard,
+  cacheDir: string,
+): Promise<number> {
+  const { computeCacheKey } = await import("../../react/renderers/utils");
+  const { fileCache } = await import("../../ai-sdk/file-cache");
+  const cache = fileCache({ dir: cacheDir });
+
+  let foundCount = 0;
+
+  async function lookupImage(el: StoryboardElement): Promise<void> {
+    if (el.type === "image" && el._element) {
+      const cacheKeyParts = computeCacheKey(el._element);
+      const cacheKey = `generateImage:${cacheKeyParts.map((d) => String(d ?? "")).join(":")}`;
+      const cached = (await cache.get(cacheKey)) as
+        | { images?: Array<{ uint8Array?: Uint8Array }> }
+        | undefined;
+
+      if (cached?.images?.[0]?.uint8Array) {
+        const base64 = Buffer.from(cached.images[0].uint8Array).toString(
+          "base64",
+        );
+        el.imageDataUrl = `data:image/png;base64,${base64}`;
+        foundCount++;
+      }
+    }
+
+    if (el.details.children && Array.isArray(el.details.children)) {
+      for (const child of el.details.children as StoryboardElement[]) {
+        await lookupImage(child);
+      }
+    }
+  }
+
+  async function processElements(elements: StoryboardElement[]): Promise<void> {
+    for (const el of elements) {
+      await lookupImage(el);
+
+      if (el.details.children && Array.isArray(el.details.children)) {
+        await processElements(el.details.children as StoryboardElement[]);
+      }
+    }
+  }
+
+  for (const clip of storyboard.clips) {
+    await processElements(clip.elements);
+  }
+  await processElements(storyboard.globalElements);
+
+  return foundCount;
+}
+
+function getFirstNestedImage(el: StoryboardElement): string | undefined {
+  if (el.imageDataUrl) return el.imageDataUrl;
+
+  if (el.details.children && Array.isArray(el.details.children)) {
+    for (const child of el.details.children as StoryboardElement[]) {
+      const found = getFirstNestedImage(child);
+      if (found) return found;
+    }
+  }
+
+  return undefined;
+}
+
 export const storyboardCmd = defineCommand({
   meta: {
     name: "storyboard",
@@ -897,6 +1005,12 @@ export const storyboardCmd = defineCommand({
       type: "string" as const,
       alias: "o",
       description: "output html path",
+    },
+    cache: {
+      type: "string" as const,
+      alias: "c",
+      description: "cache directory for image lookup",
+      default: ".cache/ai",
     },
     quiet: {
       type: "boolean" as const,
@@ -929,7 +1043,6 @@ export const storyboardCmd = defineCommand({
     const outputPath =
       (args.output as string) ?? `output/${baseName}-storyboard.html`;
 
-    // ensure output directory exists
     const outputDir = dirname(outputPath);
     if (!existsSync(outputDir)) {
       mkdirSync(outputDir, { recursive: true });
@@ -940,6 +1053,13 @@ export const storyboardCmd = defineCommand({
     }
 
     const storyboard = parseStoryboard(component);
+
+    const cacheDir = resolve(args.cache as string);
+    let cachedCount = 0;
+    if (existsSync(cacheDir)) {
+      cachedCount = await populateCachedImages(storyboard, cacheDir);
+    }
+
     const html = generateHtml(storyboard, file);
 
     await Bun.write(outputPath, html);
@@ -949,6 +1069,9 @@ export const storyboardCmd = defineCommand({
       console.log(
         `  ${storyboard.clips.length} clips, ${storyboard.width}x${storyboard.height}`,
       );
+      if (cachedCount > 0) {
+        console.log(`  ${cachedCount} cached images found`);
+      }
     }
 
     if (args.open) {
