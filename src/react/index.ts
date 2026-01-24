@@ -1,6 +1,7 @@
 export type { SizeValue } from "../ai-sdk/providers/editly/types";
 export { assets } from "./assets";
 export {
+  Batch,
   Captions,
   Clip,
   Image,
@@ -18,8 +19,9 @@ export {
   Video,
 } from "./elements";
 export { Grid, SplitLayout } from "./layouts";
-export { render, renderStream } from "./render";
+export { type BatchResult, render, renderBatch, renderStream } from "./render";
 export type {
+  BatchProps,
   CaptionsProps,
   ClipProps,
   ImageProps,

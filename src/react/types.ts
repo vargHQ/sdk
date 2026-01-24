@@ -9,6 +9,7 @@ import type {
 import type { VideoModelV3 } from "../ai-sdk/video-model";
 
 export type VargElementType =
+  | "batch"
   | "render"
   | "clip"
   | "overlay"
@@ -62,8 +63,18 @@ export type TrimProps =
   | { cutFrom?: number; cutTo?: number; duration?: never }
   | { cutFrom?: number; cutTo?: never; duration?: number };
 
+export interface BatchProps extends BaseProps {
+  /** Number of concurrent renders (default: 1) */
+  parallel?: number;
+  /** Output directory for all videos */
+  output?: string;
+  children?: VargNode;
+}
+
 // Root container - sets dimensions, fps, contains clips
 export interface RenderProps extends BaseProps {
+  /** Name for output file (used in batch mode) */
+  name?: string;
   width?: number;
   height?: number;
   fps?: number;
@@ -221,6 +232,7 @@ export interface RenderOptions {
 }
 
 export interface ElementPropsMap {
+  batch: BatchProps;
   render: RenderProps;
   clip: ClipProps;
   overlay: OverlayProps;
