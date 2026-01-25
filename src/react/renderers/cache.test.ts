@@ -96,8 +96,8 @@ function createContext(
     height: 1920,
     fps: 30,
     cache: storage,
-    generateImage: generateImage as RenderContext["generateImage"],
-    generateVideo: generateVideo as RenderContext["generateVideo"],
+    generateImage: generateImage as unknown as RenderContext["generateImage"],
+    generateVideo: generateVideo as unknown as RenderContext["generateVideo"],
     tempFiles: [],
     pending: new Map(),
   };
@@ -114,14 +114,12 @@ describe("render cache behavior", () => {
     const base = Video({
       prompt: "walk forward",
       model,
-      duration: 5,
       aspectRatio: "9:16",
     });
 
     const variant = Video({
       prompt: "walk forward",
       model,
-      duration: 5,
       aspectRatio: "9:16",
       cutFrom: 0.5,
       cutTo: 2.5,

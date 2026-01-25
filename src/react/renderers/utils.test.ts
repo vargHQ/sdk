@@ -31,14 +31,12 @@ describe("computeCacheKey", () => {
     const base = Video({
       prompt: "walk forward, confident stride",
       model: fal.videoModel("kling-v2.5"),
-      duration: 5,
       aspectRatio: "9:16",
     });
 
     const variant = Video({
       prompt: "walk forward, confident stride",
       model: fal.videoModel("kling-v2.5"),
-      duration: 5,
       aspectRatio: "9:16",
       cutFrom: 0.5,
       cutTo: 2.5,

@@ -18,7 +18,6 @@ const baseVideoPrompt = {
 const videoA = Video({
   prompt: baseVideoPrompt,
   model: fal.videoModel("wan-2.5"),
-  duration: 5,
   aspectRatio: "9:16",
   cutFrom: 0.2,
   cutTo: 3.0,
@@ -29,7 +28,6 @@ const videoA = Video({
 const videoB = Video({
   prompt: baseVideoPrompt,
   model: fal.videoModel("wan-2.5"),
-  duration: 5,
   aspectRatio: "9:16",
   cutFrom: 1.0,
   cutTo: 4.0,
@@ -40,7 +38,6 @@ const videoB = Video({
 const videoC = Video({
   prompt: baseVideoPrompt,
   model: fal.videoModel("wan-2.5"),
-  duration: 5,
   aspectRatio: "9:16",
   cutFrom: 0.5,
   cutTo: 2.5,
