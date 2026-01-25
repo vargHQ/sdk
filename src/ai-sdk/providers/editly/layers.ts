@@ -101,9 +101,15 @@ export function getVideoFilter(
   const layerHeight = parseSize(layer.height, height);
 
   if (isOverlay) {
-    filters.push(
-      `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
-    );
+    // Respect resizeMode for overlay videos (used by Grid/Split)
+    let scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`;
+    if (layer.resizeMode === "cover") {
+      const { x, y } = getCropPositionExpr(layer.cropPosition);
+      scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=increase,crop=${layerWidth}:${layerHeight}:${x}:${y}`;
+    } else if (layer.resizeMode === "stretch") {
+      scaleFilter = `scale=${layerWidth}:${layerHeight}`;
+    }
+    filters.push(scaleFilter);
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
