@@ -65,6 +65,7 @@ export {
 export { createFal, type FalProvider, fal } from "./providers/fal";
 export {
   createGoogle,
+  type GooglePollingConfig,
   type GoogleProvider,
   type GoogleProviderSettings,
   google,
