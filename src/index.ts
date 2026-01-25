@@ -5,6 +5,7 @@
 
 // Re-export external clients for convenience
 export { fal } from "@ai-sdk/fal";
+export { google } from "@ai-sdk/google";
 export { replicate } from "@ai-sdk/replicate";
 export { fal as falClient } from "@fal-ai/client";
 export { HiggsfieldClient } from "@higgsfield/client";
