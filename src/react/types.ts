@@ -162,6 +162,8 @@ export type MusicProps = BaseProps &
     prompt?: string;
     model?: MusicModelV3;
     src?: string;
+    /** Timeline offset in seconds — when in the video this audio starts playing */
+    start?: number;
     loop?: boolean;
     ducking?: boolean;
   };

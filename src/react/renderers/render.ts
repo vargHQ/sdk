@@ -257,6 +257,7 @@ export async function renderRoot(
       mixVolume: musicProps.volume ?? 1,
       cutFrom,
       cutTo,
+      start: musicProps.start,
     });
   }
 
