@@ -157,8 +157,8 @@ export async function renderPackshot(
 
   // ===== BLINKING CTA OVERLAY =====
   if (props.cta && props.blinkCta) {
-    // Create animated button with Sharp (matches Python SDK quality)
-    const btnPath = await createBlinkingButton({
+    // Create animated button with Sharp at button-size canvas (fast)
+    const btn = await createBlinkingButton({
       text: props.cta,
       width: ctx.width,
       height: ctx.height,
@@ -172,19 +172,19 @@ export async function renderPackshot(
       buttonHeight: props.ctaSize?.height,
     });
 
-    // Composite button on top of base video
+    // Composite button-sized overlay at correct position on base video
     const finalPath = `/tmp/varg-packshot-final-${Date.now()}.mp4`;
     const { $ } = await import("bun");
 
     // Overlay the blinking button (with alpha) on the packshot
     await $`ffmpeg -y \
       -i ${basePath} \
-      -i ${btnPath} \
-      -filter_complex "[0:v][1:v]overlay=0:0:format=auto" \
+      -i ${btn.path} \
+      -filter_complex "[0:v][1:v]overlay=${btn.x}:${btn.y}:format=auto" \
       -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p \
       ${finalPath}`.quiet();
 
-    ctx.tempFiles.push(basePath, btnPath);
+    ctx.tempFiles.push(basePath, btn.path);
     return finalPath;
   }
 

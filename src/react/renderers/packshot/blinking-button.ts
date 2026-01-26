@@ -71,9 +71,15 @@ function createButtonSvg(
  * - Brightness animation (0.85 -> 1.2)
  * - Custom font support (TikTokSans-Bold)
  */
+export interface BlinkingButtonResult {
+  path: string;
+  x: number;
+  y: number;
+}
+
 export async function createBlinkingButton(
   options: BlinkingButtonOptions,
-): Promise<string> {
+): Promise<BlinkingButtonResult> {
   const {
     text,
     width,
@@ -216,25 +222,8 @@ export async function createBlinkingButton(
       });
     }
 
-    // Now place the button on the full video frame
-    const frameBuffer = await pipeline.png().toBuffer();
-
-    // Create full frame with button positioned correctly
-    await sharp({
-      create: {
-        width,
-        height,
-        channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      },
-    })
-      .composite([
-        {
-          input: frameBuffer,
-          top: btnY,
-          left: btnX,
-        },
-      ])
+    // Write button-sized frame directly (skip full-frame composite for perf)
+    await pipeline
       .png()
       .toFile(`${framesDir}/frame_${String(i).padStart(5, "0")}.png`);
   }
@@ -262,7 +251,7 @@ export async function createBlinkingButton(
   // Cleanup frames directory
   await rm(framesDir, { recursive: true, force: true });
 
-  return outputPath;
+  return { path: outputPath, x: btnX, y: btnY };
 }
 
 /**
