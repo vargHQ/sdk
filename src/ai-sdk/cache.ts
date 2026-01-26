@@ -115,8 +115,6 @@ export function withCache<T extends object, R>(
   const storage = options.storage ?? defaultStorage;
   const ttl = parseTTL(options.ttl ?? DEFAULT_TTL);
   const prefix = fn.name || "anonymous";
-  const logCache = process.env.VARG_CACHE_LOG === "1";
-
   return async (opts: WithCacheKey<T>): Promise<R> => {
     const { cacheKey, ...rest } = opts;
 
@@ -127,14 +125,7 @@ export function withCache<T extends object, R>(
     const key = depsToKey(prefix, cacheKey);
     const cached = await storage.get(key);
     if (cached !== undefined) {
-      if (logCache) {
-        console.log(`[cache] hit ${prefix} ${key}`);
-      }
       return cached as R;
-    }
-
-    if (logCache) {
-      console.log(`[cache] miss ${prefix} ${key}`);
     }
     const result = await fn(rest as T);
     const flattened = flatten(result);
