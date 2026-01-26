@@ -289,7 +289,7 @@ export async function renderRoot(
     startTask(progress, captionsTaskId);
 
     const { $ } = await import("bun");
-    await $`ffmpeg -y -i ${tempOutPath} -vf "ass=${captionsResult.assPath}" -c:a copy ${finalOutPath}`.quiet();
+    await $`ffmpeg -y -i ${tempOutPath} -vf "ass=${captionsResult.assPath}" -crf 18 -preset slow -c:a copy ${finalOutPath}`.quiet();
 
     ctx.tempFiles.push(tempOutPath);
     completeTask(progress, captionsTaskId);
