@@ -134,7 +134,7 @@ export async function renderPackshot(
       type: "title",
       text: props.title,
       textColor: props.titleColor ?? "#FFFFFF",
-      position: "center",
+      position: resolvePosition(props.titlePosition ?? "center"),
     };
     layers.push(titleLayer);
   }

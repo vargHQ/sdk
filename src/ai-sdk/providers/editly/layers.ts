@@ -588,7 +588,13 @@ export function getTitleFilter(
 ): string {
   const text = escapeDrawText(layer.text);
   const color = layer.textColor ?? "white";
-  const fontSize = Math.round(Math.min(width, height) * 0.08);
+
+  // Auto-size font to fit within 90% of frame width (same approach as subtitle)
+  const maxFontSize = Math.round(Math.min(width, height) * 0.08);
+  const maxTextWidth = width * 0.9;
+  // Average char width ≈ fontSize * 0.55 for sans-serif fonts
+  const fittedFontSize = Math.floor(maxTextWidth / (layer.text.length * 0.55));
+  const fontSize = Math.max(16, Math.min(maxFontSize, fittedFontSize));
 
   let x = "(w-text_w)/2";
   let y = "(h-text_h)/2";
@@ -665,7 +671,14 @@ export function getTitleBackgroundFilter(
 
   const text = escapeDrawText(layer.text);
   const textColor = layer.textColor ?? "white";
-  const fontSize = Math.round(Math.min(width, height) * 0.1);
+
+  // Auto-size font to fit within 90% of frame width
+  const maxFontSizeBg = Math.round(Math.min(width, height) * 0.1);
+  const maxTextWidthBg = width * 0.9;
+  const fittedFontSizeBg = Math.floor(
+    maxTextWidthBg / (layer.text.length * 0.55),
+  );
+  const fontSize = Math.max(16, Math.min(maxFontSizeBg, fittedFontSizeBg));
 
   const fontFile = layer.fontPath
     ? `:fontfile='${escapeDrawText(layer.fontPath)}'`

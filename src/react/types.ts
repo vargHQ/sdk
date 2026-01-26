@@ -210,6 +210,8 @@ export interface PackshotProps extends BaseProps {
   title?: string;
   /** Title text color (hex, default: "#FFFFFF") */
   titleColor?: string;
+  /** Title position on screen (default: "center") */
+  titlePosition?: Position;
   /** CTA button text */
   cta?: string;
   /**
