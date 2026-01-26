@@ -9,6 +9,7 @@ import type {
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { addTask, completeTask, startTask } from "./progress";
+import { renderRaw } from "./raw";
 import { renderSpeech } from "./speech";
 import { computeCacheKey, toFileUrl } from "./utils";
 
@@ -107,7 +108,10 @@ export async function renderVideo(
   const props = element.props as VideoProps;
 
   if (props.src && !props.prompt) {
-    return props.src;
+    if (typeof props.src === "object" && props.src.type === "raw") {
+      return renderRaw(props.src, ctx);
+    }
+    return props.src as string;
   }
 
   const prompt = props.prompt;
