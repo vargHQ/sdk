@@ -192,13 +192,44 @@ export interface SwipeProps extends BaseProps {
 export interface PackshotProps extends BaseProps {
   background?: VargElement<"image"> | string;
   logo?: string;
+  /**
+   * Logo position on screen.
+   *
+   * Accepts any {@link Position} value including PositionObject (`{ x, y }`).
+   * A PositionObject is normalised to the closest string position at render
+   * time (see ctaPosition docs for the conversion rules).
+   */
   logoPosition?: Position;
   logoSize?: SizeValue;
+  /** CTA button text */
   cta?: string;
+  /**
+   * CTA button position on screen.
+   *
+   * Accepts any value from the {@link Position} union:
+   * - **String literals** (`"top"`, `"bottom"`, `"center"`, `"top-left"`, etc.)
+   *   are used directly (compound positions like `"top-left"` are collapsed to
+   *   their vertical component for the blinking-button renderer).
+   * - **PositionObject** (`{ x, y }` with optional `originX` / `originY`) is
+   *   supported and will be **normalised** to the closest string position at
+   *   render time.  The y-coordinate is converted to a 0-1 fraction (pixels
+   *   are divided by the video height; percentages are divided by 100) and
+   *   mapped to `"top"` (< 33 %), `"center"` (33-67 %), or `"bottom"` (> 67 %).
+   *   The x-coordinate follows the same logic for contexts that use the full
+   *   nine-position grid.
+   */
   ctaPosition?: Position;
+  /** CTA button background color (hex, default: "#FF6B00") */
   ctaColor?: string;
-  ctaSize?: number;
+  /** CTA button text color (hex, default: "#FFFFFF") */
+  ctaTextColor?: string;
+  /** CTA button size in pixels { width, height } */
+  ctaSize?: { width: number; height: number };
+  /** Enable blinking animation (scale + brightness pulse) */
   blinkCta?: boolean;
+  /** Blink animation cycle duration in seconds (default: 0.8) */
+  blinkFrequency?: number;
+  /** Packshot duration in seconds */
   duration?: number;
 }
 
