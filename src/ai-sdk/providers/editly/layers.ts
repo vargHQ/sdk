@@ -620,7 +620,13 @@ export function getSubtitleFilter(
   const text = escapeDrawText(layer.text);
   const textColor = layer.textColor ?? "white";
   const bgColor = layer.backgroundColor ?? "black@0.7";
-  const fontSize = Math.round(Math.min(width, height) * 0.05);
+
+  // Auto-size font to fit within 90% of frame width
+  const maxFontSize = Math.round(Math.min(width, height) * 0.05);
+  const maxTextWidth = width * 0.9;
+  // Average char width ≈ fontSize * 0.55 for sans-serif fonts
+  const fittedFontSize = Math.floor(maxTextWidth / (layer.text.length * 0.55));
+  const fontSize = Math.max(16, Math.min(maxFontSize, fittedFontSize));
   const boxPadding = Math.round(fontSize * 0.4);
 
   const fontFile = layer.fontPath
