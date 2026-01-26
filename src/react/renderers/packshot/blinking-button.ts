@@ -94,9 +94,9 @@ export async function createBlinkingButton(
 
   const totalFrames = Math.ceil(duration * fps);
 
-  // Button dimensions (matching Python SDK proportions)
-  const btnWidth = options.buttonWidth ?? Math.floor(width * 0.65);
-  const btnHeight = options.buttonHeight ?? Math.floor(height * 0.0625);
+  // Button dimensions — large and prominent like app store CTAs
+  const btnWidth = options.buttonWidth ?? Math.floor(width * 0.7);
+  const btnHeight = options.buttonHeight ?? Math.floor(height * 0.09);
   const cornerRadius = Math.floor(btnHeight * 0.45);
 
   // Animation padding (button can grow 3%, add extra margin)
@@ -136,15 +136,15 @@ export async function createBlinkingButton(
   );
 
   // Create text image using Sharp's text feature
-  const fontSize = Math.floor(btnHeight * 0.5);
+  const fontSize = Math.floor(btnHeight * 0.55);
   const textBuffer = await sharp({
     text: {
-      text: `<span foreground="${textColor}">${escapeXml(text)}</span>`,
+      text: `<span foreground="${textColor}" font_weight="bold">${escapeXml(text)}</span>`,
       font: "TikTokSans",
       fontfile: fontPath,
       rgba: true,
       align: "center",
-      dpi: Math.floor(fontSize * 2.5), // Adjust DPI for desired font size
+      dpi: Math.floor(fontSize * 2.8), // Larger DPI for bolder text
     },
   })
     .png()

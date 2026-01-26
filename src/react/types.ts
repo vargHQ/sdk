@@ -203,6 +203,10 @@ export interface PackshotProps extends BaseProps {
    */
   logoPosition?: Position;
   logoSize?: SizeValue;
+  /** Title text displayed below the logo (e.g. app name) */
+  title?: string;
+  /** Title text color (hex, default: "#FFFFFF") */
+  titleColor?: string;
   /** CTA button text */
   cta?: string;
   /**

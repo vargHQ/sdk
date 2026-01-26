@@ -122,10 +122,21 @@ export async function renderPackshot(
     const logoLayer: ImageOverlayLayer = {
       type: "image-overlay",
       path: props.logo,
-      position: resolvePosition(props.logoPosition),
-      width: props.logoSize ?? "30%",
+      position: resolvePosition(props.logoPosition ?? "center"),
+      width: props.logoSize ?? "40%",
     };
     layers.push(logoLayer);
+  }
+
+  // ===== TITLE LAYER =====
+  if (props.title) {
+    const titleLayer: TitleLayer = {
+      type: "title",
+      text: props.title,
+      textColor: props.titleColor ?? "#FFFFFF",
+      position: "center",
+    };
+    layers.push(titleLayer);
   }
 
   // ===== STATIC CTA (non-blinking) =====
