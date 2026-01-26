@@ -1,8 +1,8 @@
 import { Clip, Render, render, Video } from "./src/react";
 import { Slot, Split } from "./src/react/layouts";
 
-const video1 = <Video src="media/fitness-demo.mp4" />;
-const video2 = <Video src="media/kangaroo-scene.mp4" />;
+const video1 = <Video src="render-1768889619581-2z9x16.mp4" />;
+const video2 = <Video src="render-1768888951608-9ezu8o.mp4" />;
 
 const positions = [
   ["pos-top", "pos-top"],
