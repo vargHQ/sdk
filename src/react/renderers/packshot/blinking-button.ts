@@ -99,8 +99,8 @@ export async function createBlinkingButton(
   const btnHeight = options.buttonHeight ?? Math.floor(height * 0.09);
   const cornerRadius = Math.floor(btnHeight * 0.45);
 
-  // Animation padding (button can grow 3%, add extra margin)
-  const maxScale = 1.03;
+  // Animation padding (button can grow 8%, add extra margin)
+  const maxScale = 1.08;
   const padding = Math.ceil(
     Math.max(btnWidth, btnHeight) * (maxScale - 1.0) * 2,
   );
@@ -193,11 +193,15 @@ export async function createBlinkingButton(
   // Using file-based approach for reliability with alpha channel
   for (let i = 0; i < totalFrames; i++) {
     const t = i / fps;
-    const phase = (t / blinkFrequency) * 2 * Math.PI;
-    const osc = (Math.sin(phase) + 1) / 2;
+    // Pulse curve: quick expand, slow contract (like a heartbeat)
+    const phase = (t % blinkFrequency) / blinkFrequency; // 0 -> 1 within each cycle
+    const osc =
+      phase < 0.4
+        ? Math.sin((phase / 0.4) * Math.PI * 0.5) // fast rise (0 -> 1)
+        : Math.cos(((phase - 0.4) / 0.6) * Math.PI * 0.5); // slow fall (1 -> 0)
 
-    const scale = 1.0 + 0.03 * osc; // 1.0 -> 1.03 -> 1.0
-    const brightness = 0.85 + 0.35 * osc; // 0.85 -> 1.2 -> 0.85
+    const scale = 1.0 + 0.08 * osc; // 1.0 -> 1.08 -> 1.0
+    const brightness = 0.9 + 0.3 * osc; // 0.9 -> 1.2 -> 0.9
 
     const scaledW = Math.round(canvasWidth * scale);
     const scaledH = Math.round(canvasHeight * scale);
