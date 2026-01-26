@@ -1,4 +1,5 @@
 import type {
+  CropPosition,
   FillColorLayer,
   ImageLayer,
   ImageOverlayLayer,
@@ -14,6 +15,37 @@ import type {
   TitleLayer,
   VideoLayer,
 } from "./types";
+
+/**
+ * Get ffmpeg crop x:y position based on CropPosition
+ * Uses ffmpeg expression variables: iw/ih = input, ow/oh = output (crop size)
+ */
+function getCropPositionExpr(position: CropPosition | undefined): {
+  x: string;
+  y: string;
+} {
+  switch (position) {
+    case "top-left":
+      return { x: "0", y: "0" };
+    case "top":
+      return { x: "(iw-ow)/2", y: "0" };
+    case "top-right":
+      return { x: "iw-ow", y: "0" };
+    case "left":
+      return { x: "0", y: "(ih-oh)/2" };
+    case "right":
+      return { x: "iw-ow", y: "(ih-oh)/2" };
+    case "bottom-left":
+      return { x: "0", y: "ih-oh" };
+    case "bottom":
+      return { x: "(iw-ow)/2", y: "ih-oh" };
+    case "bottom-right":
+      return { x: "iw-ow", y: "ih-oh" };
+    case "center":
+    default:
+      return { x: "(iw-ow)/2", y: "(ih-oh)/2" };
+  }
+}
 
 function escapeDrawText(text: string): string {
   return text
@@ -69,9 +101,15 @@ export function getVideoFilter(
   const layerHeight = parseSize(layer.height, height);
 
   if (isOverlay) {
-    filters.push(
-      `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
-    );
+    // Respect resizeMode for overlay videos (used by Grid/Split)
+    let scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`;
+    if (layer.resizeMode === "cover") {
+      const { x, y } = getCropPositionExpr(layer.cropPosition);
+      scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=increase,crop=${layerWidth}:${layerHeight}:${x}:${y}`;
+    } else if (layer.resizeMode === "stretch") {
+      scaleFilter = `scale=${layerWidth}:${layerHeight}`;
+    }
+    filters.push(scaleFilter);
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
@@ -161,9 +199,15 @@ export function getVideoFilterWithTrim(
   const layerHeight = parseSize(layer.height, height);
 
   if (isOverlay) {
-    filters.push(
-      `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
-    );
+    // Respect resizeMode and cropPosition for overlay videos (used by Split/Slot)
+    let scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`;
+    if (layer.resizeMode === "cover") {
+      const { x, y } = getCropPositionExpr(layer.cropPosition);
+      scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=increase,crop=${layerWidth}:${layerHeight}:${x}:${y}`;
+    } else if (layer.resizeMode === "stretch") {
+      scaleFilter = `scale=${layerWidth}:${layerHeight}`;
+    }
+    filters.push(scaleFilter);
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
