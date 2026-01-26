@@ -95,7 +95,6 @@ export async function renderSplit(
 
   const clip: Clip = {
     layers,
-    duration: 5,
   };
 
   const outPath = `/tmp/varg-split-${Date.now()}.mp4`;

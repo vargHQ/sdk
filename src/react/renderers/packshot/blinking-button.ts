@@ -99,11 +99,15 @@ export async function createBlinkingButton(
   const btnHeight = options.buttonHeight ?? Math.floor(height * 0.09);
   const cornerRadius = Math.floor(btnHeight * 0.45);
 
-  // Animation padding (button can grow 8%, add extra margin)
-  const maxScale = 1.08;
-  const padding = Math.ceil(
-    Math.max(btnWidth, btnHeight) * (maxScale - 1.0) * 2,
+  // Animation padding (button can grow ~14% with overshoot + glow radius)
+  const maxScale = 1.14; // accounts for 1.12 * 1.15 overshoot peak
+  const glowRadius = 18;
+  const glowExtraScale = 1.15; // glow is 15% larger than button
+  const totalMaxScale = maxScale * glowExtraScale; // ~1.31 for glow bounds
+  const scalePadding = Math.ceil(
+    Math.max(btnWidth, btnHeight) * (totalMaxScale - 1.0) * 2,
   );
+  const padding = scalePadding + glowRadius * 2;
   const canvasWidth = btnWidth + padding * 2;
   const canvasHeight = btnHeight + padding * 2;
 
@@ -181,6 +185,13 @@ export async function createBlinkingButton(
     .png()
     .toBuffer();
 
+  // Pre-render glow buffer: blurred, brightened copy of the button for halo effect
+  const glowBuffer = await sharp(baseButtonBuffer)
+    .blur(glowRadius)
+    .modulate({ brightness: 1.4 })
+    .png()
+    .toBuffer();
+
   // Calculate button position on full frame
   const btnY = getButtonYPosition(position, height, canvasHeight);
   const btnX = Math.floor((width - canvasWidth) / 2);
@@ -193,15 +204,25 @@ export async function createBlinkingButton(
   // Using file-based approach for reliability with alpha channel
   for (let i = 0; i < totalFrames; i++) {
     const t = i / fps;
-    // Pulse curve: quick expand, slow contract (like a heartbeat)
+    // Elastic pulse curve: fast expand with overshoot, settle, slow contract
     const phase = (t % blinkFrequency) / blinkFrequency; // 0 -> 1 within each cycle
-    const osc =
-      phase < 0.4
-        ? Math.sin((phase / 0.4) * Math.PI * 0.5) // fast rise (0 -> 1)
-        : Math.cos(((phase - 0.4) / 0.6) * Math.PI * 0.5); // slow fall (1 -> 0)
+    let osc: number;
+    if (phase < 0.25) {
+      // Fast rise with overshoot to 1.15
+      osc = Math.sin((phase / 0.25) * Math.PI * 0.5) * 1.15;
+    } else if (phase < 0.4) {
+      // Settle back from 1.15 to 1.0
+      const settle = (phase - 0.25) / 0.15;
+      osc = 1.15 - 0.15 * settle;
+    } else {
+      // Slow ease-out fall back to 0
+      const fall = (phase - 0.4) / 0.6;
+      osc = Math.cos(fall * Math.PI * 0.5);
+    }
 
-    const scale = 1.0 + 0.08 * osc; // 1.0 -> 1.08 -> 1.0
-    const brightness = 0.9 + 0.3 * osc; // 0.9 -> 1.2 -> 0.9
+    const scale = 1.0 + 0.12 * osc; // 1.0 -> 1.14 -> 1.12 -> 1.0
+    const brightness = 0.85 + 0.35 * Math.max(0, osc); // 0.85 -> 1.2 -> 0.85
+    const glowOpacity = Math.max(0, osc) * 0.6; // 0 -> 0.6 -> 0
 
     const scaledW = Math.round(canvasWidth * scale);
     const scaledH = Math.round(canvasHeight * scale);
@@ -210,14 +231,23 @@ export async function createBlinkingButton(
     const offsetX = Math.floor((canvasWidth - scaledW) / 2);
     const offsetY = Math.floor((canvasHeight - scaledH) / 2);
 
-    // Scale button, apply brightness, then center on canvas
-    let pipeline = sharp(baseButtonBuffer)
+    // Scale button, apply brightness, then fit to canvas
+    let btnPipeline = sharp(baseButtonBuffer)
       .resize(scaledW, scaledH, { kernel: "lanczos3" })
       .modulate({ brightness });
 
-    // Extend back to original canvas size with transparent background
-    if (offsetX !== 0 || offsetY !== 0) {
-      pipeline = pipeline.extend({
+    if (scaledW > canvasWidth || scaledH > canvasHeight) {
+      // Button exceeds canvas during overshoot — crop from center
+      const cropLeft = Math.floor((scaledW - canvasWidth) / 2);
+      const cropTop = Math.floor((scaledH - canvasHeight) / 2);
+      btnPipeline = btnPipeline.extract({
+        left: Math.max(0, cropLeft),
+        top: Math.max(0, cropTop),
+        width: Math.min(scaledW, canvasWidth),
+        height: Math.min(scaledH, canvasHeight),
+      });
+    } else {
+      btnPipeline = btnPipeline.extend({
         top: Math.max(0, offsetY),
         bottom: Math.max(0, canvasHeight - scaledH - offsetY),
         left: Math.max(0, offsetX),
@@ -226,8 +256,75 @@ export async function createBlinkingButton(
       });
     }
 
-    // Write button-sized frame directly (skip full-frame composite for perf)
-    await pipeline
+    const btnFrame = await btnPipeline.png().toBuffer();
+
+    // Scale glow slightly larger than button for halo effect
+    const glowScale = scale * 1.15;
+    const glowW = Math.round(canvasWidth * glowScale);
+    const glowH = Math.round(canvasHeight * glowScale);
+    const glowOffX = Math.floor((canvasWidth - glowW) / 2);
+    const glowOffY = Math.floor((canvasHeight - glowH) / 2);
+
+    // Render glow frame with animated opacity
+    // Scale alpha channel using raw pixel manipulation for precise opacity control
+    let glowResized: sharp.Sharp;
+    if (glowW > canvasWidth || glowH > canvasHeight) {
+      // Glow is larger than canvas — resize then crop to canvas from center
+      const cropLeft = Math.floor((glowW - canvasWidth) / 2);
+      const cropTop = Math.floor((glowH - canvasHeight) / 2);
+      glowResized = sharp(glowBuffer)
+        .resize(glowW, glowH, { kernel: "lanczos3" })
+        .extract({
+          left: Math.max(0, cropLeft),
+          top: Math.max(0, cropTop),
+          width: canvasWidth,
+          height: canvasHeight,
+        });
+    } else {
+      // Glow fits — extend with transparent padding
+      glowResized = sharp(glowBuffer)
+        .resize(glowW, glowH, { kernel: "lanczos3" })
+        .extend({
+          top: Math.max(0, glowOffY),
+          bottom: Math.max(0, canvasHeight - glowH - glowOffY),
+          left: Math.max(0, glowOffX),
+          right: Math.max(0, canvasWidth - glowW - glowOffX),
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        });
+    }
+
+    const { data: glowPixels, info: glowInfo } = await glowResized
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Multiply alpha channel by glowOpacity
+    for (let p = 3; p < glowPixels.length; p += 4) {
+      glowPixels[p] = Math.round((glowPixels[p] as number) * glowOpacity);
+    }
+
+    const glowFrame = await sharp(glowPixels, {
+      raw: {
+        width: glowInfo.width,
+        height: glowInfo.height,
+        channels: 4,
+      },
+    })
+      .png()
+      .toBuffer();
+
+    // Composite: transparent canvas <- glow (behind) <- button (on top)
+    await sharp({
+      create: {
+        width: canvasWidth,
+        height: canvasHeight,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .composite([
+        { input: glowFrame, top: 0, left: 0 },
+        { input: btnFrame, top: 0, left: 0 },
+      ])
       .png()
       .toFile(`${framesDir}/frame_${String(i).padStart(5, "0")}.png`);
   }
