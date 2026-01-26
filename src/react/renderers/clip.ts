@@ -10,6 +10,7 @@ import type {
 import type {
   ClipProps,
   ImageProps,
+  MusicProps,
   SpeechProps,
   VargElement,
   VargNode,
@@ -17,6 +18,7 @@ import type {
 } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { renderMusic } from "./music";
 import { renderPackshot } from "./packshot";
 import { renderSlider } from "./slider";
 import { renderSpeech } from "./speech";
@@ -24,6 +26,7 @@ import { renderSplit } from "./split";
 import { renderSubtitle } from "./subtitle";
 import { renderSwipe } from "./swipe";
 import { renderTitle } from "./title";
+import { resolvePath } from "./utils";
 import { renderVideo } from "./video";
 
 type PendingLayer =
@@ -132,6 +135,35 @@ async function renderClipLayers(
                 mixVolume: props.volume ?? 1,
               }) as AudioLayer,
           ),
+        });
+        break;
+      }
+
+      case "music": {
+        const props = element.props as MusicProps;
+        pending.push({
+          type: "async",
+          promise: (async () => {
+            let path: string;
+            if (props.src) {
+              path = resolvePath(props.src);
+            } else if (props.prompt) {
+              const result = await renderMusic(
+                element as VargElement<"music">,
+                ctx,
+              );
+              path = result.path;
+            } else {
+              throw new Error("Music requires either src or prompt");
+            }
+            return {
+              type: "audio",
+              path,
+              mixVolume: props.volume ?? 1,
+              cutFrom: props.cutFrom,
+              cutTo: props.cutTo,
+            } as AudioLayer;
+          })(),
         });
         break;
       }
