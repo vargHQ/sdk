@@ -40,6 +40,11 @@ export async function renderMusic(
     const cached = await ctx.cache.get(cacheKey);
     if (cached) {
       audioData = cached as Uint8Array;
+      // Signal cache hit to progress tracker
+      if (taskId && ctx.progress) {
+        startTask(ctx.progress, taskId);
+        completeTask(ctx.progress, taskId);
+      }
     } else {
       if (taskId && ctx.progress) startTask(ctx.progress, taskId);
       audioData = await generateFn();
