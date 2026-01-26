@@ -18,18 +18,3 @@ export const SplitLayout = ({
     {right}
   </Grid>
 );
-
-export const Split = ({
-  direction = "horizontal",
-  children,
-}: {
-  direction?: "horizontal" | "vertical";
-  children: VargElement[];
-}) => (
-  <Grid
-    columns={direction === "horizontal" ? children.length : 1}
-    rows={direction === "vertical" ? children.length : 1}
-  >
-    {children}
-  </Grid>
-);

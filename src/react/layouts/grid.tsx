@@ -21,7 +21,7 @@ export const Grid = ({
       top: `${(Math.floor(i / cols) / rowCount) * 100}%`,
       width: `${(1 / cols) * 100}%`,
       height: `${(1 / rowCount) * 100}%`,
-      resize: (el.props as Record<string, unknown>).resize ?? resize,
+      resize,
     },
   }));
   return <>{positioned}</>;

@@ -7,7 +7,6 @@ import type {
   PackshotProps,
   RenderProps,
   SliderProps,
-  SlotProps,
   SpeechProps,
   SplitProps,
   SubtitleProps,
@@ -116,14 +115,6 @@ export function Captions(props: CaptionsProps): VargElement<"captions"> {
 export function Split(props: SplitProps): VargElement<"split"> {
   return createElement(
     "split",
-    props as Record<string, unknown>,
-    props.children,
-  );
-}
-
-export function Slot(props: SlotProps): VargElement<"slot"> {
-  return createElement(
-    "slot",
     props as Record<string, unknown>,
     props.children,
   );
