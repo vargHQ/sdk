@@ -69,14 +69,14 @@ interface SubtitleStyle {
 const STYLE_PRESETS: Record<string, SubtitleStyle> = {
   tiktok: {
     fontName: "Montserrat",
-    fontSize: 32,
+    fontSize: 72,
     primaryColor: "&HFFFFFF",
     outlineColor: "&H000000",
-    backColor: "&H80000000",
+    backColor: "&H00000000",
     bold: true,
-    outline: 3,
+    outline: 4,
     shadow: 0,
-    marginV: 50,
+    marginV: 480,
     alignment: 2,
   },
   karaoke: {
@@ -164,10 +164,17 @@ function formatAssTime(seconds: number): string {
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
-function convertSrtToAss(srtContent: string, style: SubtitleStyle): string {
+function convertSrtToAss(
+  srtContent: string,
+  style: SubtitleStyle,
+  width: number,
+  height: number,
+): string {
   const assHeader = `[Script Info]
 Title: Generated Subtitles
 ScriptType: v4.00+
+PlayResX: ${width}
+PlayResY: ${height}
 WrapStyle: 0
 ScaledBorderAndShadow: yes
 YCbCr Matrix: TV.601
@@ -192,6 +199,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
   return assHeader + assDialogues;
 }
+
+const POSITION_ALIGNMENT: Record<string, number> = {
+  top: 8,
+  center: 5,
+  bottom: 2,
+};
 
 function colorToAss(color: string): string {
   if (color.startsWith("&H")) return color;
@@ -280,15 +293,21 @@ export async function renderCaptions(
   const styleName = props.style ?? "tiktok";
   const baseStyle = STYLE_PRESETS[styleName] ?? STYLE_PRESETS.tiktok!;
 
+  const alignment = props.position
+    ? (POSITION_ALIGNMENT[props.position] ?? baseStyle.alignment)
+    : baseStyle.alignment;
+
   const style: SubtitleStyle = {
     ...baseStyle,
     fontSize: props.fontSize ?? baseStyle.fontSize,
     primaryColor: props.color
       ? colorToAss(props.color)
       : baseStyle.primaryColor,
+    alignment,
+    marginV: props.position === "center" ? 0 : baseStyle.marginV,
   };
 
-  const assContent = convertSrtToAss(srtContent, style);
+  const assContent = convertSrtToAss(srtContent, style, ctx.width, ctx.height);
   const assPath = `/tmp/varg-captions-${Date.now()}.ass`;
   writeFileSync(assPath, assContent);
   ctx.tempFiles.push(assPath);

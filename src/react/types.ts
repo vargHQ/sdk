@@ -172,6 +172,7 @@ export interface CaptionsProps extends BaseProps {
   src?: string | VargElement<"speech">;
   srt?: string;
   style?: "tiktok" | "karaoke" | "bounce" | "typewriter";
+  position?: "top" | "center" | "bottom";
   color?: string;
   activeColor?: string;
   fontSize?: number;
