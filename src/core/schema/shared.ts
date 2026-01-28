@@ -80,6 +80,7 @@ export const providerNameSchema = z.enum([
   "higgsfield",
   "groq",
   "fireworks",
+  "decart",
 ]);
 export type ProviderName = z.infer<typeof providerNameSchema>;
 

@@ -30,6 +30,17 @@ export {
   ProviderRegistry,
   providers,
 } from "./base";
+// Decart provider (real-time & batch video/image)
+export {
+  DecartProvider,
+  decartImageToImage,
+  decartImageToVideo,
+  decartProvider,
+  decartTextToImage,
+  decartTextToVideo,
+  restyleVideo,
+  videoToVideo,
+} from "./decart";
 // ElevenLabs provider (voice/audio)
 export {
   ElevenLabsProvider,
@@ -122,6 +133,7 @@ export {
 // Register all providers
 import { apifyProvider } from "./apify";
 import { providers } from "./base";
+import { decartProvider } from "./decart";
 import { elevenlabsProvider } from "./elevenlabs";
 import { falProvider } from "./fal";
 import { ffmpegProvider } from "./ffmpeg";
@@ -141,3 +153,4 @@ providers.register(fireworksProvider);
 providers.register(higgsfieldProvider);
 providers.register(ffmpegProvider);
 providers.register(storageProvider);
+providers.register(decartProvider);

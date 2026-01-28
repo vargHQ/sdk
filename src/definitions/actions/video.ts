@@ -49,6 +49,11 @@ export const definition: ActionDefinition<typeof schema> = {
       target: "kling",
       priority: 10,
     },
+    {
+      target: "decart-lucy",
+      when: { provider: "decart" },
+      priority: 8,
+    },
   ],
   execute: async (inputs) => {
     // inputs is now fully typed as VideoInput - no more `as` cast!

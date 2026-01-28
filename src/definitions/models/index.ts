@@ -2,6 +2,8 @@
  * Model definitions index
  */
 
+export { definition as decartLucy } from "./decart-lucy";
+export { definition as decartMirage } from "./decart-mirage";
 export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
 export { definition as kling } from "./kling";
@@ -13,6 +15,8 @@ export { definition as wan } from "./wan";
 export { definition as whisper } from "./whisper";
 
 // All model definitions for auto-loading
+import { definition as decartLucyDefinition } from "./decart-lucy";
+import { definition as decartMirageDefinition } from "./decart-mirage";
 import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
 import { definition as klingDefinition } from "./kling";
@@ -33,4 +37,6 @@ export const allModels = [
   soulDefinition,
   sonautoDefinition,
   llamaDefinition,
+  decartLucyDefinition,
+  decartMirageDefinition,
 ];
