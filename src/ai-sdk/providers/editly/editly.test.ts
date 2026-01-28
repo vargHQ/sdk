@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
-import { ffprobe } from "./ffmpeg";
+import { localBackend } from "./backends/local";
 import { editly } from "./index";
 
 const VIDEO_1 = "output/sora-landscape.mp4";
@@ -8,6 +8,8 @@ const VIDEO_2 = "output/simpsons-scene.mp4";
 const VIDEO_TALKING = "output/workflow-talking-synced.mp4";
 const IMAGE_SQUARE = "media/replicate-forest.png";
 const IMAGE_PORTRAIT = "media/madi-portrait.png";
+
+const ffprobe = localBackend.ffprobe;
 
 describe("editly", () => {
   test("requires outPath", async () => {

@@ -1,5 +1,4 @@
-import { $ } from "bun";
-import { ffprobe, multipleOf2 } from "./ffmpeg";
+import { type FFmpegBackend, localBackend } from "./backends";
 import {
   getImageOverlayFilter,
   getImageOverlayPositionFilter,
@@ -18,6 +17,7 @@ import type {
   Clip,
   DetachedAudioLayer,
   EditlyConfig,
+  EditlyResult,
   ImageOverlayLayer,
   Layer,
   NewsTitleLayer,
@@ -28,6 +28,7 @@ import type {
   VideoLayer,
 } from "./types";
 
+export * from "./backends";
 export * from "./types";
 
 const DEFAULT_DURATION = 4;
@@ -36,12 +37,22 @@ const DEFAULT_FPS = 30;
 const DEFAULT_WIDTH = 1280;
 const DEFAULT_HEIGHT = 720;
 
-async function getVideoDuration(path: string): Promise<number> {
-  const info = await ffprobe(path);
+function multipleOf2(n: number): number {
+  return Math.round(n / 2) * 2;
+}
+
+async function getVideoDuration(
+  path: string,
+  backend: FFmpegBackend,
+): Promise<number> {
+  const info = await backend.ffprobe(path);
   return info.duration;
 }
 
-async function getFirstVideoInfo(clips: Clip[]): Promise<{
+async function getFirstVideoInfo(
+  clips: Clip[],
+  backend: FFmpegBackend,
+): Promise<{
   width?: number;
   height?: number;
   fps?: number;
@@ -49,7 +60,7 @@ async function getFirstVideoInfo(clips: Clip[]): Promise<{
   for (const clip of clips) {
     for (const layer of clip.layers) {
       if (layer.type === "video") {
-        const info = await ffprobe((layer as VideoLayer).path);
+        const info = await backend.ffprobe((layer as VideoLayer).path);
         return { width: info.width, height: info.height, fps: info.fps };
       }
     }
@@ -72,6 +83,7 @@ function applyLayerDefaults(
 async function processClips(
   clips: Clip[],
   defaults: EditlyConfig["defaults"],
+  backend: FFmpegBackend,
 ): Promise<ProcessedClip[]> {
   const processed: ProcessedClip[] = [];
   const defaultDuration = defaults?.duration ?? DEFAULT_DURATION;
@@ -86,7 +98,7 @@ async function processClips(
     for (const layer of layers) {
       if (layer.type === "video" && !clip.duration) {
         const videoLayer = layer as VideoLayer;
-        const videoDuration = await getVideoDuration(videoLayer.path);
+        const videoDuration = await getVideoDuration(videoLayer.path, backend);
         const cutFrom = videoLayer.cutFrom ?? 0;
         const cutTo = videoLayer.cutTo ?? videoDuration;
         duration = cutTo - cutFrom;
@@ -522,7 +534,7 @@ function buildAudioFilter(
   };
 }
 
-export async function editly(config: EditlyConfig): Promise<void> {
+export async function editly(config: EditlyConfig): Promise<EditlyResult> {
   const {
     outPath,
     clips: clipsIn,
@@ -539,11 +551,17 @@ export async function editly(config: EditlyConfig): Promise<void> {
     fast,
   } = config;
 
+  const backend: FFmpegBackend = config.backend ?? localBackend;
+
+  if (verbose) {
+    console.log(`[editly] using backend: ${backend.name}`);
+  }
+
   if (!clipsIn || clipsIn.length === 0) {
     throw new Error("At least one clip is required");
   }
 
-  const firstVideoInfo = await getFirstVideoInfo(clipsIn);
+  const firstVideoInfo = await getFirstVideoInfo(clipsIn, backend);
   let width = config.width ?? firstVideoInfo.width ?? DEFAULT_WIDTH;
   let height = config.height ?? firstVideoInfo.height ?? DEFAULT_HEIGHT;
   const fps = config.fps ?? firstVideoInfo.fps ?? DEFAULT_FPS;
@@ -561,7 +579,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
     console.log(`Output: ${width}x${height} @ ${fps}fps`);
   }
 
-  const clips = await processClips(clipsIn, defaults);
+  const clips = await processClips(clipsIn, defaults, backend);
 
   const continuousVideoOverlays = collectContinuousVideoOverlays(clips);
   const imageOverlays = collectImageOverlays(clips);
@@ -862,13 +880,18 @@ export async function editly(config: EditlyConfig): Promise<void> {
     console.log("\nFilter complex:\n", filterComplex.split(";").join(";\n"));
   }
 
-  const result = await $`ffmpeg ${ffmpegArgs}`.quiet();
+  const result = await backend.run({
+    args: ffmpegArgs,
+    inputs: allInputs,
+    outputPath: outPath,
+    verbose,
+  });
 
-  if (result.exitCode !== 0) {
-    throw new Error(`ffmpeg failed with exit code ${result.exitCode}`);
+  if (result.output.type === "file" && verbose) {
+    console.log(`Output: ${result.output.path}`);
   }
 
-  console.log(`Output: ${outPath}`);
+  return { output: result.output };
 }
 
 export default editly;
