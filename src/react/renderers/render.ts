@@ -14,7 +14,7 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
-import { uploadBuffer } from "../../providers/storage";
+
 import type {
   CaptionsProps,
   ClipProps,
@@ -26,6 +26,7 @@ import type {
   SpeechProps,
   VargElement,
 } from "../types";
+import { burnCaptions } from "./burn-captions";
 import { renderCaptions } from "./captions";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
@@ -286,66 +287,25 @@ export async function renderRoot(
 
   completeTask(progress, editlyTaskId);
 
-  let videoUrl =
-    editlyResult.output.type === "url" ? editlyResult.output.url : null;
-  let videoLocalPath =
-    editlyResult.output.type === "file" ? editlyResult.output.path : null;
+  let output = editlyResult.output;
 
   if (hasCaptions && captionsResult) {
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
 
-    const backend = options.backend;
-    if (backend) {
-      const videoInput = videoUrl || videoLocalPath;
-      if (!videoInput) throw new Error("No video input for captions");
+    output = await burnCaptions({
+      video: output,
+      assPath: captionsResult.assPath,
+      outputPath: finalOutPath,
+      backend: options.backend,
+      verbose: options.verbose,
+    });
 
-      let assInput = captionsResult.assPath;
-      if (videoUrl) {
-        const assBuffer = await Bun.file(captionsResult.assPath).arrayBuffer();
-        const assKey = `tmp/captions-${Date.now()}.ass`;
-        assInput = await uploadBuffer(assBuffer, assKey, "text/plain");
-      }
-
-      const captionsResult2 = await backend.run({
-        args: [
-          "-i",
-          videoInput,
-          "-vf",
-          `subtitles=${assInput}`,
-          "-crf",
-          "18",
-          "-preset",
-          "fast",
-          "-c:a",
-          "copy",
-          "-y",
-          "output.mp4",
-        ],
-        inputs: [videoInput, assInput],
-        outputPath: "output.mp4",
-        verbose: options.verbose,
-      });
-
-      if (captionsResult2.output.type === "url") {
-        videoUrl = captionsResult2.output.url;
-        videoLocalPath = null;
-      } else {
-        videoLocalPath = captionsResult2.output.path;
-        videoUrl = null;
-      }
-    } else {
-      if (videoUrl) {
-        const res = await fetch(videoUrl);
-        if (!res.ok)
-          throw new Error(`Failed to download render: ${res.status}`);
-        await Bun.write(tempOutPath, await res.arrayBuffer());
-        videoLocalPath = tempOutPath;
-        videoUrl = null;
-      }
-      const { $ } = await import("bun");
-      await $`ffmpeg -y -i ${videoLocalPath} -vf "ass=${captionsResult.assPath}" -crf 18 -preset slow -c:a copy ${finalOutPath}`.quiet();
-      videoLocalPath = finalOutPath;
+    if (
+      !options.backend &&
+      output.type === "file" &&
+      output.path !== finalOutPath
+    ) {
       ctx.tempFiles.push(tempOutPath);
     }
 
@@ -353,22 +313,20 @@ export async function renderRoot(
   }
 
   let finalBuffer: ArrayBuffer;
-  if (videoUrl) {
-    const res = await fetch(videoUrl);
+  if (output.type === "url") {
+    const res = await fetch(output.url);
     if (!res.ok)
       throw new Error(`Failed to download final render: ${res.status}`);
     finalBuffer = await res.arrayBuffer();
     if (options.output) {
       await Bun.write(options.output, finalBuffer);
     }
-  } else if (videoLocalPath) {
-    if (videoLocalPath !== finalOutPath && options.output) {
+  } else {
+    if (output.path !== finalOutPath && options.output) {
       const { $ } = await import("bun");
-      await $`cp ${videoLocalPath} ${finalOutPath}`.quiet();
+      await $`cp ${output.path} ${finalOutPath}`.quiet();
     }
     finalBuffer = await Bun.file(finalOutPath).arrayBuffer();
-  } else {
-    throw new Error("No video output");
   }
 
   if (!options.quiet && mode === "preview" && placeholderCount.total > 0) {
