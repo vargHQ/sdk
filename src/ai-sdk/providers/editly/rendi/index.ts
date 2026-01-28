@@ -126,7 +126,13 @@ export class RendiBackend implements FFmpegBackend {
       if (placeholder) {
         return placeholder;
       }
-      return arg;
+      let result = arg;
+      for (const [url, ph] of pathToPlaceholder) {
+        if (result.includes(url)) {
+          result = result.replace(url, ph);
+        }
+      }
+      return result;
     });
 
     const filteredArgs = this.stripInternalFlags(commandArgs);
