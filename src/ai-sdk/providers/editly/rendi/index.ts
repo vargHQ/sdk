@@ -81,12 +81,16 @@ export class RendiBackend implements FFmpegBackend {
 
       if (status.status === "SUCCESS") {
         const output = status.output_files?.out_1;
+        if (!output) {
+          throw new Error("rendi ffprobe completed but no output metadata");
+        }
         return {
-          duration: output?.duration ?? 0,
-          width: output?.width,
-          height: output?.height,
-          fps: output?.frame_rate,
+          duration: output.duration ?? 0,
+          width: output.width,
+          height: output.height,
+          fps: output.frame_rate,
         };
+      }
       }
 
       if (status.status === "FAILED") {
