@@ -129,7 +129,7 @@ export class RendiBackend implements FFmpegBackend {
     const outputFilename = outputPath?.split("/").pop() ?? "output.mp4";
     const finalCommand = outputPath
       ? ffmpegCommand.replace(outputPath, "{{out_1}}")
-      : ffmpegCommand.replace(/[^\s]+\.mp4$/, "{{out_1}}");
+      : ffmpegCommand.replace(/[^\s]+\.\w+$/, "{{out_1}}");
 
     if (verbose) {
       console.log("[rendi] input_files:", inputFiles);

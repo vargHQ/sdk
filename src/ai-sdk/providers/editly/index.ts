@@ -887,7 +887,7 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     verbose,
   });
 
-  if (result.output.type === "file") {
+  if (result.output.type === "file" && verbose) {
     console.log(`Output: ${result.output.path}`);
   }
 

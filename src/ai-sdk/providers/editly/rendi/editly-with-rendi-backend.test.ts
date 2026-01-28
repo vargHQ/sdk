@@ -4,9 +4,13 @@
  * NOTE: Free tier has 4 commands/min rate limit. Run tests individually:
  *   bun test src/ai-sdk/providers/editly/rendi/editly-with-rendi-backend.test.ts -t "merges two"
  */
+
 import { describe, expect, test } from "bun:test";
+import { $ } from "bun";
 import { editly } from "../index";
 import { createRendiBackend } from ".";
+
+const hasRendiKey = !!process.env.RENDI_API_KEY;
 
 const VIDEO_1 = "https://s3.varg.ai/test-media/sora-landscape.mp4";
 const VIDEO_2 = "https://s3.varg.ai/test-media/simpsons-scene.mp4";
@@ -14,7 +18,7 @@ const VIDEO_TALKING =
   "https://s3.varg.ai/test-media/workflow-talking-synced.mp4";
 const IMAGE_SQUARE = "https://s3.varg.ai/test-media/replicate-forest.png";
 
-const rendi = createRendiBackend();
+const rendi = hasRendiKey ? createRendiBackend() : (null as never);
 
 async function saveResult(
   result: {
@@ -27,12 +31,13 @@ async function saveResult(
     expect(result.output.url).toMatch(/^https:\/\//);
     const res = await fetch(result.output.url);
     if (!res.ok) throw new Error(`Failed to download: ${res.status}`);
+    await $`mkdir -p ${outPath.split("/").slice(0, -1).join("/")}`.quiet();
     await Bun.write(outPath, await res.arrayBuffer());
     console.log(`Output: ${outPath}`);
   }
 }
 
-describe("editly (rendi backend)", () => {
+describe.skipIf(!hasRendiKey)("editly (rendi backend)", () => {
   test("merges two videos with fade transition", async () => {
     const outPath = "output/rendi/merge.mp4";
     const result = await editly({

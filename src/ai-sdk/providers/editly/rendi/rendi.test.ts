@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { createRendiBackend } from ".";
 
-describe("rendi backend", () => {
+const hasRendiKey = !!process.env.RENDI_API_KEY;
+
+describe.skipIf(!hasRendiKey)("rendi backend", () => {
   test("ffprobe remote file", async () => {
     const backend = createRendiBackend();
     const info = await backend.ffprobe(

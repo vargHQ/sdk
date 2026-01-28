@@ -18,7 +18,8 @@ export class LocalBackend implements FFmpegBackend {
     const videoStream = result.streams?.find(
       (s: { codec_type: string }) => s.codec_type === "video",
     );
-    const duration = parseFloat(result.format?.duration ?? "0");
+    const parsedDuration = parseFloat(result.format?.duration ?? "0");
+    const duration = Number.isFinite(parsedDuration) ? parsedDuration : 0;
 
     let fps: number | undefined;
     const framerateStr: string | undefined = videoStream?.r_frame_rate;
