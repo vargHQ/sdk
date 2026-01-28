@@ -50,6 +50,12 @@ export type {
   MusicModelV3ProviderMetadata,
 } from "./music-model";
 export {
+  createDecart,
+  type DecartProvider,
+  type DecartProviderSettings,
+  decart,
+} from "./providers/decart";
+export {
   type AudioTrack,
   type Clip as EditlyClip,
   type EditlyConfig,
