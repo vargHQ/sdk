@@ -139,6 +139,34 @@ this means if you add `{ type: "video", path: "pip.mp4", left: 0.73, top: 0.73, 
 
 ---
 
+## backends
+
+editly now supports multiple ffmpeg backends via dependency injection:
+
+| backend | status | notes |
+|---------|--------|-------|
+| local | ✅ default | uses local ffmpeg via Bun shell |
+| rendi | ✅ done | cloud ffmpeg via rendi.dev API |
+
+### usage
+
+```typescript
+// local backend (default)
+await editly({ outPath: "out.mp4", clips: [...] });
+
+// rendi backend
+await editly({ outPath: "out.mp4", backend: "rendi", clips: [...] });
+```
+
+### rendi backend notes
+
+- requires `RENDI_API_KEY` env var
+- auto-uploads local files to R2 before submitting
+- falls back to local ffprobe for file analysis
+- polls until command completes, then downloads output
+
+---
+
 ## progress log
 
 <!-- append progress here as we implement -->

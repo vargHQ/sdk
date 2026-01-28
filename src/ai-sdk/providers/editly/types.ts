@@ -327,6 +327,7 @@ export interface EditlyConfig {
   enableFfmpegLog?: boolean;
   /** End output when shortest stream ends (video or audio) */
   shortest?: boolean;
+  backend?: "local" | "rendi";
 }
 
 // Internal types used by our implementation
