@@ -14,6 +14,7 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
+import { uploadBuffer } from "../../providers/storage";
 import type {
   CaptionsProps,
   ClipProps,
@@ -295,16 +296,23 @@ export async function renderRoot(
     startTask(progress, captionsTaskId);
 
     const backend = options.backend;
-    if (backend && videoUrl && options.upload) {
-      const assBuffer = await Bun.file(captionsResult.assPath).arrayBuffer();
-      const assUrl = await options.upload(assBuffer, "captions.ass");
+    if (backend) {
+      const videoInput = videoUrl || videoLocalPath;
+      if (!videoInput) throw new Error("No video input for captions");
+
+      let assInput = captionsResult.assPath;
+      if (videoUrl) {
+        const assBuffer = await Bun.file(captionsResult.assPath).arrayBuffer();
+        const assKey = `tmp/captions-${Date.now()}.ass`;
+        assInput = await uploadBuffer(assBuffer, assKey, "text/plain");
+      }
 
       const captionsResult2 = await backend.run({
         args: [
           "-i",
-          videoUrl,
+          videoInput,
           "-vf",
-          `subtitles=${assUrl}`,
+          `subtitles=${assInput}`,
           "-crf",
           "18",
           "-preset",
@@ -314,7 +322,7 @@ export async function renderRoot(
           "-y",
           "output.mp4",
         ],
-        inputs: [videoUrl, assUrl],
+        inputs: [videoInput, assInput],
         outputPath: "output.mp4",
         verbose: options.verbose,
       });

@@ -262,8 +262,6 @@ export interface RenderOptions {
   mode?: RenderMode;
   defaults?: DefaultModels;
   backend?: FFmpegBackend;
-  /** Upload function for cloud rendering - uploads buffer, returns URL */
-  upload?: (buffer: ArrayBuffer, filename: string) => Promise<string>;
 }
 
 export interface ElementPropsMap {
