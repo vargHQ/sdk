@@ -318,11 +318,7 @@ export async function renderRoot(
       await Bun.write(options.output, finalBuffer);
     }
   } else {
-    if (output.path !== finalOutPath && options.output) {
-      const { $ } = await import("bun");
-      await $`cp ${output.path} ${finalOutPath}`.quiet();
-    }
-    finalBuffer = await Bun.file(finalOutPath).arrayBuffer();
+    finalBuffer = await Bun.file(output.path).arrayBuffer();
   }
 
   if (!options.quiet && mode === "preview" && placeholderCount.total > 0) {
