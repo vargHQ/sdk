@@ -1,5 +1,4 @@
 import { type FFmpegBackend, localBackend } from "./backends";
-import { multipleOf2 } from "./ffmpeg";
 import {
   getImageOverlayFilter,
   getImageOverlayPositionFilter,
@@ -36,6 +35,10 @@ const DEFAULT_TRANSITION = { name: "fade", duration: 0.5 };
 const DEFAULT_FPS = 30;
 const DEFAULT_WIDTH = 1280;
 const DEFAULT_HEIGHT = 720;
+
+function multipleOf2(n: number): number {
+  return Math.round(n / 2) * 2;
+}
 
 async function getVideoDuration(
   path: string,
