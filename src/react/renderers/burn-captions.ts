@@ -51,17 +51,28 @@ export async function burnCaptions(
   }
 
   let localPath: string;
+  let tempFile: string | null = null;
+
   if (video.type === "url") {
     const res = await fetch(video.url);
     if (!res.ok) throw new Error(`Failed to download render: ${res.status}`);
-    localPath = `/tmp/varg-caption-input-${Date.now()}.mp4`;
-    await Bun.write(localPath, await res.arrayBuffer());
+    tempFile = `/tmp/varg-caption-input-${Date.now()}.mp4`;
+    await Bun.write(tempFile, await res.arrayBuffer());
+    localPath = tempFile;
   } else {
     localPath = video.path;
   }
 
-  const { $ } = await import("bun");
-  await $`ffmpeg -y -i ${localPath} -vf "ass=${assPath}" -crf 18 -preset slow -c:a copy ${outputPath}`.quiet();
+  try {
+    const { $ } = await import("bun");
+    await $`ffmpeg -y -i ${localPath} -vf "ass=${assPath}" -crf 18 -preset slow -c:a copy ${outputPath}`.quiet();
 
-  return { type: "file", path: outputPath };
+    return { type: "file", path: outputPath };
+  } finally {
+    if (tempFile) {
+      await Bun.file(tempFile)
+        .unlink()
+        .catch(() => {});
+    }
+  }
 }
