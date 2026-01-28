@@ -271,7 +271,7 @@ export async function renderRoot(
   const editlyTaskId = addTask(progress, "editly", "ffmpeg");
   startTask(progress, editlyTaskId);
 
-  await editly({
+  const editlyResult = await editly({
     outPath: tempOutPath,
     width: ctx.width,
     height: ctx.height,
@@ -280,19 +280,31 @@ export async function renderRoot(
     audioTracks: audioTracks.length > 0 ? audioTracks : undefined,
     shortest: props.shortest,
     verbose: options.verbose,
+    backend: options.backend,
   });
 
   completeTask(progress, editlyTaskId);
+
+  let videoPath = tempOutPath;
+  if (editlyResult.output.type === "url") {
+    const res = await fetch(editlyResult.output.url);
+    if (!res.ok) throw new Error(`Failed to download render: ${res.status}`);
+    await Bun.write(tempOutPath, await res.arrayBuffer());
+    videoPath = tempOutPath;
+  }
 
   if (hasCaptions && captionsResult) {
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
 
     const { $ } = await import("bun");
-    await $`ffmpeg -y -i ${tempOutPath} -vf "ass=${captionsResult.assPath}" -crf 18 -preset slow -c:a copy ${finalOutPath}`.quiet();
+    await $`ffmpeg -y -i ${videoPath} -vf "ass=${captionsResult.assPath}" -crf 18 -preset slow -c:a copy ${finalOutPath}`.quiet();
 
     ctx.tempFiles.push(tempOutPath);
     completeTask(progress, captionsTaskId);
+  } else if (videoPath !== finalOutPath) {
+    const { $ } = await import("bun");
+    await $`cp ${videoPath} ${finalOutPath}`.quiet();
   }
 
   if (!options.quiet && mode === "preview" && placeholderCount.total > 0) {

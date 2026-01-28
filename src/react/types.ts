@@ -1,4 +1,5 @@
 import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
+import type { FFmpegBackend } from "@/ai-sdk/providers/editly/backends";
 import type { MusicModelV3 } from "../ai-sdk/music-model";
 import type {
   CropPosition,
@@ -260,6 +261,7 @@ export interface RenderOptions {
   verbose?: boolean;
   mode?: RenderMode;
   defaults?: DefaultModels;
+  backend?: FFmpegBackend;
 }
 
 export interface ElementPropsMap {
