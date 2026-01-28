@@ -20,6 +20,13 @@ export {
 export { Grid, Slot, SplitLayout } from "./layouts";
 export { render, renderStream } from "./render";
 export type {
+  ExportMode,
+  TimelineExportOptions,
+  TimelineExportResult,
+  TimelineFormat,
+} from "./timeline";
+export { exportTimeline } from "./timeline";
+export type {
   CaptionsProps,
   ClipProps,
   ImageProps,
