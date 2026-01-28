@@ -301,11 +301,7 @@ export async function renderRoot(
       verbose: options.verbose,
     });
 
-    if (
-      !options.backend &&
-      output.type === "file" &&
-      output.path !== finalOutPath
-    ) {
+    if (!options.backend) {
       ctx.tempFiles.push(tempOutPath);
     }
 
