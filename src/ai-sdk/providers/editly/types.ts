@@ -1,6 +1,8 @@
 // Types from original editly (https://github.com/mifi/editly)
 // Adapted for pure ffmpeg implementation (no fabric/canvas/gl dependencies)
 
+import type { FFmpegBackend } from "./backends";
+
 export type OriginX = "left" | "center" | "right";
 export type OriginY = "top" | "center" | "bottom";
 export type SizeValue = number | `${number}%` | `${number}px`;
@@ -327,7 +329,8 @@ export interface EditlyConfig {
   enableFfmpegLog?: boolean;
   /** End output when shortest stream ends (video or audio) */
   shortest?: boolean;
-  backend?: "local" | "rendi";
+  /** FFmpeg backend for execution (defaults to local ffmpeg) */
+  backend?: FFmpegBackend;
 }
 
 // Internal types used by our implementation

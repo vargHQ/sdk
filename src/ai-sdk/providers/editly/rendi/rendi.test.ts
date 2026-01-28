@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createRendiBackend } from "./rendi";
+import { createRendiBackend } from ".";
 
 describe("rendi backend", () => {
   test("ffprobe remote file", async () => {

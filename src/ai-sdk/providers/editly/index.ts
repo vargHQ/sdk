@@ -1,8 +1,4 @@
-import {
-  createRendiBackend,
-  type FFmpegBackend,
-  localBackend,
-} from "./backends";
+import { type FFmpegBackend, localBackend } from "./backends";
 import { multipleOf2 } from "./ffmpeg";
 import {
   getImageOverlayFilter,
@@ -551,8 +547,7 @@ export async function editly(config: EditlyConfig): Promise<void> {
     fast,
   } = config;
 
-  const backend: FFmpegBackend =
-    config.backend === "rendi" ? createRendiBackend() : localBackend;
+  const backend: FFmpegBackend = config.backend ?? localBackend;
 
   if (verbose) {
     console.log(`[editly] using backend: ${backend.name}`);

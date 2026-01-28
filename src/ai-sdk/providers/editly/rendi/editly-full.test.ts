@@ -2,19 +2,21 @@
  * Rendi backend tests - same as editly.test.ts but uses cloud ffmpeg
  *
  * NOTE: Free tier has 4 commands/min rate limit. Run tests individually:
- *   bun test src/ai-sdk/providers/editly/editly-rendi.test.ts -t "merges two"
+ *   bun test src/ai-sdk/providers/editly/rendi/editly-full.test.ts -t "merges two"
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
-import { localBackend } from "./backends";
-import { editly } from "./index";
+import { localBackend } from "../backends";
+import { editly } from "../index";
+import { createRendiBackend } from ".";
 
 const VIDEO_1 = "https://s3.varg.ai/test-media/sora-landscape.mp4";
 const VIDEO_2 = "https://s3.varg.ai/test-media/simpsons-scene.mp4";
 const VIDEO_TALKING =
   "https://s3.varg.ai/test-media/workflow-talking-synced.mp4";
 const IMAGE_SQUARE = "https://s3.varg.ai/test-media/replicate-forest.png";
-const IMAGE_PORTRAIT = "https://s3.varg.ai/test-media/madi-portrait.png";
+
+const rendi = createRendiBackend();
 
 describe("editly (rendi backend)", () => {
   test("merges two videos with fade transition", async () => {
@@ -23,7 +25,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1280,
       height: 720,
       fps: 30,
@@ -49,7 +51,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1280,
       height: 720,
       fps: 30,
@@ -80,7 +82,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1280,
       height: 720,
       fps: 30,
@@ -109,7 +111,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1280,
       height: 720,
       fps: 30,
@@ -148,7 +150,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1280,
       height: 720,
       fps: 30,
@@ -188,7 +190,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1280,
       height: 720,
       fps: 30,
@@ -212,7 +214,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1280,
       height: 720,
       fps: 30,
@@ -235,7 +237,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1080,
       height: 1920,
       fps: 30,
@@ -258,7 +260,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1080,
       height: 1920,
       fps: 30,
@@ -304,7 +306,7 @@ describe("editly (rendi backend)", () => {
 
     await editly({
       outPath,
-      backend: "rendi",
+      backend: rendi,
       width: 1080,
       height: 1920,
       fps: 30,

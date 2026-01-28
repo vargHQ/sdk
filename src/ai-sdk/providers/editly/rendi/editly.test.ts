@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { editly } from "../index";
+import { createRendiBackend } from ".";
 
 describe("editly with rendi backend", () => {
   test("simple video trim with rendi", async () => {
@@ -7,7 +8,7 @@ describe("editly with rendi backend", () => {
 
     await editly({
       outPath: outputPath,
-      backend: "rendi",
+      backend: createRendiBackend(),
       verbose: true,
       clips: [
         {

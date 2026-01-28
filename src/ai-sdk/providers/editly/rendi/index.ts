@@ -1,4 +1,8 @@
-import type { FFmpegBackend, FFmpegRunOptions, VideoInfo } from "./types";
+import type {
+  FFmpegBackend,
+  FFmpegRunOptions,
+  VideoInfo,
+} from "../backends/types";
 
 const RENDI_API_BASE = "https://api.rendi.dev/v1";
 const POLL_INTERVAL_MS = 2000;
@@ -24,15 +28,6 @@ interface RendiStatusResponse {
   status: "QUEUED" | "PROCESSING" | "SUCCESS" | "FAILED";
   error_message?: string;
   output_files?: Record<string, RendiStoredFile>;
-}
-
-interface RendiFileResponse {
-  file_id: string;
-  storage_url: string | null;
-  duration?: number;
-  width?: number;
-  height?: number;
-  frame_rate?: number;
 }
 
 export class RendiBackend implements FFmpegBackend {
@@ -260,3 +255,5 @@ export class RendiBackend implements FFmpegBackend {
 export function createRendiBackend(apiKey?: string): RendiBackend {
   return new RendiBackend(apiKey);
 }
+
+export type { FFmpegBackend } from "../backends/types";
