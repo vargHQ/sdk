@@ -1,8 +1,31 @@
+import { localBackend } from "@/ai-sdk/providers/editly";
 import type {
   FFmpegBackend,
   FFmpegOutput,
 } from "../../ai-sdk/providers/editly/backends/types";
 import { uploadBuffer } from "../../providers/storage";
+
+/**
+ * Resolves an FFmpegOutput to a string path/URL, uploading local files if needed.
+ *
+ * - URL input → returns URL as-is
+ * - File input + shouldUpload=false → returns local path
+ * - File input + shouldUpload=true → uploads to storage, returns URL
+ */
+async function resolveInputPathMaybeUpload(
+  input: FFmpegOutput,
+  options: { shouldUpload: boolean },
+): Promise<string> {
+  if (input.type === "url") return input.url;
+  if (!options.shouldUpload) return input.path;
+
+  const buffer = await Bun.file(input.path).arrayBuffer();
+  return uploadBuffer(
+    buffer,
+    `tmp/${Date.now()}-${input.path.split("/").pop()}`,
+    "application/octet-stream",
+  );
+}
 
 export interface CaptionOverlayOptions {
   video: FFmpegOutput;
@@ -15,61 +38,39 @@ export interface CaptionOverlayOptions {
 export async function burnCaptions(
   options: CaptionOverlayOptions,
 ): Promise<FFmpegOutput> {
-  const { video, assPath, outputPath, backend, verbose } = options;
+  const { video, assPath, outputPath = "output.mp4", verbose } = options;
+  const captions: FFmpegOutput = { type: "file", path: assPath };
 
-  if (backend) {
-    const videoInput = video.type === "url" ? video.url : video.path;
+  const isCloud = options.backend !== undefined;
 
-    const assBuffer = await Bun.file(assPath).arrayBuffer();
-    const assKey = `tmp/captions-${Date.now()}.ass`;
-    const assInput = await uploadBuffer(assBuffer, assKey, "text/plain");
+  const videoInput = await resolveInputPathMaybeUpload(video, {
+    shouldUpload: isCloud,
+  });
+  const assInput = await resolveInputPathMaybeUpload(captions, {
+    shouldUpload: isCloud,
+  });
 
-    const result = await backend.run({
-      args: [
-        "-i",
-        videoInput,
-        "-vf",
-        `subtitles=${assInput}`,
-        "-crf",
-        "18",
-        "-preset",
-        "fast",
-        "-c:a",
-        "copy",
-        "-y",
-        "output.mp4",
-      ],
-      inputs: [videoInput, assInput],
-      outputPath: "output.mp4",
-      verbose,
-    });
+  const backend = options.backend ?? localBackend;
 
-    return result.output;
-  }
+  const result = await backend.run({
+    args: [
+      "-i",
+      videoInput,
+      "-vf",
+      `subtitles=${assInput}`,
+      "-crf",
+      "18",
+      "-preset",
+      "fast",
+      "-c:a",
+      "copy",
+      "-y",
+      outputPath,
+    ],
+    inputs: [videoInput, assInput],
+    outputPath,
+    verbose,
+  });
 
-  let localPath: string;
-  let tempFile: string | null = null;
-
-  if (video.type === "url") {
-    const res = await fetch(video.url);
-    if (!res.ok) throw new Error(`Failed to download render: ${res.status}`);
-    tempFile = `/tmp/varg-caption-input-${Date.now()}.mp4`;
-    await Bun.write(tempFile, await res.arrayBuffer());
-    localPath = tempFile;
-  } else {
-    localPath = video.path;
-  }
-
-  try {
-    const { $ } = await import("bun");
-    await $`ffmpeg -y -i ${localPath} -vf "ass=${assPath}" -crf 18 -preset slow -c:a copy ${outputPath}`.quiet();
-
-    return { type: "file", path: outputPath };
-  } finally {
-    if (tempFile) {
-      await Bun.file(tempFile)
-        .unlink()
-        .catch(() => {});
-    }
-  }
+  return result.output;
 }
