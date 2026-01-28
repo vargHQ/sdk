@@ -20,12 +20,9 @@ export async function burnCaptions(
   if (backend) {
     const videoInput = video.type === "url" ? video.url : video.path;
 
-    let assInput = assPath;
-    if (video.type === "url") {
-      const assBuffer = await Bun.file(assPath).arrayBuffer();
-      const assKey = `tmp/captions-${Date.now()}.ass`;
-      assInput = await uploadBuffer(assBuffer, assKey, "text/plain");
-    }
+    const assBuffer = await Bun.file(assPath).arrayBuffer();
+    const assKey = `tmp/captions-${Date.now()}.ass`;
+    const assInput = await uploadBuffer(assBuffer, assKey, "text/plain");
 
     const result = await backend.run({
       args: [
