@@ -123,7 +123,7 @@ export class RendiBackend implements FFmpegBackend {
     });
 
     const filteredArgs = this.stripInternalFlags(commandArgs);
-    const ffmpegCommand = filteredArgs.join(" ");
+    const ffmpegCommand = this.buildCommandString(filteredArgs);
 
     const outputFilename = outputPath.split("/").pop() ?? "output.mp4";
     const finalCommand = ffmpegCommand.replace(outputPath, "{{out_1}}");
@@ -235,6 +235,20 @@ export class RendiBackend implements FFmpegBackend {
     }
 
     return filtered;
+  }
+
+  private buildCommandString(args: string[]): string {
+    return args
+      .map((arg) => {
+        if (arg.startsWith("-") || arg.startsWith("{{")) {
+          return arg;
+        }
+        if (arg.includes(" ") || arg.includes(":") || arg.includes("'")) {
+          return `"${arg.replace(/"/g, '\\"')}"`;
+        }
+        return arg;
+      })
+      .join(" ");
   }
 
   private async downloadFile(url: string, outputPath: string): Promise<void> {
