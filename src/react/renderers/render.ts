@@ -285,26 +285,82 @@ export async function renderRoot(
 
   completeTask(progress, editlyTaskId);
 
-  let videoPath = tempOutPath;
-  if (editlyResult.output.type === "url") {
-    const res = await fetch(editlyResult.output.url);
-    if (!res.ok) throw new Error(`Failed to download render: ${res.status}`);
-    await Bun.write(tempOutPath, await res.arrayBuffer());
-    videoPath = tempOutPath;
-  }
+  let videoUrl =
+    editlyResult.output.type === "url" ? editlyResult.output.url : null;
+  let videoLocalPath =
+    editlyResult.output.type === "file" ? editlyResult.output.path : null;
 
   if (hasCaptions && captionsResult) {
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
 
-    const { $ } = await import("bun");
-    await $`ffmpeg -y -i ${videoPath} -vf "ass=${captionsResult.assPath}" -crf 18 -preset slow -c:a copy ${finalOutPath}`.quiet();
+    const backend = options.backend;
+    if (backend && videoUrl && options.upload) {
+      const assBuffer = await Bun.file(captionsResult.assPath).arrayBuffer();
+      const assUrl = await options.upload(assBuffer, "captions.ass");
 
-    ctx.tempFiles.push(tempOutPath);
+      const captionsResult2 = await backend.run({
+        args: [
+          "-i",
+          videoUrl,
+          "-vf",
+          `subtitles=${assUrl}`,
+          "-crf",
+          "18",
+          "-preset",
+          "fast",
+          "-c:a",
+          "copy",
+          "-y",
+          "output.mp4",
+        ],
+        inputs: [videoUrl, assUrl],
+        outputPath: "output.mp4",
+        verbose: options.verbose,
+      });
+
+      if (captionsResult2.output.type === "url") {
+        videoUrl = captionsResult2.output.url;
+        videoLocalPath = null;
+      } else {
+        videoLocalPath = captionsResult2.output.path;
+        videoUrl = null;
+      }
+    } else {
+      if (videoUrl) {
+        const res = await fetch(videoUrl);
+        if (!res.ok)
+          throw new Error(`Failed to download render: ${res.status}`);
+        await Bun.write(tempOutPath, await res.arrayBuffer());
+        videoLocalPath = tempOutPath;
+        videoUrl = null;
+      }
+      const { $ } = await import("bun");
+      await $`ffmpeg -y -i ${videoLocalPath} -vf "ass=${captionsResult.assPath}" -crf 18 -preset slow -c:a copy ${finalOutPath}`.quiet();
+      videoLocalPath = finalOutPath;
+      ctx.tempFiles.push(tempOutPath);
+    }
+
     completeTask(progress, captionsTaskId);
-  } else if (videoPath !== finalOutPath) {
-    const { $ } = await import("bun");
-    await $`cp ${videoPath} ${finalOutPath}`.quiet();
+  }
+
+  let finalBuffer: ArrayBuffer;
+  if (videoUrl) {
+    const res = await fetch(videoUrl);
+    if (!res.ok)
+      throw new Error(`Failed to download final render: ${res.status}`);
+    finalBuffer = await res.arrayBuffer();
+    if (options.output) {
+      await Bun.write(options.output, finalBuffer);
+    }
+  } else if (videoLocalPath) {
+    if (videoLocalPath !== finalOutPath && options.output) {
+      const { $ } = await import("bun");
+      await $`cp ${videoLocalPath} ${finalOutPath}`.quiet();
+    }
+    finalBuffer = await Bun.file(finalOutPath).arrayBuffer();
+  } else {
+    throw new Error("No video output");
   }
 
   if (!options.quiet && mode === "preview" && placeholderCount.total > 0) {
@@ -313,6 +369,5 @@ export async function renderRoot(
     );
   }
 
-  const result = await Bun.file(finalOutPath).arrayBuffer();
-  return new Uint8Array(result);
+  return new Uint8Array(finalBuffer);
 }
