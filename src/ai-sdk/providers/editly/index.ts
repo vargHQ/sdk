@@ -17,6 +17,7 @@ import type {
   Clip,
   DetachedAudioLayer,
   EditlyConfig,
+  EditlyResult,
   ImageOverlayLayer,
   Layer,
   NewsTitleLayer,
@@ -533,7 +534,7 @@ function buildAudioFilter(
   };
 }
 
-export async function editly(config: EditlyConfig): Promise<void> {
+export async function editly(config: EditlyConfig): Promise<EditlyResult> {
   const {
     outPath,
     clips: clipsIn,
@@ -879,14 +880,18 @@ export async function editly(config: EditlyConfig): Promise<void> {
     console.log("\nFilter complex:\n", filterComplex.split(";").join(";\n"));
   }
 
-  await backend.run({
+  const result = await backend.run({
     args: ffmpegArgs,
     inputs: allInputs,
     outputPath: outPath,
     verbose,
   });
 
-  console.log(`Output: ${outPath}`);
+  if (result.output.type === "file") {
+    console.log(`Output: ${result.output.path}`);
+  }
+
+  return { output: result.output };
 }
 
 export default editly;

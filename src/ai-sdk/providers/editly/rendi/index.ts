@@ -1,6 +1,7 @@
 import type {
   FFmpegBackend,
   FFmpegRunOptions,
+  FFmpegRunResult,
   VideoInfo,
 } from "../backends/types";
 
@@ -99,7 +100,7 @@ export class RendiBackend implements FFmpegBackend {
     throw new Error("Rendi ffprobe timed out");
   }
 
-  async run(options: FFmpegRunOptions): Promise<void> {
+  async run(options: FFmpegRunOptions): Promise<FFmpegRunResult> {
     const { args, inputs, outputPath, verbose } = options;
 
     const uniqueInputs = [...new Set(inputs)];
@@ -125,8 +126,10 @@ export class RendiBackend implements FFmpegBackend {
     const filteredArgs = this.stripInternalFlags(commandArgs);
     const ffmpegCommand = this.buildCommandString(filteredArgs);
 
-    const outputFilename = outputPath.split("/").pop() ?? "output.mp4";
-    const finalCommand = ffmpegCommand.replace(outputPath, "{{out_1}}");
+    const outputFilename = outputPath?.split("/").pop() ?? "output.mp4";
+    const finalCommand = outputPath
+      ? ffmpegCommand.replace(outputPath, "{{out_1}}")
+      : ffmpegCommand.replace(/[^\s]+\.mp4$/, "{{out_1}}");
 
     if (verbose) {
       console.log("[rendi] input_files:", inputFiles);
@@ -186,12 +189,11 @@ export class RendiBackend implements FFmpegBackend {
           throw new Error("Rendi completed but no output URL found");
         }
 
-        await this.downloadFile(outputFile.storage_url, outputPath);
-
         if (verbose) {
-          console.log("[rendi] downloaded to:", outputPath);
+          console.log("[rendi] output url:", outputFile.storage_url);
         }
-        return;
+
+        return { output: { type: "url", url: outputFile.storage_url } };
       }
 
       if (status.status === "FAILED") {
@@ -249,16 +251,6 @@ export class RendiBackend implements FFmpegBackend {
         return arg;
       })
       .join(" ");
-  }
-
-  private async downloadFile(url: string, outputPath: string): Promise<void> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to download: ${response.status}`);
-    }
-
-    const buffer = await response.arrayBuffer();
-    await Bun.write(outputPath, buffer);
   }
 
   private sleep(ms: number): Promise<void> {

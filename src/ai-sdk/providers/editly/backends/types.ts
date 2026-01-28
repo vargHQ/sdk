@@ -24,6 +24,14 @@ export interface FFmpegRunOptions {
   verbose?: boolean;
 }
 
+export type FFmpegOutput =
+  | { type: "file"; path: string }
+  | { type: "url"; url: string };
+
+export interface FFmpegRunResult {
+  output: FFmpegOutput;
+}
+
 /**
  * Backend interface for ffmpeg/ffprobe execution
  */
@@ -40,6 +48,7 @@ export interface FFmpegBackend {
   /**
    * Run ffmpeg command
    * @param options - Execution options including args, inputs, and output path
+   * @returns Result with optional URL for cloud backends
    */
-  run(options: FFmpegRunOptions): Promise<void>;
+  run(options: FFmpegRunOptions): Promise<FFmpegRunResult>;
 }

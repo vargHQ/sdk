@@ -333,6 +333,14 @@ export interface EditlyConfig {
   backend?: FFmpegBackend;
 }
 
+export type EditlyOutput =
+  | { type: "file"; path: string }
+  | { type: "url"; url: string };
+
+export interface EditlyResult {
+  output: EditlyOutput;
+}
+
 // Internal types used by our implementation
 export interface VideoInfo {
   duration: number;

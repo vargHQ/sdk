@@ -1,5 +1,10 @@
 import { $ } from "bun";
-import type { FFmpegBackend, FFmpegRunOptions, VideoInfo } from "./types";
+import type {
+  FFmpegBackend,
+  FFmpegRunOptions,
+  FFmpegRunResult,
+  VideoInfo,
+} from "./types";
 
 const FFMPEG_COMMON_ARGS = ["-hide_banner", "-loglevel", "error"];
 
@@ -33,8 +38,8 @@ export class LocalBackend implements FFmpegBackend {
     };
   }
 
-  async run(options: FFmpegRunOptions): Promise<void> {
-    const { args, verbose } = options;
+  async run(options: FFmpegRunOptions): Promise<FFmpegRunResult> {
+    const { args, outputPath, verbose } = options;
 
     const ffmpegArgs = [
       ...FFMPEG_COMMON_ARGS.slice(0, 2),
@@ -51,6 +56,8 @@ export class LocalBackend implements FFmpegBackend {
     if (result.exitCode !== 0) {
       throw new Error(`ffmpeg failed with exit code ${result.exitCode}`);
     }
+
+    return { output: { type: "file", path: outputPath } };
   }
 }
 

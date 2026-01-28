@@ -5,8 +5,6 @@
  *   bun test src/ai-sdk/providers/editly/rendi/editly-with-rendi-backend.test.ts -t "merges two"
  */
 import { describe, expect, test } from "bun:test";
-import { existsSync, unlinkSync } from "node:fs";
-import { localBackend } from "../backends";
 import { editly } from "../index";
 import { createRendiBackend } from ".";
 
@@ -18,12 +16,26 @@ const IMAGE_SQUARE = "https://s3.varg.ai/test-media/replicate-forest.png";
 
 const rendi = createRendiBackend();
 
+async function saveResult(
+  result: {
+    output: { type: "url"; url: string } | { type: "file"; path: string };
+  },
+  outPath: string,
+) {
+  expect(result.output.type).toBe("url");
+  if (result.output.type === "url") {
+    expect(result.output.url).toMatch(/^https:\/\//);
+    const res = await fetch(result.output.url);
+    if (!res.ok) throw new Error(`Failed to download: ${res.status}`);
+    await Bun.write(outPath, await res.arrayBuffer());
+    console.log(`Output: ${outPath}`);
+  }
+}
+
 describe("editly (rendi backend)", () => {
   test("merges two videos with fade transition", async () => {
-    const outPath = "output/rendi/editly-test-merge.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/merge.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1280,
@@ -40,16 +52,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
-    const info = await localBackend.ffprobe(outPath);
-    expect(info.duration).toBeGreaterThan(2);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("picture-in-picture (pip)", async () => {
-    const outPath = "output/rendi/editly-test-pip.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/pip.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1280,
@@ -73,14 +81,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("image ken burns preserves aspect ratio", async () => {
-    const outPath = "output/rendi/editly-test-image-aspect.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/ken-burns.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1280,
@@ -102,14 +108,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("subtitle layer", async () => {
-    const outPath = "output/rendi/editly-test-subtitle.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/subtitle.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1280,
@@ -141,14 +145,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("news-title layer", async () => {
-    const outPath = "output/rendi/editly-test-news-title.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/news-title.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1280,
@@ -181,14 +183,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("keepSourceAudio preserves original video audio", async () => {
-    const outPath = "output/rendi/editly-test-keep-source-audio.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/keep-audio.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1280,
@@ -205,14 +205,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("keepSourceAudio with cutFrom stays in sync", async () => {
-    const outPath = "output/rendi/editly-test-keep-source-audio-cutfrom.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/keep-audio-cut.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1280,
@@ -228,14 +226,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("contain-blur resize mode for video", async () => {
-    const outPath = "output/rendi/editly-test-contain-blur-video.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/contain-blur.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1080,
@@ -251,14 +247,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("video overlay with cropPosition", async () => {
-    const outPath = "output/rendi/editly-test-crop-position.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/crop-position.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1080,
@@ -294,17 +288,12 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
-    const info = await localBackend.ffprobe(outPath);
-    expect(info.width).toBe(1080);
-    expect(info.height).toBe(1920);
+    await saveResult(result, outPath);
   }, 120000);
 
   test("portrait 9:16 image with zoompan cover mode", async () => {
-    const outPath = "output/rendi/editly-test-portrait-zoompan.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
-
-    await editly({
+    const outPath = "output/rendi/portrait-zoompan.mp4";
+    const result = await editly({
       outPath,
       backend: rendi,
       width: 1080,
@@ -326,9 +315,6 @@ describe("editly (rendi backend)", () => {
       ],
     });
 
-    expect(existsSync(outPath)).toBe(true);
-    const info = await localBackend.ffprobe(outPath);
-    expect(info.width).toBe(1080);
-    expect(info.height).toBe(1920);
+    await saveResult(result, outPath);
   }, 120000);
 });

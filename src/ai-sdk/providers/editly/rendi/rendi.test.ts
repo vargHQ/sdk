@@ -15,9 +15,8 @@ describe("rendi backend", () => {
 
   test("run simple ffmpeg command", async () => {
     const backend = createRendiBackend();
-    const outputPath = "output/rendi-test-output.mp4";
 
-    await backend.run({
+    const result = await backend.run({
       args: [
         "-i",
         "https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_intro.mp4",
@@ -28,17 +27,18 @@ describe("rendi backend", () => {
         "-preset",
         "ultrafast",
         "-y",
-        outputPath,
+        "output.mp4",
       ],
       inputs: [
         "https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_intro.mp4",
       ],
-      outputPath,
+      outputPath: "output.mp4",
       verbose: true,
     });
 
-    const file = Bun.file(outputPath);
-    expect(await file.exists()).toBe(true);
-    expect(file.size).toBeGreaterThan(0);
+    expect(result.output.type).toBe("url");
+    if (result.output.type === "url") {
+      expect(result.output.url).toMatch(/^https:\/\//);
+    }
   }, 120000);
 });
