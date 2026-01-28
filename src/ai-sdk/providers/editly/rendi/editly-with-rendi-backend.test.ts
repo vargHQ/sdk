@@ -10,7 +10,8 @@ import { $ } from "bun";
 import { editly } from "../index";
 import { createRendiBackend } from ".";
 
-const hasRendiKey = !!process.env.RENDI_API_KEY;
+const shouldRunRendiTests =
+  !!process.env.RENDI_INTEGRATION_TESTS && !!process.env.RENDI_API_KEY;
 
 const VIDEO_1 = "https://s3.varg.ai/test-media/sora-landscape.mp4";
 const VIDEO_2 = "https://s3.varg.ai/test-media/simpsons-scene.mp4";
@@ -18,7 +19,7 @@ const VIDEO_TALKING =
   "https://s3.varg.ai/test-media/workflow-talking-synced.mp4";
 const IMAGE_SQUARE = "https://s3.varg.ai/test-media/replicate-forest.png";
 
-const rendi = hasRendiKey ? createRendiBackend() : (null as never);
+const rendi = shouldRunRendiTests ? createRendiBackend() : (null as never);
 
 async function saveResult(
   result: {
@@ -31,13 +32,22 @@ async function saveResult(
     expect(result.output.url).toMatch(/^https:\/\//);
     const res = await fetch(result.output.url);
     if (!res.ok) throw new Error(`Failed to download: ${res.status}`);
-    await $`mkdir -p ${outPath.split("/").slice(0, -1).join("/")}`.quiet();
-    await Bun.write(outPath, await res.arrayBuffer());
+
+    const dir = outPath.split("/").slice(0, -1).join("/");
+    await $`mkdir -p ${dir}`.quiet();
+
+    const bytes = await res.arrayBuffer();
+    await Bun.write(outPath, bytes);
+
+    const written = Bun.file(outPath);
+    if (!(await written.exists()) || written.size === 0) {
+      throw new Error(`Failed to write output file: ${outPath}`);
+    }
     console.log(`Output: ${outPath}`);
   }
 }
 
-describe.skipIf(!hasRendiKey)("editly (rendi backend)", () => {
+describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
   test("merges two videos with fade transition", async () => {
     const outPath = "output/rendi/merge.mp4";
     const result = await editly({
