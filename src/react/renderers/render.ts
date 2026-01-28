@@ -269,33 +269,6 @@ export async function renderRoot(
     : (options.output ?? `output/varg-${Date.now()}.mp4`);
   const finalOutPath = options.output ?? `output/varg-${Date.now()}.mp4`;
 
-  const isCloudBackend = options.backend?.name === "rendi";
-
-  async function ensureUrl(path: string): Promise<string> {
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    if (!isCloudBackend) return path;
-    const file = Bun.file(path);
-    const buffer = await file.arrayBuffer();
-    const filename = path.split("/").pop() || "file";
-    const key = `tmp/${Date.now()}-${filename}`;
-    return uploadBuffer(buffer, key, file.type || "application/octet-stream");
-  }
-
-  if (isCloudBackend) {
-    for (const clip of clips) {
-      for (const layer of clip.layers) {
-        if ("path" in layer && typeof layer.path === "string") {
-          layer.path = await ensureUrl(layer.path);
-        }
-      }
-    }
-    for (const track of audioTracks) {
-      track.path = await ensureUrl(track.path);
-    }
-  }
-
   const editlyTaskId = addTask(progress, "editly", "ffmpeg");
   startTask(progress, editlyTaskId);
 
