@@ -2,7 +2,7 @@
  * Rendi backend tests - same as editly.test.ts but uses cloud ffmpeg
  *
  * NOTE: Free tier has 4 commands/min rate limit. Run tests individually:
- *   bun test src/ai-sdk/providers/editly/rendi/editly-full.test.ts -t "merges two"
+ *   bun test src/ai-sdk/providers/editly/rendi/editly-with-rendi-backend.test.ts -t "merges two"
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
