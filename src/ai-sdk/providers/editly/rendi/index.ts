@@ -91,7 +91,6 @@ export class RendiBackend implements FFmpegBackend {
           fps: output.frame_rate,
         };
       }
-      }
 
       if (status.status === "FAILED") {
         throw new Error(`Rendi ffprobe failed: ${status.error_message}`);
@@ -120,6 +119,9 @@ export class RendiBackend implements FFmpegBackend {
     }
 
     const commandArgs = args.map((arg) => {
+      if (arg === outputPath) {
+        return "{{out_1}}";
+      }
       const placeholder = pathToPlaceholder.get(arg);
       if (placeholder) {
         return placeholder;
@@ -131,8 +133,8 @@ export class RendiBackend implements FFmpegBackend {
     const ffmpegCommand = this.buildCommandString(filteredArgs);
 
     const outputFilename = outputPath?.split("/").pop() ?? "output.mp4";
-    const finalCommand = outputPath
-      ? ffmpegCommand.replace(outputPath, "{{out_1}}")
+    const finalCommand = ffmpegCommand.includes("{{out_1}}")
+      ? ffmpegCommand
       : ffmpegCommand.replace(/[^\s]+\.\w+$/, "{{out_1}}");
 
     if (verbose) {
