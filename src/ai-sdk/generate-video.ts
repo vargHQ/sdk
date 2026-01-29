@@ -4,6 +4,7 @@ import type {
   SharedV3Warning,
 } from "@ai-sdk/provider";
 import type { DataContent } from "ai";
+import type { GenerationMetrics } from "./usage/types";
 import type { VideoModelV3 } from "./video-model";
 
 export type GenerateVideoPrompt =
@@ -39,6 +40,8 @@ export interface GenerateVideoResult {
   readonly video: GeneratedVideo;
   readonly videos: GeneratedVideo[];
   readonly warnings: SharedV3Warning[];
+  /** Usage metrics from the generation (if provided by the model) */
+  readonly usage?: GenerationMetrics;
 }
 
 class DefaultGeneratedVideo implements GeneratedVideo {
@@ -157,9 +160,13 @@ export async function generateVideo(
     throw new Error("No videos generated");
   }
 
+  // Extract usage metrics if provided by the model
+  const usage = result.usage as GenerationMetrics | undefined;
+
   return {
     video: videos[0]!,
     videos,
     warnings,
+    usage,
   };
 }

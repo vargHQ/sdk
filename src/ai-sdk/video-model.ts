@@ -14,6 +14,7 @@ import type {
   SharedV3ProviderOptions,
   SharedV3Warning,
 } from "@ai-sdk/provider";
+import type { GenerationMetrics } from "./usage/types";
 
 /**
  * Re-export ImageModelV3File as VideoModelV3File for clarity.
@@ -180,6 +181,6 @@ export type VideoModelV3 = {
     /**
      * Optional token usage for the video generation call.
      */
-    usage?: VideoModelV3Usage;
+    usage?: VideoModelV3Usage | GenerationMetrics;
   }>;
 };

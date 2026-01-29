@@ -167,6 +167,7 @@ async function runRender(
     mode,
     defaults,
     verbose: args.verbose as boolean,
+    quiet: args.quiet as boolean,
   });
 
   if (!args.quiet) {

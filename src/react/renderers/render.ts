@@ -1,5 +1,5 @@
 import { generateImage, wrapImageModel } from "ai";
-import { withCache } from "../../ai-sdk/cache";
+import { type CacheStorage, withCache } from "../../ai-sdk/cache";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { generateVideo } from "../../ai-sdk/generate-video";
 import {
@@ -14,7 +14,12 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
-
+import {
+  createUsageTracker,
+  formatCost,
+  type GenerationMetrics,
+  type UsageTrackerOptions,
+} from "../../ai-sdk/usage";
 import type {
   CaptionsProps,
   ClipProps,
@@ -55,6 +60,18 @@ export async function renderRoot(
   const props = element.props as RenderProps;
   const progress = createProgressTracker(options.quiet ?? false);
 
+  // Parse usage options
+  const usageOpts: UsageTrackerOptions = {};
+  if (options.usage === false) {
+    usageOpts.enabled = false;
+  } else if (typeof options.usage === "object") {
+    usageOpts.enabled = options.usage.enabled;
+    usageOpts.usageDir = options.usage.dir;
+  }
+
+  // Initialize usage tracker for cost estimation and daily limits
+  const usage = await createUsageTracker(usageOpts);
+
   const mode: RenderMode = options.mode ?? "strict";
   const placeholderCount = { images: 0, videos: 0, total: 0 };
 
@@ -63,12 +80,17 @@ export async function renderRoot(
     placeholderCount.total++;
   };
 
-  const cachedGenerateImage = options.cache
-    ? withCache(generateImage, { storage: fileCache({ dir: options.cache }) })
+  // Set up cache storage for cache hit detection
+  const cacheStorage: CacheStorage | undefined = options.cache
+    ? fileCache({ dir: options.cache })
+    : undefined;
+
+  const cachedGenerateImage = cacheStorage
+    ? withCache(generateImage, { storage: cacheStorage })
     : generateImage;
 
-  const cachedGenerateVideo = options.cache
-    ? withCache(generateVideo, { storage: fileCache({ dir: options.cache }) })
+  const cachedGenerateVideo = cacheStorage
+    ? withCache(generateVideo, { storage: cacheStorage })
     : generateVideo;
 
   const wrapGenerateImage: typeof generateImage = async (opts) => {
@@ -91,7 +113,37 @@ export async function renderRoot(
       return generateImage({ ...opts, model: wrappedModel });
     }
 
-    return cachedGenerateImage(opts);
+    // Check limits before generation
+    usage.assertLimits("image");
+
+    // Detect cache hit by checking cache before calling
+    // Note: cacheKey is added by withCache wrapper, not in base generateImage type
+    const optsWithCache = opts as typeof opts & {
+      cacheKey?: (string | number | boolean | null | undefined)[];
+    };
+    let cached = false;
+    if (cacheStorage && optsWithCache.cacheKey) {
+      const cacheKeyStr = `generateImage:${optsWithCache.cacheKey.map((d: unknown) => String(d ?? "")).join(":")}`;
+      const existing = await cacheStorage.get(cacheKeyStr);
+      cached = existing !== undefined;
+    }
+
+    const result = await cachedGenerateImage(opts);
+
+    // Record usage with estimated metrics (async - fetches pricing from API)
+    // Note: The ai SDK's generateImage doesn't expose provider usage metrics
+    const metrics: GenerationMetrics = {
+      provider: "fal",
+      modelId: typeof opts.model === "string" ? opts.model : opts.model.modelId,
+      resourceType: "image",
+      count: result.images.length,
+    };
+    await usage.record({
+      ...metrics,
+      cached,
+    });
+
+    return result;
   };
 
   const wrapGenerateVideo: typeof generateVideo = async (opts) => {
@@ -107,7 +159,42 @@ export async function renderRoot(
       return generateVideo({ ...opts, model: wrappedModel });
     }
 
-    return cachedGenerateVideo(opts);
+    // Check limits before generation
+    usage.assertLimits("video", 0, opts.duration ?? 5);
+
+    // Detect cache hit by checking cache before calling
+    // Note: cacheKey is added by withCache wrapper, not in base generateVideo type
+    const optsWithCache = opts as typeof opts & {
+      cacheKey?: (string | number | boolean | null | undefined)[];
+    };
+    let cached = false;
+    if (cacheStorage && optsWithCache.cacheKey) {
+      const cacheKeyStr = `generateVideo:${optsWithCache.cacheKey.map((d: unknown) => String(d ?? "")).join(":")}`;
+      const existing = await cacheStorage.get(cacheKeyStr);
+      cached = existing !== undefined;
+    }
+
+    const result = await cachedGenerateVideo(opts);
+
+    // Record usage if metrics are available (async - fetches pricing from API)
+    if (result.usage) {
+      await usage.record({
+        ...result.usage,
+        cached,
+      });
+    } else {
+      // Fallback: record with estimated metrics
+      await usage.record({
+        provider: "fal",
+        modelId:
+          typeof opts.model === "string" ? opts.model : opts.model.modelId,
+        resourceType: "video",
+        durationSeconds: opts.duration ?? 5,
+        cached,
+      });
+    }
+
+    return result;
   };
 
   const ctx: RenderContext = {
@@ -121,6 +208,7 @@ export async function renderRoot(
     progress,
     pending: new Map(),
     defaults: options.defaults,
+    usage,
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -325,6 +413,72 @@ export async function renderRoot(
     console.log(
       `\x1b[36mℹ preview mode: ${placeholderCount.total} placeholders used (${placeholderCount.images} images, ${placeholderCount.videos} videos)\x1b[0m`,
     );
+  }
+
+  // Save usage data and print summary
+  await usage.save();
+
+  if (!options.quiet && usage.isEnabled()) {
+    // Display pricing warnings if any
+    if (usage.hasPricingErrors()) {
+      const warningMsg = usage.getPricingWarningMessage();
+      if (warningMsg) {
+        console.log(`\n\x1b[33m${warningMsg}\x1b[0m\n`);
+      }
+      usage.markPricingErrorsShown();
+    }
+
+    const summary = await usage.getSessionSummary();
+    const hasActivity =
+      summary.images.generated > 0 ||
+      summary.videos.generated > 0 ||
+      summary.images.cached > 0 ||
+      summary.videos.cached > 0;
+
+    // Only show cost summary if we have pricing data (no errors)
+    const hasPricingData = !usage.hasPricingErrors() || summary.totalCost > 0;
+
+    if (hasActivity) {
+      console.log("\n\x1b[36m─────────────────────────────────────\x1b[0m");
+      console.log("\x1b[36m Usage Summary\x1b[0m");
+      console.log("\x1b[36m─────────────────────────────────────\x1b[0m");
+
+      if (summary.images.generated > 0 || summary.images.cached > 0) {
+        const imageStr =
+          summary.images.cached > 0
+            ? `${summary.images.generated} generated, ${summary.images.cached} cached`
+            : `${summary.images.generated} generated`;
+        const costStr = hasPricingData
+          ? formatCost(summary.images.cost)
+          : "N/A";
+        console.log(`  Images:  ${imageStr.padEnd(28)} ${costStr}`);
+      }
+
+      if (summary.videos.generated > 0 || summary.videos.cached > 0) {
+        const videoStr =
+          summary.videos.cached > 0
+            ? `${summary.videos.generated} generated, ${summary.videos.cached} cached`
+            : `${summary.videos.generated} generated (${Math.round(summary.videos.duration ?? 0)}s)`;
+        const costStr = hasPricingData
+          ? formatCost(summary.videos.cost)
+          : "N/A";
+        console.log(`  Videos:  ${videoStr.padEnd(28)} ${costStr}`);
+      }
+
+      console.log("\x1b[36m─────────────────────────────────────\x1b[0m");
+      const totalCostStr = hasPricingData
+        ? formatCost(summary.totalCost)
+        : "N/A (pricing unavailable)";
+      console.log(`  Session total                      ${totalCostStr}`);
+
+      if (summary.savedFromCache > 0 && hasPricingData) {
+        console.log(
+          `  \x1b[32m💰 Saved ${formatCost(summary.savedFromCache)} from cache\x1b[0m`,
+        );
+      }
+
+      console.log("\x1b[36m─────────────────────────────────────\x1b[0m\n");
+    }
   }
 
   return new Uint8Array(finalBuffer);

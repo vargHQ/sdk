@@ -31,9 +31,11 @@ import {
   showRunHelp,
   showStoryboardHelp,
   showTargetHelp,
+  showUsageHelp,
   showWhichHelp,
   storyboardCmd,
   studioCmd,
+  usageCmd,
   whichCmd,
 } from "./commands";
 
@@ -66,6 +68,7 @@ const subcommandHelp: Record<string, () => void> = {
   ls: showListHelp,
   find: showFindHelp,
   search: showFindHelp,
+  usage: showUsageHelp,
   which: showWhichHelp,
   inspect: showWhichHelp,
 };
@@ -128,6 +131,7 @@ const main = defineCommand({
     ls: listCmd,
     find: findCmd,
     search: findCmd,
+    usage: usageCmd,
     which: whichCmd,
     inspect: whichCmd,
     help: helpCmd,

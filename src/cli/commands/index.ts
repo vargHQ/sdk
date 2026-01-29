@@ -13,4 +13,5 @@ export {
 export { runCmd, showRunHelp, showTargetHelp } from "./run.tsx";
 export { showStoryboardHelp, storyboardCmd } from "./storyboard.tsx";
 export { studioCmd } from "./studio.ts";
+export { showUsageHelp, usageCmd } from "./usage.tsx";
 export { showWhichHelp, whichCmd } from "./which.tsx";

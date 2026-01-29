@@ -350,9 +350,15 @@ await render(
 await render(<Render>...</Render>, { output: "output/video.mp4" });
 
 // with cache directory
-await render(<Render>...</Render>, { 
+await render(<Render>...</Render>, {
   output: "output/video.mp4",
   cache: ".cache/ai"
+});
+
+// with usage tracking options
+await render(<Render>...</Render>, {
+  output: "output/video.mp4",
+  usage: { enabled: true, dir: ".cache/usage" }  // or usage: false to disable
 });
 
 // get buffer directly
@@ -514,6 +520,54 @@ CLOUDFLARE_R2_API_URL=https://xxx.r2.cloudflarestorage.com
 CLOUDFLARE_ACCESS_KEY_ID=xxx
 CLOUDFLARE_ACCESS_SECRET=xxx
 CLOUDFLARE_R2_BUCKET=bucket-name
+
+# usage tracking and limits (optional)
+VARG_USAGE_TRACKING=1                # enable tracking
+VARG_DAILY_LIMIT_IMAGES=100          # max images per day
+VARG_DAILY_LIMIT_VIDEOS=20           # max videos per day
+VARG_DAILY_LIMIT_COST=10.00          # max daily spend (USD)
+VARG_DAILY_LIMIT_SPEECH_MINUTES=60   # max speech minutes
+VARG_DAILY_LIMIT_MUSIC_MINUTES=30    # max music minutes
+VARG_DAILY_RESET_HOUR_UTC=0          # reset hour (0-23, default: 0)
+```
+
+## usage tracking
+
+varg tracks generation costs and enforces daily limits automatically. after each render, you'll see a usage summary:
+
+```text
+─────────────────────────────────────
+ Usage Summary
+─────────────────────────────────────
+  Images:  3 generated                   $0.012
+  Videos:  1 generated (5s)              $0.25
+─────────────────────────────────────
+  Session total                          $0.262
+─────────────────────────────────────
+```
+
+### daily limits
+
+set environment variables to enforce limits:
+
+```bash
+VARG_DAILY_LIMIT_IMAGES=100          # max images per day
+VARG_DAILY_LIMIT_VIDEOS=20           # max videos per day
+VARG_DAILY_LIMIT_COST=10.00          # max daily spend (USD)
+VARG_DAILY_LIMIT_SPEECH_MINUTES=60   # max speech minutes
+VARG_DAILY_LIMIT_MUSIC_MINUTES=30    # max music minutes
+VARG_DAILY_RESET_HOUR_UTC=0          # hour to reset (0-23)
+VARG_USAGE_TRACKING=1                # enable tracking without limits
+```
+
+### programmatic access
+
+```typescript
+import { createUsageTracker, formatCost } from "vargai/usage";
+
+const tracker = await createUsageTracker();
+const summary = tracker.getSessionSummary();
+console.log(`Spent today: ${formatCost(summary.totalCost)}`);
 ```
 
 ## cli
@@ -523,6 +577,9 @@ varg run image --prompt "sunset over mountains"
 varg run video --prompt "ocean waves" --duration 5
 varg run voice --text "Hello world" --voice rachel
 varg list              # list all actions
+varg usage             # view daily usage and costs
+varg usage --json      # json output for scripts
+varg usage --history   # last 7 days
 varg studio            # open visual editor
 ```
 
