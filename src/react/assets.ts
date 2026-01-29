@@ -1,9 +1,11 @@
+import { NoirPortrait } from "../characters";
+
+/** @deprecated use `import { NoirPortrait } from "vargai/characters"` instead */
 export const assets = {
   characters: {
-    orangeGirl: "https://s3.varg.ai/uploads/images/1_0475e227.png",
+    orangeGirl: NoirPortrait.imageRefs[0],
   },
   backgrounds: {
-    orangeGradient:
-      "https://s3.varg.ai/uploads/images/xyearp51qvve-zi3nrcve-zbno2hfgt5gergjrof_995f553d.png",
+    orangeGradient: NoirPortrait.imageRefs[1],
   },
 } as const;
