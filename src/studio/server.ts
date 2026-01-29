@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { analyzeRender } from "./analyze";
 import { getCacheItemMedia, scanCacheFolder } from "./scanner";
 import { extractStages, serializeStages } from "./stages";
 import {
@@ -347,6 +348,42 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
           const serialized = serializeStages(extracted);
 
           return Response.json(serialized);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 400 });
+        } finally {
+          try {
+            if (await Bun.file(tempFile).exists()) {
+              await Bun.$`rm ${tempFile}`;
+            }
+          } catch {}
+        }
+      }
+
+      // Analyze render - check cache status for each stage without executing
+      if (url.pathname === "/api/analyze" && req.method === "POST") {
+        const body = (await req.json()) as { code: string };
+        const tempDir = join(import.meta.dir, "../react/examples");
+        const tempFile = join(tempDir, `_analyze_${Date.now()}.tsx`);
+
+        try {
+          await Bun.write(tempFile, body.code);
+          const mod = await import(tempFile);
+          const element = mod.default;
+
+          if (
+            !element ||
+            typeof element !== "object" ||
+            element.type !== "render"
+          ) {
+            return Response.json(
+              { error: "file must export a <Render> element as default" },
+              { status: 400 },
+            );
+          }
+
+          const analysis = await analyzeRender(element, cacheDir);
+          return Response.json(analysis);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           return Response.json({ error: message }, { status: 400 });

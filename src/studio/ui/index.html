@@ -194,6 +194,13 @@
       background: var(--success);
       border-color: var(--success);
     }
+    .btn-toggle.pending {
+      animation: pulse-border 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { border-color: var(--accent); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+      50% { border-color: var(--accent); box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.4); }
+    }
     .history-section {
       padding: 1rem;
       border-top: 1px solid var(--border);
@@ -733,8 +740,8 @@
         <button class="btn btn-next" id="next-btn" style="display: none;">
           <span>→</span> next
         </button>
-        <button class="btn btn-toggle" id="auto-btn">
-          <span>⟳</span> auto
+        <button class="btn btn-toggle" id="live-btn">
+          <span>⟳</span> live
         </button>
         <button class="btn btn-danger" id="stop-btn" disabled>
           <span>⬜</span> stop
@@ -788,7 +795,7 @@ export default (
 
     let editor;
     let isRendering = false;
-    let autoMode = false;
+    let liveMode = false;
     let currentRenderId = null;
     let debounceTimer = null;
     let history = JSON.parse(localStorage.getItem('varg-history') || '[]');
@@ -804,6 +811,10 @@ export default (
     let currentView = 'code';
     let drawflowEditor = null;
     let renderingFinal = false;
+    
+    // Live mode state
+    let queuedRender = false;
+    let lastAnalysis = null;
 
     // Initialize Drawflow
     function initDrawflow() {
@@ -1302,9 +1313,38 @@ export default (
 
       editor.onDidChangeModelContent(() => {
         localStorage.setItem('varg-code', editor.getValue());
-        if (autoMode && !isRendering) {
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => startRender(), 2000);
+        
+        if (liveMode) {
+          if (isRendering) {
+            // Queue render for when current one completes
+            queuedRender = true;
+            showQueuedIndicator();
+          } else {
+            clearTimeout(debounceTimer);
+            showPendingIndicator();
+            
+            debounceTimer = setTimeout(async () => {
+              if (stepMode) {
+                await startLiveStepRender();
+              } else {
+                await startRender();
+              }
+              
+              // Check if new render was queued during execution
+              if (queuedRender) {
+                queuedRender = false;
+                hidePendingIndicator();
+                // Trigger another render after short delay
+                debounceTimer = setTimeout(() => {
+                  if (stepMode) {
+                    startLiveStepRender();
+                  } else {
+                    startRender();
+                  }
+                }, 500);
+              }
+            }, 1500);
+          }
         }
       });
 
@@ -1358,9 +1398,21 @@ export default (
       setStepMode(true);
     });
     
-    document.getElementById('auto-btn').addEventListener('click', () => {
-      autoMode = !autoMode;
-      document.getElementById('auto-btn').classList.toggle('active', autoMode);
+    document.getElementById('live-btn').addEventListener('click', () => {
+      liveMode = !liveMode;
+      document.getElementById('live-btn').classList.toggle('active', liveMode);
+      
+      // If turning on live mode and not currently rendering, trigger analysis
+      if (liveMode && !isRendering) {
+        showPendingIndicator();
+        debounceTimer = setTimeout(async () => {
+          if (stepMode) {
+            await startLiveStepRender();
+          } else {
+            await startRender();
+          }
+        }, 500);
+      }
     });
 
     document.getElementById('stop-btn').addEventListener('click', stopRender);
@@ -1395,7 +1447,7 @@ export default (
       document.getElementById('mode-step-btn').classList.toggle('active', enabled);
       document.getElementById('stage-timeline').classList.toggle('active', enabled && stages.length > 0);
       document.getElementById('next-btn').style.display = enabled && stepSession ? 'flex' : 'none';
-      document.getElementById('auto-btn').style.display = enabled ? 'none' : 'flex';
+      // Live mode button is now visible in both modes
       
       if (!enabled) {
         // Reset step state when switching to run-all mode
@@ -1515,6 +1567,145 @@ export default (
       }
     }
     
+    // Live mode helper functions
+    function showPendingIndicator() {
+      const btn = document.getElementById('live-btn');
+      btn.classList.add('pending');
+      const progressText = document.getElementById('progress-text');
+      progressText.textContent = 'analyzing...';
+      document.getElementById('progress-section').style.display = 'block';
+    }
+    
+    function hidePendingIndicator() {
+      const btn = document.getElementById('live-btn');
+      btn.classList.remove('pending');
+    }
+    
+    function showQueuedIndicator() {
+      const progressText = document.getElementById('progress-text');
+      progressText.textContent = progressText.textContent + ' (changes queued)';
+    }
+    
+    async function fetchAnalysis() {
+      const code = editor.getValue();
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        if (res.ok) {
+          lastAnalysis = await res.json();
+          return lastAnalysis;
+        }
+      } catch (err) {
+        console.error('Analysis failed:', err);
+      }
+      return null;
+    }
+    
+    function formatEta(ms) {
+      const seconds = Math.ceil(ms / 1000);
+      if (seconds < 60) return `~${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `~${minutes}m ${remainingSeconds}s`;
+    }
+    
+    async function startLiveStepRender() {
+      if (isRendering) return;
+      
+      hidePendingIndicator();
+      isRendering = true;
+      updateUI('rendering');
+      
+      const code = editor.getValue();
+      
+      try {
+        // First, get analysis to show cache status
+        const analysis = await fetchAnalysis();
+        if (analysis) {
+          const { summary } = analysis;
+          updateProgress(0, `${summary.total} stages: ${summary.cached} cached, ${summary.toGenerate} to generate ${summary.estimatedTotalTimeMs > 0 ? formatEta(summary.estimatedTotalTimeMs) : ''}`);
+        }
+        
+        // Create step session
+        const sessionRes = await fetch('/api/step/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        
+        if (!sessionRes.ok) {
+          const err = await sessionRes.json();
+          throw new Error(err.error || err.message || 'Failed to create step session');
+        }
+        
+        const sessionData = await sessionRes.json();
+        stepSession = sessionData;
+        stages = sessionData.stages.map(s => ({ ...s, status: 'pending' }));
+        currentStageIndex = -1;
+        selectedStageId = null;
+        
+        renderStageTimeline();
+        document.getElementById('next-btn').style.display = 'flex';
+        document.getElementById('stage-timeline').classList.add('active');
+        
+        // Auto-execute all stages
+        while (currentStageIndex < stages.length - 1 && !queuedRender) {
+          const nextIndex = currentStageIndex + 1;
+          currentStageIndex = nextIndex;
+          stages[nextIndex].status = 'running';
+          renderStageTimeline();
+          
+          const stageLabel = stages[nextIndex].label;
+          const progress = nextIndex / stages.length;
+          updateProgress(progress, `executing: ${stageLabel}`);
+          
+          const stepRes = await fetch('/api/step/next', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: stepSession.sessionId }),
+          });
+          
+          if (!stepRes.ok) {
+            const err = await stepRes.json();
+            throw new Error(err.error || err.message || 'Step execution failed');
+          }
+          
+          const stepData = await stepRes.json();
+          stages[nextIndex].status = 'complete';
+          stages[nextIndex].result = stepData.result;
+          
+          selectedStageId = stages[nextIndex].id;
+          renderStageTimeline();
+          showStagePreview(stepData);
+        }
+        
+        // All stages complete
+        if (!queuedRender) {
+          updateProgress(1, 'all stages complete');
+          document.getElementById('progress-bar').className = 'progress-bar complete';
+          document.getElementById('next-btn').disabled = true;
+          
+          // Add to history if final result is a video
+          const lastStage = stages[stages.length - 1];
+          if (lastStage?.result?.type === 'video' && lastStage?.result?.previewUrl) {
+            addToHistory(code, lastStage.result.previewUrl);
+          }
+        }
+        
+        updateUI('complete');
+        
+      } catch (err) {
+        showError(err.message);
+        updateUI('error');
+      }
+      
+      isRendering = false;
+      hidePendingIndicator();
+    }
+    
     async function startStepSession() {
       if (isRendering) return;
       
@@ -1631,12 +1822,22 @@ export default (
     async function startRender() {
       if (isRendering) return;
       
+      hidePendingIndicator();
       isRendering = true;
       updateUI('rendering');
       
       const code = editor.getValue();
       
       try {
+        // Show analysis first if in live mode
+        if (liveMode) {
+          const analysis = await fetchAnalysis();
+          if (analysis) {
+            const { summary } = analysis;
+            updateProgress(0, `${summary.total} stages: ${summary.cached} cached, ${summary.toGenerate} to generate ${summary.estimatedTotalTimeMs > 0 ? formatEta(summary.estimatedTotalTimeMs) : ''}`);
+          }
+        }
+        
         const res = await fetch('/api/render', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
