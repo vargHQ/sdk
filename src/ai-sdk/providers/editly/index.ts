@@ -839,10 +839,9 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     allFilters.push(audioFilter.filter);
   }
 
-  const inputArgs = allInputs.flatMap((input) => ["-i", input]);
   const filterComplex = allFilters.join(";");
 
-  const outputArgs = customOutputArgs ?? [
+  const codecArgs = customOutputArgs ?? [
     "-c:v",
     "libx264",
     "-preset",
@@ -859,30 +858,34 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     ? ["-map", `[${finalVideoLabel}]`, "-map", `[${audioFilter.outputLabel}]`]
     : ["-map", `[${finalVideoLabel}]`];
 
-  const ffmpegArgs = [
-    "-hide_banner",
-    "-loglevel",
-    verbose ? "info" : "error",
-    ...inputArgs,
-    "-filter_complex",
-    filterComplex,
+  const outputArgs = [
     ...mapArgs,
     "-r",
     String(fps),
-    ...outputArgs,
+    ...codecArgs,
     ...(config.shortest ? ["-shortest"] : []),
-    "-y",
-    outPath,
   ];
 
   if (verbose) {
-    console.log("ffmpeg", ffmpegArgs.join(" "));
+    const inputArgs = allInputs.flatMap((input) => ["-i", input]);
+    console.log(
+      "ffmpeg",
+      [
+        ...inputArgs,
+        "-filter_complex",
+        filterComplex,
+        ...outputArgs,
+        "-y",
+        outPath,
+      ].join(" "),
+    );
     console.log("\nFilter complex:\n", filterComplex.split(";").join(";\n"));
   }
 
   const result = await backend.run({
-    args: ffmpegArgs,
     inputs: allInputs,
+    filterComplex,
+    outputArgs,
     outputPath: outPath,
     verbose,
   });
