@@ -566,7 +566,7 @@ VARG_USAGE_TRACKING=1                # enable tracking without limits
 import { createUsageTracker, formatCost } from "vargai/usage";
 
 const tracker = await createUsageTracker();
-const summary = tracker.getSessionSummary();
+const summary = await tracker.getSessionSummary();
 console.log(`Spent today: ${formatCost(summary.totalCost)}`);
 ```
 

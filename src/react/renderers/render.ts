@@ -133,7 +133,10 @@ export async function renderRoot(
     // Record usage with estimated metrics (async - fetches pricing from API)
     // Note: The ai SDK's generateImage doesn't expose provider usage metrics
     const metrics: GenerationMetrics = {
-      provider: "fal",
+      provider:
+        typeof opts.model === "string"
+          ? "fal"
+          : ((opts.model as { provider?: string }).provider ?? "fal"),
       modelId: typeof opts.model === "string" ? opts.model : opts.model.modelId,
       resourceType: "image",
       count: result.images.length,
@@ -185,7 +188,10 @@ export async function renderRoot(
     } else {
       // Fallback: record with estimated metrics
       await usage.record({
-        provider: "fal",
+        provider:
+          typeof opts.model === "string"
+            ? "fal"
+            : ((opts.model as { provider?: string }).provider ?? "fal"),
         modelId:
           typeof opts.model === "string" ? opts.model : opts.model.modelId,
         resourceType: "video",

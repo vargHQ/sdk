@@ -170,6 +170,9 @@ export class FalPricing implements ProviderPricing {
         cost = priceInfo.price * ((metrics.characterCount ?? 100) / 1000);
         break;
       default:
+        console.warn(
+          `[varg] Unknown pricing unit "${priceInfo.unit}" for model "${metrics.modelId}" - cost set to $0`,
+        );
         cost = 0;
     }
 
@@ -257,6 +260,9 @@ export class ElevenLabsPricing implements ProviderPricing {
         cost = priceInfo.price * ((metrics.durationSeconds ?? 30) / 60);
         break;
       default:
+        console.warn(
+          `[varg] Unknown pricing unit "${priceInfo.unit}" for model "${metrics.modelId}" - cost set to $0`,
+        );
         cost = 0;
     }
 

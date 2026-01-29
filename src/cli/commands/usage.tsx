@@ -10,6 +10,7 @@ import {
   formatCost,
   getTimeUntilReset,
   getTodayDate,
+  getUsageDir,
   getUsageHistory,
   loadDailyUsage,
   loadLimitsFromEnv,
@@ -18,11 +19,11 @@ import {
 
 function printUsage(state: DailyUsageState, limits: DailyLimits): void {
   const hasLimits =
-    limits.images ||
-    limits.videos ||
-    limits.speechMinutes ||
-    limits.musicMinutes ||
-    limits.totalCost;
+    limits.images !== undefined ||
+    limits.videos !== undefined ||
+    limits.speechMinutes !== undefined ||
+    limits.musicMinutes !== undefined ||
+    limits.totalCost !== undefined;
   const timeUntilReset = getTimeUntilReset(limits.resetHourUTC);
 
   console.log(`\nUsage for ${state.date}`);
@@ -43,30 +44,43 @@ function printUsage(state: DailyUsageState, limits: DailyLimits): void {
   // Limits if configured
   if (hasLimits) {
     console.log("\nLimits:");
-    if (limits.images) {
-      const pct = Math.round((state.images / limits.images) * 100);
+    if (limits.images !== undefined) {
+      const pct =
+        limits.images > 0
+          ? Math.round((state.images / limits.images) * 100)
+          : 0;
       console.log(`  Images: ${state.images}/${limits.images} (${pct}%)`);
     }
-    if (limits.videos) {
-      const pct = Math.round((state.videos / limits.videos) * 100);
+    if (limits.videos !== undefined) {
+      const pct =
+        limits.videos > 0
+          ? Math.round((state.videos / limits.videos) * 100)
+          : 0;
       console.log(`  Videos: ${state.videos}/${limits.videos} (${pct}%)`);
     }
-    if (limits.speechMinutes) {
-      const pct = Math.round(
-        (state.speechMinutes / limits.speechMinutes) * 100,
-      );
+    if (limits.speechMinutes !== undefined) {
+      const pct =
+        limits.speechMinutes > 0
+          ? Math.round((state.speechMinutes / limits.speechMinutes) * 100)
+          : 0;
       console.log(
         `  Speech: ${Math.round(state.speechMinutes)}/${limits.speechMinutes} min (${pct}%)`,
       );
     }
-    if (limits.musicMinutes) {
-      const pct = Math.round((state.musicMinutes / limits.musicMinutes) * 100);
+    if (limits.musicMinutes !== undefined) {
+      const pct =
+        limits.musicMinutes > 0
+          ? Math.round((state.musicMinutes / limits.musicMinutes) * 100)
+          : 0;
       console.log(
         `  Music: ${Math.round(state.musicMinutes)}/${limits.musicMinutes} min (${pct}%)`,
       );
     }
-    if (limits.totalCost) {
-      const pct = Math.round((state.totalCost / limits.totalCost) * 100);
+    if (limits.totalCost !== undefined) {
+      const pct =
+        limits.totalCost > 0
+          ? Math.round((state.totalCost / limits.totalCost) * 100)
+          : 0;
       console.log(
         `  Cost: ${formatCost(state.totalCost)}/${formatCost(limits.totalCost)} (${pct}%)`,
       );
@@ -156,47 +170,62 @@ function buildJsonOutput(
 
   // Add limits if configured
   const hasLimits =
-    limits.images ||
-    limits.videos ||
-    limits.speechMinutes ||
-    limits.musicMinutes ||
-    limits.totalCost;
+    limits.images !== undefined ||
+    limits.videos !== undefined ||
+    limits.speechMinutes !== undefined ||
+    limits.musicMinutes !== undefined ||
+    limits.totalCost !== undefined;
 
   if (hasLimits) {
     output.limits = {};
-    if (limits.images) {
+    if (limits.images !== undefined) {
       output.limits.images = {
         current: state.images,
         limit: limits.images,
-        percent: Math.round((state.images / limits.images) * 100),
+        percent:
+          limits.images > 0
+            ? Math.round((state.images / limits.images) * 100)
+            : 0,
       };
     }
-    if (limits.videos) {
+    if (limits.videos !== undefined) {
       output.limits.videos = {
         current: state.videos,
         limit: limits.videos,
-        percent: Math.round((state.videos / limits.videos) * 100),
+        percent:
+          limits.videos > 0
+            ? Math.round((state.videos / limits.videos) * 100)
+            : 0,
       };
     }
-    if (limits.speechMinutes) {
+    if (limits.speechMinutes !== undefined) {
       output.limits.speechMinutes = {
         current: state.speechMinutes,
         limit: limits.speechMinutes,
-        percent: Math.round((state.speechMinutes / limits.speechMinutes) * 100),
+        percent:
+          limits.speechMinutes > 0
+            ? Math.round((state.speechMinutes / limits.speechMinutes) * 100)
+            : 0,
       };
     }
-    if (limits.musicMinutes) {
+    if (limits.musicMinutes !== undefined) {
       output.limits.musicMinutes = {
         current: state.musicMinutes,
         limit: limits.musicMinutes,
-        percent: Math.round((state.musicMinutes / limits.musicMinutes) * 100),
+        percent:
+          limits.musicMinutes > 0
+            ? Math.round((state.musicMinutes / limits.musicMinutes) * 100)
+            : 0,
       };
     }
-    if (limits.totalCost) {
+    if (limits.totalCost !== undefined) {
       output.limits.cost = {
         current: state.totalCost,
         limit: limits.totalCost,
-        percent: Math.round((state.totalCost / limits.totalCost) * 100),
+        percent:
+          limits.totalCost > 0
+            ? Math.round((state.totalCost / limits.totalCost) * 100)
+            : 0,
       };
     }
   }
@@ -231,10 +260,11 @@ export const usageCmd = defineCommand({
     }
 
     const limits = loadLimitsFromEnv();
+    const usageDir = getUsageDir();
     const date = (args.date as string) || getTodayDate(limits.resetHourUTC);
 
     if (args.history) {
-      const history = await getUsageHistory(7);
+      const history = await getUsageHistory(7, usageDir);
 
       if (args.json) {
         console.log(JSON.stringify(history, null, 2));
@@ -245,7 +275,7 @@ export const usageCmd = defineCommand({
       return;
     }
 
-    const state = await loadDailyUsage(date);
+    const state = await loadDailyUsage(date, usageDir);
 
     if (args.json) {
       const output = buildJsonOutput(state, limits);

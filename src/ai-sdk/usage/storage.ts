@@ -3,6 +3,7 @@
  * Persists daily usage data to .cache/usage/YYYY-MM-DD.json
  */
 
+import { mkdir } from "node:fs/promises";
 import type { DailyUsageState } from "./types";
 
 const DEFAULT_USAGE_DIR = ".cache/usage";
@@ -73,10 +74,13 @@ export function createEmptyState(date: string): DailyUsageState {
  * Ensure the usage directory exists
  */
 async function ensureUsageDir(usageDir = DEFAULT_USAGE_DIR): Promise<void> {
-  const dir = Bun.file(usageDir);
-  if (!(await dir.exists())) {
-    // Create directory by writing a .gitkeep file
-    await Bun.write(`${usageDir}/.gitkeep`, "");
+  // Create directory if it doesn't exist (recursive handles parent dirs)
+  await mkdir(usageDir, { recursive: true });
+  // Write .gitkeep only if it doesn't exist
+  const gitkeepPath = `${usageDir}/.gitkeep`;
+  const gitkeepFile = Bun.file(gitkeepPath);
+  if (!(await gitkeepFile.exists())) {
+    await Bun.write(gitkeepPath, "");
   }
 }
 
