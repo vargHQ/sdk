@@ -129,7 +129,7 @@ export class RendiBackend implements FFmpegBackend {
       let result = arg;
       for (const [url, ph] of pathToPlaceholder) {
         if (result.includes(url)) {
-          result = result.replace(url, ph);
+          result = result.replaceAll(url, ph);
         }
       }
       return result;
