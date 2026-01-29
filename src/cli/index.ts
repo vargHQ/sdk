@@ -12,6 +12,7 @@ import { defineCommand, runMain } from "citty";
 import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
 import {
+  exportCmd,
   findCmd,
   frameCmd,
   helloCmd,
@@ -21,6 +22,7 @@ import {
   previewCmd,
   renderCmd,
   runCmd,
+  showExportHelp,
   showFindHelp,
   showFrameHelp,
   showHelp,
@@ -59,6 +61,7 @@ const subcommandHelp: Record<string, () => void> = {
   run: showRunHelp,
   render: showRenderHelp,
   preview: showPreviewHelp,
+  export: showExportHelp,
   frame: showFrameHelp,
   storyboard: showStoryboardHelp,
   init: showInitHelp,
@@ -120,6 +123,7 @@ const main = defineCommand({
     init: initCmd,
     render: renderCmd,
     preview: previewCmd,
+    export: exportCmd,
     frame: frameCmd,
     storyboard: storyboardCmd,
     studio: studioCmd,
