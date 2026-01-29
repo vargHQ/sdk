@@ -29,6 +29,7 @@ import type {
 } from "./types";
 
 export * from "./backends";
+export * from "./rendi";
 export * from "./types";
 
 const DEFAULT_DURATION = 4;

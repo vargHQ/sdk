@@ -79,6 +79,7 @@
     "./react": "./src/react/index.ts",
     "./studio": "./src/studio/index.ts",
     "./jsx-runtime": "./src/react/runtime/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/react/runtime/jsx-dev-runtime.ts"
+    "./jsx-dev-runtime": "./src/react/runtime/jsx-dev-runtime.ts",
+    "./editly": "./src/ai-sdk/providers/editly/index.ts"
   }
 }
