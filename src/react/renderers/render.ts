@@ -14,6 +14,7 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
+
 import type {
   CaptionsProps,
   ClipProps,
@@ -25,6 +26,7 @@ import type {
   SpeechProps,
   VargElement,
 } from "../types";
+import { burnCaptions } from "./burn-captions";
 import { renderCaptions } from "./captions";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
@@ -271,7 +273,7 @@ export async function renderRoot(
   const editlyTaskId = addTask(progress, "editly", "ffmpeg");
   startTask(progress, editlyTaskId);
 
-  await editly({
+  const editlyResult = await editly({
     outPath: tempOutPath,
     width: ctx.width,
     height: ctx.height,
@@ -280,19 +282,43 @@ export async function renderRoot(
     audioTracks: audioTracks.length > 0 ? audioTracks : undefined,
     shortest: props.shortest,
     verbose: options.verbose,
+    backend: options.backend,
   });
 
   completeTask(progress, editlyTaskId);
+
+  let output = editlyResult.output;
 
   if (hasCaptions && captionsResult) {
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
 
-    const { $ } = await import("bun");
-    await $`ffmpeg -y -i ${tempOutPath} -vf "ass=${captionsResult.assPath}" -crf 18 -preset slow -c:a copy ${finalOutPath}`.quiet();
+    output = await burnCaptions({
+      video: output,
+      assPath: captionsResult.assPath,
+      outputPath: finalOutPath,
+      backend: options.backend,
+      verbose: options.verbose,
+    });
 
-    ctx.tempFiles.push(tempOutPath);
+    if (!options.backend) {
+      ctx.tempFiles.push(tempOutPath);
+    }
+
     completeTask(progress, captionsTaskId);
+  }
+
+  let finalBuffer: ArrayBuffer;
+  if (output.type === "url") {
+    const res = await fetch(output.url);
+    if (!res.ok)
+      throw new Error(`Failed to download final render: ${res.status}`);
+    finalBuffer = await res.arrayBuffer();
+    if (options.output) {
+      await Bun.write(options.output, finalBuffer);
+    }
+  } else {
+    finalBuffer = await Bun.file(output.path).arrayBuffer();
   }
 
   if (!options.quiet && mode === "preview" && placeholderCount.total > 0) {
@@ -301,6 +327,5 @@ export async function renderRoot(
     );
   }
 
-  const result = await Bun.file(finalOutPath).arrayBuffer();
-  return new Uint8Array(result);
+  return new Uint8Array(finalBuffer);
 }
