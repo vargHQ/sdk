@@ -80,12 +80,15 @@ export async function burnCaptions(
 
   const backend = options.backend ?? localBackend;
 
+  // FFmpeg filter syntax requires escaping backslashes and colons
+  const escapedAssPath = assInput.replace(/\\/g, "\\\\").replace(/:/g, "\\:");
+
   const result = await backend.run({
     args: [
       "-i",
       videoInput,
       "-vf",
-      `subtitles=${assInput}`,
+      `subtitles=${escapedAssPath}`,
       "-crf",
       "18",
       "-preset",
