@@ -407,6 +407,36 @@ function escapeAttr(str: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function isLocalFilePath(src: string): boolean {
+  if (src.startsWith("http://") || src.startsWith("https://")) return false;
+  if (src.startsWith("data:")) return false;
+  return true;
+}
+
+async function localFileToDataUrl(src: string): Promise<string | undefined> {
+  try {
+    const resolved = resolve(process.cwd(), src);
+    const file = Bun.file(resolved);
+    if (!(await file.exists())) return undefined;
+    const buffer = await file.arrayBuffer();
+    const ext = src.split(".").pop()?.toLowerCase();
+    const mimeType =
+      ext === "png"
+        ? "image/png"
+        : ext === "jpg" || ext === "jpeg"
+          ? "image/jpeg"
+          : ext === "gif"
+            ? "image/gif"
+            : ext === "webp"
+              ? "image/webp"
+              : "image/png";
+    const base64 = Buffer.from(buffer).toString("base64");
+    return `data:${mimeType};base64,${base64}`;
+  } catch {
+    return undefined;
+  }
+}
+
 function generateHtml(storyboard: Storyboard, sourceFile: string): string {
   const escapedSourceFile = escapeHtml(sourceFile);
 
@@ -434,22 +464,30 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       )
       .join("");
 
-    const isInputWithUrl =
-      el.type === "input" &&
-      el.src &&
-      (el.src.startsWith("http://") || el.src.startsWith("https://"));
+    const hasSrcWithPreview =
+      el.src && (el.type === "input" || (el.type === "image" && !el.prompt));
+    const previewSrc =
+      el.imageDataUrl ||
+      (el.src && !isLocalFilePath(el.src) ? el.src : undefined);
 
-    if (isInputWithUrl) {
-      const shortUrl =
+    if (hasSrcWithPreview) {
+      const shortPath =
         el.src!.length > 50 ? `${el.src!.slice(0, 50)}...` : el.src!;
+      const isUrl =
+        el.src!.startsWith("http://") || el.src!.startsWith("https://");
       const escapedSrc = escapeAttr(el.src!);
+      const previewImgSrc = previewSrc ? escapeAttr(previewSrc) : undefined;
       return `
       <div class="tree-node" style="--depth: ${depth}">
         <span class="tree-prefix">${parentPrefix}${connector}</span>
         <span class="type-tag" style="background: ${color}">${el.type}</span>
         <span class="input-preview-wrapper">
-          <a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="tree-prompt input-url">${escapeHtml(shortUrl)}</a>
-          <span class="input-preview-tooltip"><img src="${escapedSrc}" alt="preview" /></span>
+          ${
+            isUrl
+              ? `<a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="tree-prompt input-url">${escapeHtml(shortPath)}</a>`
+              : `<span class="tree-prompt input-url">${escapeHtml(shortPath)}</span>`
+          }
+          ${previewImgSrc ? `<span class="input-preview-tooltip"><img src="${previewImgSrc}" alt="preview" /></span>` : ""}
         </span>
       </div>${childrenHtml}`;
     }
@@ -522,24 +560,34 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
         const grandChildren =
           (child.details.children as StoryboardElement[]) || [];
 
-        const isInputWithUrl =
-          child.type === "input" &&
+        const hasSrcWithPreview =
           child.src &&
-          (child.src.startsWith("http://") || child.src.startsWith("https://"));
+          (child.type === "input" || (child.type === "image" && !child.prompt));
+        const previewSrc =
+          child.imageDataUrl ||
+          (child.src && !isLocalFilePath(child.src) ? child.src : undefined);
 
-        if (isInputWithUrl) {
-          const shortUrl =
+        if (hasSrcWithPreview) {
+          const shortPath =
             child.src!.length > 60
               ? `${child.src!.slice(0, 60)}...`
               : child.src!;
+          const isUrl =
+            child.src!.startsWith("http://") ||
+            child.src!.startsWith("https://");
           const escapedSrc = escapeAttr(child.src!);
+          const previewImgSrc = previewSrc ? escapeAttr(previewSrc) : undefined;
           return `
           <div class="timeline-nested">
             <span class="nested-connector">${connector}</span>
             <span class="nested-type" style="background: ${color}">${child.type}</span>
             <span class="input-preview-wrapper">
-              <a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="nested-prompt input-url">${escapeHtml(shortUrl)}</a>
-              <span class="input-preview-tooltip"><img src="${escapedSrc}" alt="preview" /></span>
+              ${
+                isUrl
+                  ? `<a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="nested-prompt input-url">${escapeHtml(shortPath)}</a>`
+                  : `<span class="nested-prompt input-url">${escapeHtml(shortPath)}</span>`
+              }
+              ${previewImgSrc ? `<span class="input-preview-tooltip"><img src="${previewImgSrc}" alt="preview" /></span>` : ""}
             </span>
           </div>
           ${grandChildren.length > 0 ? renderNestedTree(grandChildren, depth + 1) : ""}`;
@@ -1451,7 +1499,17 @@ async function populateCachedImages(
   let foundCount = 0;
 
   async function lookupImage(el: StoryboardElement): Promise<void> {
-    if (el.type === "image" && el._element) {
+    // Handle local file sources (for both "image" and "input" types)
+    if (el.src && isLocalFilePath(el.src) && !el.imageDataUrl) {
+      const dataUrl = await localFileToDataUrl(el.src);
+      if (dataUrl) {
+        el.imageDataUrl = dataUrl;
+        foundCount++;
+      }
+    }
+
+    // Handle cached generated images
+    if (el.type === "image" && el._element && !el.imageDataUrl) {
       const cacheKeyParts = computeCacheKey(el._element);
       const cacheKey = `generateImage:${cacheKeyParts.map((d) => String(d ?? "")).join(":")}`;
       const cached = (await cache.get(cacheKey)) as
