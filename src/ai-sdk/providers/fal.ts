@@ -45,7 +45,7 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   },
   // LTX-2 19B Distilled - video with native audio generation
   "ltx-2-19b-distilled": {
-    t2v: "fal-ai/ltx-2-19b/distilled/image-to-video", // i2v only, requires image input
+    t2v: "fal-ai/ltx-2-19b/distilled/text-to-video",
     i2v: "fal-ai/ltx-2-19b/distilled/image-to-video",
   },
 };
