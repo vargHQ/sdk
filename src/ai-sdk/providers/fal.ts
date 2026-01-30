@@ -12,6 +12,7 @@ import {
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
 import pMap from "p-map";
+import type { CacheStorage } from "../cache";
 import { fileCache } from "../file-cache";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 
@@ -21,7 +22,54 @@ interface PendingRequest {
   submitted_at: number;
 }
 
-const pendingStorage = fileCache({ dir: ".cache/fal-pending" });
+const memoryStorage = new Map<string, { value: unknown; expires: number }>();
+
+function createMemoryCache(): CacheStorage {
+  return {
+    async get(key: string) {
+      const entry = memoryStorage.get(key);
+      if (!entry) return undefined;
+      if (entry.expires && Date.now() > entry.expires) {
+        memoryStorage.delete(key);
+        return undefined;
+      }
+      return entry.value;
+    },
+    async set(key: string, value: unknown, ttl?: number) {
+      memoryStorage.set(key, { value, expires: ttl ? Date.now() + ttl : 0 });
+    },
+    async delete(key: string) {
+      memoryStorage.delete(key);
+    },
+  };
+}
+
+// TODO: allow passing CacheStorage via providerOptions.fal.cacheStorage for proper serverless support
+function isFilesystemWritable(): boolean {
+  try {
+    const testPath = `.cache/.write-test-${Date.now()}`;
+    Bun.spawnSync(["mkdir", "-p", ".cache"]);
+    const result = Bun.spawnSync(["touch", testPath]);
+    if (result.exitCode === 0) {
+      Bun.spawnSync(["rm", testPath]);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+const USE_FILE_CACHE = isFilesystemWritable();
+
+function createFalCache(name: string): CacheStorage {
+  if (!USE_FILE_CACHE) {
+    return createMemoryCache();
+  }
+  return fileCache({ dir: `.cache/${name}` });
+}
+
+const pendingStorage = createFalCache("fal-pending");
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const FAL_TIMEOUT_MS = (() => {
@@ -183,7 +231,7 @@ function detectImageType(bytes: Uint8Array): string | undefined {
   return undefined;
 }
 
-const uploadCache = fileCache({ dir: ".cache/fal-uploads" });
+const uploadCache = createFalCache("fal-uploads");
 
 async function fileToUrl(file: ImageModelV3File): Promise<string> {
   if (file.type === "url") return file.url;
