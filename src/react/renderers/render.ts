@@ -18,6 +18,7 @@ import {
   createUsageTracker,
   formatCost,
   type GenerationMetrics,
+  type UsageProvider,
   type UsageTrackerOptions,
 } from "../../ai-sdk/usage";
 import type {
@@ -52,6 +53,13 @@ interface RenderedOverlay {
   props: OverlayProps;
   isVideo: boolean;
 }
+
+const isUsageProvider = (value: unknown): value is UsageProvider =>
+  value === "fal" ||
+  value === "elevenlabs" ||
+  value === "openai" ||
+  value === "replicate" ||
+  value === "google";
 
 export async function renderRoot(
   element: VargElement<"render">,
@@ -132,11 +140,12 @@ export async function renderRoot(
 
     // Record usage with estimated metrics (async - fetches pricing from API)
     // Note: The ai SDK's generateImage doesn't expose provider usage metrics
+    const modelProvider =
+      typeof opts.model === "string"
+        ? undefined
+        : (opts.model as { provider?: string }).provider;
     const metrics: GenerationMetrics = {
-      provider:
-        typeof opts.model === "string"
-          ? "fal"
-          : ((opts.model as { provider?: string }).provider ?? "fal"),
+      provider: isUsageProvider(modelProvider) ? modelProvider : "fal",
       modelId: typeof opts.model === "string" ? opts.model : opts.model.modelId,
       resourceType: "image",
       count: result.images.length,
@@ -187,11 +196,12 @@ export async function renderRoot(
       });
     } else {
       // Fallback: record with estimated metrics
+      const modelProvider =
+        typeof opts.model === "string"
+          ? undefined
+          : (opts.model as { provider?: string }).provider;
       await usage.record({
-        provider:
-          typeof opts.model === "string"
-            ? "fal"
-            : ((opts.model as { provider?: string }).provider ?? "fal"),
+        provider: isUsageProvider(modelProvider) ? modelProvider : "fal",
         modelId:
           typeof opts.model === "string" ? opts.model : opts.model.modelId,
         resourceType: "video",
