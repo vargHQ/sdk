@@ -1,9 +1,11 @@
 import { $ } from "bun";
+import { File } from "../../../file";
 import type {
   FFmpegBackend,
   FFmpegInput,
   FFmpegRunOptions,
   FFmpegRunResult,
+  FilePath,
   VideoInfo,
 } from "./types";
 
@@ -38,16 +40,23 @@ export class LocalBackend implements FFmpegBackend {
     };
   }
 
-  private buildInputArgs(inputs: FFmpegInput[]): string[] {
+  async resolvePath(path: FilePath): Promise<string> {
+    if (typeof path === "string") return path;
+    return path.url ?? (await path.toTempFile());
+  }
+
+  private async buildInputArgs(inputs: FFmpegInput[]): Promise<string[]> {
     const args: string[] = [];
     for (const input of inputs) {
-      if (typeof input === "string") {
+      if (input instanceof File) {
+        args.push("-i", await this.resolvePath(input));
+      } else if (typeof input === "string") {
         args.push("-i", input);
       } else if ("raw" in input) {
         args.push(...input.raw);
       } else {
         if (input.options) args.push(...input.options);
-        args.push("-i", input.path);
+        args.push("-i", await this.resolvePath(input.path));
       }
     }
     return args;
@@ -63,7 +72,7 @@ export class LocalBackend implements FFmpegBackend {
       verbose,
     } = options;
 
-    const inputArgs = this.buildInputArgs(inputs);
+    const inputArgs = await this.buildInputArgs(inputs);
 
     const ffmpegArgs = [
       "-hide_banner",

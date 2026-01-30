@@ -5,15 +5,10 @@ import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
 import { computeCacheKey, getTextContent } from "./utils";
 
-export interface SpeechResult {
-  path: string;
-  duration?: number;
-}
-
 export async function renderSpeech(
   element: VargElement<"speech">,
   ctx: RenderContext,
-): Promise<SpeechResult> {
+): Promise<File> {
   const props = element.props as SpeechProps;
   const text = getTextContent(element.children);
 
@@ -41,13 +36,9 @@ export async function renderSpeech(
 
   if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
-  const tempPath = await File.toTemp({
+  return File.fromGenerated({
     uint8Array: audio.uint8Array,
-    mimeType: "audio/mpeg",
+    mediaType: (audio as { mediaType?: string }).mediaType ?? "audio/mpeg",
+    url: (audio as { url?: string }).url,
   });
-  ctx.tempFiles.push(tempPath);
-
-  return {
-    path: tempPath,
-  };
 }

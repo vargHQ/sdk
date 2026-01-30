@@ -4,5 +4,6 @@ export type {
   FFmpegInput,
   FFmpegRunOptions,
   FFmpegRunResult,
+  FilePath,
   VideoInfo,
 } from "./types";

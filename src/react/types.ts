@@ -13,6 +13,7 @@ import type {
   SizeValue,
   TransitionOptions,
 } from "../ai-sdk/providers/editly/types";
+import type { StorageProvider } from "../ai-sdk/storage/types";
 import type { VideoModelV3 } from "../ai-sdk/video-model";
 
 export type VargElementType =
@@ -271,6 +272,7 @@ export interface RenderOptions {
   mode?: RenderMode;
   defaults?: DefaultModels;
   backend?: FFmpegBackend;
+  storage?: StorageProvider;
 }
 
 export interface ElementPropsMap {

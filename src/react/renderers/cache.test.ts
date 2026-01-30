@@ -4,7 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ImageModelV3 } from "@ai-sdk/provider";
 import { withCache } from "../../ai-sdk/cache";
+import type { File } from "../../ai-sdk/file";
 import { fileCache } from "../../ai-sdk/file-cache";
+import { localBackend } from "../../ai-sdk/providers/editly";
 import type { VideoModelV3 } from "../../ai-sdk/video-model";
 import { Image, Video } from "../elements";
 import type { RenderContext } from "./context";
@@ -99,7 +101,8 @@ function createContext(
     generateImage: generateImage as unknown as RenderContext["generateImage"],
     generateVideo: generateVideo as unknown as RenderContext["generateVideo"],
     tempFiles: [],
-    pending: new Map(),
+    pendingFiles: new Map<string, Promise<File>>(),
+    backend: localBackend,
   };
 }
 

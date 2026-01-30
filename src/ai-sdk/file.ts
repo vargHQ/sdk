@@ -1,4 +1,5 @@
 import type { ImageModelV3File } from "@ai-sdk/provider";
+import type { StorageProvider } from "./storage/types";
 
 export class File {
   private _data: Uint8Array | null = null;
@@ -8,13 +9,14 @@ export class File {
 
   private constructor(
     options:
-      | { data: Uint8Array; mediaType: string }
+      | { data: Uint8Array; mediaType: string; url?: string }
       | { url: string; mediaType?: string }
       | { loader: () => Promise<Uint8Array>; mediaType: string },
   ) {
     if ("data" in options) {
       this._data = options.data;
       this._mediaType = options.mediaType;
+      this._url = options.url ?? null;
     } else if ("url" in options) {
       this._url = options.url;
       this._mediaType = options.mediaType ?? inferMediaType(options.url);
@@ -46,10 +48,12 @@ export class File {
   static fromGenerated(generated: {
     uint8Array: Uint8Array;
     mediaType: string;
+    url?: string;
   }): File {
     return new File({
       data: generated.uint8Array,
       mediaType: generated.mediaType,
+      url: generated.url,
     });
   }
 
@@ -119,6 +123,10 @@ export class File {
     return this._mediaType.startsWith("video/");
   }
 
+  get url(): string | null {
+    return this._url;
+  }
+
   async data(): Promise<Uint8Array> {
     if (this._data) return this._data;
     if (this._loader) {
@@ -142,18 +150,17 @@ export class File {
     return new Blob([data], { type: this._mediaType });
   }
 
-  async url(uploader?: (blob: Blob) => Promise<string>): Promise<string> {
-    if (this._url && !this._data && !this._loader) {
-      return this._url;
-    }
-    const blob = await this.blob();
-    if (uploader) return uploader(blob);
-    try {
-      const { fal } = await import("@fal-ai/client");
-      return fal.storage.upload(blob);
-    } catch {
-      throw new Error("No uploader provided and @fal-ai/client not available.");
-    }
+  /**
+   * Upload file to storage and return the URL. Returns cached URL if already uploaded.
+   * @param storage - Storage provider to use for upload
+   * @returns URL of the uploaded file
+   */
+  async upload(storage: StorageProvider): Promise<string> {
+    if (this._url) return this._url;
+    const data = await this.data();
+    const key = `varg/${Date.now()}-${Math.random().toString(36).slice(2)}${this.extensionFromMediaType()}`;
+    this._url = await storage.upload(data, key, this._mediaType);
+    return this._url;
   }
 
   async base64(): Promise<string> {
@@ -166,14 +173,18 @@ export class File {
   }
 
   async toInput(): Promise<ImageModelV3File> {
-    if (this._url && !this._data && !this._loader) {
+    if (this._url) {
       return { type: "url", url: this._url };
     }
     const data = await this.arrayBuffer();
     return { type: "file", mediaType: this._mediaType, data };
   }
 
-  async toTemp(): Promise<string> {
+  /**
+   * Write file data to a temporary file and return the path.
+   * @returns Path to the temporary file
+   */
+  async toTempFile(): Promise<string> {
     const data = await this.data();
     const ext = this.extensionFromMediaType();
     const tmpDir = process.env.TMPDIR ?? "/tmp";
@@ -189,10 +200,10 @@ export class File {
       | File,
   ): Promise<string> {
     if (file instanceof File) {
-      return file.toTemp();
+      return file.toTempFile();
     }
     const f = File.from(file);
-    return f.toTemp();
+    return f.toTempFile();
   }
 
   private extensionFromMediaType(): string {

@@ -23,9 +23,8 @@ async function resolveImageInput(
     const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
   }
-  const path = await renderImage(input, ctx);
-  const response = await fetch(toFileUrl(path));
-  return new Uint8Array(await response.arrayBuffer());
+  const file = await renderImage(input, ctx);
+  return file.arrayBuffer();
 }
 
 async function resolveAudioInput(
@@ -38,11 +37,9 @@ async function resolveAudioInput(
     const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
   }
-  // It's a Speech element - render it first
   if (input.type === "speech") {
-    const { path } = await renderSpeech(input, ctx);
-    const response = await fetch(toFileUrl(path));
-    return new Uint8Array(await response.arrayBuffer());
+    const file = await renderSpeech(input, ctx);
+    return file.arrayBuffer();
   }
   throw new Error(
     `Unsupported audio input type: ${(input as VargElement).type}`,
@@ -59,11 +56,9 @@ async function resolveVideoInput(
     const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
   }
-  // It's a Video element - render it first
   if (input.type === "video") {
-    const path = await renderVideo(input, ctx);
-    const response = await fetch(toFileUrl(path));
-    return new Uint8Array(await response.arrayBuffer());
+    const file = await renderVideo(input, ctx);
+    return file.arrayBuffer();
   }
   throw new Error(
     `Unsupported video input type: ${(input as VargElement).type}`,
@@ -103,11 +98,13 @@ async function resolvePrompt(
 export async function renderVideo(
   element: VargElement<"video">,
   ctx: RenderContext,
-): Promise<string> {
+): Promise<File> {
   const props = element.props as VideoProps;
 
   if (props.src && !props.prompt) {
-    return props.src;
+    return typeof props.src === "string" && props.src.startsWith("http")
+      ? File.fromUrl(props.src)
+      : File.fromPath(props.src);
   }
 
   const prompt = props.prompt;
@@ -122,17 +119,14 @@ export async function renderVideo(
     );
   }
 
-  // Compute cache key for deduplication
   const cacheKey = computeCacheKey(element);
   const cacheKeyStr = JSON.stringify(cacheKey);
 
-  // Check if this element is already being rendered (deduplication)
-  const pendingRender = ctx.pending.get(cacheKeyStr);
+  const pendingRender = ctx.pendingFiles.get(cacheKeyStr);
   if (pendingRender) {
     return pendingRender;
   }
 
-  // Create the render promise and store it for deduplication
   const renderPromise = (async () => {
     const resolvedPrompt = await resolvePrompt(prompt, ctx);
 
@@ -153,13 +147,14 @@ export async function renderVideo(
 
     if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
-    const tempPath = await File.toTemp(video);
-    ctx.tempFiles.push(tempPath);
-
-    return tempPath;
+    return File.fromGenerated({
+      uint8Array: video.uint8Array,
+      mediaType: video.mimeType ?? "video/mp4",
+      url: (video as { url?: string }).url,
+    });
   })();
 
-  ctx.pending.set(cacheKeyStr, renderPromise);
+  ctx.pendingFiles.set(cacheKeyStr, renderPromise);
 
   return renderPromise;
 }

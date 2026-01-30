@@ -21,9 +21,8 @@ async function resolveImageInput(
     const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
   }
-  const path = await renderImage(input, ctx);
-  const response = await fetch(toFileUrl(path));
-  return new Uint8Array(await response.arrayBuffer());
+  const file = await renderImage(input, ctx);
+  return file.arrayBuffer();
 }
 
 async function resolvePrompt(
@@ -42,11 +41,13 @@ async function resolvePrompt(
 export async function renderImage(
   element: VargElement<"image">,
   ctx: RenderContext,
-): Promise<string> {
+): Promise<File> {
   const props = element.props as ImageProps;
 
   if (props.src) {
-    return props.src;
+    return typeof props.src === "string" && props.src.startsWith("http")
+      ? File.fromUrl(props.src)
+      : File.fromPath(props.src);
   }
 
   const prompt = props.prompt;
@@ -61,17 +62,14 @@ export async function renderImage(
     );
   }
 
-  // Compute cache key for deduplication
   const cacheKey = computeCacheKey(element);
   const cacheKeyStr = JSON.stringify(cacheKey);
 
-  // Check if this element is already being rendered (deduplication)
-  const pendingRender = ctx.pending.get(cacheKeyStr);
+  const pendingRender = ctx.pendingFiles.get(cacheKeyStr);
   if (pendingRender) {
     return pendingRender;
   }
 
-  // Create the render promise and store it for deduplication
   const renderPromise = (async () => {
     const resolvedPrompt = await resolvePrompt(prompt, ctx);
 
@@ -96,17 +94,15 @@ export async function renderImage(
     if (!firstImage?.uint8Array) {
       throw new Error("Image generation returned no image data");
     }
-    const imageData = firstImage.uint8Array;
-    const tempPath = await File.toTemp({
-      uint8Array: imageData,
-      mimeType: "image/png",
-    });
-    ctx.tempFiles.push(tempPath);
 
-    return tempPath;
+    return File.fromGenerated({
+      uint8Array: firstImage.uint8Array,
+      mediaType: "image/png",
+      url: (firstImage as { url?: string }).url,
+    });
   })();
 
-  ctx.pending.set(cacheKeyStr, renderPromise);
+  ctx.pendingFiles.set(cacheKeyStr, renderPromise);
 
   return renderPromise;
 }

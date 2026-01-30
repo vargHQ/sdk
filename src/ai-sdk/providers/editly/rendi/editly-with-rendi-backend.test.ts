@@ -7,6 +7,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { $ } from "bun";
+import type { StorageProvider } from "../../../storage/types";
 import { editly } from "../index";
 import { createRendiBackend } from ".";
 
@@ -19,7 +20,15 @@ const VIDEO_TALKING =
   "https://s3.varg.ai/test-media/workflow-talking-synced.mp4";
 const IMAGE_SQUARE = "https://s3.varg.ai/test-media/replicate-forest.png";
 
-const rendi = shouldRunRendiTests ? createRendiBackend() : (null as never);
+const mockStorage: StorageProvider = {
+  async upload() {
+    throw new Error("Mock storage - upload not expected in this test");
+  },
+};
+
+const rendiBackend = shouldRunRendiTests
+  ? createRendiBackend({ storage: mockStorage })
+  : (null as never);
 
 async function saveResult(
   result: {
@@ -52,7 +61,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/merge.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1280,
       height: 720,
       fps: 30,
@@ -74,7 +83,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/pip.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1280,
       height: 720,
       fps: 30,
@@ -103,7 +112,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/ken-burns.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1280,
       height: 720,
       fps: 30,
@@ -130,7 +139,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/subtitle.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1280,
       height: 720,
       fps: 30,
@@ -167,7 +176,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/news-title.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1280,
       height: 720,
       fps: 30,
@@ -205,7 +214,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/keep-audio.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1280,
       height: 720,
       fps: 30,
@@ -227,7 +236,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/keep-audio-cut.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1280,
       height: 720,
       fps: 30,
@@ -248,7 +257,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/contain-blur.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1080,
       height: 1920,
       fps: 30,
@@ -269,7 +278,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/crop-position.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1080,
       height: 1920,
       fps: 30,
@@ -310,7 +319,7 @@ describe.skipIf(!shouldRunRendiTests)("editly (rendi backend)", () => {
     const outPath = "output/rendi/portrait-zoompan.mp4";
     const result = await editly({
       outPath,
-      backend: rendi,
+      backend: rendiBackend,
       width: 1080,
       height: 1920,
       fps: 30,

@@ -12,7 +12,6 @@ export {
 } from "./progress";
 export { renderRoot } from "./render";
 export { renderSlider } from "./slider";
-export type { SpeechResult } from "./speech";
 export { renderSpeech } from "./speech";
 export { renderSplit } from "./split";
 export { renderSwipe } from "./swipe";

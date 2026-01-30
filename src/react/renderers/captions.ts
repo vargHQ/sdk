@@ -243,8 +243,8 @@ export async function renderCaptions(
       srtContent = await Bun.file(props.src).text();
       srtPath = props.src;
     } else if (props.src.type === "speech") {
-      const speechResult = await renderSpeech(props.src, ctx);
-      audioPath = speechResult.path;
+      const speechFile = await renderSpeech(props.src, ctx);
+      audioPath = await ctx.backend.resolvePath(speechFile);
 
       const transcribeTaskId = ctx.progress
         ? addTask(ctx.progress, "transcribe", "groq-whisper")
@@ -252,7 +252,10 @@ export async function renderCaptions(
       if (transcribeTaskId && ctx.progress)
         startTask(ctx.progress, transcribeTaskId);
 
-      const audioData = await Bun.file(speechResult.path).arrayBuffer();
+      const audioData =
+        audioPath.startsWith("http://") || audioPath.startsWith("https://")
+          ? await fetch(audioPath).then((res) => res.arrayBuffer())
+          : await Bun.file(audioPath).arrayBuffer();
 
       const result = await transcribe({
         model: groq.transcription("whisper-large-v3"),

@@ -54,8 +54,14 @@ export {
   type Clip as EditlyClip,
   type EditlyConfig,
   editly,
+  type FFmpegBackend,
   type Layer as EditlyLayer,
+  localBackend,
 } from "./providers/editly";
+export {
+  createRendiBackend,
+  type RendiBackendOptions,
+} from "./providers/editly/rendi";
 export {
   createElevenLabs,
   type ElevenLabsProvider,
@@ -92,6 +98,12 @@ export {
   createTogetherProvider,
   together,
 } from "./providers/together";
+export {
+  falStorage,
+  type R2StorageOptions,
+  r2Storage,
+  type StorageProvider,
+} from "./storage";
 export type {
   VideoModelV3,
   VideoModelV3CallOptions,

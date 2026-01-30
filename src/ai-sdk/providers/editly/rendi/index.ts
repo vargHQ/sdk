@@ -1,8 +1,11 @@
+import { File } from "../../../file";
+import type { StorageProvider } from "../../../storage/types";
 import type {
   FFmpegBackend,
   FFmpegInput,
   FFmpegRunOptions,
   FFmpegRunResult,
+  FilePath,
   VideoInfo,
 } from "../backends/types";
 
@@ -32,19 +35,26 @@ interface RendiStatusResponse {
   output_files?: Record<string, RendiStoredFile>;
 }
 
+export interface RendiBackendOptions {
+  apiKey?: string;
+  storage: StorageProvider;
+}
+
 export class RendiBackend implements FFmpegBackend {
   readonly name = "rendi";
   private apiKey: string;
+  private storage: StorageProvider;
 
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey ?? process.env.RENDI_API_KEY ?? "";
+  constructor(options: RendiBackendOptions) {
+    this.apiKey = options.apiKey ?? process.env.RENDI_API_KEY ?? "";
+    this.storage = options.storage;
     if (!this.apiKey) {
       throw new Error("RENDI_API_KEY is required for Rendi backend");
     }
   }
 
   async ffprobe(input: string): Promise<VideoInfo> {
-    const inputUrl = this.ensureUrl(input);
+    const inputUrl = await this.resolvePath(input);
 
     const submitResponse = await fetch(`${RENDI_API_BASE}/run-ffmpeg-command`, {
       method: "POST",
@@ -104,7 +114,8 @@ export class RendiBackend implements FFmpegBackend {
     throw new Error("Rendi ffprobe timed out");
   }
 
-  private getInputPath(input: FFmpegInput): string {
+  private getInputPath(input: FFmpegInput): FilePath {
+    if (input instanceof File) return input;
     if (typeof input === "string") return input;
     if ("raw" in input) throw new Error("raw inputs not supported in Rendi");
     return input.path;
@@ -125,10 +136,10 @@ export class RendiBackend implements FFmpegBackend {
 
     for (const [i, input] of inputs.entries()) {
       const path = this.getInputPath(input);
-      const url = this.ensureUrl(path);
+      const url = await this.resolvePath(path);
       const placeholder = `in_${i + 1}`;
       inputFiles[placeholder] = url;
-      pathToPlaceholder.set(path, `{{${placeholder}}}`);
+      pathToPlaceholder.set(url, `{{${placeholder}}}`);
     }
 
     const replaceWithPlaceholders = (str: string): string => {
@@ -254,11 +265,15 @@ export class RendiBackend implements FFmpegBackend {
     throw new Error("Rendi command timed out");
   }
 
-  private ensureUrl(input: string): string {
+  async resolvePath(input: FilePath): Promise<string> {
+    if (input instanceof File) {
+      return input.upload(this.storage);
+    }
     if (input.startsWith("http://") || input.startsWith("https://")) {
       return input;
     }
-    throw new Error(`Rendi backend requires URLs, got local path: ${input}`);
+    const file = File.fromPath(input);
+    return file.upload(this.storage);
   }
 
   private buildCommandString(args: string[]): string {
@@ -280,8 +295,8 @@ export class RendiBackend implements FFmpegBackend {
   }
 }
 
-export function createRendiBackend(apiKey?: string): RendiBackend {
-  return new RendiBackend(apiKey);
+export function createRendiBackend(options: RendiBackendOptions): RendiBackend {
+  return new RendiBackend(options);
 }
 
 export type { FFmpegBackend } from "../backends/types";

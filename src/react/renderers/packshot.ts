@@ -103,7 +103,8 @@ export async function renderPackshot(
         color: props.background,
       });
     } else {
-      const bgPath = await renderImage(props.background, ctx);
+      const bgFile = await renderImage(props.background, ctx);
+      const bgPath = await ctx.backend.resolvePath(bgFile);
       layers.push({
         type: "image" as const,
         path: bgPath,

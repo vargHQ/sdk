@@ -1,5 +1,6 @@
 import { generateImage, wrapImageModel } from "ai";
 import { type CacheStorage, withCache } from "../../ai-sdk/cache";
+import type { File } from "../../ai-sdk/file";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { generateVideo } from "../../ai-sdk/generate-video";
 import {
@@ -7,7 +8,7 @@ import {
   placeholderFallbackMiddleware,
   wrapVideoModel,
 } from "../../ai-sdk/middleware";
-import { editly } from "../../ai-sdk/providers/editly";
+import { editly, localBackend } from "../../ai-sdk/providers/editly";
 import type {
   AudioTrack,
   Clip,
@@ -121,6 +122,8 @@ export async function renderRoot(
     return cachedGenerateVideo(opts);
   };
 
+  const backend = options.backend ?? localBackend;
+  const tempFiles: string[] = [];
   const ctx: RenderContext = {
     width: props.width ?? 1920,
     height: props.height ?? 1080,
@@ -128,10 +131,11 @@ export async function renderRoot(
     cache: cacheStorage,
     generateImage: wrapGenerateImage,
     generateVideo: wrapGenerateVideo,
-    tempFiles: [],
+    tempFiles,
     progress,
-    pending: new Map(),
+    pendingFiles: new Map<string, Promise<File>>(),
     defaults: options.defaults,
+    backend,
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -161,13 +165,14 @@ export async function renderRoot(
         });
       }
     } else if (childElement.type === "speech") {
-      const result = await renderSpeech(
+      const file = await renderSpeech(
         childElement as VargElement<"speech">,
         ctx,
       );
+      const path = await ctx.backend.resolvePath(file);
       const speechProps = childElement.props as SpeechProps;
       audioTracks.push({
-        path: result.path,
+        path,
         mixVolume: speechProps.volume ?? 1,
       });
     } else if (childElement.type === "music") {
@@ -182,16 +187,17 @@ export async function renderRoot(
       if (!child || typeof child !== "object" || !("type" in child)) continue;
       const childElement = child as VargElement;
 
-      let path: string | undefined;
+      let file: File | undefined;
       const isVideo = childElement.type === "video";
 
       if (childElement.type === "video") {
-        path = await renderVideo(childElement as VargElement<"video">, ctx);
+        file = await renderVideo(childElement as VargElement<"video">, ctx);
       } else if (childElement.type === "image") {
-        path = await renderImage(childElement as VargElement<"image">, ctx);
+        file = await renderImage(childElement as VargElement<"image">, ctx);
       }
 
-      if (path) {
+      if (file) {
+        const path = await ctx.backend.resolvePath(file);
         renderedOverlays.push({ path, props: overlayProps, isVideo });
 
         if (isVideo && overlayProps.keepAudio) {
@@ -291,8 +297,8 @@ export async function renderRoot(
     if (musicProps.src) {
       path = resolvePath(musicProps.src);
     } else if (musicProps.prompt) {
-      const result = await renderMusic(musicElement, ctx);
-      path = result.path;
+      const file = await renderMusic(musicElement, ctx);
+      path = await ctx.backend.resolvePath(file);
     } else {
       throw new Error("Music requires either src or prompt");
     }

@@ -12,6 +12,7 @@ import { renderVideo } from "./video";
 
 interface SplitCell {
   path: string;
+  isVideo: boolean;
   resizeMode?: ResizeMode;
   cropPosition?: CropPosition;
 }
@@ -31,16 +32,20 @@ export async function renderSplit(
     const childProps = childElement.props as Record<string, unknown>;
 
     if (childElement.type === "image") {
-      const path = await renderImage(childElement as VargElement<"image">, ctx);
+      const file = await renderImage(childElement as VargElement<"image">, ctx);
+      const path = await ctx.backend.resolvePath(file);
       cells.push({
         path,
+        isVideo: false,
         resizeMode: childProps.resize as ResizeMode | undefined,
         cropPosition: childProps.cropPosition as CropPosition | undefined,
       });
     } else if (childElement.type === "video") {
-      const path = await renderVideo(childElement as VargElement<"video">, ctx);
+      const file = await renderVideo(childElement as VargElement<"video">, ctx);
+      const path = await ctx.backend.resolvePath(file);
       cells.push({
         path,
+        isVideo: true,
         resizeMode: childProps.resize as ResizeMode | undefined,
         cropPosition: childProps.cropPosition as CropPosition | undefined,
       });
@@ -68,11 +73,10 @@ export async function renderSplit(
       : ctx.height;
 
   const layers: Layer[] = cells.map((cell, i) => {
-    const isVideo = cell.path.endsWith(".mp4") || cell.path.endsWith(".webm");
     const left = direction === "horizontal" ? cellWidth * i : 0;
     const top = direction === "vertical" ? cellHeight * i : 0;
 
-    if (isVideo) {
+    if (cell.isVideo) {
       return {
         type: "video" as const,
         path: cell.path,
