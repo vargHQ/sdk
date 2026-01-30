@@ -98,7 +98,7 @@ export async function renderImage(
     return File.fromGenerated({
       uint8Array: firstImage.uint8Array,
       mediaType: "image/png",
-      url: firstImage.url,
+      url: (firstImage as { url?: string }).url,
     });
   })();
 

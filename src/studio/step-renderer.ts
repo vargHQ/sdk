@@ -1,5 +1,6 @@
 import { generateImage } from "ai";
 import { type CacheStorage, withCache } from "../ai-sdk/cache";
+import type { File } from "../ai-sdk/file";
 import { fileCache } from "../ai-sdk/file-cache";
 import { generateVideo } from "../ai-sdk/generate-video";
 import type { RenderContext } from "../react/renderers/context";
@@ -37,6 +38,18 @@ export function createStepSession(
         ? fileCache({ dir: cache })
         : cache;
 
+  const resolveFile = async (file: File): Promise<string> => {
+    const ext = file.mediaType?.includes("video")
+      ? ".mp4"
+      : file.mediaType?.includes("audio")
+        ? ".mp3"
+        : ".png";
+    const tempPath = `/tmp/varg-step-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const data = await file.arrayBuffer();
+    await Bun.write(tempPath, data);
+    return tempPath;
+  };
+
   const ctx: RenderContext = {
     width: props.width ?? 1920,
     height: props.height ?? 1080,
@@ -50,7 +63,8 @@ export function createStepSession(
       : generateVideo,
     tempFiles: [],
     progress: createProgressTracker(false),
-    pending: new Map(),
+    pendingFiles: new Map(),
+    resolveFile,
   };
 
   const extracted = extractStages(rootElement);
@@ -101,10 +115,11 @@ export async function executeStage(
 
     switch (stage.type) {
       case "image": {
-        const path = await renderImage(
+        const imageFile = await renderImage(
           stage.element as VargElement<"image">,
           session.ctx,
         );
+        const path = await session.ctx.resolveFile(imageFile);
         result = {
           type: "image",
           path,
@@ -115,10 +130,11 @@ export async function executeStage(
       }
 
       case "video": {
-        const path = await renderVideo(
+        const videoFile = await renderVideo(
           stage.element as VargElement<"video">,
           session.ctx,
         );
+        const path = await session.ctx.resolveFile(videoFile);
         result = {
           type: "video",
           path,
@@ -129,13 +145,14 @@ export async function executeStage(
       }
 
       case "speech": {
-        const speechResult = await renderSpeech(
+        const speechFile = await renderSpeech(
           stage.element as VargElement<"speech">,
           session.ctx,
         );
+        const path = await session.ctx.resolveFile(speechFile);
         result = {
           type: "audio",
-          path: speechResult.path,
+          path,
           previewUrl: `/api/step/preview/${session.id}/${stageId}`,
           mimeType: "audio/mp3",
         };
@@ -143,13 +160,14 @@ export async function executeStage(
       }
 
       case "music": {
-        const musicResult = await renderMusic(
+        const musicFile = await renderMusic(
           stage.element as VargElement<"music">,
           session.ctx,
         );
+        const path = await session.ctx.resolveFile(musicFile);
         result = {
           type: "audio",
-          path: musicResult.path,
+          path,
           previewUrl: `/api/step/preview/${session.id}/${stageId}`,
           mimeType: "audio/mp3",
         };

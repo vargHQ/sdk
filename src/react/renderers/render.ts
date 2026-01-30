@@ -179,13 +179,14 @@ export async function renderRoot(
         });
       }
     } else if (childElement.type === "speech") {
-      const result = await renderSpeech(
+      const file = await renderSpeech(
         childElement as VargElement<"speech">,
         ctx,
       );
+      const path = await ctx.resolveFile(file);
       const speechProps = childElement.props as SpeechProps;
       audioTracks.push({
-        path: result.path,
+        path,
         mixVolume: speechProps.volume ?? 1,
       });
     } else if (childElement.type === "music") {
@@ -310,8 +311,8 @@ export async function renderRoot(
     if (musicProps.src) {
       path = resolvePath(musicProps.src);
     } else if (musicProps.prompt) {
-      const result = await renderMusic(musicElement, ctx);
-      path = result.path;
+      const file = await renderMusic(musicElement, ctx);
+      path = await ctx.resolveFile(file);
     } else {
       throw new Error("Music requires either src or prompt");
     }

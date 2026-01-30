@@ -19,10 +19,12 @@ export async function renderSlider(
     const childElement = child as VargElement;
 
     if (childElement.type === "image") {
-      const path = await renderImage(childElement as VargElement<"image">, ctx);
+      const file = await renderImage(childElement as VargElement<"image">, ctx);
+      const path = await ctx.resolveFile(file);
       childPaths.push(path);
     } else if (childElement.type === "video") {
-      const path = await renderVideo(childElement as VargElement<"video">, ctx);
+      const file = await renderVideo(childElement as VargElement<"video">, ctx);
+      const path = await ctx.resolveFile(file);
       childPaths.push(path);
     }
   }
