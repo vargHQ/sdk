@@ -3,6 +3,7 @@
  * Allows switching between local ffmpeg and cloud services like Rendi
  */
 
+import type { File } from "../../../file";
 import type { VideoInfo } from "../types";
 
 /**
@@ -10,14 +11,16 @@ import type { VideoInfo } from "../types";
  */
 export type { VideoInfo };
 
+export type FilePath = File | string;
+
 /**
- * Represents an input to ffmpeg - can be a simple path/URL or structured with options
+ * Represents an input to ffmpeg - can be a simple path/URL, File, or structured with options
  */
 export type FFmpegInput =
-  | string
+  | FilePath
   | {
-      /** Path or URL to the input file */
-      path: string;
+      /** Path, URL, or File for the input */
+      path: FilePath;
       /** Options to apply BEFORE the -i flag (e.g. -ss 5 for seeking) */
       options?: string[];
     }
@@ -64,6 +67,13 @@ export interface FFmpegBackend {
    * @param input - File path (local) or URL
    */
   ffprobe(input: string): Promise<VideoInfo>;
+
+  /**
+   * Resolve a FilePath to a string path/URL for ffmpeg
+   * Local backend: returns URL if available, otherwise writes to temp
+   * Rendi backend: uploads local files, returns URL
+   */
+  resolvePath(path: FilePath): Promise<string>;
 
   /**
    * Run ffmpeg command

@@ -2,6 +2,7 @@ import { generateImage } from "ai";
 import { type CacheStorage, withCache } from "../ai-sdk/cache";
 import { fileCache } from "../ai-sdk/file-cache";
 import { generateVideo } from "../ai-sdk/generate-video";
+import { localBackend } from "../ai-sdk/providers/editly";
 import type { RenderContext } from "../react/renderers/context";
 import { renderImage } from "../react/renderers/image";
 import { renderMusic } from "../react/renderers/music";
@@ -51,6 +52,7 @@ export function createStepSession(
     tempFiles: [],
     progress: createProgressTracker(false),
     pendingFiles: new Map(),
+    backend: localBackend,
   };
 
   const extracted = extractStages(rootElement);
@@ -105,7 +107,7 @@ export async function executeStage(
           stage.element as VargElement<"image">,
           session.ctx,
         );
-        const path = await imageFile.getPath();
+        const path = await session.ctx.backend.resolvePath(imageFile);
         result = {
           type: "image",
           path,
@@ -120,7 +122,7 @@ export async function executeStage(
           stage.element as VargElement<"video">,
           session.ctx,
         );
-        const path = await videoFile.getPath();
+        const path = await session.ctx.backend.resolvePath(videoFile);
         result = {
           type: "video",
           path,
@@ -135,7 +137,7 @@ export async function executeStage(
           stage.element as VargElement<"speech">,
           session.ctx,
         );
-        const path = await speechFile.getPath();
+        const path = await session.ctx.backend.resolvePath(speechFile);
         result = {
           type: "audio",
           path,
@@ -150,7 +152,7 @@ export async function executeStage(
           stage.element as VargElement<"music">,
           session.ctx,
         );
-        const path = await musicFile.getPath();
+        const path = await session.ctx.backend.resolvePath(musicFile);
         result = {
           type: "audio",
           path,
