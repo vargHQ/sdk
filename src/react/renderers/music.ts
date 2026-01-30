@@ -40,16 +40,21 @@ export async function renderMusic(
   if (ctx.cache) {
     const cached = await ctx.cache.get(cacheKey);
     if (cached) {
-      const cachedAudio = cached as {
-        uint8Array: Uint8Array;
-        url?: string;
-        mediaType?: string;
-      };
-      audio = {
-        uint8Array: cachedAudio.uint8Array,
-        url: cachedAudio.url,
-        mediaType: cachedAudio.mediaType,
-      };
+      // Handle both old cache format (bare Uint8Array) and new format ({uint8Array, url, mediaType})
+      if (cached instanceof Uint8Array) {
+        audio = { uint8Array: cached, mediaType: "audio/mpeg" };
+      } else {
+        const cachedAudio = cached as {
+          uint8Array: Uint8Array;
+          url?: string;
+          mediaType?: string;
+        };
+        audio = {
+          uint8Array: cachedAudio.uint8Array,
+          url: cachedAudio.url,
+          mediaType: cachedAudio.mediaType,
+        };
+      }
       if (taskId && ctx.progress) {
         startTask(ctx.progress, taskId);
         completeTask(ctx.progress, taskId);
