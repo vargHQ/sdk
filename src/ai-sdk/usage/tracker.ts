@@ -372,6 +372,9 @@ export class UsageTracker {
       prompt,
       durationSeconds,
       requestId,
+      inputTokens,
+      outputTokens,
+      totalTokens,
       count = 1,
     } = metrics;
 
@@ -396,6 +399,9 @@ export class UsageTracker {
       count,
       requestId,
       durationSeconds,
+      inputTokens,
+      outputTokens,
+      totalTokens,
       prompt: prompt ? prompt.slice(0, 100) : undefined,
     };
 

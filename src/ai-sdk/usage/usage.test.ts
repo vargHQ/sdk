@@ -888,6 +888,12 @@ describe("Usage Tracking Module", () => {
         expect(json.limit).toBe(10);
         expect(json.hint).toContain("VARG_DAILY_LIMIT_IMAGES");
       });
+
+      test("UsageLimitError hint uses upper snake case for camelCase", () => {
+        const error = new UsageLimitError("speechMinutes", 10, 10);
+        const json = error.toJSON();
+        expect(json.hint).toContain("VARG_DAILY_LIMIT_SPEECH_MINUTES");
+      });
     });
 
     describe("UsageTracker persistence", () => {

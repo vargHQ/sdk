@@ -1,5 +1,9 @@
 import { generateImage, wrapImageModel } from "ai";
-import { type CacheStorage, withCache } from "../../ai-sdk/cache";
+import {
+  type CacheStorage,
+  depsToCacheKey,
+  withCache,
+} from "../../ai-sdk/cache";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { generateVideo } from "../../ai-sdk/generate-video";
 import {
@@ -59,7 +63,8 @@ const isUsageProvider = (value: unknown): value is UsageProvider =>
   value === "elevenlabs" ||
   value === "openai" ||
   value === "replicate" ||
-  value === "google";
+  value === "google" ||
+  value === "unknown";
 
 function resolveCacheStorage(
   cache: string | CacheStorage | undefined,
@@ -138,7 +143,10 @@ export async function renderRoot(
     };
     let cached = false;
     if (cacheStorage && optsWithCache.cacheKey) {
-      const cacheKeyStr = `generateImage:${optsWithCache.cacheKey.map((d: unknown) => String(d ?? "")).join(":")}`;
+      const cacheKeyStr = depsToCacheKey(
+        optsWithCache.cacheKey,
+        "generateImage",
+      );
       const existing = await cacheStorage.get(cacheKeyStr);
       cached = existing !== undefined;
     }
@@ -152,7 +160,7 @@ export async function renderRoot(
         ? undefined
         : (opts.model as { provider?: string }).provider;
     const metrics: GenerationMetrics = {
-      provider: isUsageProvider(modelProvider) ? modelProvider : "fal",
+      provider: isUsageProvider(modelProvider) ? modelProvider : "unknown",
       modelId: typeof opts.model === "string" ? opts.model : opts.model.modelId,
       resourceType: "image",
       count: result.images.length,
@@ -188,7 +196,10 @@ export async function renderRoot(
     };
     let cached = false;
     if (cacheStorage && optsWithCache.cacheKey) {
-      const cacheKeyStr = `generateVideo:${optsWithCache.cacheKey.map((d: unknown) => String(d ?? "")).join(":")}`;
+      const cacheKeyStr = depsToCacheKey(
+        optsWithCache.cacheKey,
+        "generateVideo",
+      );
       const existing = await cacheStorage.get(cacheKeyStr);
       cached = existing !== undefined;
     }
@@ -208,7 +219,7 @@ export async function renderRoot(
           ? undefined
           : (opts.model as { provider?: string }).provider;
       await usage.record({
-        provider: isUsageProvider(modelProvider) ? modelProvider : "fal",
+        provider: isUsageProvider(modelProvider) ? modelProvider : "unknown",
         modelId:
           typeof opts.model === "string" ? opts.model : opts.model.modelId,
         resourceType: "video",

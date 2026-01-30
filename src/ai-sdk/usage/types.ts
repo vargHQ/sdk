@@ -11,7 +11,8 @@ export type UsageProvider =
   | "elevenlabs"
   | "openai"
   | "replicate"
-  | "google";
+  | "google"
+  | "unknown";
 
 /**
  * Types of resources that can be generated
@@ -46,6 +47,12 @@ export interface GenerationMetrics {
   characterCount?: number;
   /** Request ID from provider (for tracking/audit) */
   requestId?: string;
+  /** Input tokens used (if applicable) */
+  inputTokens?: number;
+  /** Output tokens used (if applicable) */
+  outputTokens?: number;
+  /** Total tokens used */
+  totalTokens?: number;
 }
 
 /**
@@ -72,6 +79,12 @@ export interface GenerationRecord {
   requestId?: string;
   /** Duration in seconds (for video/audio) */
   durationSeconds?: number;
+  /** Input tokens used (if applicable) */
+  inputTokens?: number;
+  /** Output tokens used (if applicable) */
+  outputTokens?: number;
+  /** Total tokens used */
+  totalTokens?: number;
   /** Prompt used (truncated for privacy) */
   prompt?: string;
 }
@@ -230,13 +243,16 @@ export class UsageLimitError extends Error {
   }
 
   toJSON() {
+    const envLimitType = this.limitType
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      .toUpperCase();
     return {
       error: "USAGE_LIMIT_EXCEEDED",
       limitType: this.limitType,
       current: this.current,
       limit: this.limit,
       message: this.message,
-      hint: `To increase: export VARG_DAILY_LIMIT_${this.limitType.toUpperCase()}=${this.limit * 2}`,
+      hint: `To increase: export VARG_DAILY_LIMIT_${envLimitType}=${this.limit * 2}`,
     };
   }
 }

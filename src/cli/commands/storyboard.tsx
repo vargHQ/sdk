@@ -1493,6 +1493,7 @@ async function populateCachedImages(
   cacheDir: string,
 ): Promise<number> {
   const { computeCacheKey } = await import("../../react/renderers/utils");
+  const { depsToCacheKey } = await import("../../ai-sdk/cache");
   const { fileCache } = await import("../../ai-sdk/file-cache");
   const cache = fileCache({ dir: cacheDir });
 
@@ -1511,7 +1512,7 @@ async function populateCachedImages(
     // Handle cached generated images
     if (el.type === "image" && el._element && !el.imageDataUrl) {
       const cacheKeyParts = computeCacheKey(el._element);
-      const cacheKey = `generateImage:${cacheKeyParts.map((d) => String(d ?? "")).join(":")}`;
+      const cacheKey = depsToCacheKey(cacheKeyParts, "generateImage");
       const cached = (await cache.get(cacheKey)) as
         | { images?: Array<{ uint8Array?: Uint8Array }> }
         | undefined;

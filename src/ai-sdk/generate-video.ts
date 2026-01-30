@@ -4,8 +4,8 @@ import type {
   SharedV3Warning,
 } from "@ai-sdk/provider";
 import type { DataContent } from "ai";
-import type { GenerationMetrics } from "./usage/types";
-import type { VideoModelV3 } from "./video-model";
+import type { GenerationMetrics, UsageProvider } from "./usage/types";
+import type { VideoModelV3, VideoModelV3Usage } from "./video-model";
 
 export type GenerateVideoPrompt =
   | string
@@ -161,12 +161,57 @@ export async function generateVideo(
   }
 
   // Extract usage metrics if provided by the model
-  const usage = result.usage as GenerationMetrics | undefined;
+  const usage = normalizeUsage(result.usage, model);
 
   return {
     video: videos[0]!,
     videos,
     warnings,
     usage,
+  };
+}
+
+function isGenerationMetrics(
+  usage: VideoModelV3Usage | GenerationMetrics | undefined,
+): usage is GenerationMetrics {
+  return Boolean(
+    usage &&
+      typeof usage === "object" &&
+      "provider" in usage &&
+      "modelId" in usage &&
+      "resourceType" in usage,
+  );
+}
+
+function coerceProvider(provider: string): UsageProvider {
+  switch (provider) {
+    case "fal":
+    case "elevenlabs":
+    case "openai":
+    case "replicate":
+    case "google":
+      return provider;
+    default:
+      return "unknown";
+  }
+}
+
+function normalizeUsage(
+  usage: VideoModelV3Usage | GenerationMetrics | undefined,
+  model: GenerateVideoOptions["model"],
+): GenerationMetrics | undefined {
+  if (!usage) return undefined;
+  if (isGenerationMetrics(usage)) return usage;
+
+  const totalTokens =
+    usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+
+  return {
+    provider: coerceProvider(model.provider),
+    modelId: model.modelId,
+    resourceType: "video",
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    totalTokens,
   };
 }

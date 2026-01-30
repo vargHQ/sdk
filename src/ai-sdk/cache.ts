@@ -60,7 +60,7 @@ function parseTTL(ttl: number | string | undefined): number | undefined {
   }
 }
 
-function depsToKey(prefix: string, deps: CacheKeyDeps): string {
+export function depsToCacheKey(deps: CacheKeyDeps, prefix?: string): string {
   const depsStr = deps.map((d) => String(d ?? "")).join(":");
   return prefix ? `${prefix}:${depsStr}` : depsStr;
 }
@@ -122,7 +122,7 @@ export function withCache<T extends object, R>(
       return fn(rest as T);
     }
 
-    const key = depsToKey(prefix, cacheKey);
+    const key = depsToCacheKey(cacheKey, prefix);
     const cached = await storage.get(key);
     if (cached !== undefined) {
       return cached as R;
