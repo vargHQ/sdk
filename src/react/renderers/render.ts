@@ -222,8 +222,13 @@ export async function renderRoot(
         `\x1b[33mℹ ${successCount} clip(s) cached, ${failures.length} failed\x1b[0m`,
       );
     }
-    const errors = failures
-      .map((f) => f.reason?.message || "Unknown error")
+    const errorCounts = new Map<string, number>();
+    for (const f of failures) {
+      const msg = f.reason?.message || "Unknown error";
+      errorCounts.set(msg, (errorCounts.get(msg) || 0) + 1);
+    }
+    const errors = [...errorCounts.entries()]
+      .map(([msg, count]) => (count > 1 ? `${msg} (x${count})` : msg))
       .join("; ");
     throw new Error(
       `${failures.length} of ${clipResults.length} clips failed: ${errors}`,

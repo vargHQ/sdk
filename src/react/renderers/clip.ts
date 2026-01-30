@@ -239,6 +239,9 @@ async function renderClipLayers(
     .filter(Boolean) as { index: number; reason: Error }[];
 
   if (failures.length > 0) {
+    if (failures.length === 1 && failures[0]) {
+      throw failures[0].reason;
+    }
     const errors = failures
       .map((f) => f.reason?.message || "Unknown error")
       .join("; ");
