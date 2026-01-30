@@ -69,7 +69,7 @@
     "sharp": "^0.34.5",
     "zod": "^4.2.1"
   },
-  "version": "0.4.0-alpha44",
+  "version": "0.4.0-alpha45",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",
