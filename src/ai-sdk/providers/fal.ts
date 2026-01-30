@@ -22,10 +22,12 @@ interface PendingRequest {
 
 const pendingStorage = fileCache({ dir: ".cache/fal-pending" });
 
-const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-const FAL_TIMEOUT_MS = process.env.FAL_TIMEOUT_MS
-  ? Number.parseInt(process.env.FAL_TIMEOUT_MS, 10)
-  : DEFAULT_TIMEOUT_MS;
+const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
+const FAL_TIMEOUT_MS = (() => {
+  if (!process.env.FAL_TIMEOUT_MS) return DEFAULT_TIMEOUT_MS;
+  const parsed = Number.parseInt(process.env.FAL_TIMEOUT_MS, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
+})();
 
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   // Kling v2.6 - latest with native audio generation
