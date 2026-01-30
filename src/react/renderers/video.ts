@@ -150,7 +150,6 @@ export async function renderVideo(
     return File.fromGenerated({
       uint8Array: video.uint8Array,
       mediaType: video.mimeType,
-      url: video.url,
     });
   })();
 
