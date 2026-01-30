@@ -44,7 +44,7 @@ export class LocalBackend implements FFmpegBackend {
       if (typeof input === "string") {
         args.push("-i", input);
       } else if ("raw" in input) {
-        args.push(...input.raw.split(" "));
+        args.push(...input.raw);
       } else {
         if (input.options) args.push(...input.options);
         args.push("-i", input.path);

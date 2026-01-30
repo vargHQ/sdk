@@ -22,8 +22,8 @@ export type FFmpegInput =
       options?: string[];
     }
   | {
-      /** Raw ffmpeg args that don't use -i (e.g. "-f lavfi -i color=black") */
-      raw: string;
+      /** Raw ffmpeg args that don't use -i (e.g. ["-f", "lavfi", "-i", "color=black"]) */
+      raw: string[];
     };
 
 /**
