@@ -9,7 +9,6 @@ import {
   wrapVideoModel,
 } from "../../ai-sdk/middleware";
 import { editly, localBackend } from "../../ai-sdk/providers/editly";
-import type { FFmpegBackend } from "../../ai-sdk/providers/editly/backends/types";
 import type {
   AudioTrack,
   Clip,
