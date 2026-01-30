@@ -196,12 +196,30 @@ async function uploadBuffer(buffer: ArrayBuffer): Promise<string> {
   return fal.storage.upload(new Blob([buffer]));
 }
 
-function computePendingKey(
+export function computePendingKey(
   endpoint: string,
   input: Record<string, unknown>,
+  stableKey?: string,
 ): string {
-  const hash = Bun.hash(JSON.stringify({ endpoint, input })).toString(16);
+  const keyData = stableKey ?? JSON.stringify({ endpoint, input });
+  const hash = Bun.hash(keyData).toString(16);
   return `pending_${hash}`;
+}
+
+export async function computeFileHashes(
+  files: ImageModelV3File[] | undefined,
+): Promise<string[]> {
+  if (!files || files.length === 0) return [];
+  return Promise.all(
+    files.map(async (f) => {
+      if (f.type === "url") return f.url;
+      const bytes =
+        typeof f.data === "string"
+          ? Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0))
+          : f.data;
+      return Bun.hash(bytes).toString(16);
+    }),
+  );
 }
 
 async function executeWithQueueRecovery<T>(
@@ -210,10 +228,11 @@ async function executeWithQueueRecovery<T>(
   options: {
     logs?: boolean;
     onQueueUpdate?: (status: { status: string }) => void;
+    stableKey?: string;
   } = {},
 ): Promise<T> {
-  const { logs = true, onQueueUpdate } = options;
-  const pendingKey = computePendingKey(endpoint, input);
+  const { logs = true, onQueueUpdate, stableKey } = options;
+  const pendingKey = computePendingKey(endpoint, input, stableKey);
 
   const pending = (await pendingStorage.get(pendingKey)) as
     | PendingRequest
@@ -338,6 +357,8 @@ class FalVideoModel implements VideoModelV3 {
     const isKlingV26 = this.modelId === "kling-v2.6";
     const isLtx2 = this.modelId === "ltx-2-19b-distilled";
     const isGrokImagine = this.modelId === "grok-imagine";
+
+    const fileHashes = await computeFileHashes(files as ImageModelV3File[]);
 
     const endpoint = isLipsync
       ? this.resolveLipsyncEndpoint()
@@ -521,10 +542,23 @@ class FalVideoModel implements VideoModelV3 {
       }
     }
 
+    const stableKey =
+      fileHashes.length > 0
+        ? JSON.stringify({
+            endpoint,
+            prompt,
+            duration,
+            aspectRatio,
+            providerOptions,
+            modelId: this.modelId,
+            fileHashes,
+          })
+        : undefined;
+
     const result = await executeWithQueueRecovery<{ data: unknown }>(
       endpoint,
       input,
-      { logs: true },
+      { logs: true, stableKey },
     );
 
     const data = result.data as { video?: { url?: string } };
@@ -683,11 +717,25 @@ class FalImageModel implements ImageModelV3 {
     }
 
     const hasFiles = files && files.length > 0;
-    if (hasFiles) {
+    const finalEndpoint = this.resolveEndpoint();
+
+    let stableKey: string | undefined;
+    if (hasFiles && files) {
+      const fileHashes = await computeFileHashes(files);
+      stableKey = JSON.stringify({
+        endpoint: finalEndpoint,
+        prompt,
+        n,
+        size,
+        aspectRatio,
+        seed,
+        providerOptions,
+        modelId: this.modelId,
+        fileHashes,
+      });
       input.image_urls = await Promise.all(files.map((f) => fileToUrl(f)));
     }
 
-    // Qwen Angles requires image_urls
     if (isQwenAngles && !input.image_urls) {
       throw new Error("qwen-angles requires at least one image file");
     }
@@ -701,12 +749,10 @@ class FalImageModel implements ImageModelV3 {
       }
     }
 
-    const finalEndpoint = this.resolveEndpoint();
-
     const result = await executeWithQueueRecovery<{ data: unknown }>(
       finalEndpoint,
       input,
-      { logs: true },
+      { logs: true, stableKey },
     );
 
     const data = result.data as { images?: Array<{ url?: string }> };
