@@ -41,8 +41,9 @@ export async function renderSwipe(
     throw new Error("Swipe element requires at least one image or video child");
   }
 
-  if (children.length === 1) {
-    return children[0]!.path;
+  const first = children[0];
+  if (children.length === 1 && first) {
+    return first.path;
   }
 
   const transitionName = SWIPE_TRANSITION_MAP[direction];
