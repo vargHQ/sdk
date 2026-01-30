@@ -385,7 +385,7 @@ export const frameCmd = defineCommand({
       process.exit(1);
     }
 
-    const renderProps = component.props as RenderProps;
+    const _renderProps = component.props as RenderProps;
     const frames = extractFrames(component);
 
     if (frames.length === 0) {

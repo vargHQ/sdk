@@ -34,7 +34,9 @@ export async function renderSlider(
   }
 
   if (childPaths.length === 1) {
-    return childPaths[0]!;
+    const firstPath = childPaths[0];
+    if (!firstPath) throw new Error("No path found");
+    return firstPath;
   }
 
   const transitionName = direction === "horizontal" ? "slideleft" : "slideup";

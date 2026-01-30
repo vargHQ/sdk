@@ -35,9 +35,9 @@ function hslToHex(hsl: string): string {
   const match = hsl.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
   if (!match) return "333333";
 
-  const h = Number.parseInt(match[1]!) / 360;
-  const s = Number.parseInt(match[2]!) / 100;
-  const l = Number.parseInt(match[3]!) / 100;
+  const h = Number.parseInt(match[1] ?? "0", 10) / 360;
+  const s = Number.parseInt(match[2] ?? "0", 10) / 100;
+  const l = Number.parseInt(match[3] ?? "0", 10) / 100;
 
   const hue2rgb = (p: number, q: number, t: number) => {
     if (t < 0) t += 1;

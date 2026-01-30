@@ -16,7 +16,6 @@ import type {
 } from "../../ai-sdk/providers/editly/types";
 
 import type {
-  CaptionsProps,
   ClipProps,
   MusicProps,
   OverlayProps,

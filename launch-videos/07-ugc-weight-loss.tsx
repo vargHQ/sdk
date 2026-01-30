@@ -96,8 +96,8 @@ const voiceover = Speech({
 // === MUSIC ===
 const MUSIC_PROMPT =
   "upbeat motivational pop, inspiring transformation music, energetic but not overwhelming, modern fitness vibe";
-const MUSIC_DURATION = 15;
-const MUSIC_VOLUME = 0.15; // Low volume so voiceover is clear
+const _MUSIC_DURATION = 15;
+const _MUSIC_VOLUME = 0.15; // Low volume so voiceover is clear
 
 // === CAPTIONS SETTINGS ===
 const CAPTIONS_STYLE = "tiktok";

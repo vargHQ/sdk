@@ -255,7 +255,8 @@ export function getSessionStatus(session: StepSession): {
     completedStages: session.results.size,
     currentStageIndex: session.currentStageIndex,
     stages: session.extracted.order.map((id) => {
-      const stage = session.extracted.stages.find((s) => s.id === id)!;
+      const stage = session.extracted.stages.find((s) => s.id === id);
+      if (!stage) throw new Error(`Stage not found: ${id}`);
       return {
         id: stage.id,
         type: stage.type,

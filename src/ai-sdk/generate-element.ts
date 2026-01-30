@@ -24,8 +24,8 @@ export function scene(
 
   for (let i = 0; i < strings.length; i++) {
     text += strings[i];
-    if (i < elements.length) {
-      const el = elements[i]!;
+    const el = elements[i];
+    if (el) {
       const count = el.images.length;
 
       if (count === 1) {

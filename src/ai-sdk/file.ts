@@ -159,8 +159,8 @@ export class File {
   async base64(): Promise<string> {
     const data = await this.arrayBuffer();
     let binary = "";
-    for (let i = 0; i < data.byteLength; i++) {
-      binary += String.fromCharCode(data[i]!);
+    for (const byte of data) {
+      binary += String.fromCharCode(byte);
     }
     return btoa(binary);
   }

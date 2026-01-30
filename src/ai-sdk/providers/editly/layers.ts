@@ -37,7 +37,6 @@ function getCropPositionExpr(position: CropPosition | undefined): {
       return { x: "(iw-ow)/2", y: "ih-oh" };
     case "bottom-right":
       return { x: "iw-ow", y: "ih-oh" };
-    case "center":
     default:
       return { x: "(iw-ow)/2", y: "(ih-oh)/2" };
   }

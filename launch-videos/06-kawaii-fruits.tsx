@@ -65,12 +65,12 @@ export default (
     />
 
     {/* Scene 1-4: Each character waves individually */}
-    {CHARACTERS.map((char, i) => (
-      <Clip key={char.name} duration={2.5}>
+    {characterImages.map((charImage, i) => (
+      <Clip key={CHARACTERS[i]?.name ?? i} duration={2.5}>
         <Video
           prompt={{
             text: "character waves hello enthusiastically, bounces up and down slightly, eyes squint with joy, tiny feet wiggle",
-            images: [characterImages[i]!],
+            images: [charImage],
           }}
           model={fal.videoModel("kling-v2.5")}
           duration={5}

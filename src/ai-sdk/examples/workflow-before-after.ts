@@ -24,7 +24,9 @@ async function main() {
     cacheKey: ["before-after", "before-image"],
   });
 
-  const beforeImage = beforeImages[0]!.uint8Array;
+  const firstBeforeImage = beforeImages[0];
+  if (!firstBeforeImage) throw new Error("No before image generated");
+  const beforeImage = firstBeforeImage.uint8Array;
   await Bun.write("output/workflow-before-image.png", beforeImage);
   console.log("saved: output/workflow-before-image.png");
 
@@ -37,7 +39,9 @@ async function main() {
     cacheKey: ["before-after", "after-image"],
   });
 
-  const afterImage = afterImages[0]!.uint8Array;
+  const firstAfterImage = afterImages[0];
+  if (!firstAfterImage) throw new Error("No after image generated");
+  const afterImage = firstAfterImage.uint8Array;
   await Bun.write("output/workflow-after-image.png", afterImage);
   console.log("saved: output/workflow-after-image.png");
 

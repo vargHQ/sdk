@@ -71,7 +71,9 @@ async function main() {
         n: 1,
         cacheKey: ["character-grid", name],
       });
-      const data = images[0]!.uint8Array;
+      const firstImage = images[0];
+      if (!firstImage) throw new Error(`No image generated for ${name}`);
+      const data = firstImage.uint8Array;
       await Bun.write(`output/character-${i}-${name.toLowerCase()}.png`, data);
       return {
         name,

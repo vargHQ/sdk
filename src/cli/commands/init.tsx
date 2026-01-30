@@ -532,7 +532,7 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
     }
 
     if (added) {
-      writeFileSync(gitignorePath, gitignoreContent.trim() + "\n");
+      writeFileSync(gitignorePath, `${gitignoreContent.trim()}\n`);
       log.success("Updated .gitignore");
     } else {
       log.info(".gitignore already configured");

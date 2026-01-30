@@ -22,8 +22,8 @@ async function main() {
       await Bun.write("output/google-mountain.png", images[0].uint8Array);
       console.log("   saved to output/google-mountain.png");
     }
-  } catch (error: any) {
-    console.error("   error:", error.message || error);
+  } catch (error) {
+    console.error("   error:", error instanceof Error ? error.message : error);
   }
 
   console.log("\n2. image-to-image with nano-banana-pro/edit...");
@@ -52,8 +52,8 @@ async function main() {
       );
       console.log("   saved to output/google-mountain-sunset.png");
     }
-  } catch (error: any) {
-    console.error("   error:", error.message || error);
+  } catch (error) {
+    console.error("   error:", error instanceof Error ? error.message : error);
   }
 
   console.log("\ndone!");

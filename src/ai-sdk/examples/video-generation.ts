@@ -20,7 +20,9 @@ async function main() {
   });
 
   console.log("animating image to video...");
-  const image = File.from(images[0]!);
+  const firstImage = images[0];
+  if (!firstImage) throw new Error("No image generated");
+  const image = File.from(firstImage);
   const { video: animatedVideo } = await generateVideo({
     model: fal.videoModel("wan-2.5"),
     prompt: {

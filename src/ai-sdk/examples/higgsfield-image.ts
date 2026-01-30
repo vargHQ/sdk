@@ -15,8 +15,10 @@ async function main() {
     aspectRatio: "1:1",
   });
 
-  console.log(`image generated: ${images[0]!.uint8Array.byteLength} bytes`);
-  await Bun.write("output/higgsfield-default.png", images[0]!.uint8Array);
+  const firstImage = images[0];
+  if (!firstImage) throw new Error("No image generated");
+  console.log(`image generated: ${firstImage.uint8Array.byteLength} bytes`);
+  await Bun.write("output/higgsfield-default.png", firstImage.uint8Array);
 
   console.log("\ngenerating with model settings...");
   const { images: styledImages } = await generateImage({
@@ -28,10 +30,12 @@ async function main() {
     aspectRatio: "16:9",
   });
 
-  console.log(`styled image: ${styledImages[0]!.uint8Array.byteLength} bytes`);
+  const firstStyledImage = styledImages[0];
+  if (!firstStyledImage) throw new Error("No styled image generated");
+  console.log(`styled image: ${firstStyledImage.uint8Array.byteLength} bytes`);
   await Bun.write(
     "output/higgsfield-cinematic.png",
-    styledImages[0]!.uint8Array,
+    firstStyledImage.uint8Array,
   );
 
   console.log("\ngenerating with provider defaults...");
@@ -47,12 +51,14 @@ async function main() {
     aspectRatio: "4:3",
   });
 
+  const firstEnhancedImage = enhancedImages[0];
+  if (!firstEnhancedImage) throw new Error("No enhanced image generated");
   console.log(
-    `enhanced image: ${enhancedImages[0]!.uint8Array.byteLength} bytes`,
+    `enhanced image: ${firstEnhancedImage.uint8Array.byteLength} bytes`,
   );
   await Bun.write(
     "output/higgsfield-enhanced.png",
-    enhancedImages[0]!.uint8Array,
+    firstEnhancedImage.uint8Array,
   );
 
   console.log("\ndone!");

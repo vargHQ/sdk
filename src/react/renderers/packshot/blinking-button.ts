@@ -368,7 +368,6 @@ function getButtonYPosition(
       return Math.floor(videoHeight * 0.15);
     case "center":
       return Math.floor((videoHeight - buttonHeight) / 2);
-    case "bottom":
     default:
       return Math.floor(videoHeight * 0.78 - buttonHeight / 2);
   }

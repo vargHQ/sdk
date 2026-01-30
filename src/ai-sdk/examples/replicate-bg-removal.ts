@@ -14,10 +14,12 @@ async function main() {
     n: 1,
   });
 
-  console.log(`source image: ${sourceImages[0]!.uint8Array.byteLength} bytes`);
-  await Bun.write("output/bg-removal-source.png", sourceImages[0]!.uint8Array);
+  const firstSourceImage = sourceImages[0];
+  if (!firstSourceImage) throw new Error("No source image generated");
+  console.log(`source image: ${firstSourceImage.uint8Array.byteLength} bytes`);
+  await Bun.write("output/bg-removal-source.png", firstSourceImage.uint8Array);
 
-  const sourceFile = File.from(sourceImages[0]!);
+  const sourceFile = File.from(firstSourceImage);
 
   console.log("\nremoving background...");
   const { images: processedImages } = await generateImage({
@@ -27,12 +29,14 @@ async function main() {
     },
   });
 
+  const firstProcessedImage = processedImages[0];
+  if (!firstProcessedImage) throw new Error("No processed image generated");
   console.log(
-    `processed image: ${processedImages[0]!.uint8Array.byteLength} bytes`,
+    `processed image: ${firstProcessedImage.uint8Array.byteLength} bytes`,
   );
   await Bun.write(
     "output/bg-removal-result.png",
-    processedImages[0]!.uint8Array,
+    firstProcessedImage.uint8Array,
   );
 
   console.log("\nusing alternative model...");
@@ -43,8 +47,10 @@ async function main() {
     },
   });
 
-  console.log(`alt result: ${altImages[0]!.uint8Array.byteLength} bytes`);
-  await Bun.write("output/bg-removal-alt.png", altImages[0]!.uint8Array);
+  const firstAltImage = altImages[0];
+  if (!firstAltImage) throw new Error("No alt image generated");
+  console.log(`alt result: ${firstAltImage.uint8Array.byteLength} bytes`);
+  await Bun.write("output/bg-removal-alt.png", firstAltImage.uint8Array);
 
   console.log("\ndone!");
 }
