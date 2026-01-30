@@ -1,4 +1,5 @@
 import { File } from "../../../file";
+import type { StorageProvider } from "../../../storage/types";
 import type {
   FFmpegBackend,
   FFmpegInput,
@@ -34,12 +35,19 @@ interface RendiStatusResponse {
   output_files?: Record<string, RendiStoredFile>;
 }
 
+export interface RendiBackendOptions {
+  apiKey?: string;
+  storage: StorageProvider;
+}
+
 export class RendiBackend implements FFmpegBackend {
   readonly name = "rendi";
   private apiKey: string;
+  private storage: StorageProvider;
 
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey ?? process.env.RENDI_API_KEY ?? "";
+  constructor(options: RendiBackendOptions) {
+    this.apiKey = options.apiKey ?? process.env.RENDI_API_KEY ?? "";
+    this.storage = options.storage;
     if (!this.apiKey) {
       throw new Error("RENDI_API_KEY is required for Rendi backend");
     }
@@ -259,13 +267,13 @@ export class RendiBackend implements FFmpegBackend {
 
   async resolvePath(input: FilePath): Promise<string> {
     if (input instanceof File) {
-      return input.upload();
+      return input.upload(this.storage);
     }
     if (input.startsWith("http://") || input.startsWith("https://")) {
       return input;
     }
     const file = File.fromPath(input);
-    return file.upload();
+    return file.upload(this.storage);
   }
 
   private buildCommandString(args: string[]): string {
@@ -287,8 +295,8 @@ export class RendiBackend implements FFmpegBackend {
   }
 }
 
-export function createRendiBackend(apiKey?: string): RendiBackend {
-  return new RendiBackend(apiKey);
+export function rendi(options: RendiBackendOptions): RendiBackend {
+  return new RendiBackend(options);
 }
 
 export type { FFmpegBackend } from "../backends/types";

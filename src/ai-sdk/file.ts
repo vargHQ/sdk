@@ -1,5 +1,5 @@
 import type { ImageModelV3File } from "@ai-sdk/provider";
-import { uploadBuffer } from "../providers/storage";
+import type { StorageProvider } from "./storage/types";
 
 export class File {
   private _data: Uint8Array | null = null;
@@ -150,11 +150,11 @@ export class File {
     return new Blob([data], { type: this._mediaType });
   }
 
-  async upload(): Promise<string> {
+  async upload(storage: StorageProvider): Promise<string> {
     if (this._url) return this._url;
     const data = await this.data();
     const key = `varg/${Date.now()}-${Math.random().toString(36).slice(2)}${this.extensionFromMediaType()}`;
-    this._url = await uploadBuffer(data, key, this._mediaType);
+    this._url = await storage.upload(data, key, this._mediaType);
     return this._url;
   }
 
@@ -165,7 +165,9 @@ export class File {
       this._url = await uploader(blob);
       return this._url;
     }
-    return this.upload();
+    throw new Error(
+      "File.url() requires an uploader function or use File.upload(storage) with a StorageProvider",
+    );
   }
 
   async base64(): Promise<string> {
