@@ -42,14 +42,14 @@ export class LocalBackend implements FFmpegBackend {
 
   async resolvePath(path: FilePath): Promise<string> {
     if (typeof path === "string") return path;
-    return path.getPath();
+    return path.url ?? (await path.toTempFile());
   }
 
   private async buildInputArgs(inputs: FFmpegInput[]): Promise<string[]> {
     const args: string[] = [];
     for (const input of inputs) {
       if (input instanceof File) {
-        args.push("-i", await input.getPath());
+        args.push("-i", await this.resolvePath(input));
       } else if (typeof input === "string") {
         args.push("-i", input);
       } else if ("raw" in input) {
