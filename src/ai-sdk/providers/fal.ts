@@ -602,7 +602,6 @@ class FalVideoModel implements VideoModelV3 {
       modelId: this.modelId,
       resourceType: "video",
       durationSeconds: actualDuration,
-      requestId: result.requestId,
     };
 
     return {
