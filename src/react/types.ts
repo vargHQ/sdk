@@ -1,4 +1,8 @@
-import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
+import type {
+  ImageModelV3,
+  SharedV3ProviderOptions,
+  SpeechModelV3,
+} from "@ai-sdk/provider";
 import type { FFmpegBackend } from "@/ai-sdk/providers/editly/backends";
 import type { CacheStorage } from "../ai-sdk/cache";
 import type { MusicModelV3 } from "../ai-sdk/music-model";
@@ -102,6 +106,8 @@ export interface ImageProps extends BaseProps, PositionProps {
   position?: Position;
   size?: { width: string; height: string };
   removeBackground?: boolean;
+  /** Provider-specific options (e.g., fal: { acceleration: "high" }) */
+  providerOptions?: SharedV3ProviderOptions;
 }
 
 export type VideoPrompt =
@@ -123,6 +129,8 @@ export type VideoProps = BaseProps &
     resize?: ResizeMode;
     cropPosition?: CropPosition;
     aspectRatio?: `${number}:${number}`;
+    /** Provider-specific options (e.g., fal: { generate_audio: true }) */
+    providerOptions?: SharedV3ProviderOptions;
   };
 
 export interface SpeechProps extends BaseProps, VolumeProps {
