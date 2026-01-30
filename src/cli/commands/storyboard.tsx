@@ -398,6 +398,15 @@ function escapeHtml(str: string): string {
   return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function escapeAttr(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function generateHtml(storyboard: Storyboard, sourceFile: string): string {
   const escapedSourceFile = escapeHtml(sourceFile);
 
@@ -433,13 +442,14 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     if (isInputWithUrl) {
       const shortUrl =
         el.src!.length > 50 ? `${el.src!.slice(0, 50)}...` : el.src!;
+      const escapedSrc = escapeAttr(el.src!);
       return `
       <div class="tree-node" style="--depth: ${depth}">
         <span class="tree-prefix">${parentPrefix}${connector}</span>
         <span class="type-tag" style="background: ${color}">${el.type}</span>
         <span class="input-preview-wrapper">
-          <a href="${el.src}" target="_blank" class="tree-prompt input-url">${escapeHtml(shortUrl)}</a>
-          <span class="input-preview-tooltip"><img src="${el.src}" alt="preview" /></span>
+          <a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="tree-prompt input-url">${escapeHtml(shortUrl)}</a>
+          <span class="input-preview-tooltip"><img src="${escapedSrc}" alt="preview" /></span>
         </span>
       </div>${childrenHtml}`;
     }
@@ -522,13 +532,14 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
             child.src!.length > 60
               ? `${child.src!.slice(0, 60)}...`
               : child.src!;
+          const escapedSrc = escapeAttr(child.src!);
           return `
           <div class="timeline-nested">
             <span class="nested-connector">${connector}</span>
             <span class="nested-type" style="background: ${color}">${child.type}</span>
             <span class="input-preview-wrapper">
-              <a href="${child.src}" target="_blank" class="nested-prompt input-url">${escapeHtml(shortUrl)}</a>
-              <span class="input-preview-tooltip"><img src="${child.src}" alt="preview" /></span>
+              <a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="nested-prompt input-url">${escapeHtml(shortUrl)}</a>
+              <span class="input-preview-tooltip"><img src="${escapedSrc}" alt="preview" /></span>
             </span>
           </div>
           ${grandChildren.length > 0 ? renderNestedTree(grandChildren, depth + 1) : ""}`;
