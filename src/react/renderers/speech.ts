@@ -38,7 +38,7 @@ export async function renderSpeech(
 
   return File.fromGenerated({
     uint8Array: audio.uint8Array,
-    mediaType: "audio/mpeg",
+    mediaType: (audio as { mediaType?: string }).mediaType ?? "audio/mpeg",
     url: (audio as { url?: string }).url,
   });
 }
