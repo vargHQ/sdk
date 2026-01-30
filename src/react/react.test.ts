@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
 import { fal } from "../ai-sdk/providers/fal";
 import {
@@ -156,6 +156,55 @@ describe("varg-react render", () => {
     });
 
     expect(render(root)).rejects.toThrow("model");
+  });
+
+  test("parallel failures preserve successful results and report all errors", async () => {
+    let callCount = 0;
+    const mockModel = {
+      specificationVersion: "v3" as const,
+      provider: "mock",
+      modelId: "mock-model",
+      maxImagesPerCall: 1,
+      doGenerate: mock(async () => {
+        callCount++;
+        if (callCount === 2) {
+          throw new Error("Request Timeout");
+        }
+        return {
+          images: [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+          warnings: [],
+          response: {
+            timestamp: new Date(),
+            modelId: "mock",
+            headers: undefined,
+          },
+        };
+      }),
+    };
+
+    const root = Render({
+      width: 720,
+      height: 720,
+      children: [
+        Clip({
+          duration: 1,
+          children: [Image({ prompt: "first", model: mockModel })],
+        }),
+        Clip({
+          duration: 1,
+          children: [Image({ prompt: "second", model: mockModel })],
+        }),
+        Clip({
+          duration: 1,
+          children: [Image({ prompt: "third", model: mockModel })],
+        }),
+      ],
+    });
+
+    await expect(render(root, { quiet: true })).rejects.toThrow(
+      "Request Timeout",
+    );
+    expect(callCount).toBe(3);
   });
 });
 
