@@ -54,6 +54,12 @@ export {
 export type { GenerateMusicOptions, MusicResult } from "./music";
 // Music generation
 export { definition as music, generateMusic } from "./music";
+export type { QwenAnglesInput, QwenAnglesOutput } from "./qwen-angles";
+// Qwen Image Edit 2511 Multiple Angles
+export {
+  definition as qwenAngles,
+  qwenAngles as qwenAnglesImage,
+} from "./qwen-angles";
 export type { LipsyncOptions, LipsyncResult, Wav2LipOptions } from "./sync";
 // Lip sync
 export {
@@ -96,6 +102,7 @@ import {
 import { definition as grokEditDefinition } from "./grok-edit";
 import { definition as imageDefinition } from "./image";
 import { definition as musicDefinition } from "./music";
+import { definition as qwenAnglesDefinition } from "./qwen-angles";
 import { definition as syncDefinition } from "./sync";
 import { definition as transcribeDefinition } from "./transcribe";
 import { definition as uploadDefinition } from "./upload";
@@ -111,6 +118,7 @@ export const allActions = [
   syncDefinition,
   captionsDefinition,
   grokEditDefinition,
+  qwenAnglesDefinition,
   trimDefinition,
   cutDefinition,
   mergeDefinition,
