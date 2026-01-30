@@ -1,5 +1,5 @@
 import { generateImage, wrapImageModel } from "ai";
-import { withCache } from "../../ai-sdk/cache";
+import { type CacheStorage, withCache } from "../../ai-sdk/cache";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { generateVideo } from "../../ai-sdk/generate-video";
 import {
@@ -48,6 +48,16 @@ interface RenderedOverlay {
   isVideo: boolean;
 }
 
+function resolveCacheStorage(
+  cache: string | CacheStorage | undefined,
+): CacheStorage | undefined {
+  if (!cache) return undefined;
+  if (typeof cache === "string") {
+    return fileCache({ dir: cache });
+  }
+  return cache;
+}
+
 export async function renderRoot(
   element: VargElement<"render">,
   options: RenderOptions,
@@ -63,12 +73,14 @@ export async function renderRoot(
     placeholderCount.total++;
   };
 
-  const cachedGenerateImage = options.cache
-    ? withCache(generateImage, { storage: fileCache({ dir: options.cache }) })
+  const cacheStorage = resolveCacheStorage(options.cache);
+
+  const cachedGenerateImage = cacheStorage
+    ? withCache(generateImage, { storage: cacheStorage })
     : generateImage;
 
-  const cachedGenerateVideo = options.cache
-    ? withCache(generateVideo, { storage: fileCache({ dir: options.cache }) })
+  const cachedGenerateVideo = cacheStorage
+    ? withCache(generateVideo, { storage: cacheStorage })
     : generateVideo;
 
   const wrapGenerateImage: typeof generateImage = async (opts) => {
@@ -114,7 +126,7 @@ export async function renderRoot(
     width: props.width ?? 1920,
     height: props.height ?? 1080,
     fps: props.fps ?? 30,
-    cache: options.cache ? fileCache({ dir: options.cache }) : undefined,
+    cache: cacheStorage,
     generateImage: wrapGenerateImage,
     generateVideo: wrapGenerateVideo,
     tempFiles: [],

@@ -1,5 +1,5 @@
 import { generateImage } from "ai";
-import { withCache } from "../ai-sdk/cache";
+import { type CacheStorage, withCache } from "../ai-sdk/cache";
 import { fileCache } from "../ai-sdk/file-cache";
 import { generateVideo } from "../ai-sdk/generate-video";
 import type { RenderContext } from "../react/renderers/context";
@@ -27,21 +27,26 @@ const sessions = new Map<string, StepSession>();
 export function createStepSession(
   code: string,
   rootElement: VargElement,
-  cacheDir?: string,
+  cache?: string | CacheStorage,
 ): StepSession {
   const props = rootElement.props as RenderProps;
-  const cache = cacheDir ? fileCache({ dir: cacheDir }) : undefined;
+  const cacheStorage =
+    cache === undefined
+      ? undefined
+      : typeof cache === "string"
+        ? fileCache({ dir: cache })
+        : cache;
 
   const ctx: RenderContext = {
     width: props.width ?? 1920,
     height: props.height ?? 1080,
     fps: props.fps ?? 30,
-    cache,
-    generateImage: cache
-      ? withCache(generateImage, { storage: cache })
+    cache: cacheStorage,
+    generateImage: cacheStorage
+      ? withCache(generateImage, { storage: cacheStorage })
       : generateImage,
-    generateVideo: cache
-      ? withCache(generateVideo, { storage: cache })
+    generateVideo: cacheStorage
+      ? withCache(generateVideo, { storage: cacheStorage })
       : generateVideo,
     tempFiles: [],
     progress: createProgressTracker(false),
@@ -223,7 +228,7 @@ export async function finalizeRender(
 
   await render(session.rootElement, {
     output: outputPath,
-    cache: session.ctx.cache ? ".cache/ai" : undefined,
+    cache: session.ctx.cache,
     quiet: true,
   });
 

@@ -1,5 +1,6 @@
 import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
 import type { FFmpegBackend } from "@/ai-sdk/providers/editly/backends";
+import type { CacheStorage } from "../ai-sdk/cache";
 import type { MusicModelV3 } from "../ai-sdk/music-model";
 import type {
   CropPosition,
@@ -256,7 +257,7 @@ export interface DefaultModels {
 
 export interface RenderOptions {
   output?: string;
-  cache?: string;
+  cache?: string | CacheStorage;
   quiet?: boolean;
   verbose?: boolean;
   mode?: RenderMode;
