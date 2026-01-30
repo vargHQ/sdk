@@ -22,6 +22,11 @@ interface PendingRequest {
 
 const pendingStorage = fileCache({ dir: ".cache/fal-pending" });
 
+const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const FAL_TIMEOUT_MS = process.env.FAL_TIMEOUT_MS
+  ? Number.parseInt(process.env.FAL_TIMEOUT_MS, 10)
+  : DEFAULT_TIMEOUT_MS;
+
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   // Kling v2.6 - latest with native audio generation
   "kling-v2.6": {
@@ -239,6 +244,7 @@ async function executeWithQueueRecovery<T>(
         await fal.queue.subscribeToStatus(pending.endpoint, {
           requestId: pending.request_id,
           logs,
+          timeout: FAL_TIMEOUT_MS,
           onQueueUpdate,
         });
         const result = await fal.queue.result(pending.endpoint, {
@@ -277,6 +283,7 @@ async function executeWithQueueRecovery<T>(
     await fal.queue.subscribeToStatus(endpoint, {
       requestId: request_id,
       logs,
+      timeout: FAL_TIMEOUT_MS,
       onQueueUpdate,
     });
 
