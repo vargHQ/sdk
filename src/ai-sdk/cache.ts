@@ -43,7 +43,7 @@ function parseTTL(ttl: number | string | undefined): number | undefined {
   const match = ttl.match(/^(\d+)(s|m|h|d)$/);
   if (!match) return undefined;
 
-  const value = Number.parseInt(match[1]!, 10);
+  const value = Number.parseInt(match[1] ?? "0", 10);
   const unit = match[2];
 
   switch (unit) {

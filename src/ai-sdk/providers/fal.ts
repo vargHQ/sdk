@@ -365,7 +365,7 @@ class FalVideoModel implements VideoModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
-    const hasVideoInput = files?.some((f) =>
+    const _hasVideoInput = files?.some((f) =>
       getMediaType(f)?.startsWith("video/"),
     );
     const hasImageInput = files?.some((f) =>
@@ -491,12 +491,14 @@ class FalVideoModel implements VideoModelV3 {
         const imageFiles = files.filter((f) =>
           getMediaType(f)?.startsWith("image/"),
         );
-        if (imageFiles.length > 0) {
+        const firstImage = imageFiles[0];
+        if (firstImage) {
           // First image is start image
-          input.image_url = await fileToUrl(imageFiles[0]!);
+          input.image_url = await fileToUrl(firstImage);
           // Second image (if provided) is end image for Kling v2.6 and LTX-2
-          if ((isKlingV26 || isLtx2) && imageFiles.length > 1) {
-            input.end_image_url = await fileToUrl(imageFiles[1]!);
+          const secondImage = imageFiles[1];
+          if ((isKlingV26 || isLtx2) && secondImage) {
+            input.end_image_url = await fileToUrl(secondImage);
           }
         }
       } else if (!isLtx2) {
@@ -788,7 +790,8 @@ class FalImageModel implements ImageModelV3 {
 
     const imageBuffers = await Promise.all(
       images.map(async (img) => {
-        const response = await fetch(img.url!, { signal: abortSignal });
+        if (!img.url) throw new Error("Image URL is missing");
+        const response = await fetch(img.url, { signal: abortSignal });
         return new Uint8Array(await response.arrayBuffer());
       }),
     );

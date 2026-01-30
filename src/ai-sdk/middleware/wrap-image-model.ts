@@ -1,8 +1,4 @@
-import type {
-  ImageModelV3,
-  ImageModelV3CallOptions,
-  ImageModelV3Middleware,
-} from "@ai-sdk/provider";
+import type { ImageModelV3, ImageModelV3Middleware } from "@ai-sdk/provider";
 import { wrapImageModel } from "ai";
 import { generatePlaceholder } from "./placeholder";
 import type { RenderMode } from "./wrap-video-model";

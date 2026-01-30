@@ -470,12 +470,12 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       el.imageDataUrl ||
       (el.src && !isLocalFilePath(el.src) ? el.src : undefined);
 
-    if (hasSrcWithPreview) {
+    if (hasSrcWithPreview && el.src) {
       const shortPath =
-        el.src!.length > 50 ? `${el.src!.slice(0, 50)}...` : el.src!;
+        el.src.length > 50 ? `${el.src.slice(0, 50)}...` : el.src;
       const isUrl =
-        el.src!.startsWith("http://") || el.src!.startsWith("https://");
-      const escapedSrc = escapeAttr(el.src!);
+        el.src.startsWith("http://") || el.src.startsWith("https://");
+      const escapedSrc = escapeAttr(el.src);
       const previewImgSrc = previewSrc ? escapeAttr(previewSrc) : undefined;
       return `
       <div class="tree-node" style="--depth: ${depth}">
@@ -567,15 +567,12 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
           child.imageDataUrl ||
           (child.src && !isLocalFilePath(child.src) ? child.src : undefined);
 
-        if (hasSrcWithPreview) {
+        if (hasSrcWithPreview && child.src) {
           const shortPath =
-            child.src!.length > 60
-              ? `${child.src!.slice(0, 60)}...`
-              : child.src!;
+            child.src.length > 60 ? `${child.src.slice(0, 60)}...` : child.src;
           const isUrl =
-            child.src!.startsWith("http://") ||
-            child.src!.startsWith("https://");
-          const escapedSrc = escapeAttr(child.src!);
+            child.src.startsWith("http://") || child.src.startsWith("https://");
+          const escapedSrc = escapeAttr(child.src);
           const previewImgSrc = previewSrc ? escapeAttr(previewSrc) : undefined;
           return `
           <div class="timeline-nested">

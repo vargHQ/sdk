@@ -145,12 +145,13 @@ export const definition: ActionDefinition<typeof schema> = {
     };
 
     const images = data?.images;
-    if (!images || images.length === 0) {
+    const firstImage = images?.[0];
+    if (!images || !firstImage) {
       throw new Error("No images in result");
     }
 
     return {
-      imageUrl: images[0]!.url,
+      imageUrl: firstImage.url,
       images,
       seed: data?.seed,
       prompt: data?.prompt,
@@ -203,12 +204,13 @@ export async function qwenAngles(
   };
 
   const images = data?.images;
-  if (!images || images.length === 0) {
+  const firstImage = images?.[0];
+  if (!images || !firstImage) {
     throw new Error("No images in result");
   }
 
   return {
-    imageUrl: images[0]!.url,
+    imageUrl: firstImage.url,
     images,
     seed: data?.seed,
     prompt: data?.prompt,

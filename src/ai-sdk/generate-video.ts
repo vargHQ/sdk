@@ -59,9 +59,8 @@ class DefaultGeneratedVideo implements GeneratedVideo {
 
   get base64(): string {
     let binary = "";
-    const bytes = this._data;
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]!);
+    for (const byte of this._data) {
+      binary += String.fromCharCode(byte);
     }
     return btoa(binary);
   }
@@ -158,7 +157,7 @@ export async function generateVideo(
   }
 
   return {
-    video: videos[0]!,
+    video: videos[0] as GeneratedVideo,
     videos,
     warnings,
   };

@@ -46,7 +46,9 @@ And ending with this amazing view.`;
         n: 1,
         cacheKey: ["slideshow", "scene", i],
       });
-      const data = images[0]!.uint8Array;
+      const firstImage = images[0];
+      if (!firstImage) throw new Error(`No image generated for scene ${i}`);
+      const data = firstImage.uint8Array;
       await Bun.write(`output/workflow-scene-${i}.png`, data);
       return `output/workflow-scene-${i}.png`;
     }),
@@ -62,7 +64,9 @@ And ending with this amazing view.`;
     cacheKey: ["slideshow", "talking-head"],
   });
 
-  const talkingImage = talkingImages[0]!.uint8Array;
+  const firstTalkingImage = talkingImages[0];
+  if (!firstTalkingImage) throw new Error("No talking head image generated");
+  const talkingImage = firstTalkingImage.uint8Array;
   await Bun.write("output/workflow-talking-head.png", talkingImage);
 
   console.log("\nstep 3: generating voiceover...");
@@ -121,7 +125,7 @@ And ending with this amazing view.`;
   await Bun.write("output/workflow-slideshow.srt", srtContent);
 
   console.log("\nstep 7: creating slideshow with pip...");
-  const clips = sceneImages.map((imagePath, i) => ({
+  const clips = sceneImages.map((imagePath, _i) => ({
     duration: 2,
     layers: [
       { type: "image" as const, path: imagePath },

@@ -237,9 +237,6 @@ function mapCtaPosition(
     case "center-left":
     case "center-right":
       return "center";
-    case "bottom":
-    case "bottom-left":
-    case "bottom-right":
     default:
       return "bottom";
   }

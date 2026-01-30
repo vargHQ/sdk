@@ -123,8 +123,7 @@ export class RendiBackend implements FFmpegBackend {
     const inputFiles: Record<string, string> = {};
     const pathToPlaceholder = new Map<string, string>();
 
-    for (let i = 0; i < inputs.length; i++) {
-      const input = inputs[i]!;
+    for (const [i, input] of inputs.entries()) {
       const path = this.getInputPath(input);
       const url = this.ensureUrl(path);
       const placeholder = `in_${i + 1}`;
@@ -146,8 +145,7 @@ export class RendiBackend implements FFmpegBackend {
     };
 
     const inputArgs: string[] = [];
-    for (let i = 0; i < inputs.length; i++) {
-      const input = inputs[i]!;
+    for (const [i, input] of inputs.entries()) {
       if (typeof input !== "string" && "options" in input && input.options) {
         inputArgs.push(...input.options);
       }

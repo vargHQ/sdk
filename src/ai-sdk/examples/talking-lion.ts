@@ -26,7 +26,9 @@ Whether you're building social content or creative apps, Varg has got you covere
     }),
   ]);
 
-  const image = File.from(imageResult.images[0]!);
+  const firstImage = imageResult.images[0];
+  if (!firstImage) throw new Error("No image generated");
+  const image = File.from(firstImage);
   const audio = File.from(speechResult.audio);
 
   console.log(`image: ${(await image.data()).byteLength} bytes`);

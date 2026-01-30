@@ -30,7 +30,9 @@ Don't forget to like and subscribe for more content like this!`;
     cacheKey: ["animated-girl", "portrait"],
   });
 
-  const imageData = images[0]!.uint8Array;
+  const firstImage = images[0];
+  if (!firstImage) throw new Error("No image generated");
+  const imageData = firstImage.uint8Array;
   await Bun.write("output/workflow-girl-image.png", imageData);
   console.log("saved: output/workflow-girl-image.png");
 

@@ -9,14 +9,8 @@
  *   bun scripts/setup.ts
  */
 
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 const COLORS = {
   reset: "\x1b[0m",
@@ -228,7 +222,7 @@ Get your free API key at: ${COLORS.cyan}https://fal.ai/dashboard/keys${COLORS.re
   }
 
   if (added) {
-    writeFileSync(gitignorePath, gitignoreContent.trim() + "\n");
+    writeFileSync(gitignorePath, `${gitignoreContent.trim()}\n`);
     log.success("Updated .gitignore");
   } else {
     log.info(".gitignore already configured");

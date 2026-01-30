@@ -109,7 +109,7 @@ describe("render cache behavior", () => {
     const counters = { imageCalls: 0, videoCalls: 0 };
 
     const model = createVideoModel();
-    const imageModel = createImageModel();
+    const _imageModel = createImageModel();
 
     const base = Video({
       prompt: "walk forward",
@@ -146,7 +146,7 @@ describe("render cache behavior", () => {
     const cacheDir = makeTempDir();
     const counters = { imageCalls: 0, videoCalls: 0 };
 
-    const videoModel = createVideoModel();
+    const _videoModel = createVideoModel();
     const imageModel = createImageModel();
 
     const base = Image({

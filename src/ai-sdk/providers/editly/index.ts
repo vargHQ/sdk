@@ -161,7 +161,7 @@ function isTextOverlayLayer(layer: Layer): boolean {
 
 function buildBaseClipFilter(
   clip: ProcessedClip,
-  clipIndex: number,
+  _clipIndex: number,
   width: number,
   height: number,
   inputOffset: number,
@@ -416,8 +416,7 @@ function buildAudioFilter(
   let inputIdx = videoInputCount;
 
   if (videoSourceAudio && videoSourceAudio.length > 0) {
-    for (let i = 0; i < videoSourceAudio.length; i++) {
-      const src = videoSourceAudio[i]!;
+    for (const [i, src] of videoSourceAudio.entries()) {
       const { inputIndex, startTime, duration, cutFrom, mixVolume } = src;
 
       const shouldInclude =
@@ -460,8 +459,7 @@ function buildAudioFilter(
     inputIdx++;
   }
 
-  for (let i = 0; i < audioTracks.length; i++) {
-    const track = audioTracks[i]!;
+  for (const [i, track] of audioTracks.entries()) {
     audioInputs.push(track.path);
     const label = `atrk${i}`;
 
@@ -483,8 +481,7 @@ function buildAudioFilter(
     inputIdx++;
   }
 
-  for (let i = 0; i < clipAudioLayers.length; i++) {
-    const { layer, clipStartTime } = clipAudioLayers[i]!;
+  for (const [i, { layer, clipStartTime }] of clipAudioLayers.entries()) {
     audioInputs.push(layer.path);
     const label = `aclip${i}`;
 

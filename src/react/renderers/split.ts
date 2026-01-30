@@ -52,7 +52,9 @@ export async function renderSplit(
   }
 
   if (cells.length === 1) {
-    return cells[0]!.path;
+    const firstCell = cells[0];
+    if (!firstCell) throw new Error("No cell found");
+    return firstCell.path;
   }
 
   const numChildren = cells.length;

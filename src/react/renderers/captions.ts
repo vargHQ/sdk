@@ -291,7 +291,19 @@ export async function renderCaptions(
   }
 
   const styleName = props.style ?? "tiktok";
-  const baseStyle = STYLE_PRESETS[styleName] ?? STYLE_PRESETS.tiktok!;
+  const defaultStyle: SubtitleStyle = {
+    fontName: "Montserrat",
+    fontSize: 72,
+    primaryColor: "&HFFFFFF",
+    outlineColor: "&H000000",
+    backColor: "&H00000000",
+    bold: true,
+    outline: 4,
+    shadow: 0,
+    marginV: 480,
+    alignment: 2,
+  };
+  const baseStyle = STYLE_PRESETS[styleName] ?? defaultStyle;
 
   const alignment = props.position
     ? (POSITION_ALIGNMENT[props.position] ?? baseStyle.alignment)
