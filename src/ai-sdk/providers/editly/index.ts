@@ -862,10 +862,14 @@ export async function editly(config: EditlyConfig): Promise<void> {
     console.log("\nFilter complex:\n", filterComplex.split(";").join(";\n"));
   }
 
-  const result = await $`ffmpeg ${ffmpegArgs}`.quiet();
+  const result = await $`ffmpeg ${ffmpegArgs}`.nothrow().quiet();
 
   if (result.exitCode !== 0) {
-    throw new Error(`ffmpeg failed with exit code ${result.exitCode}`);
+    const stderr = result.stderr.toString();
+    console.error("ffmpeg stderr:", stderr);
+    throw new Error(
+      `ffmpeg failed with exit code ${result.exitCode}: ${stderr.slice(-500)}`,
+    );
   }
 
   console.log(`Output: ${outPath}`);
