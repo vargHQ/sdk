@@ -205,8 +205,35 @@ export async function renderRoot(
     }
   }
 
-  const renderedClips = await Promise.all(
+  const clipResults = await Promise.allSettled(
     clipElements.map((clipElement) => renderClip(clipElement, ctx)),
+  );
+
+  const failures = clipResults
+    .map((r, i) =>
+      r.status === "rejected" ? { index: i, reason: r.reason } : null,
+    )
+    .filter(Boolean) as { index: number; reason: Error }[];
+
+  if (failures.length > 0) {
+    const successCount = clipResults.length - failures.length;
+    if (successCount > 0) {
+      console.log(
+        `\x1b[33mℹ ${successCount} clip(s) cached, ${failures.length} failed\x1b[0m`,
+      );
+    }
+    const errors = failures
+      .map((f) => f.reason?.message || "Unknown error")
+      .join("; ");
+    throw new Error(
+      `${failures.length} of ${clipResults.length} clips failed: ${errors}`,
+    );
+  }
+
+  const renderedClips = clipResults.map(
+    (r) =>
+      (r as PromiseFulfilledResult<Awaited<ReturnType<typeof renderClip>>>)
+        .value,
   );
 
   const clips: Clip[] = [];
