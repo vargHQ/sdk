@@ -274,11 +274,24 @@ async function executeWithQueueRecovery<T>(
       }
 
       await pendingStorage.delete(pendingKey);
-    } catch {
-      console.log(
-        `\x1b[33m⚠ pending job check failed, submitting new request\x1b[0m`,
-      );
-      await pendingStorage.delete(pendingKey);
+    } catch (error) {
+      const isNotFound =
+        error instanceof Error &&
+        (error.message.includes("not found") ||
+          error.message.includes("404") ||
+          error.message.includes("does not exist"));
+
+      if (isNotFound) {
+        console.log(
+          `\x1b[33m⚠ pending job expired or not found, submitting new request\x1b[0m`,
+        );
+        await pendingStorage.delete(pendingKey);
+      } else {
+        console.log(
+          `\x1b[33m⚠ pending job check failed (${error instanceof Error ? error.message : "unknown"}), keeping for retry\x1b[0m`,
+        );
+        throw error;
+      }
     }
   }
 
