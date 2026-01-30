@@ -35,8 +35,9 @@ export async function renderSlider(
     );
   }
 
-  if (children.length === 1) {
-    return children[0]!.path;
+  const first = children[0];
+  if (children.length === 1 && first) {
+    return first.path;
   }
 
   const transitionName = direction === "horizontal" ? "slideleft" : "slideup";

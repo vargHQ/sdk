@@ -152,8 +152,8 @@ export async function generateVideo(
     headers,
   });
 
-  const videos = result.videos.map((v, i) => 
-    new DefaultGeneratedVideo(v, result.videoUrls?.[i])
+  const videos = result.videos.map(
+    (v, i) => new DefaultGeneratedVideo(v, result.videoUrls?.[i]),
   );
   const warnings = result.warnings;
 

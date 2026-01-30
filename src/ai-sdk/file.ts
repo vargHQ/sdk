@@ -184,7 +184,7 @@ export class File {
     return { type: "file", mediaType: this._mediaType, data };
   }
 
-  async toTemp(): Promise<string> {
+  async toTempFile(): Promise<string> {
     const data = await this.data();
     const ext = this.extensionFromMediaType();
     const tmpDir = process.env.TMPDIR ?? "/tmp";
@@ -196,7 +196,7 @@ export class File {
 
   async getPath(): Promise<string> {
     if (this._url) return this._url;
-    return this.toTemp();
+    return this.toTempFile();
   }
 
   static async toTemp(
@@ -205,10 +205,10 @@ export class File {
       | File,
   ): Promise<string> {
     if (file instanceof File) {
-      return file.toTemp();
+      return file.toTempFile();
     }
     const f = File.from(file);
-    return f.toTemp();
+    return f.toTempFile();
   }
 
   private extensionFromMediaType(): string {
