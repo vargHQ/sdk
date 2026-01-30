@@ -152,8 +152,12 @@ export async function generateVideo(
     headers,
   });
 
+  const falMeta = result.providerMetadata?.fal as
+    | { videoUrl?: string }
+    | undefined;
+  const videoUrls = falMeta?.videoUrl ? [falMeta.videoUrl] : undefined;
   const videos = result.videos.map(
-    (v, i) => new DefaultGeneratedVideo(v, result.videoUrls?.[i]),
+    (v, i) => new DefaultGeneratedVideo(v, videoUrls?.[i]),
   );
   const warnings = result.warnings;
 
