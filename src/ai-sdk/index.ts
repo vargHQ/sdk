@@ -59,8 +59,8 @@ export {
   localBackend,
 } from "./providers/editly";
 export {
+  createRendiBackend,
   type RendiBackendOptions,
-  rendi,
 } from "./providers/editly/rendi";
 export {
   createElevenLabs,
