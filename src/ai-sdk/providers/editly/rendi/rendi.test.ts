@@ -19,21 +19,10 @@ describe.skipIf(!hasRendiKey)("rendi backend", () => {
     const backend = createRendiBackend();
 
     const result = await backend.run({
-      args: [
-        "-i",
-        "https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_intro.mp4",
-        "-t",
-        "2",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "ultrafast",
-        "-y",
-        "output.mp4",
-      ],
       inputs: [
         "https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_intro.mp4",
       ],
+      outputArgs: ["-t", "2", "-c:v", "libx264", "-preset", "ultrafast"],
       outputPath: "output.mp4",
       verbose: true,
     });

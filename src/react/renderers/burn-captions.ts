@@ -84,21 +84,9 @@ export async function burnCaptions(
   const escapedAssPath = assInput.replace(/\\/g, "\\\\").replace(/:/g, "\\:");
 
   const result = await backend.run({
-    args: [
-      "-i",
-      videoInput,
-      "-vf",
-      `subtitles=${escapedAssPath}`,
-      "-crf",
-      "18",
-      "-preset",
-      "fast",
-      "-c:a",
-      "copy",
-      "-y",
-      outputPath,
-    ],
     inputs: [videoInput, assInput],
+    videoFilter: `subtitles=${escapedAssPath}`,
+    outputArgs: ["-crf", "18", "-preset", "fast", "-c:a", "copy"],
     outputPath,
     verbose,
   });
