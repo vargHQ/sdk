@@ -132,6 +132,7 @@ export async function renderRoot(
     progress,
     pending: new Map(),
     defaults: options.defaults,
+    backend: options.backend,
   };
 
   const clipElements: VargElement<"clip">[] = [];

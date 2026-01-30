@@ -6,7 +6,7 @@ import type {
   ImageProps,
   VargElement,
 } from "../types";
-import type { RenderContext } from "./context";
+import { isCloudBackend, type RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
 import { computeCacheKey, toFileUrl } from "./utils";
 
@@ -96,9 +96,13 @@ export async function renderImage(
     if (!firstImage?.uint8Array) {
       throw new Error("Image generation returned no image data");
     }
-    const imageData = firstImage.uint8Array;
+
+    if (isCloudBackend(ctx.backend) && firstImage.url) {
+      return firstImage.url;
+    }
+
     const tempPath = await File.toTemp({
-      uint8Array: imageData,
+      uint8Array: firstImage.uint8Array,
       mimeType: "image/png",
     });
     ctx.tempFiles.push(tempPath);

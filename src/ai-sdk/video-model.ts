@@ -159,6 +159,12 @@ export type VideoModelV3 = {
     videos: Array<string> | Array<Uint8Array>;
 
     /**
+     * Original URLs for the generated videos (if available from provider).
+     * Cloud backends like Rendi can use these directly instead of re-uploading.
+     */
+    videoUrls?: Array<string>;
+
+    /**
      * Warnings for the call, e.g. unsupported features.
      */
     warnings: Array<SharedV3Warning>;

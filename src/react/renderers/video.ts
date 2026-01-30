@@ -6,7 +6,7 @@ import type {
   VideoPrompt,
   VideoProps,
 } from "../types";
-import type { RenderContext } from "./context";
+import { isCloudBackend, type RenderContext } from "./context";
 import { renderImage } from "./image";
 import { addTask, completeTask, startTask } from "./progress";
 import { renderSpeech } from "./speech";
@@ -152,6 +152,10 @@ export async function renderVideo(
     } as Parameters<typeof generateVideo>[0]);
 
     if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+
+    if (isCloudBackend(ctx.backend) && video.url) {
+      return video.url;
+    }
 
     const tempPath = await File.toTemp(video);
     ctx.tempFiles.push(tempPath);

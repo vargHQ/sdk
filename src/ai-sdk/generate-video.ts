@@ -33,6 +33,7 @@ export interface GeneratedVideo {
   readonly base64: string;
   readonly uint8Array: Uint8Array;
   readonly mimeType: string;
+  readonly url?: string;
 }
 
 export interface GenerateVideoResult {
@@ -44,13 +45,15 @@ export interface GenerateVideoResult {
 class DefaultGeneratedVideo implements GeneratedVideo {
   private _data: Uint8Array;
   readonly mimeType = "video/mp4";
+  readonly url?: string;
 
-  constructor(data: Uint8Array | string) {
+  constructor(data: Uint8Array | string, url?: string) {
     if (typeof data === "string") {
       this._data = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
     } else {
       this._data = data;
     }
+    this.url = url;
   }
 
   get uint8Array(): Uint8Array {
@@ -149,7 +152,9 @@ export async function generateVideo(
     headers,
   });
 
-  const videos = result.videos.map((v) => new DefaultGeneratedVideo(v));
+  const videos = result.videos.map((v, i) => 
+    new DefaultGeneratedVideo(v, result.videoUrls?.[i])
+  );
   const warnings = result.warnings;
 
   if (videos.length === 0) {
