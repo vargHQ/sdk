@@ -82,6 +82,8 @@ const IMAGE_MODELS: Record<string, string> = {
   "nano-banana-pro": "fal-ai/nano-banana-pro",
   "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
   "seedream-v4.5/edit": "fal-ai/bytedance/seedream/v4.5/edit",
+  // Qwen Image Edit 2511 Multiple Angles - camera angle adjustment
+  "qwen-angles": "fal-ai/qwen-image-edit-2511-multiple-angles",
 };
 
 // Models that use image_size instead of aspect_ratio
@@ -91,6 +93,23 @@ const IMAGE_SIZE_MODELS = new Set([
   "flux-pro",
   "seedream-v4.5/edit",
 ]);
+
+// Qwen Angles model - image-to-image with camera angle adjustment
+const QWEN_ANGLES_MODEL = "qwen-angles";
+
+// Map aspect ratio to image_size for Qwen Angles (base dimension 1024)
+const ASPECT_RATIO_TO_QWEN_SIZE: Record<
+  string,
+  { width: number; height: number }
+> = {
+  "1:1": { width: 1024, height: 1024 },
+  "4:3": { width: 1024, height: 768 },
+  "3:4": { width: 768, height: 1024 },
+  "16:9": { width: 1024, height: 576 },
+  "9:16": { width: 576, height: 1024 },
+  "3:2": { width: 1024, height: 683 },
+  "2:3": { width: 683, height: 1024 },
+};
 
 // Map aspect ratio strings to image_size enum values
 const ASPECT_RATIO_TO_IMAGE_SIZE: Record<string, string> = {
@@ -470,13 +489,27 @@ class FalImageModel implements ImageModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
+    const isQwenAngles = this.modelId === QWEN_ANGLES_MODEL;
+
     const input: Record<string, unknown> = {
-      prompt,
       num_images: n ?? 1,
-      // Use high acceleration for faster queue processing on supported models (flux-schnell)
-      acceleration: "high",
       ...(providerOptions?.fal ?? {}),
     };
+
+    // Qwen Angles uses additional_prompt instead of prompt
+    if (isQwenAngles) {
+      if (prompt) {
+        input.additional_prompt = prompt;
+      }
+      // Qwen Angles supports "regular" or "none" acceleration, not "high"
+      if (!input.acceleration) {
+        input.acceleration = "regular";
+      }
+    } else {
+      input.prompt = prompt;
+      // Use high acceleration for faster queue processing on supported models (flux-schnell)
+      input.acceleration = "high";
+    }
 
     const usesImageSize = IMAGE_SIZE_MODELS.has(this.modelId);
 
@@ -491,7 +524,21 @@ class FalImageModel implements ImageModelV3 {
     }
 
     if (aspectRatio) {
-      if (usesImageSize) {
+      if (isQwenAngles) {
+        // Convert aspect ratio to image_size dimensions for Qwen Angles
+        if (!input.image_size) {
+          const qwenSize = ASPECT_RATIO_TO_QWEN_SIZE[aspectRatio];
+          if (qwenSize) {
+            input.image_size = qwenSize;
+          } else {
+            warnings.push({
+              type: "unsupported",
+              feature: "aspectRatio",
+              details: `Aspect ratio "${aspectRatio}" not supported for qwen-angles, use one of: ${Object.keys(ASPECT_RATIO_TO_QWEN_SIZE).join(", ")}`,
+            });
+          }
+        }
+      } else if (usesImageSize) {
         // Convert aspect ratio to image_size enum for models that require it
         // Only set if size wasn't already provided
         if (!input.image_size) {
@@ -520,11 +567,16 @@ class FalImageModel implements ImageModelV3 {
       input.image_urls = await Promise.all(files.map((f) => fileToUrl(f)));
     }
 
+    // Qwen Angles requires image_urls
+    if (isQwenAngles && !input.image_urls) {
+      throw new Error("qwen-angles requires at least one image file");
+    }
+
     const hasImageUrls =
       hasFiles ||
       !!(providerOptions?.fal as Record<string, unknown>)?.image_urls;
     if (hasImageUrls) {
-      if (!files) {
+      if (!files && !isQwenAngles) {
         throw new Error("No files provided");
       }
     }

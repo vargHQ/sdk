@@ -502,6 +502,69 @@ export class FalProvider extends BaseProvider {
     console.log("[fal] completed!");
     return result;
   }
+
+  // ============================================================================
+  // Qwen Image Edit 2511 Multiple Angles
+  // ============================================================================
+
+  /**
+   * Adjust camera angle of an image using Qwen Image Edit 2511 Multiple Angles
+   * Generates same scene from different angles (azimuth/elevation)
+   */
+  async qwenMultipleAngles(args: {
+    imageUrl: string;
+    horizontalAngle?: number;
+    verticalAngle?: number;
+    zoom?: number;
+    additionalPrompt?: string;
+    loraScale?: number;
+    imageSize?: string | { width: number; height: number };
+    guidanceScale?: number;
+    numInferenceSteps?: number;
+    acceleration?: "none" | "regular";
+    negativePrompt?: string;
+    seed?: number;
+    outputFormat?: "png" | "jpeg" | "webp";
+    numImages?: number;
+  }) {
+    const modelId = "fal-ai/qwen-image-edit-2511-multiple-angles";
+
+    console.log(`[fal] starting qwen multiple angles: ${modelId}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        image_urls: [imageUrl],
+        horizontal_angle: args.horizontalAngle ?? 0,
+        vertical_angle: args.verticalAngle ?? 0,
+        zoom: args.zoom ?? 5,
+        additional_prompt: args.additionalPrompt,
+        lora_scale: args.loraScale ?? 1,
+        image_size: args.imageSize,
+        guidance_scale: args.guidanceScale ?? 4.5,
+        num_inference_steps: args.numInferenceSteps ?? 28,
+        acceleration: args.acceleration ?? "regular",
+        negative_prompt: args.negativePrompt ?? "",
+        seed: args.seed,
+        output_format: args.outputFormat ?? "png",
+        num_images: args.numImages ?? 1,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
 }
 
 // Export singleton instance
