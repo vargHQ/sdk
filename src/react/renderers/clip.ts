@@ -62,7 +62,7 @@ async function renderClipLayers(
         pending.push({
           type: "async",
           promise: renderImage(element as VargElement<"image">, ctx)
-            .then((file) => ctx.resolveFile(file))
+            .then((file) => file.getPath())
             .then((path) =>
               hasPosition
                 ? ({
@@ -89,7 +89,7 @@ async function renderClipLayers(
         pending.push({
           type: "async",
           promise: renderVideo(element as VargElement<"video">, ctx)
-            .then((file) => ctx.resolveFile(file))
+            .then((file) => file.getPath())
             .then(
               (path) =>
                 ({
@@ -131,7 +131,7 @@ async function renderClipLayers(
         pending.push({
           type: "async",
           promise: renderSpeech(element as VargElement<"speech">, ctx)
-            .then((file) => ctx.resolveFile(file))
+            .then((file) => file.getPath())
             .then(
               (path) =>
                 ({
@@ -157,7 +157,7 @@ async function renderClipLayers(
                 element as VargElement<"music">,
                 ctx,
               );
-              path = await ctx.resolveFile(file);
+              path = await file.getPath();
             } else {
               throw new Error("Music requires either src or prompt");
             }

@@ -43,20 +43,6 @@ import { renderSpeech } from "./speech";
 import { resolvePath } from "./utils";
 import { renderVideo } from "./video";
 
-function createFileResolver(
-  backend: FFmpegBackend | undefined,
-  tempFiles: string[],
-): (file: File) => Promise<string> {
-  return async (file: File) => {
-    if (backend?.name === "rendi" && file.hasUrl()) {
-      return file.url();
-    }
-    const tempPath = await file.toTemp();
-    tempFiles.push(tempPath);
-    return tempPath;
-  };
-}
-
 interface RenderedOverlay {
   path: string;
   props: OverlayProps;
@@ -149,7 +135,6 @@ export async function renderRoot(
     progress,
     pendingFiles: new Map(),
     defaults: options.defaults,
-    resolveFile: createFileResolver(options.backend, tempFiles),
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -183,7 +168,7 @@ export async function renderRoot(
         childElement as VargElement<"speech">,
         ctx,
       );
-      const path = await ctx.resolveFile(file);
+      const path = await file.getPath();
       const speechProps = childElement.props as SpeechProps;
       audioTracks.push({
         path,
@@ -211,7 +196,7 @@ export async function renderRoot(
       }
 
       if (file) {
-        const path = await ctx.resolveFile(file);
+        const path = await file.getPath();
         renderedOverlays.push({ path, props: overlayProps, isVideo });
 
         if (isVideo && overlayProps.keepAudio) {
@@ -312,7 +297,7 @@ export async function renderRoot(
       path = resolvePath(musicProps.src);
     } else if (musicProps.prompt) {
       const file = await renderMusic(musicElement, ctx);
-      path = await ctx.resolveFile(file);
+      path = await file.getPath();
     } else {
       throw new Error("Music requires either src or prompt");
     }

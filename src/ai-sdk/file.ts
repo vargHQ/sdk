@@ -190,6 +190,11 @@ export class File {
     return path;
   }
 
+  async getPath(): Promise<string> {
+    if (this._url) return this._url;
+    return this.toTemp();
+  }
+
   static async toTemp(
     file:
       | { uint8Array: Uint8Array; mimeType?: string; mediaType?: string }
