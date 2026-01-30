@@ -249,12 +249,12 @@ class FalVideoModel implements VideoModelV3 {
 
       // LTX-2 uses num_frames instead of duration, and has different defaults
       if (isLtx2) {
-        // LTX-2: num_frames controls length (default 121 = ~4.8s at 25fps)
-        // Only set if not already provided via providerOptions
-        if (input.num_frames === undefined && duration) {
-          // Convert duration to approximate frame count (25fps default)
+        // LTX-2: convert duration to num_frames (25fps default)
+        // Always set num_frames from duration unless explicitly provided via providerOptions
+        if (input.num_frames === undefined) {
           const fps = (input.fps as number) ?? 25;
-          input.num_frames = Math.round(duration * fps);
+          const durationSec = duration ?? 5; // default 5 seconds
+          input.num_frames = Math.round(durationSec * fps);
         }
         // LTX-2 uses video_size instead of aspect_ratio
         if (input.video_size === undefined) {
