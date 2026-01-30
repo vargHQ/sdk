@@ -20,7 +20,7 @@ export async function renderSwipe(
   const direction = props.direction ?? "left";
   const interval = props.interval ?? 3;
 
-  const childPaths: string[] = [];
+  const children: { path: string; isVideo: boolean }[] = [];
 
   for (const child of element.children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
@@ -29,35 +29,40 @@ export async function renderSwipe(
     if (childElement.type === "image") {
       const file = await renderImage(childElement as VargElement<"image">, ctx);
       const path = await ctx.backend.resolvePath(file);
-      childPaths.push(path);
+      children.push({ path, isVideo: false });
     } else if (childElement.type === "video") {
       const file = await renderVideo(childElement as VargElement<"video">, ctx);
       const path = await ctx.backend.resolvePath(file);
-      childPaths.push(path);
+      children.push({ path, isVideo: true });
     }
   }
 
-  if (childPaths.length === 0) {
+  if (children.length === 0) {
     throw new Error("Swipe element requires at least one image or video child");
   }
 
-  if (childPaths.length === 1) {
-    const firstPath = childPaths[0];
-    if (!firstPath) throw new Error("No path found");
-    return firstPath;
+  if (children.length === 1) {
+    return children[0]!.path;
   }
 
   const transitionName = SWIPE_TRANSITION_MAP[direction];
 
-  const clips: Clip[] = childPaths.map((path, i) => {
-    const isVideo = path.endsWith(".mp4") || path.endsWith(".webm");
-    const isLast = i === childPaths.length - 1;
+  const clips: Clip[] = children.map((child, i) => {
+    const isLast = i === children.length - 1;
 
     return {
       layers: [
-        isVideo
-          ? { type: "video" as const, path, resizeMode: "cover" as const }
-          : { type: "image" as const, path, resizeMode: "cover" as const },
+        child.isVideo
+          ? {
+              type: "video" as const,
+              path: child.path,
+              resizeMode: "cover" as const,
+            }
+          : {
+              type: "image" as const,
+              path: child.path,
+              resizeMode: "cover" as const,
+            },
       ],
       duration: interval,
       transition: isLast ? null : { name: transitionName, duration: 0.5 },
