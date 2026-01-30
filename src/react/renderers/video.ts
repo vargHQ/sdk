@@ -37,11 +37,9 @@ async function resolveAudioInput(
     const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
   }
-  // It's a Speech element - render it first
   if (input.type === "speech") {
-    const { path } = await renderSpeech(input, ctx);
-    const response = await fetch(toFileUrl(path));
-    return new Uint8Array(await response.arrayBuffer());
+    const file = await renderSpeech(input, ctx);
+    return file.arrayBuffer();
   }
   throw new Error(
     `Unsupported audio input type: ${(input as VargElement).type}`,

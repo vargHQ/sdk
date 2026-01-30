@@ -31,14 +31,16 @@ export async function renderSplit(
     const childProps = childElement.props as Record<string, unknown>;
 
     if (childElement.type === "image") {
-      const path = await renderImage(childElement as VargElement<"image">, ctx);
+      const file = await renderImage(childElement as VargElement<"image">, ctx);
+      const path = await ctx.resolveFile(file);
       cells.push({
         path,
         resizeMode: childProps.resize as ResizeMode | undefined,
         cropPosition: childProps.cropPosition as CropPosition | undefined,
       });
     } else if (childElement.type === "video") {
-      const path = await renderVideo(childElement as VargElement<"video">, ctx);
+      const file = await renderVideo(childElement as VargElement<"video">, ctx);
+      const path = await ctx.resolveFile(file);
       cells.push({
         path,
         resizeMode: childProps.resize as ResizeMode | undefined,

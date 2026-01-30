@@ -1,3 +1,4 @@
+import { File } from "../../ai-sdk/file";
 import { generateMusic } from "../../ai-sdk/generate-music";
 import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
@@ -6,7 +7,7 @@ import { addTask, completeTask, startTask } from "./progress";
 export async function renderMusic(
   element: VargElement<"music">,
   ctx: RenderContext,
-): Promise<{ path: string }> {
+): Promise<File> {
   const props = element.props as MusicProps;
 
   const prompt = props.prompt;
@@ -31,35 +32,34 @@ export async function renderMusic(
       prompt,
       duration: props.duration,
     });
-    return result.audio.uint8Array;
+    return result.audio;
   };
 
-  let audioData: Uint8Array;
+  let audio: { uint8Array: Uint8Array; url?: string };
 
   if (ctx.cache) {
     const cached = await ctx.cache.get(cacheKey);
     if (cached) {
-      audioData = cached as Uint8Array;
-      // Signal cache hit to progress tracker
+      audio = { uint8Array: cached as Uint8Array };
       if (taskId && ctx.progress) {
         startTask(ctx.progress, taskId);
         completeTask(ctx.progress, taskId);
       }
     } else {
       if (taskId && ctx.progress) startTask(ctx.progress, taskId);
-      audioData = await generateFn();
+      audio = await generateFn();
       if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
-      await ctx.cache.set(cacheKey, audioData);
+      await ctx.cache.set(cacheKey, audio.uint8Array);
     }
   } else {
     if (taskId && ctx.progress) startTask(ctx.progress, taskId);
-    audioData = await generateFn();
+    audio = await generateFn();
     if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
   }
 
-  const tempPath = `/tmp/varg-music-${Date.now()}.mp3`;
-  await Bun.write(tempPath, audioData);
-  ctx.tempFiles.push(tempPath);
-
-  return { path: tempPath };
+  return File.fromGenerated({
+    uint8Array: audio.uint8Array,
+    mediaType: "audio/mpeg",
+    url: audio.url,
+  });
 }

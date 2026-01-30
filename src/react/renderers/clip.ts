@@ -130,14 +130,16 @@ async function renderClipLayers(
         const props = element.props as SpeechProps;
         pending.push({
           type: "async",
-          promise: renderSpeech(element as VargElement<"speech">, ctx).then(
-            (result) =>
-              ({
-                type: "audio",
-                path: result.path,
-                mixVolume: props.volume ?? 1,
-              }) as AudioLayer,
-          ),
+          promise: renderSpeech(element as VargElement<"speech">, ctx)
+            .then((file) => ctx.resolveFile(file))
+            .then(
+              (path) =>
+                ({
+                  type: "audio",
+                  path,
+                  mixVolume: props.volume ?? 1,
+                }) as AudioLayer,
+            ),
         });
         break;
       }
@@ -151,11 +153,11 @@ async function renderClipLayers(
             if (props.src) {
               path = resolvePath(props.src);
             } else if (props.prompt) {
-              const result = await renderMusic(
+              const file = await renderMusic(
                 element as VargElement<"music">,
                 ctx,
               );
-              path = result.path;
+              path = await ctx.resolveFile(file);
             } else {
               throw new Error("Music requires either src or prompt");
             }
