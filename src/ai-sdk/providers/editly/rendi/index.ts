@@ -1,3 +1,4 @@
+import { File } from "../../../file";
 import type {
   FFmpegBackend,
   FFmpegInput,
@@ -44,7 +45,7 @@ export class RendiBackend implements FFmpegBackend {
   }
 
   async ffprobe(input: string): Promise<VideoInfo> {
-    const inputUrl = this.ensureUrl(input);
+    const inputUrl = await this.ensureUrl(input);
 
     const submitResponse = await fetch(`${RENDI_API_BASE}/run-ffmpeg-command`, {
       method: "POST",
@@ -125,7 +126,7 @@ export class RendiBackend implements FFmpegBackend {
 
     for (const [i, input] of inputs.entries()) {
       const path = this.getInputPath(input);
-      const url = this.ensureUrl(path);
+      const url = await this.ensureUrl(path);
       const placeholder = `in_${i + 1}`;
       inputFiles[placeholder] = url;
       pathToPlaceholder.set(path, `{{${placeholder}}}`);
@@ -254,11 +255,12 @@ export class RendiBackend implements FFmpegBackend {
     throw new Error("Rendi command timed out");
   }
 
-  private ensureUrl(input: string): string {
+  private async ensureUrl(input: string): Promise<string> {
     if (input.startsWith("http://") || input.startsWith("https://")) {
       return input;
     }
-    throw new Error(`Rendi backend requires URLs, got local path: ${input}`);
+    const file = File.fromPath(input);
+    return file.upload();
   }
 
   private buildCommandString(args: string[]): string {
