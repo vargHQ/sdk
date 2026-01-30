@@ -252,7 +252,10 @@ export async function renderCaptions(
       if (transcribeTaskId && ctx.progress)
         startTask(ctx.progress, transcribeTaskId);
 
-      const audioData = await Bun.file(audioPath).arrayBuffer();
+      const audioData =
+        audioPath.startsWith("http://") || audioPath.startsWith("https://")
+          ? await fetch(audioPath).then((res) => res.arrayBuffer())
+          : await Bun.file(audioPath).arrayBuffer();
 
       const result = await transcribe({
         model: groq.transcription("whisper-large-v3"),
