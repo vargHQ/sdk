@@ -20,6 +20,7 @@ import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderMusic } from "./music";
 import { renderPackshot } from "./packshot";
+import { allSettledWithResults, PartialFailureError } from "./parallel";
 import { renderSlider } from "./slider";
 import { renderSpeech } from "./speech";
 import { renderSplit } from "./split";
@@ -226,11 +227,40 @@ async function renderClipLayers(
     }
   }
 
-  const layers = await Promise.all(
-    pending.map((p) => (p.type === "sync" ? p.layer : p.promise)),
+  const layerResult = await allSettledWithResults(
+    pending.map((p) =>
+      p.type === "sync" ? Promise.resolve(p.layer) : p.promise,
+    ),
   );
 
-  return layers;
+  if (layerResult.failures.length > 0) {
+    const errorMessages = layerResult.failures
+      .map((f) => `  Layer ${f.index}: ${f.error.message}`)
+      .join("\n");
+
+    console.error(
+      `\x1b[31m✗ ${layerResult.failures.length} layer(s) failed to render:\x1b[0m\n${errorMessages}`,
+    );
+
+    if (layerResult.successes.length > 0) {
+      console.log(
+        `\x1b[33mℹ ${layerResult.successes.length} layer(s) rendered successfully and are cached\x1b[0m`,
+      );
+    }
+
+    const underlyingErrors = layerResult.failures
+      .map((f) => f.error.message)
+      .join("; ");
+
+    throw new PartialFailureError(
+      `${layerResult.failures.length} of ${pending.length} layers failed: ${underlyingErrors}`,
+      layerResult.successes,
+      layerResult.failures,
+      layerResult.results,
+    );
+  }
+
+  return layerResult.results as Layer[];
 }
 
 export async function renderClip(

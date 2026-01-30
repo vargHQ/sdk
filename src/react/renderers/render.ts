@@ -32,6 +32,7 @@ import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderMusic } from "./music";
+import { allSettledWithResults, PartialFailureError } from "./parallel";
 import {
   addTask,
   completeTask,
@@ -205,9 +206,41 @@ export async function renderRoot(
     }
   }
 
-  const renderedClips = await Promise.all(
+  const clipRenderResult = await allSettledWithResults(
     clipElements.map((clipElement) => renderClip(clipElement, ctx)),
   );
+
+  if (clipRenderResult.failures.length > 0) {
+    const failedIndices = clipRenderResult.failures.map((f) => f.index);
+    const errorMessages = clipRenderResult.failures
+      .map((f) => `  Clip ${f.index}: ${f.error.message}`)
+      .join("\n");
+
+    console.error(
+      `\x1b[31m✗ ${clipRenderResult.failures.length} clip(s) failed to render:\x1b[0m\n${errorMessages}`,
+    );
+
+    if (clipRenderResult.successes.length > 0) {
+      console.log(
+        `\x1b[33mℹ ${clipRenderResult.successes.length} clip(s) rendered successfully and are cached\x1b[0m`,
+      );
+    }
+
+    const underlyingErrors = clipRenderResult.failures
+      .map((f) => f.error.message)
+      .join("; ");
+
+    throw new PartialFailureError(
+      `${clipRenderResult.failures.length} of ${clipElements.length} clips failed: ${underlyingErrors}`,
+      clipRenderResult.successes,
+      clipRenderResult.failures,
+      clipRenderResult.results,
+    );
+  }
+
+  const renderedClips = clipRenderResult.results as Awaited<
+    ReturnType<typeof renderClip>
+  >[];
 
   const clips: Clip[] = [];
   let currentTime = 0;
