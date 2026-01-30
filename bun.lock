@@ -33,7 +33,6 @@
         "remotion": "^4.0.377",
         "replicate": "^1.4.0",
         "sharp": "^0.34.5",
-        "vargai": "^0.4.0-alpha11",
         "zod": "^4.2.1",
       },
       "devDependencies": {
@@ -1240,8 +1239,6 @@
 
     "vali-date": ["vali-date@1.0.0", "", {}, "sha512-sgECfZthyaCKW10N0fm27cg8HYTFK5qMWgypqkXMQ4Wbl/zZKx7xZICgcoxIIE+WFAP/MBL2EFwC/YvLxw3Zeg=="],
 
-    "vargai": ["vargai@0.4.0-alpha11", "", { "dependencies": { "@ai-sdk/fal": "^1.0.23", "@ai-sdk/fireworks": "^2.0.16", "@ai-sdk/groq": "^3.0.12", "@ai-sdk/openai": "^3.0.9", "@ai-sdk/provider": "^3.0.2", "@ai-sdk/replicate": "^2.0.5", "@aws-sdk/client-s3": "^3.937.0", "@aws-sdk/s3-request-presigner": "^3.937.0", "@elevenlabs/elevenlabs-js": "^2.28.0", "@fal-ai/client": "^1.7.2", "@higgsfield/client": "^0.1.2", "@inkjs/ui": "^2.0.0", "@remotion/cli": "^4.0.377", "@types/fluent-ffmpeg": "^2.1.28", "ai": "^6.0.26", "apify-client": "^2.20.0", "citty": "^0.1.6", "fluent-ffmpeg": "^2.1.3", "groq-sdk": "^0.36.0", "ink": "^6.5.1", "react": "^19.2.0", "react-dom": "^19.2.0", "remotion": "^4.0.377", "replicate": "^1.4.0", "zod": "^4.2.1" }, "peerDependencies": { "typescript": "^5" }, "bin": { "varg": "src/cli/index.ts" } }, "sha512-d+VTdZ2c1RNVpzlcwaYwAf9DpjsuO9QfHcJbT6nr7P7/utQp3hMWRCnI6DR0IzpaEDMtVG7hw6RTsfsEK6ShXw=="],
-
     "watchpack": ["watchpack@2.4.4", "", { "dependencies": { "glob-to-regexp": "^0.4.1", "graceful-fs": "^4.1.2" } }, "sha512-c5EGNOiyxxV5qmTtAB7rbiXxi1ooX1pQKMLX/MIabJjRA0SJBQOjKF+KSVfHkr9U1cADPon0mRiVe/riyaiDUA=="],
 
     "web-streams-polyfill": ["web-streams-polyfill@4.0.0-beta.3", "", {}, "sha512-QW95TCTaHmsYfHDybGMwO5IJIM93I/6vTRk+daHTWFPhwh+C8Cg7j7XyKrwrj8Ib6vYXe0ocYNrmzY4xAAN6ug=="],
@@ -1381,8 +1378,6 @@
     "terser-webpack-plugin/schema-utils": ["schema-utils@4.3.3", "", { "dependencies": { "@types/json-schema": "^7.0.9", "ajv": "^8.9.0", "ajv-formats": "^2.1.1", "ajv-keywords": "^5.1.0" } }, "sha512-eflK8wEtyOE6+hsaRVPxvUKYCpRgzLqDTb8krvAsRIwOGlHoSgYLgBXoubGgLd2fT41/OUYdb48v4k4WWHQurA=="],
 
     "tinyglobby/picomatch": ["picomatch@4.0.3", "", {}, "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q=="],
-
-    "vargai/@ai-sdk/provider": ["@ai-sdk/provider@3.0.4", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-5KXyBOSEX+l67elrEa+wqo/LSsSTtrPj9Uoh3zMbe/ceQX4ucHI3b9nUEfNkGF3Ry1svv90widAt+aiKdIJasQ=="],
 
     "widest-line/string-width": ["string-width@7.2.0", "", { "dependencies": { "emoji-regex": "^10.3.0", "get-east-asian-width": "^1.0.0", "strip-ansi": "^7.1.0" } }, "sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ=="],
 
