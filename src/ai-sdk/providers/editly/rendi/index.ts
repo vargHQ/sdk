@@ -134,7 +134,10 @@ export class RendiBackend implements FFmpegBackend {
 
     const replaceWithPlaceholders = (str: string): string => {
       let result = str;
-      for (const [url, ph] of pathToPlaceholder) {
+      const sortedEntries = [...pathToPlaceholder.entries()].sort(
+        (a, b) => b[0].length - a[0].length,
+      );
+      for (const [url, ph] of sortedEntries) {
         if (result.includes(url)) {
           result = result.replaceAll(url, ph);
         }
