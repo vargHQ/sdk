@@ -374,6 +374,134 @@ export class FalProvider extends BaseProvider {
     console.log("[fal] completed!");
     return result;
   }
+
+  // ============================================================================
+  // Grok Imagine Video methods (xAI)
+  // ============================================================================
+
+  /**
+   * Generate video from text using Grok Imagine Video
+   * Supports 1-15 second videos at 480p or 720p resolution
+   */
+  async grokTextToVideo(args: {
+    prompt: string;
+    duration?: number;
+    aspectRatio?: "16:9" | "4:3" | "3:2" | "1:1" | "2:3" | "3:4" | "9:16";
+    resolution?: "480p" | "720p";
+  }) {
+    const modelId = "xai/grok-imagine-video/text-to-video";
+
+    console.log(`[fal] starting grok text-to-video: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        duration: args.duration ?? 6,
+        aspect_ratio: args.aspectRatio ?? "16:9",
+        resolution: args.resolution ?? "720p",
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  /**
+   * Generate video from image using Grok Imagine Video
+   * Supports 1-15 second videos at 480p or 720p resolution
+   */
+  async grokImageToVideo(args: {
+    prompt: string;
+    imageUrl: string;
+    duration?: number;
+    aspectRatio?:
+      | "auto"
+      | "16:9"
+      | "4:3"
+      | "3:2"
+      | "1:1"
+      | "2:3"
+      | "3:4"
+      | "9:16";
+    resolution?: "480p" | "720p";
+  }) {
+    const modelId = "xai/grok-imagine-video/image-to-video";
+
+    console.log(`[fal] starting grok image-to-video: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        image_url: imageUrl,
+        duration: args.duration ?? 6,
+        aspect_ratio: args.aspectRatio ?? "auto",
+        resolution: args.resolution ?? "720p",
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  /**
+   * Edit video using Grok Imagine Video
+   * Video will be resized to max 854x480 and truncated to 8 seconds
+   */
+  async grokEditVideo(args: {
+    prompt: string;
+    videoUrl: string;
+    resolution?: "auto" | "480p" | "720p";
+  }) {
+    const modelId = "xai/grok-imagine-video/edit-video";
+
+    console.log(`[fal] starting grok edit-video: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const videoUrl = await ensureUrl(args.videoUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        video_url: videoUrl,
+        resolution: args.resolution ?? "auto",
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
 }
 
 // Export singleton instance

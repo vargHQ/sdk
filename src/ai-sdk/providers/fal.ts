@@ -48,6 +48,16 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     t2v: "fal-ai/ltx-2-19b/distilled/text-to-video",
     i2v: "fal-ai/ltx-2-19b/distilled/image-to-video",
   },
+  // Grok Imagine Video - xAI's video generation with audio
+  "grok-imagine": {
+    t2v: "xai/grok-imagine-video/text-to-video",
+    i2v: "xai/grok-imagine-video/image-to-video",
+  },
+};
+
+// Video edit models - video-to-video editing
+const VIDEO_EDIT_MODELS: Record<string, string> = {
+  "grok-imagine-edit": "xai/grok-imagine-video/edit-video",
 };
 
 // Motion control models - video-to-video with motion transfer
@@ -186,14 +196,18 @@ class FalVideoModel implements VideoModelV3 {
 
     const isLipsync = LIPSYNC_MODELS[this.modelId] !== undefined;
     const isMotionControl = MOTION_CONTROL_MODELS[this.modelId] !== undefined;
+    const isVideoEdit = VIDEO_EDIT_MODELS[this.modelId] !== undefined;
     const isKlingV26 = this.modelId === "kling-v2.6";
     const isLtx2 = this.modelId === "ltx-2-19b-distilled";
+    const isGrokImagine = this.modelId === "grok-imagine";
 
     const endpoint = isLipsync
       ? this.resolveLipsyncEndpoint()
       : isMotionControl
         ? this.resolveMotionControlEndpoint()
-        : this.resolveEndpoint(hasImageInput ?? false);
+        : isVideoEdit
+          ? this.resolveVideoEditEndpoint()
+          : this.resolveEndpoint(hasImageInput ?? false);
 
     const input: Record<string, unknown> = {
       ...(providerOptions?.fal ?? {}),
@@ -243,6 +257,22 @@ class FalVideoModel implements VideoModelV3 {
       if (input.keep_original_sound === undefined) {
         input.keep_original_sound = true;
       }
+    } else if (isVideoEdit) {
+      // Video edit: video input + prompt for editing instruction
+      input.prompt = prompt;
+
+      const videoFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("video/"),
+      );
+
+      if (videoFile) {
+        input.video_url = await fileToUrl(videoFile);
+      }
+
+      // Grok Imagine Edit supports resolution: "auto", "480p", "720p"
+      if (!input.resolution) {
+        input.resolution = "auto";
+      }
     } else {
       // Standard video generation
       input.prompt = prompt;
@@ -263,6 +293,13 @@ class FalVideoModel implements VideoModelV3 {
       } else if (isKlingV26) {
         // Duration must be string "5" or "10" for Kling v2.6
         input.duration = String(duration ?? 5);
+      } else if (isGrokImagine) {
+        // Grok Imagine: duration 1-15 seconds (default 6)
+        input.duration = duration ?? 6;
+        // Grok Imagine supports resolution: "480p", "720p" (default "720p")
+        if (!input.resolution) {
+          input.resolution = "720p";
+        }
       } else {
         input.duration = duration ?? 5;
       }
@@ -399,6 +436,14 @@ class FalVideoModel implements VideoModelV3 {
     }
 
     return MOTION_CONTROL_MODELS[this.modelId] ?? this.modelId;
+  }
+
+  private resolveVideoEditEndpoint(): string {
+    if (this.modelId.startsWith("raw:")) {
+      return this.modelId.slice(4);
+    }
+
+    return VIDEO_EDIT_MODELS[this.modelId] ?? this.modelId;
   }
 }
 

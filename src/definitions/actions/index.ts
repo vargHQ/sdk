@@ -38,6 +38,12 @@ export {
   trim,
   trimDefinition,
 } from "./edit";
+export type { GrokEditInput, GrokEditOutput } from "./grok-edit";
+// Grok Imagine Video Edit
+export {
+  definition as grokEdit,
+  grokEditVideo,
+} from "./grok-edit";
 export type { ImageGenerationResult } from "./image";
 // Image generation
 export {
@@ -87,6 +93,7 @@ import {
   transitionDefinition,
   trimDefinition,
 } from "./edit";
+import { definition as grokEditDefinition } from "./grok-edit";
 import { definition as imageDefinition } from "./image";
 import { definition as musicDefinition } from "./music";
 import { definition as syncDefinition } from "./sync";
@@ -103,6 +110,7 @@ export const allActions = [
   musicDefinition,
   syncDefinition,
   captionsDefinition,
+  grokEditDefinition,
   trimDefinition,
   cutDefinition,
   mergeDefinition,
