@@ -5,6 +5,11 @@ import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderVideo } from "./video";
 
+interface SwipeChild {
+  path: string;
+  isVideo: boolean;
+}
+
 const SWIPE_TRANSITION_MAP = {
   left: "slideleft",
   right: "slideright",
@@ -20,7 +25,7 @@ export async function renderSwipe(
   const direction = props.direction ?? "left";
   const interval = props.interval ?? 3;
 
-  const children: { path: string; isVideo: boolean }[] = [];
+  const children: SwipeChild[] = [];
 
   for (const child of element.children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
