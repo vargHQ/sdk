@@ -35,7 +35,7 @@ export async function renderMusic(
     return result.audio;
   };
 
-  let audio: { uint8Array: Uint8Array; url?: string };
+  let audio: { uint8Array: Uint8Array; url?: string; mediaType?: string };
 
   if (ctx.cache) {
     const cached = await ctx.cache.get(cacheKey);
@@ -59,7 +59,7 @@ export async function renderMusic(
 
   return File.fromGenerated({
     uint8Array: audio.uint8Array,
-    mediaType: "audio/mpeg",
+    mediaType: audio.mediaType ?? "audio/mpeg",
     url: audio.url,
   });
 }
