@@ -201,9 +201,9 @@ describe("varg-react render", () => {
       ],
     });
 
-    await expect(render(root, { quiet: true })).rejects.toThrow(
-      "Request Timeout",
-    );
+    const error = await render(root, { quiet: true }).catch((e) => e);
+    expect(error.message).toContain("1 of 3 clips failed");
+    expect(error.message).toContain("Request Timeout");
     expect(callCount).toBe(3);
   });
 });
