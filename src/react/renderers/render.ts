@@ -8,7 +8,7 @@ import {
   placeholderFallbackMiddleware,
   wrapVideoModel,
 } from "../../ai-sdk/middleware";
-import { editly } from "../../ai-sdk/providers/editly";
+import { editly, localBackend } from "../../ai-sdk/providers/editly";
 import type { FFmpegBackend } from "../../ai-sdk/providers/editly/backends/types";
 import type {
   AudioTrack,
@@ -123,6 +123,7 @@ export async function renderRoot(
     return cachedGenerateVideo(opts);
   };
 
+  const backend = options.backend ?? localBackend;
   const tempFiles: string[] = [];
   const ctx: RenderContext = {
     width: props.width ?? 1920,
@@ -135,6 +136,7 @@ export async function renderRoot(
     progress,
     pendingFiles: new Map(),
     defaults: options.defaults,
+    backend,
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -168,7 +170,7 @@ export async function renderRoot(
         childElement as VargElement<"speech">,
         ctx,
       );
-      const path = await file.getPath();
+      const path = await ctx.backend.resolvePath(file);
       const speechProps = childElement.props as SpeechProps;
       audioTracks.push({
         path,
@@ -196,7 +198,7 @@ export async function renderRoot(
       }
 
       if (file) {
-        const path = await file.getPath();
+        const path = await ctx.backend.resolvePath(file);
         renderedOverlays.push({ path, props: overlayProps, isVideo });
 
         if (isVideo && overlayProps.keepAudio) {
@@ -297,7 +299,7 @@ export async function renderRoot(
       path = resolvePath(musicProps.src);
     } else if (musicProps.prompt) {
       const file = await renderMusic(musicElement, ctx);
-      path = await file.getPath();
+      path = await ctx.backend.resolvePath(file);
     } else {
       throw new Error("Music requires either src or prompt");
     }
