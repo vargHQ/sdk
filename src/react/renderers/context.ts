@@ -16,5 +16,4 @@ export interface RenderContext {
   progress?: ProgressTracker;
   pendingFiles: Map<string, Promise<File>>;
   defaults?: DefaultModels;
-  resolveFile: (file: File) => Promise<string>;
 }

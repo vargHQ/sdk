@@ -28,11 +28,11 @@ export async function renderSwipe(
 
     if (childElement.type === "image") {
       const file = await renderImage(childElement as VargElement<"image">, ctx);
-      const path = await ctx.resolveFile(file);
+      const path = await file.getPath();
       childPaths.push(path);
     } else if (childElement.type === "video") {
       const file = await renderVideo(childElement as VargElement<"video">, ctx);
-      const path = await ctx.resolveFile(file);
+      const path = await file.getPath();
       childPaths.push(path);
     }
   }

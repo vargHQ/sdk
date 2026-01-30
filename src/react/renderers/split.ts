@@ -32,7 +32,7 @@ export async function renderSplit(
 
     if (childElement.type === "image") {
       const file = await renderImage(childElement as VargElement<"image">, ctx);
-      const path = await ctx.resolveFile(file);
+      const path = await file.getPath();
       cells.push({
         path,
         resizeMode: childProps.resize as ResizeMode | undefined,
@@ -40,7 +40,7 @@ export async function renderSplit(
       });
     } else if (childElement.type === "video") {
       const file = await renderVideo(childElement as VargElement<"video">, ctx);
-      const path = await ctx.resolveFile(file);
+      const path = await file.getPath();
       cells.push({
         path,
         resizeMode: childProps.resize as ResizeMode | undefined,
