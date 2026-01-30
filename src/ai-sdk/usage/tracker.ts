@@ -39,6 +39,11 @@ function generateId(): string {
   return `gen_${Date.now()}_${++idCounter}`;
 }
 
+function calculatePercent(current: number, limit: number): number {
+  if (limit <= 0) return 100;
+  return Math.round((current / limit) * 100);
+}
+
 /**
  * Load daily limits from environment variables
  */
@@ -87,10 +92,21 @@ export function loadLimitsFromEnv(): DailyLimits {
 /**
  * Check if usage tracking is enabled
  */
+function parseEnvBool(value: string | undefined): boolean | undefined {
+  if (value === undefined) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (["false", "0", "no", "off"].includes(normalized)) return false;
+  if (["true", "1", "yes", "on"].includes(normalized)) return true;
+  return undefined;
+}
+
 export function isTrackingEnabled(): boolean {
-  const envValue = process.env.VARG_TRACK_USAGE;
-  // Enabled by default, only disabled if explicitly set to "false"
-  return envValue !== "false";
+  const primary = parseEnvBool(process.env.VARG_TRACK_USAGE);
+  if (primary !== undefined) return primary;
+  const legacy = parseEnvBool(process.env.VARG_USAGE_TRACKING);
+  if (legacy !== undefined) return legacy;
+  // Enabled by default if unset or unrecognized
+  return true;
 }
 
 /**
@@ -168,7 +184,7 @@ export class UsageTracker {
     // Check type-specific limits
     if (resourceType === "image" && limits.images !== undefined) {
       const current = dailyState.images;
-      const percent = Math.round((current / limits.images) * 100);
+      const percent = calculatePercent(current, limits.images);
 
       if (current >= limits.images) {
         return {
@@ -195,7 +211,7 @@ export class UsageTracker {
 
     if (resourceType === "video" && limits.videos !== undefined) {
       const current = dailyState.videos;
-      const percent = Math.round((current / limits.videos) * 100);
+      const percent = calculatePercent(current, limits.videos);
 
       if (current >= limits.videos) {
         return {
@@ -223,7 +239,7 @@ export class UsageTracker {
     if (resourceType === "speech" && limits.speechMinutes !== undefined) {
       const current = dailyState.speechMinutes;
       const added = (durationSeconds ?? 30) / 60;
-      const percent = Math.round((current / limits.speechMinutes) * 100);
+      const percent = calculatePercent(current, limits.speechMinutes);
 
       if (current + added > limits.speechMinutes) {
         return {
@@ -251,7 +267,7 @@ export class UsageTracker {
     if (resourceType === "music" && limits.musicMinutes !== undefined) {
       const current = dailyState.musicMinutes;
       const added = (durationSeconds ?? 30) / 60;
-      const percent = Math.round((current / limits.musicMinutes) * 100);
+      const percent = calculatePercent(current, limits.musicMinutes);
 
       if (current + added > limits.musicMinutes) {
         return {
@@ -279,7 +295,17 @@ export class UsageTracker {
     // Check total cost limit
     if (limits.totalCost !== undefined) {
       const current = dailyState.totalCost;
-      const percent = Math.round((current / limits.totalCost) * 100);
+      const percent = calculatePercent(current, limits.totalCost);
+
+      if (limits.totalCost <= 0) {
+        return {
+          allowed: false,
+          limitType: "totalCost",
+          current,
+          limit: limits.totalCost,
+          percent,
+        };
+      }
 
       if (current + estimatedCost > limits.totalCost) {
         return {
