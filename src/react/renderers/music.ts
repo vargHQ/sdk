@@ -40,7 +40,16 @@ export async function renderMusic(
   if (ctx.cache) {
     const cached = await ctx.cache.get(cacheKey);
     if (cached) {
-      audio = { uint8Array: cached as Uint8Array };
+      const cachedAudio = cached as {
+        uint8Array: Uint8Array;
+        url?: string;
+        mediaType?: string;
+      };
+      audio = {
+        uint8Array: cachedAudio.uint8Array,
+        url: cachedAudio.url,
+        mediaType: cachedAudio.mediaType,
+      };
       if (taskId && ctx.progress) {
         startTask(ctx.progress, taskId);
         completeTask(ctx.progress, taskId);
@@ -49,7 +58,11 @@ export async function renderMusic(
       if (taskId && ctx.progress) startTask(ctx.progress, taskId);
       audio = await generateFn();
       if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
-      await ctx.cache.set(cacheKey, audio.uint8Array);
+      await ctx.cache.set(cacheKey, {
+        uint8Array: audio.uint8Array,
+        url: audio.url,
+        mediaType: audio.mediaType,
+      });
     }
   } else {
     if (taskId && ctx.progress) startTask(ctx.progress, taskId);
