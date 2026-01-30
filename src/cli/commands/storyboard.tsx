@@ -412,9 +412,6 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     const childPrefix =
       depth === 0 ? "" : parentPrefix + (isLast ? "   " : "│  ");
 
-    const promptOrText = el.prompt || el.text || el.src || "";
-    const shortPrompt = promptOrText ? escapeHtml(promptOrText) : "";
-
     const children =
       (el.details.children as StoryboardElement[] | undefined) || [];
     const childrenHtml = children
@@ -427,6 +424,28 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
         ),
       )
       .join("");
+
+    const isInputWithUrl =
+      el.type === "input" &&
+      el.src &&
+      (el.src.startsWith("http://") || el.src.startsWith("https://"));
+
+    if (isInputWithUrl) {
+      const shortUrl =
+        el.src!.length > 50 ? `${el.src!.slice(0, 50)}...` : el.src!;
+      return `
+      <div class="tree-node" style="--depth: ${depth}">
+        <span class="tree-prefix">${parentPrefix}${connector}</span>
+        <span class="type-tag" style="background: ${color}">${el.type}</span>
+        <span class="input-preview-wrapper">
+          <a href="${el.src}" target="_blank" class="tree-prompt input-url">${escapeHtml(shortUrl)}</a>
+          <span class="input-preview-tooltip"><img src="${el.src}" alt="preview" /></span>
+        </span>
+      </div>${childrenHtml}`;
+    }
+
+    const promptOrText = el.prompt || el.text || el.src || "";
+    const shortPrompt = promptOrText ? escapeHtml(promptOrText) : "";
 
     return `
       <div class="tree-node" style="--depth: ${depth}">
@@ -490,9 +509,32 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
         const isLast = i === children.length - 1;
         const connector = isLast ? "└─" : "├─";
         const color = TYPE_COLORS[child.type] || "#666";
-        const childPrompt = child.prompt || child.text || "";
         const grandChildren =
           (child.details.children as StoryboardElement[]) || [];
+
+        const isInputWithUrl =
+          child.type === "input" &&
+          child.src &&
+          (child.src.startsWith("http://") || child.src.startsWith("https://"));
+
+        if (isInputWithUrl) {
+          const shortUrl =
+            child.src!.length > 60
+              ? `${child.src!.slice(0, 60)}...`
+              : child.src!;
+          return `
+          <div class="timeline-nested">
+            <span class="nested-connector">${connector}</span>
+            <span class="nested-type" style="background: ${color}">${child.type}</span>
+            <span class="input-preview-wrapper">
+              <a href="${child.src}" target="_blank" class="nested-prompt input-url">${escapeHtml(shortUrl)}</a>
+              <span class="input-preview-tooltip"><img src="${child.src}" alt="preview" /></span>
+            </span>
+          </div>
+          ${grandChildren.length > 0 ? renderNestedTree(grandChildren, depth + 1) : ""}`;
+        }
+
+        const childPrompt = child.prompt || child.text || child.src || "";
 
         return `
           <div class="timeline-nested">
@@ -1214,6 +1256,47 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       line-height: 1.4;
       width: 100%;
       margin-top: 0.25rem;
+    }
+    
+    .input-preview-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .input-url {
+      color: var(--accent-sky);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    
+    .input-url:hover {
+      text-decoration: underline;
+    }
+    
+    .input-preview-tooltip {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 8px;
+      z-index: 1000;
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-squishy);
+      box-shadow: var(--shadow-soft);
+      padding: 8px;
+      max-width: 300px;
+    }
+    
+    .input-preview-tooltip img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      display: block;
+    }
+    
+    .input-preview-wrapper:hover .input-preview-tooltip {
+      display: block;
     }
   </style>
 </head>
