@@ -45,28 +45,46 @@ function createMemoryCache(): CacheStorage {
 }
 
 // TODO: allow passing CacheStorage via providerOptions.fal.cacheStorage for proper serverless support
-function isFilesystemWritable(): boolean {
-  try {
-    const testPath = `.cache/.write-test-${Date.now()}`;
-    Bun.spawnSync(["mkdir", "-p", ".cache"]);
-    const result = Bun.spawnSync(["touch", testPath]);
-    if (result.exitCode === 0) {
-      Bun.spawnSync(["rm", testPath]);
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-const USE_FILE_CACHE = isFilesystemWritable();
-
 function createFalCache(name: string): CacheStorage {
-  if (!USE_FILE_CACHE) {
-    return createMemoryCache();
-  }
-  return fileCache({ dir: `.cache/${name}` });
+  let cache: CacheStorage | null = null;
+  let useFallback = false;
+  const fallback = createMemoryCache();
+
+  const getCache = () => {
+    if (useFallback) return fallback;
+    if (!cache) cache = fileCache({ dir: `.cache/${name}` });
+    return cache;
+  };
+
+  return {
+    async get(key) {
+      if (useFallback) return fallback.get(key);
+      try {
+        return await getCache().get(key);
+      } catch {
+        useFallback = true;
+        return fallback.get(key);
+      }
+    },
+    async set(key, value, ttl) {
+      if (useFallback) return fallback.set(key, value, ttl);
+      try {
+        await getCache().set(key, value, ttl);
+      } catch {
+        useFallback = true;
+        await fallback.set(key, value, ttl);
+      }
+    },
+    async delete(key) {
+      if (useFallback) return fallback.delete(key);
+      try {
+        await getCache().delete(key);
+      } catch {
+        useFallback = true;
+        await fallback.delete(key);
+      }
+    },
+  };
 }
 
 const pendingStorage = createFalCache("fal-pending");
