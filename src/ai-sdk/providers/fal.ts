@@ -599,6 +599,7 @@ class FalVideoModel implements VideoModelV3 {
 
     return {
       videos: [new Uint8Array(videoBuffer)],
+      videoUrls: [videoUrl],
       warnings,
       response: {
         timestamp: new Date(),
