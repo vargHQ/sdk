@@ -25,11 +25,7 @@
     }
   },
   "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
+    "enabled": true
   },
   "javascript": {
     "formatter": {
