@@ -263,6 +263,13 @@ export interface DefaultModels {
   music?: MusicModelV3;
 }
 
+export interface UsageOptions {
+  /** Enable/disable usage tracking (default: true if VARG_USAGE_TRACKING=1 or limits set) */
+  enabled?: boolean;
+  /** Custom directory for usage data (default: .cache/usage) */
+  dir?: string;
+}
+
 export interface RenderOptions {
   output?: string;
   cache?: string | CacheStorage;
@@ -271,6 +278,8 @@ export interface RenderOptions {
   mode?: RenderMode;
   defaults?: DefaultModels;
   backend?: FFmpegBackend;
+  /** Usage tracking options. Set to false to disable. */
+  usage?: boolean | UsageOptions;
 }
 
 export interface ElementPropsMap {

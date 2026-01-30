@@ -13,6 +13,7 @@ import {
 import { fal } from "@fal-ai/client";
 import pMap from "p-map";
 import { fileCache } from "../file-cache";
+import type { GenerationMetrics } from "../usage/types";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 
 interface PendingRequest {
@@ -587,7 +588,9 @@ class FalVideoModel implements VideoModelV3 {
       { logs: true, stableKey },
     );
 
-    const data = result.data as { video?: { url?: string } };
+    const data = result.data as {
+      video?: { url?: string; duration?: number };
+    };
     const videoUrl = data?.video?.url;
 
     if (!videoUrl) {
@@ -597,6 +600,21 @@ class FalVideoModel implements VideoModelV3 {
     const videoResponse = await fetch(videoUrl, { signal: abortSignal });
     const videoBuffer = await videoResponse.arrayBuffer();
 
+    // Extract actual duration from response, fallback to input duration
+    // Coerce to number safely since duration may be string from some models
+    const rawDuration = data?.video?.duration ?? input.duration ?? 5;
+    const actualDuration = Number.isFinite(Number(rawDuration))
+      ? Number(rawDuration)
+      : 5;
+
+    // Build usage metrics for cost tracking
+    const usage: GenerationMetrics = {
+      provider: "fal",
+      modelId: this.modelId,
+      resourceType: "video",
+      durationSeconds: actualDuration,
+    };
+
     return {
       videos: [new Uint8Array(videoBuffer)],
       warnings,
@@ -605,6 +623,7 @@ class FalVideoModel implements VideoModelV3 {
         modelId: this.modelId,
         headers: undefined,
       },
+      usage,
     };
   }
 
@@ -795,6 +814,9 @@ class FalImageModel implements ImageModelV3 {
         return new Uint8Array(await response.arrayBuffer());
       }),
     );
+
+    // Note: Usage tracking is handled in render.ts using GenerationMetrics
+    // We don't return usage here since ImageModelV3 expects a different type
 
     return {
       images: imageBuffers,

@@ -1,6 +1,7 @@
 import type { generateImage } from "ai";
 import type { CacheStorage } from "../../ai-sdk/cache";
 import type { generateVideo } from "../../ai-sdk/generate-video";
+import type { UsageTracker } from "../../ai-sdk/usage";
 import type { DefaultModels } from "../types";
 import type { ProgressTracker } from "./progress";
 
@@ -17,4 +18,6 @@ export interface RenderContext {
   pending: Map<string, Promise<string>>;
   /** Default models for elements that don't specify one */
   defaults?: DefaultModels;
+  /** Usage tracker for cost estimation and daily limits */
+  usage?: UsageTracker;
 }
