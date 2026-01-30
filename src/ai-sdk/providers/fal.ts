@@ -43,6 +43,11 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     t2v: "fal-ai/minimax-video/text-to-video",
     i2v: "fal-ai/minimax-video/image-to-video",
   },
+  // LTX-2 19B Distilled - video with native audio generation
+  "ltx-2-19b-distilled": {
+    t2v: "fal-ai/ltx-2-19b/distilled/image-to-video", // i2v only, requires image input
+    i2v: "fal-ai/ltx-2-19b/distilled/image-to-video",
+  },
 };
 
 // Motion control models - video-to-video with motion transfer
@@ -182,6 +187,7 @@ class FalVideoModel implements VideoModelV3 {
     const isLipsync = LIPSYNC_MODELS[this.modelId] !== undefined;
     const isMotionControl = MOTION_CONTROL_MODELS[this.modelId] !== undefined;
     const isKlingV26 = this.modelId === "kling-v2.6";
+    const isLtx2 = this.modelId === "ltx-2-19b-distilled";
 
     const endpoint = isLipsync
       ? this.resolveLipsyncEndpoint()
@@ -241,8 +247,21 @@ class FalVideoModel implements VideoModelV3 {
       // Standard video generation
       input.prompt = prompt;
 
-      // Duration must be string "5" or "10" for Kling v2.6
-      if (isKlingV26) {
+      // LTX-2 uses num_frames instead of duration, and has different defaults
+      if (isLtx2) {
+        // LTX-2: num_frames controls length (default 121 = ~4.8s at 25fps)
+        // Only set if not already provided via providerOptions
+        if (input.num_frames === undefined && duration) {
+          // Convert duration to approximate frame count (25fps default)
+          const fps = (input.fps as number) ?? 25;
+          input.num_frames = Math.round(duration * fps);
+        }
+        // LTX-2 uses video_size instead of aspect_ratio
+        if (input.video_size === undefined) {
+          input.video_size = "auto";
+        }
+      } else if (isKlingV26) {
+        // Duration must be string "5" or "10" for Kling v2.6
         input.duration = String(duration ?? 5);
       } else {
         input.duration = duration ?? 5;
@@ -255,20 +274,33 @@ class FalVideoModel implements VideoModelV3 {
         if (imageFiles.length > 0) {
           // First image is start image
           input.image_url = await fileToUrl(imageFiles[0]!);
-          // Second image (if provided) is end image for Kling v2.6
-          if (isKlingV26 && imageFiles.length > 1) {
+          // Second image (if provided) is end image for Kling v2.6 and LTX-2
+          if ((isKlingV26 || isLtx2) && imageFiles.length > 1) {
             input.end_image_url = await fileToUrl(imageFiles[1]!);
           }
         }
-      } else {
+      } else if (!isLtx2) {
+        // LTX-2 uses video_size, not aspect_ratio
         input.aspect_ratio = aspectRatio ?? "16:9";
       }
 
-      // Kling v2.6 supports native audio generation
-      if (isKlingV26) {
+      // Kling v2.6 and LTX-2 support native audio generation
+      if (isKlingV26 || isLtx2) {
         // Default to generating audio unless explicitly disabled
         if (input.generate_audio === undefined) {
           input.generate_audio = true;
+        }
+      }
+
+      // LTX-2 specific defaults
+      if (isLtx2) {
+        // Enable multiscale for better coherence (default: true)
+        if (input.use_multiscale === undefined) {
+          input.use_multiscale = true;
+        }
+        // Enable prompt expansion for better results (default: true)
+        if (input.enable_prompt_expansion === undefined) {
+          input.enable_prompt_expansion = true;
         }
       }
 
@@ -280,12 +312,17 @@ class FalVideoModel implements VideoModelV3 {
       }
     }
 
+    // LTX-2 supports seed, other models don't
     if (options.seed !== undefined) {
-      warnings.push({
-        type: "unsupported",
-        feature: "seed",
-        details: "Seed is not supported by this model",
-      });
+      if (isLtx2) {
+        input.seed = options.seed;
+      } else {
+        warnings.push({
+          type: "unsupported",
+          feature: "seed",
+          details: "Seed is not supported by this model",
+        });
+      }
     }
 
     if (options.resolution !== undefined) {
@@ -296,12 +333,17 @@ class FalVideoModel implements VideoModelV3 {
       });
     }
 
+    // LTX-2 supports fps configuration
     if (options.fps !== undefined) {
-      warnings.push({
-        type: "unsupported",
-        feature: "fps",
-        details: "FPS is not configurable for this model",
-      });
+      if (isLtx2) {
+        input.fps = options.fps;
+      } else {
+        warnings.push({
+          type: "unsupported",
+          feature: "fps",
+          details: "FPS is not configurable for this model",
+        });
+      }
     }
 
     const result = await fal.subscribe(endpoint, {
