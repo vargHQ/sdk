@@ -244,7 +244,7 @@ export async function renderCaptions(
       srtPath = props.src;
     } else if (props.src.type === "speech") {
       const speechFile = await renderSpeech(props.src, ctx);
-      audioPath = await speechFile.getPath();
+      audioPath = await ctx.backend.resolvePath(speechFile);
 
       const transcribeTaskId = ctx.progress
         ? addTask(ctx.progress, "transcribe", "groq-whisper")
