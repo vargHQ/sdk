@@ -162,7 +162,8 @@ export class File {
     if (this._url) return this._url;
     if (uploader) {
       const blob = await this.blob();
-      return uploader(blob);
+      this._url = await uploader(blob);
+      return this._url;
     }
     return this.upload();
   }
