@@ -61,8 +61,9 @@ async function renderClipLayers(
 
         pending.push({
           type: "async",
-          promise: renderImage(element as VargElement<"image">, ctx).then(
-            (path) =>
+          promise: renderImage(element as VargElement<"image">, ctx)
+            .then((file) => ctx.resolveFile(file))
+            .then((path) =>
               hasPosition
                 ? ({
                     type: "image-overlay",
@@ -78,7 +79,7 @@ async function renderClipLayers(
                     resizeMode: props.resize,
                     zoomDirection: props.zoom,
                   } as ImageLayer),
-          ),
+            ),
         });
         break;
       }
@@ -87,22 +88,24 @@ async function renderClipLayers(
         const props = element.props as VideoProps;
         pending.push({
           type: "async",
-          promise: renderVideo(element as VargElement<"video">, ctx).then(
-            (path) =>
-              ({
-                type: "video",
-                path,
-                resizeMode: props.resize,
-                cropPosition: props.cropPosition,
-                cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
-                cutTo: props.cutTo ?? clipOptions?.cutTo,
-                mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
-                left: props.left,
-                top: props.top,
-                width: props.width,
-                height: props.height,
-              }) as VideoLayer,
-          ),
+          promise: renderVideo(element as VargElement<"video">, ctx)
+            .then((file) => ctx.resolveFile(file))
+            .then(
+              (path) =>
+                ({
+                  type: "video",
+                  path,
+                  resizeMode: props.resize,
+                  cropPosition: props.cropPosition,
+                  cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
+                  cutTo: props.cutTo ?? clipOptions?.cutTo,
+                  mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
+                  left: props.left,
+                  top: props.top,
+                  width: props.width,
+                  height: props.height,
+                }) as VideoLayer,
+            ),
         });
         break;
       }
