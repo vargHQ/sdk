@@ -8,13 +8,14 @@ export class File {
 
   private constructor(
     options:
-      | { data: Uint8Array; mediaType: string }
+      | { data: Uint8Array; mediaType: string; url?: string }
       | { url: string; mediaType?: string }
       | { loader: () => Promise<Uint8Array>; mediaType: string },
   ) {
     if ("data" in options) {
       this._data = options.data;
       this._mediaType = options.mediaType;
+      this._url = options.url ?? null;
     } else if ("url" in options) {
       this._url = options.url;
       this._mediaType = options.mediaType ?? inferMediaType(options.url);
@@ -46,10 +47,12 @@ export class File {
   static fromGenerated(generated: {
     uint8Array: Uint8Array;
     mediaType: string;
+    url?: string;
   }): File {
     return new File({
       data: generated.uint8Array,
       mediaType: generated.mediaType,
+      url: generated.url,
     });
   }
 
@@ -119,6 +122,10 @@ export class File {
     return this._mediaType.startsWith("video/");
   }
 
+  hasUrl(): boolean {
+    return this._url !== null;
+  }
+
   async data(): Promise<Uint8Array> {
     if (this._data) return this._data;
     if (this._loader) {
@@ -143,7 +150,7 @@ export class File {
   }
 
   async url(uploader?: (blob: Blob) => Promise<string>): Promise<string> {
-    if (this._url && !this._data && !this._loader) {
+    if (this._url) {
       return this._url;
     }
     const blob = await this.blob();
@@ -166,7 +173,7 @@ export class File {
   }
 
   async toInput(): Promise<ImageModelV3File> {
-    if (this._url && !this._data && !this._loader) {
+    if (this._url) {
       return { type: "url", url: this._url };
     }
     const data = await this.arrayBuffer();
