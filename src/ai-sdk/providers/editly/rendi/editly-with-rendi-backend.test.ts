@@ -9,7 +9,7 @@ import { describe, expect, test } from "bun:test";
 import { $ } from "bun";
 import type { StorageProvider } from "../../../storage/types";
 import { editly } from "../index";
-import { rendi as createRendiBackend } from ".";
+import { createRendiBackend } from ".";
 
 const shouldRunRendiTests =
   !!process.env.RENDI_INTEGRATION_TESTS && !!process.env.RENDI_API_KEY;
