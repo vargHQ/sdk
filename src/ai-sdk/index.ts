@@ -88,6 +88,10 @@ export {
   type ReplicateProviderSettings,
   replicate,
 } from "./providers/replicate";
+export {
+  createTogetherProvider,
+  together,
+} from "./providers/together";
 export type {
   VideoModelV3,
   VideoModelV3CallOptions,

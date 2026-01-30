@@ -386,6 +386,8 @@ class FalImageModel implements ImageModelV3 {
     const input: Record<string, unknown> = {
       prompt,
       num_images: n ?? 1,
+      // Use high acceleration for faster queue processing on supported models (flux-schnell)
+      acceleration: "high",
       ...(providerOptions?.fal ?? {}),
     };
 
@@ -442,18 +444,36 @@ class FalImageModel implements ImageModelV3 {
 
     const finalEndpoint = this.resolveEndpoint();
 
-    // Debug: log the input being sent
-    if (IMAGE_SIZE_MODELS.has(this.modelId)) {
-      console.log(
-        "[fal-provider] seedream input:",
-        JSON.stringify(input, null, 2),
-      );
-    }
+    // Timing diagnostics
+    const t0 = Date.now();
+    let lastStatus = "";
+    const queueStartTime = t0;
+    let processingStartTime = 0;
 
     const result = await fal.subscribe(finalEndpoint, {
       input,
       logs: true,
+      onQueueUpdate: (status) => {
+        const elapsed = Date.now() - t0;
+        if (status.status !== lastStatus) {
+          if (status.status === "IN_PROGRESS" && !processingStartTime) {
+            processingStartTime = Date.now();
+            console.log(
+              `[fal-timing] ${this.modelId}: IN_QUEUE took ${processingStartTime - queueStartTime}ms`,
+            );
+          }
+          console.log(
+            `[fal-timing] ${this.modelId}: status=${status.status} at ${elapsed}ms`,
+          );
+          lastStatus = status.status;
+        }
+      },
     });
+
+    const subscribeTime = Date.now() - t0;
+    console.log(
+      `[fal-timing] ${this.modelId}: total subscribe took ${subscribeTime}ms`,
+    );
 
     const data = result.data as { images?: Array<{ url?: string }> };
     const images = data?.images ?? [];
@@ -462,11 +482,16 @@ class FalImageModel implements ImageModelV3 {
       throw new Error("No images in fal response");
     }
 
+    const t1 = Date.now();
     const imageBuffers = await Promise.all(
       images.map(async (img) => {
         const response = await fetch(img.url!, { signal: abortSignal });
         return new Uint8Array(await response.arrayBuffer());
       }),
+    );
+    const downloadTime = Date.now() - t1;
+    console.log(
+      `[fal-timing] ${this.modelId}: image download took ${downloadTime}ms`,
     );
 
     return {
