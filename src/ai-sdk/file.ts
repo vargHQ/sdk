@@ -1,4 +1,5 @@
 import type { ImageModelV3File } from "@ai-sdk/provider";
+import { uploadBuffer } from "../providers/storage";
 
 export class File {
   private _data: Uint8Array | null = null;
@@ -149,18 +150,21 @@ export class File {
     return new Blob([data], { type: this._mediaType });
   }
 
+  async upload(): Promise<string> {
+    if (this._url) return this._url;
+    const data = await this.data();
+    const key = `varg/${Date.now()}-${Math.random().toString(36).slice(2)}${this.extensionFromMediaType()}`;
+    this._url = await uploadBuffer(data, key, this._mediaType);
+    return this._url;
+  }
+
   async url(uploader?: (blob: Blob) => Promise<string>): Promise<string> {
-    if (this._url) {
-      return this._url;
+    if (this._url) return this._url;
+    if (uploader) {
+      const blob = await this.blob();
+      return uploader(blob);
     }
-    const blob = await this.blob();
-    if (uploader) return uploader(blob);
-    try {
-      const { fal } = await import("@fal-ai/client");
-      return fal.storage.upload(blob);
-    } catch {
-      throw new Error("No uploader provided and @fal-ai/client not available.");
-    }
+    return this.upload();
   }
 
   async base64(): Promise<string> {
