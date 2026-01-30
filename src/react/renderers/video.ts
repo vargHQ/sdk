@@ -149,7 +149,8 @@ export async function renderVideo(
 
     return File.fromGenerated({
       uint8Array: video.uint8Array,
-      mediaType: video.mimeType,
+      mediaType: video.mimeType ?? "video/mp4",
+      url: (video as { url?: string }).url,
     });
   })();
 
