@@ -38,6 +38,12 @@ export {
   trim,
   trimDefinition,
 } from "./edit";
+export type { GrokEditInput, GrokEditOutput } from "./grok-edit";
+// Grok Imagine Video Edit
+export {
+  definition as grokEdit,
+  grokEditVideo,
+} from "./grok-edit";
 export type { ImageGenerationResult } from "./image";
 // Image generation
 export {
@@ -48,6 +54,12 @@ export {
 export type { GenerateMusicOptions, MusicResult } from "./music";
 // Music generation
 export { definition as music, generateMusic } from "./music";
+export type { QwenAnglesInput, QwenAnglesOutput } from "./qwen-angles";
+// Qwen Image Edit 2511 Multiple Angles
+export {
+  definition as qwenAngles,
+  qwenAngles as qwenAnglesImage,
+} from "./qwen-angles";
 export type { LipsyncOptions, LipsyncResult, Wav2LipOptions } from "./sync";
 // Lip sync
 export {
@@ -87,8 +99,10 @@ import {
   transitionDefinition,
   trimDefinition,
 } from "./edit";
+import { definition as grokEditDefinition } from "./grok-edit";
 import { definition as imageDefinition } from "./image";
 import { definition as musicDefinition } from "./music";
+import { definition as qwenAnglesDefinition } from "./qwen-angles";
 import { definition as syncDefinition } from "./sync";
 import { definition as transcribeDefinition } from "./transcribe";
 import { definition as uploadDefinition } from "./upload";
@@ -103,6 +117,8 @@ export const allActions = [
   musicDefinition,
   syncDefinition,
   captionsDefinition,
+  grokEditDefinition,
+  qwenAnglesDefinition,
   trimDefinition,
   cutDefinition,
   mergeDefinition,

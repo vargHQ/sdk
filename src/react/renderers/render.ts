@@ -61,6 +61,16 @@ const isUsageProvider = (value: unknown): value is UsageProvider =>
   value === "replicate" ||
   value === "google";
 
+function resolveCacheStorage(
+  cache: string | CacheStorage | undefined,
+): CacheStorage | undefined {
+  if (!cache) return undefined;
+  if (typeof cache === "string") {
+    return fileCache({ dir: cache });
+  }
+  return cache;
+}
+
 export async function renderRoot(
   element: VargElement<"render">,
   options: RenderOptions,
@@ -88,10 +98,7 @@ export async function renderRoot(
     placeholderCount.total++;
   };
 
-  // Set up cache storage for cache hit detection
-  const cacheStorage: CacheStorage | undefined = options.cache
-    ? fileCache({ dir: options.cache })
-    : undefined;
+  const cacheStorage = resolveCacheStorage(options.cache);
 
   const cachedGenerateImage = cacheStorage
     ? withCache(generateImage, { storage: cacheStorage })
@@ -217,7 +224,7 @@ export async function renderRoot(
     width: props.width ?? 1920,
     height: props.height ?? 1080,
     fps: props.fps ?? 30,
-    cache: options.cache ? fileCache({ dir: options.cache }) : undefined,
+    cache: cacheStorage,
     generateImage: wrapGenerateImage,
     generateVideo: wrapGenerateVideo,
     tempFiles: [],
@@ -297,8 +304,40 @@ export async function renderRoot(
     }
   }
 
-  const renderedClips = await Promise.all(
+  const clipResults = await Promise.allSettled(
     clipElements.map((clipElement) => renderClip(clipElement, ctx)),
+  );
+
+  const failures = clipResults
+    .map((r, i) =>
+      r.status === "rejected" ? { index: i, reason: r.reason } : null,
+    )
+    .filter(Boolean) as { index: number; reason: Error }[];
+
+  if (failures.length > 0) {
+    const successCount = clipResults.length - failures.length;
+    if (successCount > 0) {
+      console.log(
+        `\x1b[33mℹ ${successCount} clip(s) cached, ${failures.length} failed\x1b[0m`,
+      );
+    }
+    const errorCounts = new Map<string, number>();
+    for (const f of failures) {
+      const msg = f.reason?.message || "Unknown error";
+      errorCounts.set(msg, (errorCounts.get(msg) || 0) + 1);
+    }
+    const errors = [...errorCounts.entries()]
+      .map(([msg, count]) => (count > 1 ? `${msg} (x${count})` : msg))
+      .join("; ");
+    throw new Error(
+      `${failures.length} of ${clipResults.length} clips failed: ${errors}`,
+    );
+  }
+
+  const renderedClips = clipResults.map(
+    (r) =>
+      (r as PromiseFulfilledResult<Awaited<ReturnType<typeof renderClip>>>)
+        .value,
   );
 
   const clips: Clip[] = [];

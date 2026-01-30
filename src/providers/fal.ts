@@ -374,6 +374,197 @@ export class FalProvider extends BaseProvider {
     console.log("[fal] completed!");
     return result;
   }
+
+  // ============================================================================
+  // Grok Imagine Video methods (xAI)
+  // ============================================================================
+
+  /**
+   * Generate video from text using Grok Imagine Video
+   * Supports 1-15 second videos at 480p or 720p resolution
+   */
+  async grokTextToVideo(args: {
+    prompt: string;
+    duration?: number;
+    aspectRatio?: "16:9" | "4:3" | "3:2" | "1:1" | "2:3" | "3:4" | "9:16";
+    resolution?: "480p" | "720p";
+  }) {
+    const modelId = "xai/grok-imagine-video/text-to-video";
+
+    console.log(`[fal] starting grok text-to-video: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        duration: args.duration ?? 6,
+        aspect_ratio: args.aspectRatio ?? "16:9",
+        resolution: args.resolution ?? "720p",
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  /**
+   * Generate video from image using Grok Imagine Video
+   * Supports 1-15 second videos at 480p or 720p resolution
+   */
+  async grokImageToVideo(args: {
+    prompt: string;
+    imageUrl: string;
+    duration?: number;
+    aspectRatio?:
+      | "auto"
+      | "16:9"
+      | "4:3"
+      | "3:2"
+      | "1:1"
+      | "2:3"
+      | "3:4"
+      | "9:16";
+    resolution?: "480p" | "720p";
+  }) {
+    const modelId = "xai/grok-imagine-video/image-to-video";
+
+    console.log(`[fal] starting grok image-to-video: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        image_url: imageUrl,
+        duration: args.duration ?? 6,
+        aspect_ratio: args.aspectRatio ?? "auto",
+        resolution: args.resolution ?? "720p",
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  /**
+   * Edit video using Grok Imagine Video
+   * Video will be resized to max 854x480 and truncated to 8 seconds
+   */
+  async grokEditVideo(args: {
+    prompt: string;
+    videoUrl: string;
+    resolution?: "auto" | "480p" | "720p";
+  }) {
+    const modelId = "xai/grok-imagine-video/edit-video";
+
+    console.log(`[fal] starting grok edit-video: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const videoUrl = await ensureUrl(args.videoUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        video_url: videoUrl,
+        resolution: args.resolution ?? "auto",
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  // ============================================================================
+  // Qwen Image Edit 2511 Multiple Angles
+  // ============================================================================
+
+  /**
+   * Adjust camera angle of an image using Qwen Image Edit 2511 Multiple Angles
+   * Generates same scene from different angles (azimuth/elevation)
+   */
+  async qwenMultipleAngles(args: {
+    imageUrl: string;
+    horizontalAngle?: number;
+    verticalAngle?: number;
+    zoom?: number;
+    additionalPrompt?: string;
+    loraScale?: number;
+    imageSize?: string | { width: number; height: number };
+    guidanceScale?: number;
+    numInferenceSteps?: number;
+    acceleration?: "none" | "regular";
+    negativePrompt?: string;
+    seed?: number;
+    outputFormat?: "png" | "jpeg" | "webp";
+    numImages?: number;
+  }) {
+    const modelId = "fal-ai/qwen-image-edit-2511-multiple-angles";
+
+    console.log(`[fal] starting qwen multiple angles: ${modelId}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        image_urls: [imageUrl],
+        horizontal_angle: args.horizontalAngle ?? 0,
+        vertical_angle: args.verticalAngle ?? 0,
+        zoom: args.zoom ?? 5,
+        additional_prompt: args.additionalPrompt,
+        lora_scale: args.loraScale ?? 1,
+        image_size: args.imageSize,
+        guidance_scale: args.guidanceScale ?? 4.5,
+        num_inference_steps: args.numInferenceSteps ?? 28,
+        acceleration: args.acceleration ?? "regular",
+        negative_prompt: args.negativePrompt ?? "",
+        seed: args.seed,
+        output_format: args.outputFormat ?? "png",
+        num_images: args.numImages ?? 1,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
 }
 
 // Export singleton instance

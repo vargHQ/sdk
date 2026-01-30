@@ -115,7 +115,6 @@ export function withCache<T extends object, R>(
   const storage = options.storage ?? defaultStorage;
   const ttl = parseTTL(options.ttl ?? DEFAULT_TTL);
   const prefix = fn.name || "anonymous";
-
   return async (opts: WithCacheKey<T>): Promise<R> => {
     const { cacheKey, ...rest } = opts;
 
@@ -128,7 +127,6 @@ export function withCache<T extends object, R>(
     if (cached !== undefined) {
       return cached as R;
     }
-
     const result = await fn(rest as T);
     const flattened = flatten(result);
     await storage.set(key, flattened, ttl);

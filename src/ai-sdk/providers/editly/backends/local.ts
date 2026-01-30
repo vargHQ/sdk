@@ -1,12 +1,11 @@
 import { $ } from "bun";
 import type {
   FFmpegBackend,
+  FFmpegInput,
   FFmpegRunOptions,
   FFmpegRunResult,
   VideoInfo,
 } from "./types";
-
-const FFMPEG_COMMON_ARGS = ["-hide_banner", "-loglevel", "error"];
 
 export class LocalBackend implements FFmpegBackend {
   readonly name = "local";
@@ -39,13 +38,43 @@ export class LocalBackend implements FFmpegBackend {
     };
   }
 
+  private buildInputArgs(inputs: FFmpegInput[]): string[] {
+    const args: string[] = [];
+    for (const input of inputs) {
+      if (typeof input === "string") {
+        args.push("-i", input);
+      } else if ("raw" in input) {
+        args.push(...input.raw);
+      } else {
+        if (input.options) args.push(...input.options);
+        args.push("-i", input.path);
+      }
+    }
+    return args;
+  }
+
   async run(options: FFmpegRunOptions): Promise<FFmpegRunResult> {
-    const { args, outputPath, verbose } = options;
+    const {
+      inputs,
+      filterComplex,
+      videoFilter,
+      outputArgs = [],
+      outputPath,
+      verbose,
+    } = options;
+
+    const inputArgs = this.buildInputArgs(inputs);
 
     const ffmpegArgs = [
-      ...FFMPEG_COMMON_ARGS.slice(0, 2),
+      "-hide_banner",
+      "-loglevel",
       verbose ? "info" : "error",
-      ...args,
+      ...inputArgs,
+      ...(filterComplex ? ["-filter_complex", filterComplex] : []),
+      ...(videoFilter ? ["-vf", videoFilter] : []),
+      ...outputArgs,
+      "-y",
+      outputPath,
     ];
 
     if (verbose) {

@@ -135,6 +135,19 @@ function extractNestedFromPrompt(prompt: unknown): StoryboardElement[] {
     for (const img of p.images) {
       if (img && typeof img === "object" && "type" in img) {
         nested.push(extractElementInfo(img as VargElement));
+      } else if (typeof img === "string") {
+        const isUrl = img.startsWith("http://") || img.startsWith("https://");
+        const isLocalFile =
+          img.startsWith("/") || img.startsWith("./") || img.includes(".");
+        if (isUrl || isLocalFile) {
+          nested.push({
+            type: "input",
+            src: img,
+            details: {
+              inputType: isUrl ? "url" : "file",
+            },
+          });
+        }
       }
     }
   }
@@ -378,10 +391,50 @@ const TYPE_COLORS: Record<string, string> = {
   split: "#818cf8",
   slider: "#2dd4bf",
   swipe: "#fb923c",
+  input: "#9ca3af",
 };
 
 function escapeHtml(str: string): string {
   return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeAttr(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function isLocalFilePath(src: string): boolean {
+  if (src.startsWith("http://") || src.startsWith("https://")) return false;
+  if (src.startsWith("data:")) return false;
+  return true;
+}
+
+async function localFileToDataUrl(src: string): Promise<string | undefined> {
+  try {
+    const resolved = resolve(process.cwd(), src);
+    const file = Bun.file(resolved);
+    if (!(await file.exists())) return undefined;
+    const buffer = await file.arrayBuffer();
+    const ext = src.split(".").pop()?.toLowerCase();
+    const mimeType =
+      ext === "png"
+        ? "image/png"
+        : ext === "jpg" || ext === "jpeg"
+          ? "image/jpeg"
+          : ext === "gif"
+            ? "image/gif"
+            : ext === "webp"
+              ? "image/webp"
+              : "image/png";
+    const base64 = Buffer.from(buffer).toString("base64");
+    return `data:${mimeType};base64,${base64}`;
+  } catch {
+    return undefined;
+  }
 }
 
 function generateHtml(storyboard: Storyboard, sourceFile: string): string {
@@ -398,9 +451,6 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
     const childPrefix =
       depth === 0 ? "" : parentPrefix + (isLast ? "   " : "│  ");
 
-    const promptOrText = el.prompt || el.text || el.src || "";
-    const shortPrompt = promptOrText ? escapeHtml(promptOrText) : "";
-
     const children =
       (el.details.children as StoryboardElement[] | undefined) || [];
     const childrenHtml = children
@@ -413,6 +463,37 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
         ),
       )
       .join("");
+
+    const hasSrcWithPreview =
+      el.src && (el.type === "input" || (el.type === "image" && !el.prompt));
+    const previewSrc =
+      el.imageDataUrl ||
+      (el.src && !isLocalFilePath(el.src) ? el.src : undefined);
+
+    if (hasSrcWithPreview) {
+      const shortPath =
+        el.src!.length > 50 ? `${el.src!.slice(0, 50)}...` : el.src!;
+      const isUrl =
+        el.src!.startsWith("http://") || el.src!.startsWith("https://");
+      const escapedSrc = escapeAttr(el.src!);
+      const previewImgSrc = previewSrc ? escapeAttr(previewSrc) : undefined;
+      return `
+      <div class="tree-node" style="--depth: ${depth}">
+        <span class="tree-prefix">${parentPrefix}${connector}</span>
+        <span class="type-tag" style="background: ${color}">${el.type}</span>
+        <span class="input-preview-wrapper">
+          ${
+            isUrl
+              ? `<a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="tree-prompt input-url">${escapeHtml(shortPath)}</a>`
+              : `<span class="tree-prompt input-url">${escapeHtml(shortPath)}</span>`
+          }
+          ${previewImgSrc ? `<span class="input-preview-tooltip"><img src="${previewImgSrc}" alt="preview" /></span>` : ""}
+        </span>
+      </div>${childrenHtml}`;
+    }
+
+    const promptOrText = el.prompt || el.text || el.src || "";
+    const shortPrompt = promptOrText ? escapeHtml(promptOrText) : "";
 
     return `
       <div class="tree-node" style="--depth: ${depth}">
@@ -476,9 +557,43 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
         const isLast = i === children.length - 1;
         const connector = isLast ? "└─" : "├─";
         const color = TYPE_COLORS[child.type] || "#666";
-        const childPrompt = child.prompt || child.text || "";
         const grandChildren =
           (child.details.children as StoryboardElement[]) || [];
+
+        const hasSrcWithPreview =
+          child.src &&
+          (child.type === "input" || (child.type === "image" && !child.prompt));
+        const previewSrc =
+          child.imageDataUrl ||
+          (child.src && !isLocalFilePath(child.src) ? child.src : undefined);
+
+        if (hasSrcWithPreview) {
+          const shortPath =
+            child.src!.length > 60
+              ? `${child.src!.slice(0, 60)}...`
+              : child.src!;
+          const isUrl =
+            child.src!.startsWith("http://") ||
+            child.src!.startsWith("https://");
+          const escapedSrc = escapeAttr(child.src!);
+          const previewImgSrc = previewSrc ? escapeAttr(previewSrc) : undefined;
+          return `
+          <div class="timeline-nested">
+            <span class="nested-connector">${connector}</span>
+            <span class="nested-type" style="background: ${color}">${child.type}</span>
+            <span class="input-preview-wrapper">
+              ${
+                isUrl
+                  ? `<a href="${escapedSrc}" target="_blank" rel="noopener noreferrer" class="nested-prompt input-url">${escapeHtml(shortPath)}</a>`
+                  : `<span class="nested-prompt input-url">${escapeHtml(shortPath)}</span>`
+              }
+              ${previewImgSrc ? `<span class="input-preview-tooltip"><img src="${previewImgSrc}" alt="preview" /></span>` : ""}
+            </span>
+          </div>
+          ${grandChildren.length > 0 ? renderNestedTree(grandChildren, depth + 1) : ""}`;
+        }
+
+        const childPrompt = child.prompt || child.text || child.src || "";
 
         return `
           <div class="timeline-nested">
@@ -1201,6 +1316,47 @@ function generateHtml(storyboard: Storyboard, sourceFile: string): string {
       width: 100%;
       margin-top: 0.25rem;
     }
+    
+    .input-preview-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .input-url {
+      color: var(--accent-sky);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    
+    .input-url:hover {
+      text-decoration: underline;
+    }
+    
+    .input-preview-tooltip {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 100%;
+      margin-top: 8px;
+      z-index: 1000;
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-squishy);
+      box-shadow: var(--shadow-soft);
+      padding: 8px;
+      max-width: 300px;
+    }
+    
+    .input-preview-tooltip img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      display: block;
+    }
+    
+    .input-preview-wrapper:hover .input-preview-tooltip {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -1343,7 +1499,17 @@ async function populateCachedImages(
   let foundCount = 0;
 
   async function lookupImage(el: StoryboardElement): Promise<void> {
-    if (el.type === "image" && el._element) {
+    // Handle local file sources (for both "image" and "input" types)
+    if (el.src && isLocalFilePath(el.src) && !el.imageDataUrl) {
+      const dataUrl = await localFileToDataUrl(el.src);
+      if (dataUrl) {
+        el.imageDataUrl = dataUrl;
+        foundCount++;
+      }
+    }
+
+    // Handle cached generated images
+    if (el.type === "image" && el._element && !el.imageDataUrl) {
       const cacheKeyParts = computeCacheKey(el._element);
       const cacheKey = `generateImage:${cacheKeyParts.map((d) => String(d ?? "")).join(":")}`;
       const cached = (await cache.get(cacheKey)) as

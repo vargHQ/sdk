@@ -1,5 +1,6 @@
 import type {
   FFmpegBackend,
+  FFmpegInput,
   FFmpegRunOptions,
   FFmpegRunResult,
   VideoInfo,
@@ -103,49 +104,83 @@ export class RendiBackend implements FFmpegBackend {
     throw new Error("Rendi ffprobe timed out");
   }
 
-  async run(options: FFmpegRunOptions): Promise<FFmpegRunResult> {
-    const { args, inputs, outputPath, verbose } = options;
+  private getInputPath(input: FFmpegInput): string {
+    if (typeof input === "string") return input;
+    if ("raw" in input) throw new Error("raw inputs not supported in Rendi");
+    return input.path;
+  }
 
-    const uniqueInputs = [...new Set(inputs)];
-    const inputUrls = uniqueInputs.map((input) => this.ensureUrl(input));
+  async run(options: FFmpegRunOptions): Promise<FFmpegRunResult> {
+    const {
+      inputs,
+      filterComplex,
+      videoFilter,
+      outputArgs = [],
+      outputPath,
+      verbose,
+    } = options;
 
     const inputFiles: Record<string, string> = {};
     const pathToPlaceholder = new Map<string, string>();
 
-    for (let i = 0; i < uniqueInputs.length; i++) {
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i]!;
+      const path = this.getInputPath(input);
+      const url = this.ensureUrl(path);
       const placeholder = `in_${i + 1}`;
-      inputFiles[placeholder] = inputUrls[i]!;
-      pathToPlaceholder.set(uniqueInputs[i]!, `{{${placeholder}}}`);
+      inputFiles[placeholder] = url;
+      pathToPlaceholder.set(path, `{{${placeholder}}}`);
     }
 
-    const commandArgs = args.map((arg) => {
-      if (arg === outputPath) {
-        return "{{out_1}}";
-      }
-      const placeholder = pathToPlaceholder.get(arg);
-      if (placeholder) {
-        return placeholder;
-      }
-      let result = arg;
-      for (const [url, ph] of pathToPlaceholder) {
+    const replaceWithPlaceholders = (str: string): string => {
+      let result = str;
+      const sortedEntries = [...pathToPlaceholder.entries()].sort(
+        (a, b) => b[0].length - a[0].length,
+      );
+      for (const [url, ph] of sortedEntries) {
         if (result.includes(url)) {
           result = result.replaceAll(url, ph);
         }
       }
       return result;
-    });
+    };
 
-    const filteredArgs = this.stripInternalFlags(commandArgs);
-    const ffmpegCommand = this.buildCommandString(filteredArgs);
+    const inputArgs: string[] = [];
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i]!;
+      if (typeof input !== "string" && "options" in input && input.options) {
+        inputArgs.push(...input.options);
+      }
+      inputArgs.push("-i", `{{in_${i + 1}}}`);
+    }
 
+    const filterArgs: string[] = [];
+    if (filterComplex) {
+      filterArgs.push(
+        "-filter_complex",
+        replaceWithPlaceholders(filterComplex),
+      );
+    }
+    if (videoFilter) {
+      filterArgs.push("-vf", replaceWithPlaceholders(videoFilter));
+    }
+
+    const processedOutputArgs = outputArgs
+      .filter((arg) => arg !== "-y")
+      .map((arg) => replaceWithPlaceholders(arg));
+
+    const commandParts = [
+      ...inputArgs,
+      ...filterArgs,
+      ...processedOutputArgs,
+      "{{out_1}}",
+    ];
+    const ffmpegCommand = this.buildCommandString(commandParts);
     const outputFilename = outputPath?.split("/").pop() ?? "output.mp4";
-    const finalCommand = ffmpegCommand.includes("{{out_1}}")
-      ? ffmpegCommand
-      : ffmpegCommand.replace(/[^\s]+\.\w+$/, "{{out_1}}");
 
     if (verbose) {
       console.log("[rendi] input_files:", inputFiles);
-      console.log("[rendi] ffmpeg_command:", finalCommand);
+      console.log("[rendi] ffmpeg_command:", ffmpegCommand);
     }
 
     const submitResponse = await fetch(`${RENDI_API_BASE}/run-ffmpeg-command`, {
@@ -157,7 +192,7 @@ export class RendiBackend implements FFmpegBackend {
       body: JSON.stringify({
         input_files: inputFiles,
         output_files: { out_1: outputFilename },
-        ffmpeg_command: finalCommand,
+        ffmpeg_command: ffmpegCommand,
         max_command_run_seconds: DEFAULT_MAX_COMMAND_SECONDS,
       }),
     });
@@ -226,29 +261,6 @@ export class RendiBackend implements FFmpegBackend {
       return input;
     }
     throw new Error(`Rendi backend requires URLs, got local path: ${input}`);
-  }
-
-  private stripInternalFlags(args: string[]): string[] {
-    const filtered: string[] = [];
-    let skipNext = false;
-
-    for (const arg of args) {
-      if (skipNext) {
-        skipNext = false;
-        continue;
-      }
-
-      if (arg === "-hide_banner") continue;
-      if (arg === "-y") continue;
-      if (arg === "-loglevel") {
-        skipNext = true;
-        continue;
-      }
-
-      filtered.push(arg);
-    }
-
-    return filtered;
   }
 
   private buildCommandString(args: string[]): string {

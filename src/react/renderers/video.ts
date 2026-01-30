@@ -147,6 +147,7 @@ export async function renderVideo(
       prompt: resolvedPrompt,
       duration: props.duration ?? 5,
       aspectRatio: props.aspectRatio,
+      providerOptions: props.providerOptions,
       cacheKey,
     } as Parameters<typeof generateVideo>[0]);
 

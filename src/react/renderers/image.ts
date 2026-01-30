@@ -85,6 +85,7 @@ export async function renderImage(
       model,
       prompt: resolvedPrompt,
       aspectRatio: props.aspectRatio,
+      providerOptions: props.providerOptions,
       n: 1,
       cacheKey,
     } as Parameters<typeof generateImage>[0]);

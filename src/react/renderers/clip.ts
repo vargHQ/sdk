@@ -226,11 +226,31 @@ async function renderClipLayers(
     }
   }
 
-  const layers = await Promise.all(
-    pending.map((p) => (p.type === "sync" ? p.layer : p.promise)),
+  const layerResults = await Promise.allSettled(
+    pending.map((p) =>
+      p.type === "sync" ? Promise.resolve(p.layer) : p.promise,
+    ),
   );
 
-  return layers;
+  const failures = layerResults
+    .map((r, i) =>
+      r.status === "rejected" ? { index: i, reason: r.reason } : null,
+    )
+    .filter(Boolean) as { index: number; reason: Error }[];
+
+  if (failures.length > 0) {
+    if (failures.length === 1 && failures[0]) {
+      throw failures[0].reason;
+    }
+    const errors = failures
+      .map((f) => f.reason?.message || "Unknown error")
+      .join("; ");
+    throw new Error(
+      `${failures.length} of ${layerResults.length} layers failed: ${errors}`,
+    );
+  }
+
+  return layerResults.map((r) => (r as PromiseFulfilledResult<Layer>).value);
 }
 
 export async function renderClip(

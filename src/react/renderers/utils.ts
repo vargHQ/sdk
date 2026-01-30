@@ -41,6 +41,42 @@ function getFileFingerprint(path: string): string {
   return `${path}:${stat.mtimeMs}:${stat.size}`;
 }
 
+const COMMON_IGNORED_PROPS = new Set(["children", "key"]);
+
+const IGNORED_PROPS_BY_TYPE: Partial<Record<VargElement["type"], Set<string>>> =
+  {
+    image: new Set([
+      "left",
+      "top",
+      "width",
+      "height",
+      "resize",
+      "position",
+      "size",
+      "zoom",
+    ]),
+    video: new Set([
+      "left",
+      "top",
+      "width",
+      "height",
+      "resize",
+      "cutFrom",
+      "cutTo",
+      "volume",
+      "keepAudio",
+    ]),
+    speech: new Set(["volume", "id"]),
+  };
+
+function shouldIgnoreProp(
+  elementType: VargElement["type"],
+  key: string,
+): boolean {
+  if (COMMON_IGNORED_PROPS.has(key)) return true;
+  return IGNORED_PROPS_BY_TYPE[elementType]?.has(key) ?? false;
+}
+
 function serializeValue(v: unknown): string {
   if (typeof v === "string") {
     if (isLocalFilePath(v)) {
@@ -67,7 +103,7 @@ export function computeCacheKey(element: VargElement): CacheKeyPart[] {
   const key: CacheKeyPart[] = [element.type];
 
   for (const [k, v] of Object.entries(element.props)) {
-    if (k === "children") continue;
+    if (shouldIgnoreProp(element.type, k)) continue;
     if (k === "model" && v && typeof v === "object" && "modelId" in v) {
       const model = v as {
         provider?: string;

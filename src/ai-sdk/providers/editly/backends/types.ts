@@ -11,13 +11,33 @@ import type { VideoInfo } from "../types";
 export type { VideoInfo };
 
 /**
- * FFmpeg execution options
+ * Represents an input to ffmpeg - can be a simple path/URL or structured with options
+ */
+export type FFmpegInput =
+  | string
+  | {
+      /** Path or URL to the input file */
+      path: string;
+      /** Options to apply BEFORE the -i flag (e.g. -ss 5 for seeking) */
+      options?: string[];
+    }
+  | {
+      /** Raw ffmpeg args that don't use -i (e.g. ["-f", "lavfi", "-i", "color=black"]) */
+      raw: string[];
+    };
+
+/**
+ * FFmpeg execution options - new interface where backend builds -i flags
  */
 export interface FFmpegRunOptions {
-  /** ffmpeg arguments (without the 'ffmpeg' command itself) */
-  args: string[];
-  /** List of input file paths (local or URLs) */
-  inputs: string[];
+  /** Inputs - backend builds -i flags from these */
+  inputs: FFmpegInput[];
+  /** Filter complex string (uses input indices like [0:v], [1:a]) */
+  filterComplex?: string;
+  /** Video filter string for single-input operations */
+  videoFilter?: string;
+  /** Arguments after inputs but before output (codec, map, etc) */
+  outputArgs?: string[];
   /** Output file path */
   outputPath: string;
   /** Enable verbose logging */
