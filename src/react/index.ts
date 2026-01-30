@@ -1,3 +1,4 @@
+export type { CacheStorage } from "../ai-sdk/cache";
 export type { SizeValue } from "../ai-sdk/providers/editly/types";
 export { assets } from "./assets";
 export {
