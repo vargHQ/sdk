@@ -133,7 +133,7 @@ export async function renderRoot(
     generateVideo: wrapGenerateVideo,
     tempFiles,
     progress,
-    pendingFiles: new Map(),
+    pendingFiles: new Map<string, Promise<File>>(),
     defaults: options.defaults,
     backend,
   };
