@@ -135,6 +135,19 @@ function extractNestedFromPrompt(prompt: unknown): StoryboardElement[] {
     for (const img of p.images) {
       if (img && typeof img === "object" && "type" in img) {
         nested.push(extractElementInfo(img as VargElement));
+      } else if (typeof img === "string") {
+        const isUrl = img.startsWith("http://") || img.startsWith("https://");
+        const isLocalFile =
+          img.startsWith("/") || img.startsWith("./") || img.includes(".");
+        if (isUrl || isLocalFile) {
+          nested.push({
+            type: "input",
+            src: img,
+            details: {
+              inputType: isUrl ? "url" : "file",
+            },
+          });
+        }
       }
     }
   }
@@ -378,6 +391,7 @@ const TYPE_COLORS: Record<string, string> = {
   split: "#818cf8",
   slider: "#2dd4bf",
   swipe: "#fb923c",
+  input: "#9ca3af",
 };
 
 function escapeHtml(str: string): string {
