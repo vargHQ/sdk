@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { StorageProvider } from "../../../storage/types";
-import { rendi } from ".";
+import { createRendiBackend } from ".";
 
 const hasRendiKey = !!process.env.RENDI_API_KEY;
 
@@ -12,7 +12,7 @@ const mockStorage: StorageProvider = {
 
 describe.skipIf(!hasRendiKey)("rendi backend", () => {
   test("ffprobe remote file", async () => {
-    const backend = rendi({ storage: mockStorage });
+    const backend = createRendiBackend({ storage: mockStorage });
     const info = await backend.ffprobe(
       "https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_intro.mp4",
     );
@@ -23,7 +23,7 @@ describe.skipIf(!hasRendiKey)("rendi backend", () => {
   }, 30000);
 
   test("run simple ffmpeg command", async () => {
-    const backend = rendi({ storage: mockStorage });
+    const backend = createRendiBackend({ storage: mockStorage });
 
     const result = await backend.run({
       inputs: [

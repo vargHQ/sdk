@@ -295,7 +295,7 @@ export class RendiBackend implements FFmpegBackend {
   }
 }
 
-export function rendi(options: RendiBackendOptions): RendiBackend {
+export function createRendiBackend(options: RendiBackendOptions): RendiBackend {
   return new RendiBackend(options);
 }
 
