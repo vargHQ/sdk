@@ -11,6 +11,7 @@ import {
   type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
+import pMap from "p-map";
 import { fileCache } from "../file-cache";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 
@@ -748,7 +749,7 @@ class FalImageModel implements ImageModelV3 {
         modelId: this.modelId,
         fileHashes,
       });
-      input.image_urls = await Promise.all(files.map((f) => fileToUrl(f)));
+      input.image_urls = await pMap(files, fileToUrl, { concurrency: 2 });
     }
 
     if (isQwenAngles && !input.image_urls) {
