@@ -11,6 +11,7 @@ import {
   type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
+import { uploadBuffer as uploadToR2 } from "../../providers/storage";
 import { fileCache } from "../file-cache";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 
@@ -182,6 +183,21 @@ function detectImageType(bytes: Uint8Array): string | undefined {
   return undefined;
 }
 
+function getExtFromMediaType(mediaType: string): string {
+  const map: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+    "audio/mpeg": "mp3",
+    "audio/wav": "wav",
+    "audio/ogg": "ogg",
+  };
+  return map[mediaType] ?? "bin";
+}
+
 async function fileToUrl(file: ImageModelV3File): Promise<string> {
   if (file.type === "url") return file.url;
   const data = file.data;
@@ -189,13 +205,18 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
     typeof data === "string"
       ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
       : data;
-  // Use mediaType from file if available, otherwise detect from bytes or default to png
   const mediaType = file.mediaType ?? detectImageType(bytes) ?? "image/png";
-  return fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  const ext = getExtFromMediaType(mediaType);
+  const hash = Bun.hash(bytes).toString(16);
+  const key = `fal-uploads/${hash}.${ext}`;
+  return uploadToR2(bytes, key, mediaType);
 }
 
 async function uploadBuffer(buffer: ArrayBuffer): Promise<string> {
-  return fal.storage.upload(new Blob([buffer]));
+  const bytes = new Uint8Array(buffer);
+  const hash = Bun.hash(bytes).toString(16);
+  const key = `fal-uploads/${hash}.bin`;
+  return uploadToR2(bytes, key);
 }
 
 export function computePendingKey(
