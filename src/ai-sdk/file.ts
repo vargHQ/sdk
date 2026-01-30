@@ -123,6 +123,10 @@ export class File {
     return this._mediaType.startsWith("video/");
   }
 
+  /**
+   * Check if this file has a URL (either from creation or after upload).
+   * @returns true if a URL is available, false if only binary data exists
+   */
   hasUrl(): boolean {
     return this._url !== null;
   }
@@ -150,6 +154,11 @@ export class File {
     return new Blob([data], { type: this._mediaType });
   }
 
+  /**
+   * Upload file to storage and return the URL. Returns cached URL if already uploaded.
+   * @param storage - Storage provider to use for upload
+   * @returns URL of the uploaded file
+   */
   async upload(storage: StorageProvider): Promise<string> {
     if (this._url) return this._url;
     const data = await this.data();
@@ -187,6 +196,10 @@ export class File {
     return { type: "file", mediaType: this._mediaType, data };
   }
 
+  /**
+   * Write file data to a temporary file and return the path.
+   * @returns Path to the temporary file
+   */
   async toTempFile(): Promise<string> {
     const data = await this.data();
     const ext = this.extensionFromMediaType();
@@ -197,6 +210,11 @@ export class File {
     return path;
   }
 
+  /**
+   * Get a path/URL for this file. Returns URL if available, otherwise writes to temp file.
+   * Use this for local ffmpeg which can accept both URLs and file paths.
+   * @returns URL string or path to temporary file
+   */
   async getPath(): Promise<string> {
     if (this._url) return this._url;
     return this.toTempFile();
