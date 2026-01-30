@@ -1,5 +1,6 @@
 import { generateImage, wrapImageModel } from "ai";
 import { type CacheStorage, withCache } from "../../ai-sdk/cache";
+import type { File } from "../../ai-sdk/file";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { generateVideo } from "../../ai-sdk/generate-video";
 import {
@@ -8,6 +9,7 @@ import {
   wrapVideoModel,
 } from "../../ai-sdk/middleware";
 import { editly } from "../../ai-sdk/providers/editly";
+import type { FFmpegBackend } from "../../ai-sdk/providers/editly/backends/types";
 import type {
   AudioTrack,
   Clip,
@@ -40,6 +42,20 @@ import {
 import { renderSpeech } from "./speech";
 import { resolvePath } from "./utils";
 import { renderVideo } from "./video";
+
+function createFileResolver(
+  backend: FFmpegBackend | undefined,
+  tempFiles: string[],
+): (file: File) => Promise<string> {
+  return async (file: File) => {
+    if (backend?.name === "rendi" && file.hasUrl()) {
+      return file.url();
+    }
+    const tempPath = await file.toTemp();
+    tempFiles.push(tempPath);
+    return tempPath;
+  };
+}
 
 interface RenderedOverlay {
   path: string;
@@ -121,6 +137,7 @@ export async function renderRoot(
     return cachedGenerateVideo(opts);
   };
 
+  const tempFiles: string[] = [];
   const ctx: RenderContext = {
     width: props.width ?? 1920,
     height: props.height ?? 1080,
@@ -128,11 +145,11 @@ export async function renderRoot(
     cache: cacheStorage,
     generateImage: wrapGenerateImage,
     generateVideo: wrapGenerateVideo,
-    tempFiles: [],
+    tempFiles,
     progress,
-    pending: new Map(),
+    pendingFiles: new Map(),
     defaults: options.defaults,
-    backend: options.backend,
+    resolveFile: createFileResolver(options.backend, tempFiles),
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -183,16 +200,17 @@ export async function renderRoot(
       if (!child || typeof child !== "object" || !("type" in child)) continue;
       const childElement = child as VargElement;
 
-      let path: string | undefined;
+      let file: File | undefined;
       const isVideo = childElement.type === "video";
 
       if (childElement.type === "video") {
-        path = await renderVideo(childElement as VargElement<"video">, ctx);
+        file = await renderVideo(childElement as VargElement<"video">, ctx);
       } else if (childElement.type === "image") {
-        path = await renderImage(childElement as VargElement<"image">, ctx);
+        file = await renderImage(childElement as VargElement<"image">, ctx);
       }
 
-      if (path) {
+      if (file) {
+        const path = await ctx.resolveFile(file);
         renderedOverlays.push({ path, props: overlayProps, isVideo });
 
         if (isVideo && overlayProps.keepAudio) {
