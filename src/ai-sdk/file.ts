@@ -123,12 +123,8 @@ export class File {
     return this._mediaType.startsWith("video/");
   }
 
-  /**
-   * Check if this file has a URL (either from creation or after upload).
-   * @returns true if a URL is available, false if only binary data exists
-   */
-  hasUrl(): boolean {
-    return this._url !== null;
+  get url(): string | null {
+    return this._url;
   }
 
   async data(): Promise<Uint8Array> {
@@ -167,18 +163,6 @@ export class File {
     return this._url;
   }
 
-  async url(uploader?: (blob: Blob) => Promise<string>): Promise<string> {
-    if (this._url) return this._url;
-    if (uploader) {
-      const blob = await this.blob();
-      this._url = await uploader(blob);
-      return this._url;
-    }
-    throw new Error(
-      "File.url() requires an uploader function or use File.upload(storage) with a StorageProvider",
-    );
-  }
-
   async base64(): Promise<string> {
     const data = await this.arrayBuffer();
     let binary = "";
@@ -208,16 +192,6 @@ export class File {
     const path = `${tmpDir}/${filename}`;
     await Bun.write(path, data);
     return path;
-  }
-
-  /**
-   * Get a path/URL for this file. Returns URL if available, otherwise writes to temp file.
-   * Use this for local ffmpeg which can accept both URLs and file paths.
-   * @returns URL string or path to temporary file
-   */
-  async getPath(): Promise<string> {
-    if (this._url) return this._url;
-    return this.toTempFile();
   }
 
   static async toTemp(
