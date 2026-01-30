@@ -11,6 +11,7 @@ import {
   type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
+import pMap from "p-map";
 import { fileCache } from "../file-cache";
 import type { GenerationMetrics } from "../usage/types";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
@@ -183,6 +184,8 @@ function detectImageType(bytes: Uint8Array): string | undefined {
   return undefined;
 }
 
+const uploadCache = fileCache({ dir: ".cache/fal-uploads" });
+
 async function fileToUrl(file: ImageModelV3File): Promise<string> {
   if (file.type === "url") return file.url;
   const data = file.data;
@@ -190,9 +193,15 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
     typeof data === "string"
       ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
       : data;
-  // Use mediaType from file if available, otherwise detect from bytes or default to png
+
+  const hash = Bun.hash(bytes).toString(16);
+  const cached = (await uploadCache.get(hash)) as string | undefined;
+  if (cached) return cached;
+
   const mediaType = file.mediaType ?? detectImageType(bytes) ?? "image/png";
-  return fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  const url = await fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  await uploadCache.set(hash, url, 7 * 24 * 60 * 60 * 1000);
+  return url;
 }
 
 async function uploadBuffer(buffer: ArrayBuffer): Promise<string> {
@@ -767,7 +776,7 @@ class FalImageModel implements ImageModelV3 {
         modelId: this.modelId,
         fileHashes,
       });
-      input.image_urls = await Promise.all(files.map((f) => fileToUrl(f)));
+      input.image_urls = await pMap(files, fileToUrl, { concurrency: 2 });
     }
 
     if (isQwenAngles && !input.image_urls) {
