@@ -6,9 +6,9 @@
     "vargai": "./src/cli/index.ts"
   },
   "scripts": {
-    "check": "biome check . && tsc --noEmit",
-    "lint": "biome check .",
-    "format": "biome format --write .",
+    "check": "bunx biome check . && tsc --noEmit",
+    "lint": "bunx biome check .",
+    "format": "bunx biome format --write .",
     "type-check": "tsc --noEmit",
     "prepare": "husky || true",
     "size": "size-limit",
@@ -16,10 +16,10 @@
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [
-      "biome check --write --no-errors-on-unmatched"
+      "bunx biome check --write --no-errors-on-unmatched"
     ],
     "*.json": [
-      "biome format --write"
+      "bunx biome format --write"
     ]
   },
   "devDependencies": {
