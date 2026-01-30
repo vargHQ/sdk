@@ -12,6 +12,7 @@ export default (
           ],
         }}
         model={fal.videoModel("ltx-2-19b-distilled")}
+        keepAudio={true}
         providerOptions={{
           fal: {
             generate_audio: true,
