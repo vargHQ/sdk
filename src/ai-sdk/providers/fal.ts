@@ -11,7 +11,16 @@ import {
   type TranscriptionModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { fal } from "@fal-ai/client";
+import { fileCache } from "../file-cache";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
+
+interface PendingRequest {
+  request_id: string;
+  endpoint: string;
+  submitted_at: number;
+}
+
+const pendingStorage = fileCache({ dir: ".cache/fal-pending" });
 
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
   // Kling v2.6 - latest with native audio generation
@@ -180,6 +189,109 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
 
 async function uploadBuffer(buffer: ArrayBuffer): Promise<string> {
   return fal.storage.upload(new Blob([buffer]));
+}
+
+function computePendingKey(
+  endpoint: string,
+  input: Record<string, unknown>,
+): string {
+  const hash = Bun.hash(JSON.stringify({ endpoint, input })).toString(16);
+  return `pending_${hash}`;
+}
+
+async function executeWithQueueRecovery<T>(
+  endpoint: string,
+  input: Record<string, unknown>,
+  options: {
+    logs?: boolean;
+    onQueueUpdate?: (status: { status: string }) => void;
+  } = {},
+): Promise<T> {
+  const { logs = true, onQueueUpdate } = options;
+  const pendingKey = computePendingKey(endpoint, input);
+
+  const pending = (await pendingStorage.get(pendingKey)) as
+    | PendingRequest
+    | undefined;
+
+  if (pending) {
+    try {
+      const status = await fal.queue.status(pending.endpoint, {
+        requestId: pending.request_id,
+        logs,
+      });
+
+      if (status.status === "COMPLETED") {
+        console.log(
+          `\x1b[32m⚡ recovered completed job from queue (${pending.request_id.slice(0, 8)}...)\x1b[0m`,
+        );
+        const result = await fal.queue.result(pending.endpoint, {
+          requestId: pending.request_id,
+        });
+        await pendingStorage.delete(pendingKey);
+        return result as T;
+      }
+
+      if (status.status === "IN_QUEUE" || status.status === "IN_PROGRESS") {
+        console.log(
+          `\x1b[33m⏳ resuming pending job (${pending.request_id.slice(0, 8)}...) - status: ${status.status}\x1b[0m`,
+        );
+        await fal.queue.subscribeToStatus(pending.endpoint, {
+          requestId: pending.request_id,
+          logs,
+          onQueueUpdate,
+        });
+        const result = await fal.queue.result(pending.endpoint, {
+          requestId: pending.request_id,
+        });
+        await pendingStorage.delete(pendingKey);
+        return result as T;
+      }
+
+      await pendingStorage.delete(pendingKey);
+    } catch {
+      console.log(
+        `\x1b[33m⚠ pending job check failed, submitting new request\x1b[0m`,
+      );
+      await pendingStorage.delete(pendingKey);
+    }
+  }
+
+  const { request_id } = await fal.queue.submit(endpoint, { input });
+
+  await pendingStorage.set(
+    pendingKey,
+    {
+      request_id,
+      endpoint,
+      submitted_at: Date.now(),
+    } satisfies PendingRequest,
+    24 * 60 * 60 * 1000,
+  );
+
+  console.log(
+    `\x1b[36m📋 queued job ${request_id.slice(0, 8)}... (recoverable on timeout)\x1b[0m`,
+  );
+
+  try {
+    await fal.queue.subscribeToStatus(endpoint, {
+      requestId: request_id,
+      logs,
+      onQueueUpdate,
+    });
+
+    const result = await fal.queue.result(endpoint, {
+      requestId: request_id,
+    });
+
+    await pendingStorage.delete(pendingKey);
+    return result as T;
+  } catch (error) {
+    console.log(
+      `\x1b[33m⚠ job ${request_id.slice(0, 8)}... saved for recovery on next run\x1b[0m`,
+    );
+    throw error;
+  }
 }
 
 class FalVideoModel implements VideoModelV3 {
@@ -402,10 +514,11 @@ class FalVideoModel implements VideoModelV3 {
       }
     }
 
-    const result = await fal.subscribe(endpoint, {
+    const result = await executeWithQueueRecovery<{ data: unknown }>(
+      endpoint,
       input,
-      logs: true,
-    });
+      { logs: true },
+    );
 
     const data = result.data as { video?: { url?: string } };
     const videoUrl = data?.video?.url;
@@ -583,10 +696,11 @@ class FalImageModel implements ImageModelV3 {
 
     const finalEndpoint = this.resolveEndpoint();
 
-    const result = await fal.subscribe(finalEndpoint, {
+    const result = await executeWithQueueRecovery<{ data: unknown }>(
+      finalEndpoint,
       input,
-      logs: true,
-    });
+      { logs: true },
+    );
 
     const data = result.data as { images?: Array<{ url?: string }> };
     const images = data?.images ?? [];
