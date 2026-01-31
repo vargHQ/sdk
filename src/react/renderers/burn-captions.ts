@@ -70,6 +70,8 @@ export async function burnCaptions(
   const captions: FFmpegOutput = { type: "file", path: assPath };
 
   // Resolve backend first so we can check if it's cloud or local
+  // TODO: This is a hack - we should abstract backend capabilities (e.g., supportsLocalPaths)
+  // instead of checking the name directly. For now, we assume "local" is the only local backend.
   const backend = options.backend ?? localBackend;
   const isCloud = backend.name !== "local";
 
