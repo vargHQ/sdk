@@ -69,7 +69,11 @@ export async function burnCaptions(
   const { video, assPath, outputPath = "output.mp4", verbose } = options;
   const captions: FFmpegOutput = { type: "file", path: assPath };
 
-  const isCloud = options.backend !== undefined;
+  // Resolve backend first so we can check if it's cloud or local
+  // TODO: This is a hack - we should abstract backend capabilities (e.g., supportsLocalPaths)
+  // instead of checking the name directly. For now, we assume "local" is the only local backend.
+  const backend = options.backend ?? localBackend;
+  const isCloud = backend.name !== "local";
 
   const videoInput = await resolveInputPathMaybeUpload(video, {
     shouldUpload: isCloud,
@@ -78,14 +82,16 @@ export async function burnCaptions(
     shouldUpload: isCloud,
   });
 
-  const backend = options.backend ?? localBackend;
-
-  // FFmpeg filter syntax requires escaping backslashes and colons
-  const escapedAssPath = assInput.replace(/\\/g, "\\\\").replace(/:/g, "\\:");
+  // For cloud backends (Rendi): pass raw URL so replaceWithPlaceholders() can match
+  // and replace with {{in_X}} placeholder. Rendi downloads inputs and provides local paths.
+  // For local backend: escape for FFmpeg filter syntax (backslashes and colons)
+  const subtitlesPath = isCloud
+    ? assInput
+    : assInput.replace(/\\/g, "\\\\").replace(/:/g, "\\:");
 
   const result = await backend.run({
     inputs: [videoInput, assInput],
-    videoFilter: `subtitles=${escapedAssPath}`,
+    videoFilter: `subtitles=${subtitlesPath}`,
     outputArgs: ["-crf", "18", "-preset", "fast", "-c:a", "copy"],
     outputPath,
     verbose,
