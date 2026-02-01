@@ -133,9 +133,6 @@ export async function renderRoot(
       return generateImage({ ...opts, model: wrappedModel });
     }
 
-    // Check limits before generation
-    usage.assertLimits("image");
-
     // Detect cache hit by checking cache before calling
     // Note: cacheKey is added by withCache wrapper, not in base generateImage type
     const optsWithCache = opts as typeof opts & {
@@ -149,6 +146,11 @@ export async function renderRoot(
       );
       const existing = await cacheStorage.get(cacheKeyStr);
       cached = existing !== undefined;
+    }
+
+    if (!cached) {
+      // Check limits only on cache miss
+      usage.assertLimits("image");
     }
 
     const result = await cachedGenerateImage(opts);
@@ -186,9 +188,6 @@ export async function renderRoot(
       return generateVideo({ ...opts, model: wrappedModel });
     }
 
-    // Check limits before generation
-    usage.assertLimits("video", 0, opts.duration ?? 5);
-
     // Detect cache hit by checking cache before calling
     // Note: cacheKey is added by withCache wrapper, not in base generateVideo type
     const optsWithCache = opts as typeof opts & {
@@ -202,6 +201,11 @@ export async function renderRoot(
       );
       const existing = await cacheStorage.get(cacheKeyStr);
       cached = existing !== undefined;
+    }
+
+    if (!cached) {
+      // Check limits only on cache miss
+      usage.assertLimits("video", 0, opts.duration ?? 5);
     }
 
     const result = await cachedGenerateVideo(opts);
