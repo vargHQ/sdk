@@ -7,7 +7,8 @@
  * - POST /v1/models/pricing/estimate - Estimate costs for batch operations
  */
 
-import type { PricingUnit } from "./types";
+import { PricingUnavailableError } from "../../usage/pricing-errors";
+import type { PricingUnit } from "../../usage/types";
 
 const FAL_API_BASE = "https://api.fal.ai";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -36,24 +37,6 @@ interface CachedPrice {
   price: number;
   unit: PricingUnit;
   fetchedAt: number;
-}
-
-/**
- * Error thrown when pricing API is unavailable
- */
-export class PricingUnavailableError extends Error {
-  readonly provider: string;
-  readonly reason: string;
-
-  constructor(provider: string, reason: string) {
-    super(
-      `Pricing unavailable from ${provider}: ${reason}. ` +
-        `Cost tracking is disabled. Proceed based on your own usage intuition.`,
-    );
-    this.name = "PricingUnavailableError";
-    this.provider = provider;
-    this.reason = reason;
-  }
 }
 
 /**

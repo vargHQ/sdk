@@ -2,16 +2,10 @@
  * Pricing module for usage tracking
  * Fetches real-time pricing from provider APIs
  *
- * Prices are fetched dynamically from:
- * - fal.ai: https://api.fal.ai/v1/models/pricing
- * - ElevenLabs: Uses static pricing (no public API)
+ * Prices are fetched dynamically from provider-specific implementations.
  */
 
-import {
-  FalPricingApi,
-  PricingUnavailableError,
-  resolveEndpointId,
-} from "./fal-pricing-api";
+import { PricingUnavailableError } from "./pricing-errors";
 import type {
   GenerationMetrics,
   PriceInfo,
@@ -113,74 +107,6 @@ export class PricingRegistry {
 }
 
 /**
- * fal.ai pricing implementation using dynamic API
- */
-export class FalPricing implements ProviderPricing {
-  readonly provider: UsageProvider = "fal";
-  private api: FalPricingApi;
-
-  constructor(api?: FalPricingApi) {
-    this.api = api ?? new FalPricingApi();
-  }
-
-  getLastError(): PricingUnavailableError | null {
-    return this.api.getLastError();
-  }
-
-  hasShownError(): boolean {
-    return this.api.hasShownError();
-  }
-
-  markErrorShown(): void {
-    this.api.markErrorShown();
-  }
-
-  async getPrice(
-    modelId: string,
-    _resourceType: ResourceType,
-  ): Promise<PriceInfo | undefined> {
-    const endpointId = resolveEndpointId(modelId);
-    const result = await this.api.fetchPrice(endpointId);
-    return result;
-  }
-
-  async calculateCost(metrics: GenerationMetrics): Promise<PricingResult> {
-    const endpointId = resolveEndpointId(metrics.modelId);
-    const priceInfo = await this.api.fetchPrice(endpointId);
-
-    if (!priceInfo) {
-      return {
-        error: this.api.getLastError() ?? undefined,
-      };
-    }
-
-    let cost: number;
-    switch (priceInfo.unit) {
-      case "image":
-        cost = priceInfo.price * (metrics.count ?? 1);
-        break;
-      case "second":
-        // Default to 5 seconds if duration not provided
-        cost = priceInfo.price * (metrics.durationSeconds ?? 5);
-        break;
-      case "minute":
-        cost = priceInfo.price * ((metrics.durationSeconds ?? 30) / 60);
-        break;
-      case "1k_chars":
-        cost = priceInfo.price * ((metrics.characterCount ?? 100) / 1000);
-        break;
-      default:
-        console.warn(
-          `[varg] Unknown pricing unit "${priceInfo.unit}" for model "${metrics.modelId}" - cost set to $0`,
-        );
-        cost = 0;
-    }
-
-    return { priceInfo, cost };
-  }
-}
-
-/**
  * ElevenLabs pricing implementation
  * Uses static pricing as ElevenLabs doesn't have a public pricing API
  */
@@ -274,7 +200,6 @@ export class ElevenLabsPricing implements ProviderPricing {
  * Default pricing registry with all supported providers
  */
 export const defaultPricing = new PricingRegistry();
-defaultPricing.register(new FalPricing());
 defaultPricing.register(new ElevenLabsPricing());
 
 /**

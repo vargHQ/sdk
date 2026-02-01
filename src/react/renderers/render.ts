@@ -206,27 +206,18 @@ export async function renderRoot(
 
     const result = await cachedGenerateVideo(opts);
 
-    // Record usage if metrics are available (async - fetches pricing from API)
-    if (result.usage) {
-      await usage.record({
-        ...result.usage,
-        cached,
-      });
-    } else {
-      // Fallback: record with estimated metrics
-      const modelProvider =
-        typeof opts.model === "string"
-          ? undefined
-          : (opts.model as { provider?: string }).provider;
-      await usage.record({
-        provider: isUsageProvider(modelProvider) ? modelProvider : "unknown",
-        modelId:
-          typeof opts.model === "string" ? opts.model : opts.model.modelId,
-        resourceType: "video",
-        durationSeconds: opts.duration ?? 5,
-        cached,
-      });
-    }
+    // Record usage with estimated metrics (async - fetches pricing from API)
+    const modelProvider =
+      typeof opts.model === "string"
+        ? undefined
+        : (opts.model as { provider?: string }).provider;
+    await usage.record({
+      provider: isUsageProvider(modelProvider) ? modelProvider : "unknown",
+      modelId: typeof opts.model === "string" ? opts.model : opts.model.modelId,
+      resourceType: "video",
+      durationSeconds: opts.duration ?? 5,
+      cached,
+    });
 
     return result;
   };

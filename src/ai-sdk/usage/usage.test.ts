@@ -9,11 +9,11 @@ import {
   test,
 } from "bun:test";
 import { rm } from "node:fs/promises";
-import { FalPricingApi } from "./fal-pricing-api";
+import { FalPricing } from "../providers/fal-extras/pricing";
+import { FalPricingApi } from "../providers/fal-extras/pricing-api";
 import {
   ElevenLabsPricing,
   estimateCost,
-  FalPricing,
   formatCost,
   PricingRegistry,
   PricingUnavailableError,

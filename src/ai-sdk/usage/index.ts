@@ -29,26 +29,18 @@
  * ```
  */
 
-// Pricing API
-export {
-  type FalApiPrice,
-  FalPricingApi,
-  type FalPricingResponse,
-  MODEL_TO_ENDPOINT,
-  resolveEndpointId,
-} from "./fal-pricing-api";
 // Pricing
 export {
   defaultPricing,
   ElevenLabsPricing,
   estimateCost,
-  FalPricing,
   formatCost,
   PricingRegistry,
   type PricingResult,
-  PricingUnavailableError,
   type ProviderPricing,
 } from "./pricing";
+// Pricing API
+export { PricingUnavailableError } from "./pricing-errors";
 
 // Storage
 export {

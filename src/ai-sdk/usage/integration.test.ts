@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { FalPricingApi, PricingUnavailableError } from "./fal-pricing-api";
+import { FalPricingApi } from "../providers/fal-extras/pricing-api";
 import {
   createUsageTracker,
   formatCost,
@@ -23,6 +23,7 @@ import {
   loadLimitsFromEnv,
   type UsageTracker,
 } from "./index";
+import { PricingUnavailableError } from "./pricing-errors";
 
 const TEST_DIR = ".cache/usage-integration-test";
 

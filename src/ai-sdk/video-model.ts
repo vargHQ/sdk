@@ -9,12 +9,12 @@
 
 import type {
   ImageModelV3File,
+  ImageModelV3Usage,
   JSONArray,
   JSONValue,
   SharedV3ProviderOptions,
   SharedV3Warning,
 } from "@ai-sdk/provider";
-import type { GenerationMetrics } from "./usage/types";
 
 /**
  * Re-export ImageModelV3File as VideoModelV3File for clarity.
@@ -108,14 +108,7 @@ export type VideoModelV3ProviderMetadata = Record<
 // Usage
 // ============================================================================
 
-export type VideoModelV3Usage = {
-  /** Input tokens used (if applicable) */
-  inputTokens?: number;
-  /** Output tokens used (if applicable) */
-  outputTokens?: number;
-  /** Total tokens used */
-  totalTokens?: number;
-};
+export type VideoModelV3Usage = ImageModelV3Usage;
 
 // ============================================================================
 // Model Interface
@@ -181,6 +174,6 @@ export type VideoModelV3 = {
     /**
      * Optional token usage for the video generation call.
      */
-    usage?: VideoModelV3Usage | GenerationMetrics;
+    usage?: VideoModelV3Usage;
   }>;
 };

@@ -13,8 +13,9 @@ import {
 import { fal } from "@fal-ai/client";
 import pMap from "p-map";
 import { fileCache } from "../file-cache";
-import type { GenerationMetrics } from "../usage/types";
+import { defaultPricing } from "../usage/pricing";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
+import { registerFalPricing } from "./fal-extras/pricing";
 
 interface PendingRequest {
   request_id: string;
@@ -598,21 +599,6 @@ class FalVideoModel implements VideoModelV3 {
     const videoResponse = await fetch(videoUrl, { signal: abortSignal });
     const videoBuffer = await videoResponse.arrayBuffer();
 
-    // Extract actual duration from response, fallback to input duration
-    // Coerce to number safely since duration may be string from some models
-    const rawDuration = data?.video?.duration ?? input.duration ?? 5;
-    const actualDuration = Number.isFinite(Number(rawDuration))
-      ? Number(rawDuration)
-      : 5;
-
-    // Build usage metrics for cost tracking
-    const usage: GenerationMetrics = {
-      provider: "fal",
-      modelId: this.modelId,
-      resourceType: "video",
-      durationSeconds: actualDuration,
-    };
-
     return {
       videos: [new Uint8Array(videoBuffer)],
       warnings,
@@ -621,7 +607,6 @@ class FalVideoModel implements VideoModelV3 {
         modelId: this.modelId,
         headers: undefined,
       },
-      usage,
     };
   }
 
@@ -812,8 +797,7 @@ class FalImageModel implements ImageModelV3 {
       }),
     );
 
-    // Note: Usage tracking is handled in render.ts using GenerationMetrics
-    // We don't return usage here since ImageModelV3 expects a different type
+    // Note: Usage tracking is handled in render.ts (model usage is token-only)
 
     return {
       images: imageBuffers,
@@ -909,6 +893,7 @@ export function createFal(settings: FalProviderSettings = {}): FalProvider {
   if (apiKey) {
     fal.config({ credentials: apiKey });
   }
+  registerFalPricing(defaultPricing, apiKey);
 
   return {
     specificationVersion: "v3",
