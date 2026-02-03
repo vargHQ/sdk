@@ -1,7 +1,7 @@
 /**
- * SplitLayout Demo - uses the layout helper (positions children in clip)
+ * Split Demo - uses the layout helper (positions children in clip)
  *
- * SplitLayout just adds position props to children, letting the clip handle rendering.
+ * Split just adds position props to children, letting the clip handle rendering.
  * Good for: when you want positioned images/videos within a clip alongside other layers
  */
 import {
@@ -11,13 +11,13 @@ import {
   Render,
   render,
   Slider,
-  SplitLayout,
+  Split,
   Swipe,
   Title,
 } from "..";
 
 async function main() {
-  console.log("SplitLayout Demo (uses layout helper)\n");
+  console.log("Split Demo (uses layout helper)\n");
 
   const img1 = Image({ src: "media/cyberpunk-street.png" });
   const img2 = Image({ src: "media/fal-coffee-shop.png" });
@@ -26,8 +26,8 @@ async function main() {
   const video = (
     <Render width={1280} height={720}>
       <Clip duration={3}>
-        <SplitLayout direction="horizontal" left={img1} right={img2} />
-        <Title position="bottom">SplitLayout (layout helper)</Title>
+        <Split direction="horizontal">{[img1, img2]}</Split>
+        <Title position="bottom">Split (layout helper)</Title>
       </Clip>
 
       <Clip duration={4} transition={{ name: "fade", duration: 0.5 }}>

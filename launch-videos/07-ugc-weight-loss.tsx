@@ -16,7 +16,7 @@ import {
   Music,
   Render,
   Speech,
-  SplitLayout,
+  Split,
   Title,
   Video,
 } from "vargai/react";
@@ -114,11 +114,7 @@ export default (
     {/* Main clip with split screen */}
     <Clip duration={5}>
       {/* Split layout - before on left, after on right */}
-      <SplitLayout
-        direction="horizontal"
-        left={beforeVideo}
-        right={afterVideo}
-      />
+      <Split direction="horizontal">{[beforeVideo, afterVideo]}</Split>
 
       {/* Title at top */}
       <Title position="top" color="#ffffff">

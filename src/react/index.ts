@@ -17,7 +17,7 @@ export {
   Title,
   Video,
 } from "./elements";
-export { Grid, Slot, Split, SplitLayout } from "./layouts";
+export { Grid, Slot, Split } from "./layouts";
 export { render, renderStream } from "./render";
 export type {
   CaptionsProps,
