@@ -77,6 +77,10 @@ function warnNoResizeMode(type: "video" | "image"): void {
   );
 }
 
+export function _resetResizeModeWarning(): void {
+  resizeModeWarningShown = false;
+}
+
 export interface FilterInput {
   label: string;
   path?: string;

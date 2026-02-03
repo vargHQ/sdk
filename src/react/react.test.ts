@@ -1,10 +1,20 @@
-import { describe, expect, mock, test } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
+import { _resetResizeModeWarning } from "../ai-sdk/providers/editly/layers";
 import { fal } from "../ai-sdk/providers/fal";
 import {
   Captions,
   Clip,
   Image,
+  Overlay,
   Packshot,
   Render,
   render,
@@ -354,5 +364,87 @@ describe("layout renderers", () => {
       unlinkSync(outPath);
     },
     { timeout: 30000 },
+  );
+});
+
+describe("warnings", () => {
+  const testImage = "media/cyberpunk-street.png";
+  const outPath = "output/warning-test.mp4";
+  let warnSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    _resetResizeModeWarning();
+    warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    if (existsSync(outPath)) unlinkSync(outPath);
+  });
+
+  test(
+    "issue #45: warns when Overlay is placed inside Clip",
+    async () => {
+      const root = Render({
+        width: 1280,
+        height: 720,
+        children: [
+          Clip({
+            duration: 2,
+            children: [
+              Image({ src: testImage }),
+              Overlay({
+                left: "10%",
+                top: "10%",
+                width: "20%",
+                height: "20%",
+                children: [Image({ src: testImage })],
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await render(root, { output: outPath, quiet: true });
+
+      const warnings = warnSpy.mock.calls.map(
+        (call: unknown[]) => call[0] as string,
+      );
+      expect(
+        warnings.some(
+          (w: string) =>
+            w.includes("Overlay") && w.includes("inside") && w.includes("Clip"),
+        ),
+      ).toBe(true);
+    },
+    { timeout: 10000 },
+  );
+
+  test(
+    "issue #24: warns when image with zoompan has no resizeMode",
+    async () => {
+      const root = Render({
+        width: 1280,
+        height: 720,
+        children: [
+          Clip({
+            duration: 2,
+            children: [Image({ src: testImage, zoom: "in" })],
+          }),
+        ],
+      });
+
+      await render(root, { output: outPath, quiet: true });
+
+      const warnings = warnSpy.mock.calls.map(
+        (call: unknown[]) => call[0] as string,
+      );
+      expect(
+        warnings.some(
+          (w: string) => w.includes("resizeMode") && w.includes("Deprecation"),
+        ),
+      ).toBe(true);
+    },
+    { timeout: 10000 },
   );
 });

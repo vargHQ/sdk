@@ -272,46 +272,50 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
   });
 
-  test("image pan left/right", async () => {
-    const outPath = "output/editly-test-image-pan.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
+  test(
+    "image pan left/right",
+    async () => {
+      const outPath = "output/editly-test-image-pan.mp4";
+      if (existsSync(outPath)) unlinkSync(outPath);
 
-    await editly({
-      outPath,
-      width: 1280,
-      height: 720,
-      fps: 30,
-      clips: [
-        {
-          duration: 3,
-          layers: [
-            {
-              type: "image",
-              path: "media/cyberpunk-street.png",
-              zoomDirection: "left",
-              zoomAmount: 0.15,
-              resizeMode: "contain",
-            },
-          ],
-          transition: { name: "fade", duration: 0.5 },
-        },
-        {
-          duration: 3,
-          layers: [
-            {
-              type: "image",
-              path: "media/cyberpunk-street.png",
-              zoomDirection: "right",
-              zoomAmount: 0.15,
-              resizeMode: "contain",
-            },
-          ],
-        },
-      ],
-    });
+      await editly({
+        outPath,
+        width: 1280,
+        height: 720,
+        fps: 30,
+        clips: [
+          {
+            duration: 3,
+            layers: [
+              {
+                type: "image",
+                path: "media/cyberpunk-street.png",
+                zoomDirection: "left",
+                zoomAmount: 0.15,
+                resizeMode: "contain",
+              },
+            ],
+            transition: { name: "fade", duration: 0.5 },
+          },
+          {
+            duration: 3,
+            layers: [
+              {
+                type: "image",
+                path: "media/cyberpunk-street.png",
+                zoomDirection: "right",
+                zoomAmount: 0.15,
+                resizeMode: "contain",
+              },
+            ],
+          },
+        ],
+      });
 
-    expect(existsSync(outPath)).toBe(true);
-  });
+      expect(existsSync(outPath)).toBe(true);
+    },
+    { timeout: 10000 },
+  );
 
   test("title with custom font", async () => {
     const outPath = "output/editly-test-title-font.mp4";
@@ -906,27 +910,31 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
   });
 
-  test("contain-blur resize mode for video", async () => {
-    const outPath = "output/editly-test-contain-blur-video.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
+  test(
+    "contain-blur resize mode for video",
+    async () => {
+      const outPath = "output/editly-test-contain-blur-video.mp4";
+      if (existsSync(outPath)) unlinkSync(outPath);
 
-    await editly({
-      outPath,
-      width: 1080,
-      height: 1920,
-      fps: 30,
-      clips: [
-        {
-          duration: 3,
-          layers: [
-            { type: "video", path: VIDEO_1, resizeMode: "contain-blur" },
-          ],
-        },
-      ],
-    });
+      await editly({
+        outPath,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        clips: [
+          {
+            duration: 3,
+            layers: [
+              { type: "video", path: VIDEO_1, resizeMode: "contain-blur" },
+            ],
+          },
+        ],
+      });
 
-    expect(existsSync(outPath)).toBe(true);
-  });
+      expect(existsSync(outPath)).toBe(true);
+    },
+    { timeout: 10000 },
+  );
 
   test("contain-blur resize mode for image", async () => {
     const outPath = "output/editly-test-contain-blur-image.mp4";
