@@ -13,7 +13,6 @@ export {
 export { renderRoot } from "./render";
 export { renderSlider } from "./slider";
 export { renderSpeech } from "./speech";
-export { renderSplit } from "./split";
 export { renderSwipe } from "./swipe";
 export { renderTitle } from "./title";
 export { computeCacheKey, getTextContent } from "./utils";

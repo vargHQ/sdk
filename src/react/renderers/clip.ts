@@ -22,7 +22,6 @@ import { renderMusic } from "./music";
 import { renderPackshot } from "./packshot";
 import { renderSlider } from "./slider";
 import { renderSpeech } from "./speech";
-import { renderSplit } from "./split";
 import { renderSubtitle } from "./subtitle";
 import { renderSwipe } from "./swipe";
 import { renderTitle } from "./title";
@@ -169,20 +168,6 @@ async function renderClipLayers(
               cutTo: props.cutTo,
             } as AudioLayer;
           })(),
-        });
-        break;
-      }
-
-      case "split": {
-        pending.push({
-          type: "async",
-          promise: renderSplit(element as VargElement<"split">, ctx).then(
-            (path) =>
-              ({
-                type: "video",
-                path,
-              }) as VideoLayer,
-          ),
         });
         break;
       }
