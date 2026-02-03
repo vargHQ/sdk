@@ -11,14 +11,13 @@ export {
   Render,
   Slider,
   Speech,
-  Split,
   Subtitle,
   Swipe,
   TalkingHead,
   Title,
   Video,
 } from "./elements";
-export { Grid, Slot, SplitLayout } from "./layouts";
+export { Grid, Slot, Split, SplitLayout } from "./layouts";
 export { render, renderStream } from "./render";
 export type {
   CaptionsProps,
