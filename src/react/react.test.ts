@@ -369,7 +369,6 @@ describe("layout renderers", () => {
 
 describe("warnings", () => {
   const testImage = "media/cyberpunk-street.png";
-  const outPath = "output/warning-test.mp4";
   let warnSpy: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
@@ -379,12 +378,12 @@ describe("warnings", () => {
 
   afterEach(() => {
     warnSpy.mockRestore();
-    if (existsSync(outPath)) unlinkSync(outPath);
   });
 
   test(
     "issue #45: warns when Overlay is placed inside Clip",
     async () => {
+      const outPath = "output/test-issue-45.mp4";
       const root = Render({
         width: 1280,
         height: 720,
@@ -423,6 +422,7 @@ describe("warnings", () => {
   test(
     "issue #24: warns when image with zoompan has no resizeMode",
     async () => {
+      const outPath = "output/test-issue-24.mp4";
       const root = Render({
         width: 1280,
         height: 720,
