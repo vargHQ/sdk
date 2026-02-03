@@ -63,6 +63,20 @@ function parseSize(val: number | string | undefined, base: number): number {
   return Math.round(parseFloat(val));
 }
 
+let resizeModeWarningShown = false;
+
+function warnNoResizeMode(type: "video" | "image"): void {
+  if (resizeModeWarningShown) return;
+  resizeModeWarningShown = true;
+  console.warn(
+    `[varg] Deprecation warning: ${type} layer without resizeMode will change behavior in a future version. ` +
+      `Current default stretches/crops to fill frame. Future default will be 'contain' (letterbox with black bars). ` +
+      `To preserve current behavior, explicitly set resizeMode: 'cover'. ` +
+      `For letterboxing, set resizeMode: 'contain'. ` +
+      `See: https://github.com/vargHQ/sdk/issues/24`,
+  );
+}
+
 export interface FilterInput {
   label: string;
   path?: string;
@@ -337,6 +351,9 @@ export function getImageFilter(
       filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
     } else {
       // Default: fast path - zoompan at target resolution directly
+      // WARNING: This path uses cover-like behavior (may crop). In a future version,
+      // the default will change to 'contain' (letterbox). See issue #24.
+      warnNoResizeMode("image");
       filters.push(
         `scale=${zoomWidth}:${zoomHeight}:force_original_aspect_ratio=increase`,
       );

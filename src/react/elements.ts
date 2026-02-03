@@ -8,7 +8,6 @@ import type {
   RenderProps,
   SliderProps,
   SpeechProps,
-  SplitProps,
   SubtitleProps,
   SwipeProps,
   TalkingHeadProps,
@@ -110,14 +109,6 @@ export function Music(props: MusicProps): VargElement<"music"> {
 
 export function Captions(props: CaptionsProps): VargElement<"captions"> {
   return createElement("captions", props as Record<string, unknown>, undefined);
-}
-
-export function Split(props: SplitProps): VargElement<"split"> {
-  return createElement(
-    "split",
-    props as Record<string, unknown>,
-    props.children,
-  );
 }
 
 export function Slider(props: SliderProps): VargElement<"slider"> {

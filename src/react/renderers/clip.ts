@@ -213,6 +213,15 @@ async function renderClipLayers(
         });
         break;
       }
+
+      case "overlay": {
+        console.warn(
+          "[varg] Warning: <Overlay> placed inside <Clip> will be ignored. " +
+            "Move <Overlay> to be a sibling of <Clip> inside <Render>. " +
+            "See: https://github.com/vargHQ/sdk/issues/45",
+        );
+        break;
+      }
     }
   }
 
