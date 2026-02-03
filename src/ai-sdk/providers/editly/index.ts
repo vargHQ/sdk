@@ -182,7 +182,7 @@ function isTextOverlayLayer(layer: Layer): boolean {
 
 function buildBaseClipFilter(
   clip: ProcessedClip,
-  _clipIndex: number,
+  clipIndex: number,
   width: number,
   height: number,
   inputOffset: number,
