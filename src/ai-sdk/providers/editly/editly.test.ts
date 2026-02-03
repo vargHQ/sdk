@@ -1227,7 +1227,7 @@ describe("editly", () => {
         {
           duration: 2,
           layers: [
-            { type: "fill-color", color: "#000000" },
+            { type: "fill-color", color: "#ff0000" },
             {
               type: "video",
               path: VIDEO_1,
@@ -1235,6 +1235,7 @@ describe("editly", () => {
               height: "100%",
               left: "0%",
               top: "0%",
+              resizeMode: "cover",
             },
             {
               type: "video",
@@ -1243,6 +1244,7 @@ describe("editly", () => {
               height: "100%",
               left: "50%",
               top: "0%",
+              resizeMode: "cover",
             },
           ],
           transition: { name: "fade", duration: 0.3 },
