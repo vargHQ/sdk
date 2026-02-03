@@ -527,9 +527,19 @@ export function getImageOverlayFilter(
   const targetWidth = layer.width
     ? parseSize(layer.width, width)
     : Math.round(width * 0.3);
-  const scaleExpr = layer.height
-    ? `scale=${targetWidth}:${parseSize(layer.height, height)}`
-    : `scale=${targetWidth}:-2`;
+  const hasExplicitHeight = layer.height !== undefined;
+  const targetHeight = hasExplicitHeight ? parseSize(layer.height, height) : -2;
+
+  let scaleExpr: string;
+  if (!hasExplicitHeight) {
+    scaleExpr = `scale=${targetWidth}:-2`;
+  } else if (layer.resizeMode === "cover") {
+    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight}`;
+  } else if (layer.resizeMode === "stretch") {
+    scaleExpr = `scale=${targetWidth}:${targetHeight}`;
+  } else {
+    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black`;
+  }
 
   const zoomDir = layer.zoomDirection ?? null;
   const zoomAmt = layer.zoomAmount ?? 0.1;
@@ -557,7 +567,6 @@ export function getImageOverlayFilter(
       yExpr = "trunc((ih-ih/zoom)/2)";
     }
 
-    // Upscale, zoompan at high res, then scale to target preserving aspect ratio
     filters.push("scale=4000:-2");
     filters.push(
       `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=4000x4000:fps=30`,

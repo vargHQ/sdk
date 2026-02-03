@@ -71,6 +71,7 @@ async function renderClipLayers(
                     width: props.width,
                     height: props.height,
                     position: { x: props.left ?? 0, y: props.top ?? 0 },
+                    resizeMode: props.resize,
                   } as ImageOverlayLayer)
                 : ({
                     type: "image",

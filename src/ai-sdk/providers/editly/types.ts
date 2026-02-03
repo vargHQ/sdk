@@ -161,6 +161,7 @@ export interface ImageOverlayLayer extends BaseLayer, KenBurns {
   position?: Position;
   width?: SizeValue;
   height?: SizeValue;
+  resizeMode?: ResizeMode;
 }
 
 export interface TitleLayer extends TextLayer, KenBurns {
