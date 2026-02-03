@@ -131,6 +131,13 @@ export class RendiBackend implements FFmpegBackend {
       verbose,
     } = options;
 
+    if (!inputs || inputs.length === 0) {
+      throw new Error(
+        "Rendi backend requires at least one input file. " +
+          "Ensure your render contains media elements (Video, Image, etc.) with valid sources.",
+      );
+    }
+
     const inputFiles: Record<string, string> = {};
     const pathToPlaceholder = new Map<string, string>();
 
