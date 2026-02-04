@@ -1,3 +1,4 @@
+/** @jsxImportSource vargai */
 import { Clip, Render, render, Video } from "./src/react";
 import { Slot, Split } from "./src/react/layouts";
 
