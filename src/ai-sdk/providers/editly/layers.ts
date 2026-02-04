@@ -77,7 +77,8 @@ function warnNoResizeMode(type: "video" | "image"): void {
   );
 }
 
-export function _resetResizeModeWarning(): void {
+/** @internal Test helper - resets "show once" warning state */
+export function __resetWarningsForTesting(): void {
   resizeModeWarningShown = false;
 }
 
