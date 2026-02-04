@@ -1,3 +1,4 @@
+/** @jsxImportSource vargai */
 import { Clip, Render, render, Video } from "./src/react";
 import { Grid, Slot } from "./src/react/layouts";
 

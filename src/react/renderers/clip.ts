@@ -22,7 +22,6 @@ import { renderMusic } from "./music";
 import { renderPackshot } from "./packshot";
 import { renderSlider } from "./slider";
 import { renderSpeech } from "./speech";
-import { renderSplit } from "./split";
 import { renderSubtitle } from "./subtitle";
 import { renderSwipe } from "./swipe";
 import { renderTitle } from "./title";
@@ -72,6 +71,8 @@ async function renderClipLayers(
                     width: props.width,
                     height: props.height,
                     position: { x: props.left ?? 0, y: props.top ?? 0 },
+                    resizeMode: props.resize,
+                    cropPosition: props.cropPosition,
                   } as ImageOverlayLayer)
                 : ({
                     type: "image",
@@ -173,20 +174,6 @@ async function renderClipLayers(
         break;
       }
 
-      case "split": {
-        pending.push({
-          type: "async",
-          promise: renderSplit(element as VargElement<"split">, ctx).then(
-            (path) =>
-              ({
-                type: "video",
-                path,
-              }) as VideoLayer,
-          ),
-        });
-        break;
-      }
-
       case "slider": {
         pending.push({
           type: "async",
@@ -226,6 +213,15 @@ async function renderClipLayers(
               }) as VideoLayer,
           ),
         });
+        break;
+      }
+
+      case "overlay": {
+        console.warn(
+          "[varg] Warning: <Overlay> placed inside <Clip> will be ignored. " +
+            "Move <Overlay> to be a sibling of <Clip> inside <Render>. " +
+            "See: https://github.com/vargHQ/sdk/issues/45",
+        );
         break;
       }
     }

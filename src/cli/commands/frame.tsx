@@ -22,7 +22,7 @@ import { Header, HelpBlock, VargBox, VargText } from "../ui/index.ts";
 import { renderStatic } from "../ui/render.ts";
 
 const AUTO_IMPORTS = `/** @jsxImportSource vargai */
-import { Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid, SplitLayout } from "vargai/react";
+import { Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid } from "vargai/react";
 import { fal, elevenlabs, replicate } from "vargai/ai";
 `;
 

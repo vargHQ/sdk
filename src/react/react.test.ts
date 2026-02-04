@@ -14,6 +14,7 @@ import {
   Title,
   Video,
 } from "./index";
+import { Slot } from "./layouts";
 
 describe("varg-react elements", () => {
   test("Render creates correct element structure", () => {
@@ -355,4 +356,37 @@ describe("layout renderers", () => {
     },
     { timeout: 30000 },
   );
+
+  test("Split + Slot renders with fit and cropPosition", async () => {
+    const root = Render({
+      width: 1080,
+      height: 1920,
+      children: [
+        Clip({
+          duration: 2,
+          children: [
+            Split({
+              direction: "vertical",
+              children: [
+                Slot({
+                  class: "fit-cover pos-top",
+                  children: Image({ src: testImage1 }),
+                }),
+                Slot({
+                  class: "fit-cover pos-bottom",
+                  children: Image({ src: testImage2 }),
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const result = await render(root, { output: outPath, quiet: true });
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.length).toBeGreaterThan(0);
+    expect(existsSync(outPath)).toBe(true);
+    unlinkSync(outPath);
+  });
 });

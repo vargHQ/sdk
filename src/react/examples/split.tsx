@@ -1,5 +1,5 @@
 import { fal } from "../../ai-sdk/providers/fal";
-import { Clip, Image, Render, render, SplitLayout as Split, Title } from "..";
+import { Clip, Image, Render, render, Split, Title } from "..";
 
 async function main() {
   console.log("creating before/after split screen...\n");
@@ -19,7 +19,7 @@ async function main() {
   const video = (
     <Render width={1920} height={1080}>
       <Clip duration={5}>
-        <Split left={before} right={after} />
+        <Split>{[before, after]}</Split>
         <Title position="bottom" color="#ffffff">
           30 Day Transformation
         </Title>

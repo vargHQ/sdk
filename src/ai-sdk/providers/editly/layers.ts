@@ -63,6 +63,20 @@ function parseSize(val: number | string | undefined, base: number): number {
   return Math.round(parseFloat(val));
 }
 
+let resizeModeWarningShown = false;
+
+function warnNoResizeMode(type: "video" | "image"): void {
+  if (resizeModeWarningShown) return;
+  resizeModeWarningShown = true;
+  console.warn(
+    `[varg] Deprecation warning: ${type} layer without resizeMode will change behavior in a future version. ` +
+      `Current default stretches/crops to fill frame. Future default will be 'contain' (letterbox with black bars). ` +
+      `To preserve current behavior, explicitly set resizeMode: 'cover'. ` +
+      `For letterboxing, set resizeMode: 'contain'. ` +
+      `See: https://github.com/vargHQ/sdk/issues/24`,
+  );
+}
+
 export interface FilterInput {
   label: string;
   path?: string;
@@ -96,9 +110,14 @@ export function getVideoFilter(
   const layerHeight = parseSize(layer.height, height);
 
   if (isOverlay) {
-    filters.push(
-      `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`,
-    );
+    let scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`;
+    if (layer.resizeMode === "cover") {
+      const { x, y } = getCropPositionExpr(layer.cropPosition);
+      scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=increase,crop=${layerWidth}:${layerHeight}:${x}:${y}`;
+    } else if (layer.resizeMode === "stretch") {
+      scaleFilter = `scale=${layerWidth}:${layerHeight}`;
+    }
+    filters.push(scaleFilter);
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
@@ -333,6 +352,9 @@ export function getImageFilter(
       filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
     } else {
       // Default: fast path - zoompan at target resolution directly
+      // WARNING: This path uses cover-like behavior (may crop). In a future version,
+      // the default will change to 'contain' (letterbox). See issue #24.
+      warnNoResizeMode("image");
       filters.push(
         `scale=${zoomWidth}:${zoomHeight}:force_original_aspect_ratio=increase`,
       );
@@ -502,9 +524,20 @@ export function getImageOverlayFilter(
   const targetWidth = layer.width
     ? parseSize(layer.width, width)
     : Math.round(width * 0.3);
-  const scaleExpr = layer.height
-    ? `scale=${targetWidth}:${parseSize(layer.height, height)}`
-    : `scale=${targetWidth}:-2`;
+  const hasExplicitHeight = layer.height !== undefined;
+  const targetHeight = hasExplicitHeight ? parseSize(layer.height, height) : -2;
+
+  let scaleExpr: string;
+  if (!hasExplicitHeight) {
+    scaleExpr = `scale=${targetWidth}:-2`;
+  } else if (layer.resizeMode === "cover") {
+    const { x, y } = getCropPositionExpr(layer.cropPosition);
+    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight}:${x}:${y}`;
+  } else if (layer.resizeMode === "stretch") {
+    scaleExpr = `scale=${targetWidth}:${targetHeight}`;
+  } else {
+    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black`;
+  }
 
   const zoomDir = layer.zoomDirection ?? null;
   const zoomAmt = layer.zoomAmount ?? 0.1;
@@ -532,7 +565,6 @@ export function getImageOverlayFilter(
       yExpr = "trunc((ih-ih/zoom)/2)";
     }
 
-    // Upscale, zoompan at high res, then scale to target preserving aspect ratio
     filters.push("scale=4000:-2");
     filters.push(
       `zoompan=z='${zoomExpr}':x='${xExpr}':y='${yExpr}':d=${totalFrames}:s=4000x4000:fps=30`,

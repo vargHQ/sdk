@@ -7,6 +7,7 @@ import {
   getSlideInTextFilter,
   getSubtitleFilter,
   getTitleFilter,
+  getVideoFilter,
   getVideoFilterWithTrim,
   processLayer,
 } from "./layers";
@@ -142,6 +143,26 @@ function isVideoOverlayLayer(layer: Layer): boolean {
   );
 }
 
+/**
+ * Clip-local overlay: has positioning but NO cutFrom/cutTo
+ * These should be composited within their clip, not across the entire video
+ */
+function isClipLocalVideoOverlay(layer: Layer): boolean {
+  if (!isVideoOverlayLayer(layer)) return false;
+  const v = layer as VideoLayer;
+  return v.cutFrom === undefined && v.cutTo === undefined;
+}
+
+/**
+ * Continuous overlay: has positioning AND cutFrom/cutTo
+ * These span specific time ranges across the video (e.g., from <Overlay> element)
+ */
+function isContinuousVideoOverlay(layer: Layer): boolean {
+  if (!isVideoOverlayLayer(layer)) return false;
+  const v = layer as VideoLayer;
+  return v.cutFrom !== undefined || v.cutTo !== undefined;
+}
+
 function isImageOverlayLayer(layer: Layer): boolean {
   return layer.type === "image-overlay";
 }
@@ -161,7 +182,7 @@ function isTextOverlayLayer(layer: Layer): boolean {
 
 function buildBaseClipFilter(
   clip: ProcessedClip,
-  _clipIndex: number,
+  clipIndex: number,
   width: number,
   height: number,
   inputOffset: number,
@@ -186,10 +207,13 @@ function buildBaseClipFilter(
   let baseLabel = "";
   let inputIdx = inputOffset;
 
-  // Filter out overlay layers AND text overlay layers (text will be applied after image overlays)
   const baseLayers = clip.layers.filter(
     (l) => l && !isOverlayLayer(l) && !isTextOverlayLayer(l),
   );
+
+  const clipLocalOverlays = clip.layers.filter(
+    (l) => l && isClipLocalVideoOverlay(l),
+  ) as VideoLayer[];
 
   for (let i = 0; i < baseLayers.length; i++) {
     const layer = baseLayers[i];
@@ -228,6 +252,36 @@ function buildBaseClipFilter(
     }
   }
 
+  for (let i = 0; i < clipLocalOverlays.length; i++) {
+    const layer = clipLocalOverlays[i];
+    if (!layer) continue;
+
+    const overlayFilter = getVideoFilter(
+      layer,
+      inputIdx,
+      width,
+      height,
+      clip.duration,
+      true,
+    );
+
+    inputs.push(layer.path);
+    filters.push(overlayFilter.filterComplex);
+
+    const outputLabel = `clip${clipIndex}ov${i}`;
+    const positionFilter = getOverlayFilter(
+      baseLabel,
+      overlayFilter.outputLabel,
+      layer,
+      width,
+      height,
+      outputLabel,
+    );
+    filters.push(positionFilter);
+    baseLabel = outputLabel;
+    inputIdx++;
+  }
+
   return {
     filters,
     inputs,
@@ -247,13 +301,15 @@ function collectContinuousVideoOverlays(
 
   for (const clip of clips) {
     for (const layer of clip.layers) {
-      if (layer && isVideoOverlayLayer(layer)) {
+      // Only collect continuous overlays (with cutFrom/cutTo), not clip-local ones
+      if (layer && isContinuousVideoOverlay(layer)) {
         const videoLayer = layer as VideoLayer;
-        const existing = overlays.get(videoLayer.path);
+        const key = `${videoLayer.path}:${videoLayer.left ?? ""}:${videoLayer.top ?? ""}:${videoLayer.width ?? ""}:${videoLayer.height ?? ""}`;
+        const existing = overlays.get(key);
         if (existing) {
           existing.totalDuration += clip.duration;
         } else {
-          overlays.set(videoLayer.path, {
+          overlays.set(key, {
             layer: videoLayer,
             totalDuration: clip.duration,
           });
@@ -277,11 +333,12 @@ function collectImageOverlays(
     for (const layer of clip.layers) {
       if (layer && isImageOverlayLayer(layer)) {
         const imgLayer = layer as ImageOverlayLayer;
-        const existing = overlays.get(imgLayer.path);
+        const key = `${imgLayer.path}:${JSON.stringify(imgLayer.position ?? "")}:${imgLayer.width ?? ""}:${imgLayer.height ?? ""}`;
+        const existing = overlays.get(key);
         if (existing) {
           existing.totalDuration += clip.duration;
         } else {
-          overlays.set(imgLayer.path, {
+          overlays.set(key, {
             layer: imgLayer,
             totalDuration: clip.duration,
           });
@@ -585,14 +642,14 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
   const videoOverlayInputMap = new Map<string, number>();
   const imageOverlayInputMap = new Map<string, number>();
 
-  for (const [path] of continuousVideoOverlays) {
-    videoOverlayInputMap.set(path, overlayInputs.length);
-    overlayInputs.push(path);
+  for (const [key, { layer }] of continuousVideoOverlays) {
+    videoOverlayInputMap.set(key, overlayInputs.length);
+    overlayInputs.push(layer.path);
   }
 
-  for (const [path] of imageOverlays) {
-    imageOverlayInputMap.set(path, overlayInputs.length);
-    overlayInputs.push(path);
+  for (const [key, { layer }] of imageOverlays) {
+    imageOverlayInputMap.set(key, overlayInputs.length);
+    overlayInputs.push(layer.path);
   }
 
   const allFilters: string[] = [];
@@ -685,8 +742,8 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     let currentBase = finalVideoLabel;
     let overlayIdx = 0;
 
-    for (const [path, { layer }] of continuousVideoOverlays) {
-      const inputIndex = videoOverlayInputMap.get(path);
+    for (const [key, { layer }] of continuousVideoOverlays) {
+      const inputIndex = videoOverlayInputMap.get(key);
       if (inputIndex === undefined) continue;
 
       const trimmedLabel = `ovfinal${overlayIdx}`;
@@ -724,8 +781,8 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     let currentBase = finalVideoLabel;
     let imgOverlayIdx = 0;
 
-    for (const [path, { layer }] of imageOverlays) {
-      const inputIndex = imageOverlayInputMap.get(path);
+    for (const [key, { layer }] of imageOverlays) {
+      const inputIndex = imageOverlayInputMap.get(key);
       if (inputIndex === undefined) continue;
 
       const imgFilter = getImageOverlayFilter(

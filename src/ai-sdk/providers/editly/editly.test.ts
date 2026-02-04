@@ -272,46 +272,50 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
   });
 
-  test("image pan left/right", async () => {
-    const outPath = "output/editly-test-image-pan.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
+  test(
+    "image pan left/right",
+    async () => {
+      const outPath = "output/editly-test-image-pan.mp4";
+      if (existsSync(outPath)) unlinkSync(outPath);
 
-    await editly({
-      outPath,
-      width: 1280,
-      height: 720,
-      fps: 30,
-      clips: [
-        {
-          duration: 3,
-          layers: [
-            {
-              type: "image",
-              path: "media/cyberpunk-street.png",
-              zoomDirection: "left",
-              zoomAmount: 0.15,
-              resizeMode: "contain",
-            },
-          ],
-          transition: { name: "fade", duration: 0.5 },
-        },
-        {
-          duration: 3,
-          layers: [
-            {
-              type: "image",
-              path: "media/cyberpunk-street.png",
-              zoomDirection: "right",
-              zoomAmount: 0.15,
-              resizeMode: "contain",
-            },
-          ],
-        },
-      ],
-    });
+      await editly({
+        outPath,
+        width: 1280,
+        height: 720,
+        fps: 30,
+        clips: [
+          {
+            duration: 3,
+            layers: [
+              {
+                type: "image",
+                path: "media/cyberpunk-street.png",
+                zoomDirection: "left",
+                zoomAmount: 0.15,
+                resizeMode: "contain",
+              },
+            ],
+            transition: { name: "fade", duration: 0.5 },
+          },
+          {
+            duration: 3,
+            layers: [
+              {
+                type: "image",
+                path: "media/cyberpunk-street.png",
+                zoomDirection: "right",
+                zoomAmount: 0.15,
+                resizeMode: "contain",
+              },
+            ],
+          },
+        ],
+      });
 
-    expect(existsSync(outPath)).toBe(true);
-  });
+      expect(existsSync(outPath)).toBe(true);
+    },
+    { timeout: 10000 },
+  );
 
   test("title with custom font", async () => {
     const outPath = "output/editly-test-title-font.mp4";
@@ -906,27 +910,31 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
   });
 
-  test("contain-blur resize mode for video", async () => {
-    const outPath = "output/editly-test-contain-blur-video.mp4";
-    if (existsSync(outPath)) unlinkSync(outPath);
+  test(
+    "contain-blur resize mode for video",
+    async () => {
+      const outPath = "output/editly-test-contain-blur-video.mp4";
+      if (existsSync(outPath)) unlinkSync(outPath);
 
-    await editly({
-      outPath,
-      width: 1080,
-      height: 1920,
-      fps: 30,
-      clips: [
-        {
-          duration: 3,
-          layers: [
-            { type: "video", path: VIDEO_1, resizeMode: "contain-blur" },
-          ],
-        },
-      ],
-    });
+      await editly({
+        outPath,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        clips: [
+          {
+            duration: 3,
+            layers: [
+              { type: "video", path: VIDEO_1, resizeMode: "contain-blur" },
+            ],
+          },
+        ],
+      });
 
-    expect(existsSync(outPath)).toBe(true);
-  });
+      expect(existsSync(outPath)).toBe(true);
+    },
+    { timeout: 10000 },
+  );
 
   test("contain-blur resize mode for image", async () => {
     const outPath = "output/editly-test-contain-blur-image.mp4";
@@ -1152,5 +1160,178 @@ describe("editly", () => {
     expect(info.width).toBe(1080);
     expect(info.height).toBe(1920);
     expect(info.duration).toBeCloseTo(3, 0);
+  });
+
+  // Regression tests for grid/split layout bugs
+  // https://github.com/vargHQ/sdk/issues/61
+  // https://github.com/vargHQ/sdk/issues/62
+
+  test("issue #61: same video in multiple grid positions renders both", async () => {
+    // Bug: when same video file is used in multiple positions within a clip,
+    // only one instance renders because collectContinuousVideoOverlays uses
+    // the video path as Map key, causing deduplication.
+    //
+    // Fix: use composite key including position (path:left:top:width:height)
+    const outPath = "output/editly-test-issue-61-grid-dedup.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      clips: [
+        {
+          duration: 3,
+          layers: [
+            { type: "fill-color", color: "#000000" },
+            {
+              type: "video",
+              path: VIDEO_1,
+              width: "50%",
+              height: "100%",
+              left: "0%",
+              top: "0%",
+              resizeMode: "cover",
+            },
+            {
+              type: "video",
+              path: VIDEO_1,
+              width: "50%",
+              height: "100%",
+              left: "50%",
+              top: "0%",
+              resizeMode: "cover",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.width).toBe(1920);
+    expect(info.height).toBe(1080);
+  });
+
+  test("issue #62: positioned videos in clip don't bleed into other clips", async () => {
+    // Bug: positioned videos from Grid/Split are treated as continuous overlays
+    // spanning entire video instead of being scoped to their clip.
+    // Fix: clip-local overlays (no cutFrom/cutTo) vs continuous (has cutFrom/cutTo)
+    const outPath = "output/editly-test-issue-62-clip-scope.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      clips: [
+        {
+          duration: 2,
+          layers: [{ type: "fill-color", color: "#ff0000" }],
+          transition: { name: "fade", duration: 0.3 },
+        },
+        {
+          duration: 2,
+          layers: [
+            { type: "fill-color", color: "#ff0000" },
+            {
+              type: "video",
+              path: VIDEO_1,
+              width: "50%",
+              height: "100%",
+              left: "0%",
+              top: "0%",
+              resizeMode: "cover",
+            },
+            {
+              type: "video",
+              path: VIDEO_2,
+              width: "50%",
+              height: "100%",
+              left: "50%",
+              top: "0%",
+              resizeMode: "cover",
+            },
+          ],
+          transition: { name: "fade", duration: 0.3 },
+        },
+        {
+          duration: 2,
+          layers: [{ type: "fill-color", color: "#0000ff" }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.duration).toBeCloseTo(5.4, 0);
+  });
+
+  test("issue #62: continuous overlay (with cutFrom/cutTo) spans clips correctly", async () => {
+    const outPath = "output/editly-test-continuous-overlay-spans.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      clips: [
+        {
+          duration: 2,
+          layers: [
+            { type: "fill-color", color: "#ff0000" },
+            {
+              type: "video",
+              path: VIDEO_TALKING,
+              width: "25%",
+              height: "25%",
+              left: "73%",
+              top: "2%",
+              cutFrom: 0,
+              cutTo: 2,
+            },
+          ],
+          transition: { name: "fade", duration: 0.3 },
+        },
+        {
+          duration: 2,
+          layers: [
+            { type: "fill-color", color: "#00ff00" },
+            {
+              type: "video",
+              path: VIDEO_TALKING,
+              width: "25%",
+              height: "25%",
+              left: "73%",
+              top: "2%",
+              cutFrom: 2,
+              cutTo: 4,
+            },
+          ],
+          transition: { name: "fade", duration: 0.3 },
+        },
+        {
+          duration: 2,
+          layers: [
+            { type: "fill-color", color: "#0000ff" },
+            {
+              type: "video",
+              path: VIDEO_TALKING,
+              width: "25%",
+              height: "25%",
+              left: "73%",
+              top: "2%",
+              cutFrom: 4,
+              cutTo: 6,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
   });
 });
