@@ -12,6 +12,9 @@ export const Grid = ({
   children: VargElement[];
   resize?: "cover" | "contain" | "stretch";
 }) => {
+  if (children.length === 0) {
+    return <></>;
+  }
   const cols = columns ?? children.length;
   const rowCount = rows ?? Math.ceil(children.length / cols);
   const positioned = children.map((el, i) => ({
