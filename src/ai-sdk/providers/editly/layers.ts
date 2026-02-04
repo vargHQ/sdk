@@ -77,11 +77,6 @@ function warnNoResizeMode(type: "video" | "image"): void {
   );
 }
 
-/** @internal Test helper - resets "show once" warning state */
-export function __resetWarningsForTesting(): void {
-  resizeModeWarningShown = false;
-}
-
 export interface FilterInput {
   label: string;
   path?: string;
