@@ -49,3 +49,5 @@ lib
 output
 *.mp4
 .worktrees
+
+test-*.tsx

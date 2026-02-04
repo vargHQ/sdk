@@ -531,7 +531,8 @@ export function getImageOverlayFilter(
   if (!hasExplicitHeight) {
     scaleExpr = `scale=${targetWidth}:-2`;
   } else if (layer.resizeMode === "cover") {
-    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight}`;
+    const { x, y } = getCropPositionExpr(layer.cropPosition);
+    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight}:${x}:${y}`;
   } else if (layer.resizeMode === "stretch") {
     scaleExpr = `scale=${targetWidth}:${targetHeight}`;
   } else {

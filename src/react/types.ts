@@ -104,6 +104,7 @@ export interface ImageProps extends BaseProps, PositionProps {
   aspectRatio?: `${number}:${number}`;
   zoom?: "in" | "out" | "left" | "right";
   resize?: ResizeMode;
+  cropPosition?: CropPosition;
   position?: Position;
   size?: { width: string; height: string };
   removeBackground?: boolean;
