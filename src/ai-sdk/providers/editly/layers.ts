@@ -112,7 +112,8 @@ export function getVideoFilter(
   if (isOverlay) {
     let scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=decrease`;
     if (layer.resizeMode === "cover") {
-      scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=increase,crop=${layerWidth}:${layerHeight}`;
+      const { x, y } = getCropPositionExpr(layer.cropPosition);
+      scaleFilter = `scale=${layerWidth}:${layerHeight}:force_original_aspect_ratio=increase,crop=${layerWidth}:${layerHeight}:${x}:${y}`;
     } else if (layer.resizeMode === "stretch") {
       scaleFilter = `scale=${layerWidth}:${layerHeight}`;
     }
