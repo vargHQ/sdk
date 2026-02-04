@@ -1,3 +1,4 @@
+/** @jsxImportSource vargai */
 import type { VargElement } from "../types";
 
 export const Grid = ({
