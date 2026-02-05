@@ -77,7 +77,7 @@ async function main() {
 
     console.log("\n=== SUCCESS ===");
     console.log(
-      `Output: output/quickstart-test.mp4 (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`,
+      `Output: output/quickstart-test.mp4 (${(buffer.video.byteLength / 1024 / 1024).toFixed(2)} MB)`,
     );
     console.log("\nYour setup is working! You can now:");
     console.log("1. Try the templates in .claude/skills/video-generation.md");

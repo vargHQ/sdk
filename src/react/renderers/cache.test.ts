@@ -103,6 +103,7 @@ function createContext(
     tempFiles: [],
     pendingFiles: new Map<string, Promise<File>>(),
     backend: localBackend,
+    generatedFiles: [],
   };
 }
 

@@ -1,6 +1,6 @@
 import { experimental_generateSpeech as generateSpeech } from "ai";
 import { File } from "../../ai-sdk/file";
-import type { SpeechProps, VargElement } from "../types";
+import type { GeneratedFile, SpeechProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
 import { computeCacheKey, getTextContent } from "./utils";
@@ -36,9 +36,21 @@ export async function renderSpeech(
 
   if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
+  const mediaType = (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
+
+  const generatedFile: GeneratedFile = {
+    type: "speech",
+    data: audio.uint8Array,
+    mediaType,
+    url: (audio as { url?: string }).url,
+    model: modelId,
+    prompt: text,
+  };
+  ctx.generatedFiles.push(generatedFile);
+
   return File.fromGenerated({
     uint8Array: audio.uint8Array,
-    mediaType: (audio as { mediaType?: string }).mediaType ?? "audio/mpeg",
+    mediaType,
     url: (audio as { url?: string }).url,
   });
 }
