@@ -10,6 +10,32 @@ const mockStorage: StorageProvider = {
   },
 };
 
+describe("rendi backend validation", () => {
+  test("throws error when inputs array is empty", async () => {
+    const backend = createRendiBackend({ storage: mockStorage });
+
+    await expect(
+      backend.run({
+        inputs: [],
+        outputArgs: ["-c:v", "libx264"],
+        outputPath: "output.mp4",
+      }),
+    ).rejects.toThrow("Rendi backend requires at least one input file");
+  });
+
+  test("throws error when inputs is undefined", async () => {
+    const backend = createRendiBackend({ storage: mockStorage });
+
+    await expect(
+      backend.run({
+        inputs: undefined as unknown as string[],
+        outputArgs: ["-c:v", "libx264"],
+        outputPath: "output.mp4",
+      }),
+    ).rejects.toThrow("Rendi backend requires at least one input file");
+  });
+});
+
 describe.skipIf(!hasRendiKey)("rendi backend", () => {
   test("ffprobe remote file", async () => {
     const backend = createRendiBackend({ storage: mockStorage });
