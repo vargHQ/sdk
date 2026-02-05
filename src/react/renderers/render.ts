@@ -18,11 +18,13 @@ import type {
 
 import type {
   ClipProps,
+  GeneratedFile,
   MusicProps,
   OverlayProps,
   RenderMode,
   RenderOptions,
   RenderProps,
+  RenderResult,
   SpeechProps,
   VargElement,
 } from "../types";
@@ -61,7 +63,7 @@ function resolveCacheStorage(
 export async function renderRoot(
   element: VargElement<"render">,
   options: RenderOptions,
-): Promise<Uint8Array> {
+): Promise<RenderResult> {
   const props = element.props as RenderProps;
   const progress = createProgressTracker(options.quiet ?? false);
 
@@ -124,6 +126,7 @@ export async function renderRoot(
 
   const backend = options.backend ?? localBackend;
   const tempFiles: string[] = [];
+  const generatedFiles: GeneratedFile[] = [];
   const ctx: RenderContext = {
     width: props.width ?? 1920,
     height: props.height ?? 1080,
@@ -136,6 +139,7 @@ export async function renderRoot(
     pendingFiles: new Map<string, Promise<File>>(),
     defaults: options.defaults,
     backend,
+    generatedFiles,
   };
 
   const clipElements: VargElement<"clip">[] = [];
@@ -376,5 +380,8 @@ export async function renderRoot(
     );
   }
 
-  return new Uint8Array(finalBuffer);
+  return {
+    video: new Uint8Array(finalBuffer),
+    files: generatedFiles,
+  };
 }

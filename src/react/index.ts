@@ -22,6 +22,8 @@ export { render, renderStream } from "./render";
 export type {
   CaptionsProps,
   ClipProps,
+  GeneratedFile,
+  GeneratedFileType,
   ImageProps,
   MusicProps,
   OverlayProps,
@@ -29,6 +31,7 @@ export type {
   PositionProps,
   RenderOptions,
   RenderProps,
+  RenderResult,
   SliderProps,
   SpeechProps,
   SplitProps,

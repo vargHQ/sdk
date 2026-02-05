@@ -1,6 +1,7 @@
 import type { generateImage } from "ai";
 import { File } from "../../ai-sdk/file";
 import type {
+  GeneratedFile,
   ImageInput,
   ImagePrompt,
   ImageProps,
@@ -94,6 +95,19 @@ export async function renderImage(
     if (!firstImage?.uint8Array) {
       throw new Error("Image generation returned no image data");
     }
+
+    const generatedFile: GeneratedFile = {
+      type: "image",
+      data: firstImage.uint8Array,
+      mediaType: "image/png",
+      url: (firstImage as { url?: string }).url,
+      model: modelId,
+      prompt:
+        typeof resolvedPrompt === "string"
+          ? resolvedPrompt
+          : resolvedPrompt.text,
+    };
+    ctx.generatedFiles.push(generatedFile);
 
     return File.fromGenerated({
       uint8Array: firstImage.uint8Array,

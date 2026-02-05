@@ -276,6 +276,35 @@ export interface RenderOptions {
   storage?: StorageProvider;
 }
 
+export type GeneratedFileType =
+  | "image"
+  | "video"
+  | "speech"
+  | "music"
+  | "captions";
+
+export interface GeneratedFile {
+  /** Type of generated content */
+  type: GeneratedFileType;
+  /** The generated file data */
+  data: Uint8Array;
+  /** Media type (mime type) */
+  mediaType: string;
+  /** Optional URL if uploaded/cached */
+  url?: string;
+  /** Model used to generate (if AI-generated) */
+  model?: string;
+  /** Original prompt used (if AI-generated) */
+  prompt?: string;
+}
+
+export interface RenderResult {
+  /** Final rendered video buffer */
+  video: Uint8Array;
+  /** All intermediate files generated during rendering */
+  files: GeneratedFile[];
+}
+
 export interface ElementPropsMap {
   render: RenderProps;
   clip: ClipProps;
