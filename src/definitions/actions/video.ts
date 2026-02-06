@@ -3,6 +3,7 @@
  * Routes to appropriate video generation models based on input
  */
 
+import { fal } from "@fal-ai/client";
 import { z } from "zod";
 import {
   aspectRatioSchema,
@@ -10,8 +11,7 @@ import {
   videoDurationSchema,
 } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
-import { falProvider } from "../../providers/fal";
-import { storageProvider } from "../../providers/storage";
+import { ensureUrl, logQueueUpdate } from "./utils";
 
 // Input schema with Zod
 const videoInputSchema = z.object({
@@ -51,25 +51,40 @@ export const definition: ActionDefinition<typeof schema> = {
     },
   ],
   execute: async (inputs) => {
-    // inputs is now fully typed as VideoInput - no more `as` cast!
     const { prompt, image, duration, aspectRatio } = inputs;
 
-    let result: { data?: { video?: { url?: string }; duration?: number } };
+    type FalResult = { data: { video?: { url?: string } } };
+    let result: FalResult;
 
     if (image) {
       console.log("[action/video] generating video from image");
-      result = await falProvider.imageToVideo({
-        prompt,
-        imageUrl: image,
-        duration,
-      });
+      const imageUrl = await ensureUrl(image);
+      result = (await fal.subscribe(
+        "fal-ai/kling-video/v2.5-turbo/pro/image-to-video" as string,
+        {
+          input: {
+            prompt,
+            image_url: imageUrl,
+            duration: String(duration || 5),
+          },
+          logs: true,
+          onQueueUpdate: logQueueUpdate("video"),
+        },
+      )) as FalResult;
     } else {
       console.log("[action/video] generating video from text");
-      result = await falProvider.textToVideo({
-        prompt,
-        duration,
-        aspectRatio,
-      });
+      result = (await fal.subscribe(
+        "fal-ai/kling-video/v2.5-turbo/pro/text-to-video" as string,
+        {
+          input: {
+            prompt,
+            duration: String(duration || 5),
+            aspect_ratio: aspectRatio || "16:9",
+          },
+          logs: true,
+          onQueueUpdate: logQueueUpdate("video"),
+        },
+      )) as FalResult;
     }
 
     const videoUrl = result.data?.video?.url;
@@ -77,10 +92,7 @@ export const definition: ActionDefinition<typeof schema> = {
       throw new Error("No video URL in result");
     }
 
-    return {
-      videoUrl,
-      duration: result.data?.duration,
-    };
+    return { videoUrl };
   },
 };
 
@@ -94,70 +106,62 @@ export interface VideoGenerationResult {
 export async function generateVideoFromImage(
   prompt: string,
   imageUrl: string,
-  options: { duration?: 5 | 10; upload?: boolean } = {},
+  options: { duration?: 5 | 10 } = {},
 ): Promise<VideoGenerationResult> {
   console.log("[video] generating video from image");
 
-  const result = await falProvider.imageToVideo({
-    prompt,
-    imageUrl,
-    duration: options.duration,
-  });
+  type FalResult = { data: { video?: { url?: string } } };
+  const url = await ensureUrl(imageUrl);
+  const result = (await fal.subscribe(
+    "fal-ai/kling-video/v2.5-turbo/pro/image-to-video" as string,
+    {
+      input: {
+        prompt,
+        image_url: url,
+        duration: String(options.duration || 5),
+      },
+      logs: true,
+      onQueueUpdate: logQueueUpdate("video"),
+    },
+  )) as FalResult;
 
   const videoUrl = result.data?.video?.url;
   if (!videoUrl) {
     throw new Error("No video URL in result");
   }
 
-  let uploaded: string | undefined;
-  if (options.upload) {
-    const timestamp = Date.now();
-    const objectKey = `videos/generated/${timestamp}.mp4`;
-    uploaded = await storageProvider.uploadFromUrl(videoUrl, objectKey);
-    console.log(`[video] uploaded to ${uploaded}`);
-  }
-
-  return {
-    videoUrl,
-    duration: result.data?.duration,
-    uploaded,
-  };
+  return { videoUrl };
 }
 
 export async function generateVideoFromText(
   prompt: string,
   options: {
     duration?: 5 | 10;
-    upload?: boolean;
     aspectRatio?: "16:9" | "9:16" | "1:1";
   } = {},
 ): Promise<VideoGenerationResult> {
   console.log("[video] generating video from text");
 
-  const result = await falProvider.textToVideo({
-    prompt,
-    duration: options.duration,
-    aspectRatio: options.aspectRatio,
-  });
+  type FalResult = { data: { video?: { url?: string } } };
+  const result = (await fal.subscribe(
+    "fal-ai/kling-video/v2.5-turbo/pro/text-to-video" as string,
+    {
+      input: {
+        prompt,
+        duration: String(options.duration || 5),
+        aspect_ratio: options.aspectRatio || "16:9",
+      },
+      logs: true,
+      onQueueUpdate: logQueueUpdate("video"),
+    },
+  )) as FalResult;
 
   const videoUrl = result.data?.video?.url;
   if (!videoUrl) {
     throw new Error("No video URL in result");
   }
 
-  let uploaded: string | undefined;
-  if (options.upload) {
-    const timestamp = Date.now();
-    const objectKey = `videos/generated/${timestamp}.mp4`;
-    uploaded = await storageProvider.uploadFromUrl(videoUrl, objectKey);
-    console.log(`[video] uploaded to ${uploaded}`);
-  }
-
-  return {
-    videoUrl,
-    duration: result.data?.duration,
-    uploaded,
-  };
+  return { videoUrl };
 }
 
 export default definition;

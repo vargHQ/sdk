@@ -3,10 +3,11 @@
  * Generates same scene from different camera angles (azimuth/elevation)
  */
 
+import { fal } from "@fal-ai/client";
 import { z } from "zod";
 import { filePathSchema } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
-import { falProvider } from "../../providers/fal";
+import { ensureUrl, logQueueUpdate } from "./utils";
 
 // Input schema with Zod
 const qwenAnglesInputSchema = z.object({
@@ -123,20 +124,29 @@ export const definition: ActionDefinition<typeof schema> = {
 
     console.log("[action/qwen-angles] adjusting camera angle");
 
-    const result = await falProvider.qwenMultipleAngles({
-      imageUrl: image,
-      horizontalAngle,
-      verticalAngle,
-      zoom,
-      additionalPrompt: prompt,
-      loraScale,
-      guidanceScale,
-      numInferenceSteps,
-      negativePrompt,
-      seed,
-      outputFormat,
-      numImages,
-    });
+    const imageUrl = await ensureUrl(image);
+    const result = await fal.subscribe(
+      "fal-ai/qwen-image-edit-2511-multiple-angles",
+      {
+        input: {
+          image_urls: [imageUrl],
+          horizontal_angle: horizontalAngle ?? 0,
+          vertical_angle: verticalAngle ?? 0,
+          zoom: zoom ?? 5,
+          additional_prompt: prompt,
+          lora_scale: loraScale ?? 1,
+          guidance_scale: guidanceScale ?? 4.5,
+          num_inference_steps: numInferenceSteps ?? 28,
+          acceleration: "regular",
+          negative_prompt: negativePrompt ?? "",
+          seed,
+          output_format: outputFormat ?? "png",
+          num_images: numImages ?? 1,
+        },
+        logs: true,
+        onQueueUpdate: logQueueUpdate("qwen-angles"),
+      },
+    );
 
     const data = result.data as {
       images?: Array<{ url: string }>;
@@ -182,20 +192,29 @@ export async function qwenAngles(
 ): Promise<QwenAnglesOutput> {
   console.log("[qwen-angles] adjusting camera angle");
 
-  const result = await falProvider.qwenMultipleAngles({
-    imageUrl,
-    horizontalAngle: options.horizontalAngle,
-    verticalAngle: options.verticalAngle,
-    zoom: options.zoom,
-    additionalPrompt: options.prompt,
-    loraScale: options.loraScale,
-    guidanceScale: options.guidanceScale,
-    numInferenceSteps: options.numInferenceSteps,
-    negativePrompt: options.negativePrompt,
-    seed: options.seed,
-    outputFormat: options.outputFormat,
-    numImages: options.numImages,
-  });
+  const url = await ensureUrl(imageUrl);
+  const result = await fal.subscribe(
+    "fal-ai/qwen-image-edit-2511-multiple-angles",
+    {
+      input: {
+        image_urls: [url],
+        horizontal_angle: options.horizontalAngle ?? 0,
+        vertical_angle: options.verticalAngle ?? 0,
+        zoom: options.zoom ?? 5,
+        additional_prompt: options.prompt,
+        lora_scale: options.loraScale ?? 1,
+        guidance_scale: options.guidanceScale ?? 4.5,
+        num_inference_steps: options.numInferenceSteps ?? 28,
+        acceleration: "regular",
+        negative_prompt: options.negativePrompt ?? "",
+        seed: options.seed,
+        output_format: options.outputFormat ?? "png",
+        num_images: options.numImages ?? 1,
+      },
+      logs: true,
+      onQueueUpdate: logQueueUpdate("qwen-angles"),
+    },
+  );
 
   const data = result.data as {
     images?: Array<{ url: string }>;

@@ -3,6 +3,7 @@
  * Audio-to-video synchronization
  */
 
+import { fal } from "@fal-ai/client";
 import { z } from "zod";
 import {
   filePathSchema,
@@ -10,8 +11,7 @@ import {
   videoDurationStringSchema,
 } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
-import { falProvider } from "../../providers/fal";
-import { ffmpegProvider } from "../../providers/ffmpeg";
+import { ensureUrl, logQueueUpdate } from "./utils";
 
 // Input schema with Zod
 const syncInputSchema = z.object({
@@ -72,12 +72,22 @@ export async function lipsync(options: LipsyncOptions): Promise<LipsyncResult> {
 
   console.log("[sync] generating lip-synced video with wan-25...");
 
-  const result = await falProvider.wan25({
-    imageUrl: image,
-    audioUrl: audio,
-    prompt,
-    duration,
-    resolution,
+  const imageUrl = await ensureUrl(image);
+  const audioUrl = await ensureUrl(audio);
+
+  const result = await fal.subscribe("fal-ai/wan-25-preview/image-to-video", {
+    input: {
+      prompt,
+      image_url: imageUrl,
+      audio_url: audioUrl,
+      resolution: resolution || "480p",
+      duration: duration || "5",
+      negative_prompt:
+        "low resolution, error, worst quality, low quality, defects",
+      enable_prompt_expansion: true,
+    },
+    logs: true,
+    onQueueUpdate: logQueueUpdate("sync"),
   });
 
   const videoUrl = result.data?.video?.url;
@@ -100,12 +110,7 @@ export async function lipsyncOverlay(options: {
 
   console.log("[sync] overlaying lip-synced video...");
 
-  // This would require more complex ffmpeg operations
-  // For now, just return the lip-synced video as-is
-  await ffmpegProvider.convertFormat({
-    input: lipsyncedVideo,
-    output: outputPath,
-  });
+  await Bun.$`ffmpeg -y -i ${lipsyncedVideo} -c copy ${outputPath}`.quiet();
 
   return outputPath;
 }
@@ -116,11 +121,7 @@ export async function lipsyncOverlay(options: {
 export async function lipsyncWav2Lip(options: Wav2LipOptions): Promise<string> {
   console.warn("[sync] wav2lip not yet implemented, using wan-25 fallback");
 
-  // For now, just copy the video
-  await ffmpegProvider.convertFormat({
-    input: options.videoPath,
-    output: options.outputPath,
-  });
+  await Bun.$`ffmpeg -y -i ${options.videoPath} -c copy ${options.outputPath}`.quiet();
 
   return options.outputPath;
 }

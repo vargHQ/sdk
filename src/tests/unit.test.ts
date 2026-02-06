@@ -354,16 +354,7 @@ for (const skill of allSkills) {
 
 console.log(`\n${dim("─ Provider Registration ─\n")}`);
 
-const expectedProviders = [
-  "fal",
-  "replicate",
-  "elevenlabs",
-  "groq",
-  "fireworks",
-  "higgsfield",
-  "ffmpeg",
-  "storage",
-];
+const expectedProviders = ["groq", "fireworks", "ffmpeg", "storage"];
 
 for (const name of expectedProviders) {
   test(`provider '${name}' is registered`, () => {

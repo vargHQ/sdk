@@ -3,12 +3,12 @@
  * Routes to Fal or Higgsfield based on options
  */
 
+import { fal } from "@fal-ai/client";
+import { HiggsfieldClient } from "@higgsfield/client";
 import { z } from "zod";
 import { imageSizeSchema } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
-import { falProvider } from "../../providers/fal";
-import { higgsfieldProvider } from "../../providers/higgsfield";
-import { storageProvider } from "../../providers/storage";
+import { logQueueUpdate } from "./utils";
 
 // Input schema with Zod
 const imageInputSchema = z.object({
@@ -69,57 +69,50 @@ export interface ImageGenerationResult {
 
 export async function generateWithFal(
   prompt: string,
-  options: { imageSize?: string; upload?: boolean } = {},
+  options: { imageSize?: string } = {},
 ): Promise<ImageGenerationResult> {
   console.log("[image] generating with fal");
 
-  const result = await falProvider.generateImage({
-    prompt,
-    imageSize: options.imageSize,
-  });
+  type FalResult = { data: { images?: Array<{ url?: string }> } };
+  const result = (await fal.subscribe("fal-ai/flux-pro/v1.1" as string, {
+    input: {
+      prompt,
+      image_size: options.imageSize || "landscape_4_3",
+    },
+    logs: true,
+    onQueueUpdate: logQueueUpdate("image"),
+  })) as FalResult;
 
-  const imageUrl = (result.data as { images?: Array<{ url?: string }> })
-    ?.images?.[0]?.url;
+  const imageUrl = result.data?.images?.[0]?.url;
   if (!imageUrl) {
     throw new Error("No image URL in result");
   }
 
-  let uploaded: string | undefined;
-  if (options.upload) {
-    const timestamp = Date.now();
-    const objectKey = `images/fal/${timestamp}.png`;
-    uploaded = await storageProvider.uploadFromUrl(imageUrl, objectKey);
-    console.log(`[image] uploaded to ${uploaded}`);
-  }
-
-  return { imageUrl, uploaded };
+  return { imageUrl };
 }
 
 export async function generateWithSoul(
   prompt: string,
-  options: { styleId?: string; upload?: boolean } = {},
+  options: { styleId?: string } = {},
 ): Promise<ImageGenerationResult> {
   console.log("[image] generating with higgsfield soul");
 
-  const result = await higgsfieldProvider.generateSoul({
-    prompt,
-    styleId: options.styleId,
+  const client = new HiggsfieldClient({
+    apiKey: process.env.HIGGSFIELD_API_KEY || process.env.HF_API_KEY,
+    apiSecret: process.env.HIGGSFIELD_SECRET || process.env.HF_API_SECRET,
   });
 
-  const imageUrl = result.jobs?.[0]?.results?.raw?.url;
+  const jobSet = await client.generate("/v1/text2image/soul", {
+    prompt,
+    ...(options.styleId && { style_id: options.styleId }),
+  });
+
+  const imageUrl = jobSet?.jobs?.[0]?.results?.raw?.url;
   if (!imageUrl) {
     throw new Error("No image URL in result");
   }
 
-  let uploaded: string | undefined;
-  if (options.upload) {
-    const timestamp = Date.now();
-    const objectKey = `images/soul/${timestamp}.png`;
-    uploaded = await storageProvider.uploadFromUrl(imageUrl, objectKey);
-    console.log(`[image] uploaded to ${uploaded}`);
-  }
-
-  return { imageUrl, uploaded };
+  return { imageUrl };
 }
 
 export default definition;

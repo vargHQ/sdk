@@ -4,11 +4,11 @@
  */
 
 import { writeFile } from "node:fs/promises";
+import { fal } from "@fal-ai/client";
 import { z } from "zod";
 import { audioFormatSchema, filePathSchema } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
-import { falProvider } from "../../providers/fal";
-import { storageProvider } from "../../providers/storage";
+import { logQueueUpdate } from "./utils";
 
 // Input schema with Zod
 const musicInputSchema = z.object({
@@ -121,17 +121,21 @@ export async function generateMusic(
   if (prompt) console.log(`[music] prompt: ${prompt}`);
   if (tags) console.log(`[music] tags: ${tags.join(", ")}`);
 
-  const result = await falProvider.textToMusic({
-    prompt,
-    tags,
-    lyricsPrompt: lyrics,
-    seed,
-    promptStrength,
-    balanceStrength,
-    numSongs,
-    outputFormat: format,
-    outputBitRate: bitRate,
-    bpm,
+  const result = await fal.subscribe("fal-ai/sonauto/bark", {
+    input: {
+      prompt,
+      tags,
+      lyrics_prompt: lyrics,
+      seed,
+      prompt_strength: promptStrength,
+      balance_strength: balanceStrength,
+      num_songs: numSongs,
+      output_format: format,
+      output_bit_rate: bitRate,
+      bpm,
+    },
+    logs: true,
+    onQueueUpdate: logQueueUpdate("music"),
   });
 
   const musicResult: MusicResult = {
@@ -179,24 +183,6 @@ export async function generateMusic(
       await writeFile(filePath, Buffer.from(buffer));
       console.log(`[music] saved to ${filePath}`);
     }
-  }
-
-  // Upload to storage if requested
-  if (upload) {
-    const uploadUrls: string[] = [];
-    for (let i = 0; i < musicResult.audio.length; i++) {
-      const audio = musicResult.audio[i];
-      if (!audio) continue;
-
-      const objectKey = `music/${Date.now()}-${i + 1}.${format || "wav"}`;
-      const uploadUrl = await storageProvider.uploadFromUrl(
-        audio.url,
-        objectKey,
-      );
-      uploadUrls.push(uploadUrl);
-      console.log(`[music] uploaded to ${uploadUrl}`);
-    }
-    musicResult.uploadUrls = uploadUrls;
   }
 
   return musicResult;
