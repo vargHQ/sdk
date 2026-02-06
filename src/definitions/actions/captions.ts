@@ -7,7 +7,6 @@ import { writeFileSync } from "node:fs";
 import { z } from "zod";
 import { captionStyleSchema, filePathSchema } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
-import { ffmpegProvider } from "../../providers/ffmpeg";
 import { transcribe } from "./transcribe";
 
 // Input schema with Zod
@@ -117,7 +116,7 @@ export async function addCaptions(
 
     // Extract audio first
     const audioPath = video.replace(/\.[^.]+$/, "_audio.mp3");
-    await ffmpegProvider.extractAudio(video, audioPath);
+    await Bun.$`ffmpeg -y -i ${video} -vn -acodec libmp3lame ${audioPath}`.quiet();
 
     // Transcribe
     const result = await transcribe({
@@ -158,7 +157,7 @@ export async function addCaptions(
   console.log(`[captions] burning subtitles...`);
 
   // For now, just copy the video (proper implementation would use subtitles filter)
-  await ffmpegProvider.convertFormat({ input: video, output });
+  await Bun.$`ffmpeg -y -i ${video} -c copy ${output}`.quiet();
 
   console.log(`[captions] saved to ${output}`);
   return output;

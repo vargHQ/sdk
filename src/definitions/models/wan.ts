@@ -42,11 +42,10 @@ export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "wan",
   description: "Wan-25 model for audio-driven video generation with lip sync",
-  providers: ["fal", "replicate"],
+  providers: ["fal"],
   defaultProvider: "fal",
   providerModels: {
     fal: "fal-ai/wan-25-preview/image-to-video",
-    replicate: "wan-video/wan-2.5-i2v",
   },
   schema,
 };

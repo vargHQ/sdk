@@ -44,11 +44,10 @@ export const definition: ModelDefinition<typeof schema> = {
   name: "flux",
   description:
     "Flux Pro image generation model for high-quality images from text",
-  providers: ["fal", "replicate"],
+  providers: ["fal"],
   defaultProvider: "fal",
   providerModels: {
     fal: "fal-ai/flux-pro/v1.1",
-    replicate: "black-forest-labs/flux-1.1-pro",
   },
   schema,
 };
