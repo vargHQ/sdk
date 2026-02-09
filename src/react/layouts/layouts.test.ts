@@ -131,10 +131,10 @@ describe("Split", () => {
     const result = asArray(Split({ direction: "horizontal", children }));
 
     expect(result.length).toBe(2);
-    expect(result[0]!.props.left).toBe("0%");
-    expect(result[0]!.props.width).toBe("50%");
-    expect(result[1]!.props.left).toBe("50%");
-    expect(result[1]!.props.width).toBe("50%");
+    expect(result[0]?.props.left).toBe("0%");
+    expect(result[0]?.props.width).toBe("50%");
+    expect(result[1]?.props.left).toBe("50%");
+    expect(result[1]?.props.width).toBe("50%");
   });
 
   test("vertical split stacks children", () => {
@@ -146,10 +146,10 @@ describe("Split", () => {
     const result = asArray(Split({ direction: "vertical", children }));
 
     expect(result.length).toBe(2);
-    expect(result[0]!.props.top).toBe("0%");
-    expect(result[0]!.props.height).toBe("50%");
-    expect(result[1]!.props.top).toBe("50%");
-    expect(result[1]!.props.height).toBe("50%");
+    expect(result[0]?.props.top).toBe("0%");
+    expect(result[0]?.props.height).toBe("50%");
+    expect(result[1]?.props.top).toBe("50%");
+    expect(result[1]?.props.height).toBe("50%");
   });
 
   test("returns null for empty children", () => {
@@ -165,8 +165,8 @@ describe("Split", () => {
 
     const result = asArray(Split({ children }));
 
-    expect(result[0]!.props.left).toBe("0%");
-    expect(result[1]!.props.left).toBe("50%");
+    expect(result[0]?.props.left).toBe("0%");
+    expect(result[1]?.props.left).toBe("50%");
   });
 });
 
@@ -179,15 +179,15 @@ describe("Grid", () => {
 
     const result = asArray(Grid({ columns: 2, rows: 1, children }));
 
-    expect(result[0]!.props.left).toBe("0%");
-    expect(result[0]!.props.top).toBe("0%");
-    expect(result[0]!.props.width).toBe("50%");
-    expect(result[0]!.props.height).toBe("100%");
+    expect(result[0]?.props.left).toBe("0%");
+    expect(result[0]?.props.top).toBe("0%");
+    expect(result[0]?.props.width).toBe("50%");
+    expect(result[0]?.props.height).toBe("100%");
 
-    expect(result[1]!.props.left).toBe("50%");
-    expect(result[1]!.props.top).toBe("0%");
-    expect(result[1]!.props.width).toBe("50%");
-    expect(result[1]!.props.height).toBe("100%");
+    expect(result[1]?.props.left).toBe("50%");
+    expect(result[1]?.props.top).toBe("0%");
+    expect(result[1]?.props.width).toBe("50%");
+    expect(result[1]?.props.height).toBe("100%");
   });
 
   test("1x2 grid positions children vertically", () => {
@@ -198,15 +198,15 @@ describe("Grid", () => {
 
     const result = asArray(Grid({ columns: 1, rows: 2, children }));
 
-    expect(result[0]!.props.left).toBe("0%");
-    expect(result[0]!.props.top).toBe("0%");
-    expect(result[0]!.props.width).toBe("100%");
-    expect(result[0]!.props.height).toBe("50%");
+    expect(result[0]?.props.left).toBe("0%");
+    expect(result[0]?.props.top).toBe("0%");
+    expect(result[0]?.props.width).toBe("100%");
+    expect(result[0]?.props.height).toBe("50%");
 
-    expect(result[1]!.props.left).toBe("0%");
-    expect(result[1]!.props.top).toBe("50%");
-    expect(result[1]!.props.width).toBe("100%");
-    expect(result[1]!.props.height).toBe("50%");
+    expect(result[1]?.props.left).toBe("0%");
+    expect(result[1]?.props.top).toBe("50%");
+    expect(result[1]?.props.width).toBe("100%");
+    expect(result[1]?.props.height).toBe("50%");
   });
 
   test("2x2 grid positions children in grid pattern", () => {
@@ -219,24 +219,24 @@ describe("Grid", () => {
 
     const result = asArray(Grid({ columns: 2, rows: 2, children }));
 
-    expect(result[0]!.props.left).toBe("0%");
-    expect(result[0]!.props.top).toBe("0%");
+    expect(result[0]?.props.left).toBe("0%");
+    expect(result[0]?.props.top).toBe("0%");
 
-    expect(result[1]!.props.left).toBe("50%");
-    expect(result[1]!.props.top).toBe("0%");
+    expect(result[1]?.props.left).toBe("50%");
+    expect(result[1]?.props.top).toBe("0%");
 
-    expect(result[2]!.props.left).toBe("0%");
-    expect(result[2]!.props.top).toBe("50%");
+    expect(result[2]?.props.left).toBe("0%");
+    expect(result[2]?.props.top).toBe("50%");
 
-    expect(result[3]!.props.left).toBe("50%");
-    expect(result[3]!.props.top).toBe("50%");
+    expect(result[3]?.props.left).toBe("50%");
+    expect(result[3]?.props.top).toBe("50%");
   });
 
   test("defaults resize to contain", () => {
     const children = [Video({ src: "a.mp4" })] as VargElement[];
     const result = asArray(Grid({ columns: 1, children }));
 
-    expect(result[0]!.props.resize).toBe("contain");
+    expect(result[0]?.props.resize).toBe("contain");
   });
 
   test("child resize overrides grid default", () => {
@@ -245,7 +245,7 @@ describe("Grid", () => {
 
     const result = asArray(Grid({ columns: 1, children: [child] }));
 
-    expect(result[0]!.props.resize).toBe("cover");
+    expect(result[0]?.props.resize).toBe("cover");
   });
 
   test("infers columns from children length when not specified", () => {
@@ -257,9 +257,9 @@ describe("Grid", () => {
 
     const result = asArray(Grid({ children }));
 
-    expect((result[0]!.props.width as string).startsWith("33.33")).toBe(true);
-    expect((result[1]!.props.width as string).startsWith("33.33")).toBe(true);
-    expect((result[2]!.props.width as string).startsWith("33.33")).toBe(true);
+    expect((result[0]?.props.width as string).startsWith("33.33")).toBe(true);
+    expect((result[1]?.props.width as string).startsWith("33.33")).toBe(true);
+    expect((result[2]?.props.width as string).startsWith("33.33")).toBe(true);
   });
 });
 
@@ -275,15 +275,15 @@ describe("Split + Slot integration", () => {
       Split({ direction: "vertical", children: [slot1, slot2] }),
     );
 
-    expect(result[0]!.props.top).toBe("0%");
-    expect(result[0]!.props.height).toBe("50%");
-    expect(result[0]!.props.resize).toBe("cover");
-    expect(result[0]!.props.cropPosition).toBe("top");
+    expect(result[0]?.props.top).toBe("0%");
+    expect(result[0]?.props.height).toBe("50%");
+    expect(result[0]?.props.resize).toBe("cover");
+    expect(result[0]?.props.cropPosition).toBe("top");
 
-    expect(result[1]!.props.top).toBe("50%");
-    expect(result[1]!.props.height).toBe("50%");
-    expect(result[1]!.props.resize).toBe("cover");
-    expect(result[1]!.props.cropPosition).toBe("bottom");
+    expect(result[1]?.props.top).toBe("50%");
+    expect(result[1]?.props.height).toBe("50%");
+    expect(result[1]?.props.resize).toBe("cover");
+    expect(result[1]?.props.cropPosition).toBe("bottom");
   });
 
   test("horizontal split with mixed Slot positions", () => {
@@ -297,11 +297,11 @@ describe("Split + Slot integration", () => {
       Split({ direction: "horizontal", children: [slot1, slot2] }),
     );
 
-    expect(result[0]!.props.resize).toBe("cover");
-    expect(result[0]!.props.cropPosition).toBe("left");
+    expect(result[0]?.props.resize).toBe("cover");
+    expect(result[0]?.props.cropPosition).toBe("left");
 
-    expect(result[1]!.props.resize).toBe("contain");
-    expect(result[1]!.props.cropPosition).toBe("right");
+    expect(result[1]?.props.resize).toBe("contain");
+    expect(result[1]?.props.cropPosition).toBe("right");
   });
 });
 
@@ -315,19 +315,31 @@ describe("Grid + Slot integration", () => {
     ];
 
     const slots = [
-      Slot({ class: "fit-cover pos-top-left", children: videos[0]! }),
-      Slot({ class: "fit-cover pos-top-right", children: videos[1]! }),
-      Slot({ class: "fit-contain pos-bottom-left", children: videos[2]! }),
-      Slot({ class: "fit-fill pos-bottom-right", children: videos[3]! }),
+      Slot({
+        class: "fit-cover pos-top-left",
+        children: videos[0] as VargElement,
+      }),
+      Slot({
+        class: "fit-cover pos-top-right",
+        children: videos[1] as VargElement,
+      }),
+      Slot({
+        class: "fit-contain pos-bottom-left",
+        children: videos[2] as VargElement,
+      }),
+      Slot({
+        class: "fit-fill pos-bottom-right",
+        children: videos[3] as VargElement,
+      }),
     ];
 
     const result = asArray(Grid({ columns: 2, rows: 2, children: slots }));
 
-    expect(result[0]!.props.cropPosition).toBe("top-left");
-    expect(result[1]!.props.cropPosition).toBe("top-right");
-    expect(result[2]!.props.cropPosition).toBe("bottom-left");
-    expect(result[2]!.props.resize).toBe("contain");
-    expect(result[3]!.props.cropPosition).toBe("bottom-right");
-    expect(result[3]!.props.resize).toBe("stretch");
+    expect(result[0]?.props.cropPosition).toBe("top-left");
+    expect(result[1]?.props.cropPosition).toBe("top-right");
+    expect(result[2]?.props.cropPosition).toBe("bottom-left");
+    expect(result[2]?.props.resize).toBe("contain");
+    expect(result[3]?.props.cropPosition).toBe("bottom-right");
+    expect(result[3]?.props.resize).toBe("stretch");
   });
 });

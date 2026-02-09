@@ -13,7 +13,7 @@ export const Grid = ({
   resize?: "cover" | "contain" | "stretch";
 }) => {
   if (children.length === 0) {
-    return <></>;
+    return null;
   }
   const cols = columns ?? children.length;
   const rowCount = rows ?? Math.ceil(children.length / cols);
