@@ -1,7 +1,6 @@
 import { File } from "../../ai-sdk/file";
 import type { generateVideo } from "../../ai-sdk/generate-video";
 import type {
-  GeneratedFile,
   ImageInput,
   VargElement,
   VideoPrompt,
@@ -152,21 +151,19 @@ export async function renderVideo(
     const promptText =
       typeof resolvedPrompt === "string" ? resolvedPrompt : resolvedPrompt.text;
 
-    const generatedFile: GeneratedFile = {
-      type: "video",
-      data: video.uint8Array,
-      mediaType,
-      url: (video as { url?: string }).url,
-      model: modelId,
-      prompt: promptText,
-    };
-    ctx.generatedFiles.push(generatedFile);
-
-    return File.fromGenerated({
+    const file = File.fromGenerated({
       uint8Array: video.uint8Array,
       mediaType,
       url: (video as { url?: string }).url,
+    }).withMetadata({
+      type: "video",
+      model: modelId,
+      prompt: promptText,
     });
+
+    ctx.generatedFiles.push(file);
+
+    return file;
   })();
 
   ctx.pendingFiles.set(cacheKeyStr, renderPromise);

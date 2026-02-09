@@ -1,6 +1,6 @@
 import { File } from "../../ai-sdk/file";
 import { generateMusic } from "../../ai-sdk/generate-music";
-import type { GeneratedFile, MusicProps, VargElement } from "../types";
+import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
 
@@ -72,19 +72,17 @@ export async function renderMusic(
 
   const mediaType = audio.mediaType ?? "audio/mpeg";
 
-  const generatedFile: GeneratedFile = {
-    type: "music",
-    data: audio.uint8Array,
-    mediaType,
-    url: audio.url,
-    model: modelId,
-    prompt,
-  };
-  ctx.generatedFiles.push(generatedFile);
-
-  return File.fromGenerated({
+  const file = File.fromGenerated({
     uint8Array: audio.uint8Array,
     mediaType,
     url: audio.url,
+  }).withMetadata({
+    type: "music",
+    model: modelId,
+    prompt,
   });
+
+  ctx.generatedFiles.push(file);
+
+  return file;
 }
