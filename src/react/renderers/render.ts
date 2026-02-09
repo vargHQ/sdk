@@ -1,6 +1,6 @@
 import { generateImage, wrapImageModel } from "ai";
 import { type CacheStorage, withCache } from "../../ai-sdk/cache";
-import type { File } from "../../ai-sdk/file";
+import type { File, File as VargFile } from "../../ai-sdk/file";
 import { fileCache } from "../../ai-sdk/file-cache";
 import { generateVideo } from "../../ai-sdk/generate-video";
 import {
@@ -15,10 +15,8 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
-
 import type {
   ClipProps,
-  GeneratedFile,
   MusicProps,
   OverlayProps,
   RenderMode,
@@ -126,7 +124,7 @@ export async function renderRoot(
 
   const backend = options.backend ?? localBackend;
   const tempFiles: string[] = [];
-  const generatedFiles: GeneratedFile[] = [];
+  const generatedFiles: VargFile[] = [];
   const ctx: RenderContext = {
     width: props.width ?? 1920,
     height: props.height ?? 1080,

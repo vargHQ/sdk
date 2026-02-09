@@ -1,4 +1,5 @@
 export type { CacheStorage } from "../ai-sdk/cache";
+export { File } from "../ai-sdk/file";
 export type { SizeValue } from "../ai-sdk/providers/editly/types";
 export { assets } from "./assets";
 export {
@@ -22,7 +23,7 @@ export { render, renderStream } from "./render";
 export type {
   CaptionsProps,
   ClipProps,
-  GeneratedFile,
+  FileMetadata,
   GeneratedFileType,
   ImageProps,
   MusicProps,

@@ -1,11 +1,30 @@
 import type { ImageModelV3File } from "@ai-sdk/provider";
 import type { StorageProvider } from "./storage/types";
 
+/** Type of generated content */
+export type GeneratedFileType =
+  | "image"
+  | "video"
+  | "speech"
+  | "music"
+  | "captions";
+
+/** Metadata for AI-generated files */
+export interface FileMetadata {
+  /** Type of generated content */
+  type?: GeneratedFileType;
+  /** Model used to generate */
+  model?: string;
+  /** Original prompt used */
+  prompt?: string;
+}
+
 export class File {
   private _data: Uint8Array | null = null;
   private _url: string | null = null;
   private _mediaType: string;
   private _loader: (() => Promise<Uint8Array>) | null = null;
+  private _metadata: FileMetadata = {};
 
   private constructor(
     options:
@@ -125,6 +144,17 @@ export class File {
 
   get url(): string | null {
     return this._url;
+  }
+
+  /** Get file metadata (type, model, prompt) */
+  get metadata(): FileMetadata {
+    return this._metadata;
+  }
+
+  /** Set metadata and return this for chaining */
+  withMetadata(metadata: FileMetadata): this {
+    this._metadata = { ...this._metadata, ...metadata };
+    return this;
   }
 
   async data(): Promise<Uint8Array> {
