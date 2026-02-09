@@ -235,8 +235,9 @@ describe("layout renderers", () => {
     });
 
     const result = await render(root, { output: outPath, quiet: true });
-    expect(result).toBeInstanceOf(Uint8Array);
-    expect(result.length).toBeGreaterThan(0);
+    expect(result.video).toBeInstanceOf(Uint8Array);
+    expect(result.video.length).toBeGreaterThan(0);
+    expect(result.files).toBeInstanceOf(Array);
     expect(existsSync(outPath)).toBe(true);
     unlinkSync(outPath);
   });
@@ -264,7 +265,8 @@ describe("layout renderers", () => {
       });
 
       const result = await render(root, { output: outPath, quiet: true });
-      expect(result).toBeInstanceOf(Uint8Array);
+      expect(result.video).toBeInstanceOf(Uint8Array);
+      expect(result.files).toBeInstanceOf(Array);
       expect(existsSync(outPath)).toBe(true);
       unlinkSync(outPath);
     },
@@ -295,7 +297,8 @@ describe("layout renderers", () => {
       });
 
       const result = await render(root, { output: outPath, quiet: true });
-      expect(result).toBeInstanceOf(Uint8Array);
+      expect(result.video).toBeInstanceOf(Uint8Array);
+      expect(result.files).toBeInstanceOf(Array);
       expect(existsSync(outPath)).toBe(true);
       unlinkSync(outPath);
     },
@@ -326,7 +329,8 @@ describe("layout renderers", () => {
     });
 
     const result = await render(root, { output: outPath, quiet: true });
-    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.video).toBeInstanceOf(Uint8Array);
+    expect(result.files).toBeInstanceOf(Array);
     expect(existsSync(outPath)).toBe(true);
     unlinkSync(outPath);
   });
@@ -350,7 +354,8 @@ describe("layout renderers", () => {
       });
 
       const result = await render(root, { output: outPath, quiet: true });
-      expect(result).toBeInstanceOf(Uint8Array);
+      expect(result.video).toBeInstanceOf(Uint8Array);
+      expect(result.files).toBeInstanceOf(Array);
       expect(existsSync(outPath)).toBe(true);
       unlinkSync(outPath);
     },
@@ -384,8 +389,9 @@ describe("layout renderers", () => {
     });
 
     const result = await render(root, { output: outPath, quiet: true });
-    expect(result).toBeInstanceOf(Uint8Array);
-    expect(result.length).toBeGreaterThan(0);
+    expect(result.video).toBeInstanceOf(Uint8Array);
+    expect(result.video.length).toBeGreaterThan(0);
+    expect(result.files).toBeInstanceOf(Array);
     expect(existsSync(outPath)).toBe(true);
     unlinkSync(outPath);
   });

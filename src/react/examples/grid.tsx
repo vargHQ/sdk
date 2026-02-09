@@ -46,7 +46,7 @@ async function main() {
     cache: ".cache/ai",
   });
 
-  console.log(`\ndone! ${buffer.byteLength} bytes`);
+  console.log(`\ndone! ${buffer.video.byteLength} bytes`);
   console.log("output: output/react-grid.mp4");
 }
 

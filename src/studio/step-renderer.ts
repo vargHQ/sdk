@@ -53,6 +53,7 @@ export function createStepSession(
     progress: createProgressTracker(false),
     pendingFiles: new Map(),
     backend: localBackend,
+    generatedFiles: [],
   };
 
   const extracted = extractStages(rootElement);
