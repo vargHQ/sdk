@@ -1,7 +1,6 @@
 import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { $ } from "bun";
 
 export interface PlaceholderOptions {
   type: "image" | "video" | "audio";
@@ -81,6 +80,8 @@ export async function generatePlaceholder(
     tmpdir(),
     `placeholder_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
   );
+
+  const { $ } = await import("bun");
 
   try {
     if (type === "audio") {

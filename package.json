@@ -69,6 +69,7 @@
     "sharp": "^0.34.5",
     "zod": "^4.2.1"
   },
+  "sideEffects": false,
   "version": "0.4.0-alpha51",
   "exports": {
     ".": "./src/index.ts",
@@ -80,6 +81,7 @@
     "./studio": "./src/studio/index.ts",
     "./jsx-runtime": "./src/react/runtime/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/react/runtime/jsx-dev-runtime.ts",
-    "./editly": "./src/ai-sdk/providers/editly/index.ts"
+    "./editly": "./src/ai-sdk/providers/editly/index.ts",
+    "./file": "./src/ai-sdk/file.ts"
   }
 }
