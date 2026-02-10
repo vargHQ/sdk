@@ -60,6 +60,18 @@ export class File {
     return new File({ url, mediaType });
   }
 
+  /** Hydrate a File from the render service response shape */
+  static fromRenderFile(input: {
+    url: string | null;
+    mediaType: string;
+    metadata?: FileMetadata;
+  }): File | null {
+    if (!input.url) return null;
+    const file = File.fromUrl(input.url, input.mediaType);
+    if (input.metadata) file.withMetadata(input.metadata);
+    return file;
+  }
+
   static fromBuffer(data: Uint8Array, mediaType: string): File {
     return new File({ data, mediaType });
   }
@@ -200,6 +212,14 @@ export class File {
       binary += String.fromCharCode(byte);
     }
     return btoa(binary);
+  }
+
+  toJSON(): { url: string | null; mediaType: string; metadata: FileMetadata } {
+    return {
+      url: this._url,
+      mediaType: this._mediaType,
+      metadata: this._metadata,
+    };
   }
 
   async toInput(): Promise<ImageModelV3File> {
