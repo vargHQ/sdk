@@ -90,11 +90,10 @@ export const definition: ModelDefinition<typeof schema> = {
   name: "nano-banana-pro",
   description:
     "Google Nano Banana Pro (Gemini 3 Pro Image) for text-to-image generation and image editing. Provide image_urls for editing, omit for generation.",
-  providers: ["fal", "replicate"],
+  providers: ["fal"],
   defaultProvider: "fal",
   providerModels: {
     fal: "fal-ai/nano-banana-pro",
-    replicate: "google/nano-banana-pro",
   },
   schema,
 };

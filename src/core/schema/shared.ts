@@ -75,7 +75,6 @@ export type TranscriptionProvider = z.infer<typeof transcriptionProviderSchema>;
 // Provider name choices
 export const providerNameSchema = z.enum([
   "fal",
-  "replicate",
   "elevenlabs",
   "higgsfield",
   "groq",
