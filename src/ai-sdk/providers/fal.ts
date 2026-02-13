@@ -600,9 +600,11 @@ class FalVideoModel implements VideoModelV3 {
       }
     }
 
-    // LTX-2 supports seed, other models don't
+    const isWan = this.modelId.startsWith("wan-");
+    const supportsSeed = isLtx2 || isWan;
+
     if (options.seed !== undefined) {
-      if (isLtx2) {
+      if (supportsSeed) {
         input.seed = options.seed;
       } else {
         warnings.push({

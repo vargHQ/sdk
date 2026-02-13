@@ -54,8 +54,16 @@ class ElevenLabsMusicModel implements MusicModelV3 {
   }
 
   async doGenerate(options: MusicModelV3CallOptions) {
-    const { prompt, duration, providerOptions } = options;
+    const { prompt, duration, seed, providerOptions } = options;
     const warnings: SharedV3Warning[] = [];
+
+    if (seed !== undefined) {
+      warnings.push({
+        type: "unsupported",
+        feature: "seed",
+        details: "Seed is not supported by ElevenLabs music generation",
+      });
+    }
 
     const elevenLabsOptions = providerOptions?.elevenlabs ?? {};
     const audio = await this.client.music.compose({

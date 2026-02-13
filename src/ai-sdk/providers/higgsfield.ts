@@ -170,7 +170,7 @@ class HiggsfieldImageModel implements ImageModelV3 {
   }
 
   async doGenerate(options: ImageModelV3CallOptions) {
-    const { prompt, n, aspectRatio, providerOptions, abortSignal } = options;
+    const { prompt, n, aspectRatio, seed, providerOptions, abortSignal } = options;
     const warnings: SharedV3Warning[] = [];
 
     // Map aspect ratio to width_and_height
@@ -195,9 +195,12 @@ class HiggsfieldImageModel implements ImageModelV3 {
       batch_size: n && n <= 4 ? n : 1,
     };
 
-    // Add optional parameters only if provided
     if (this.modelSettings.styleId) {
       params.style_id = this.modelSettings.styleId;
+    }
+
+    if (seed !== undefined) {
+      params.seed = seed;
     }
 
     // Merge provider options
