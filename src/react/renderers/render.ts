@@ -1,3 +1,4 @@
+import type { ImageModelV3 } from "@ai-sdk/provider";
 import { generateImage, wrapImageModel } from "ai";
 import { type CacheStorage, withCache } from "../../ai-sdk/cache";
 import type { File, File as VargFile } from "../../ai-sdk/file";
@@ -8,6 +9,7 @@ import {
   placeholderFallbackMiddleware,
   wrapVideoModel,
 } from "../../ai-sdk/middleware";
+
 import { editly, localBackend } from "../../ai-sdk/providers/editly";
 import type {
   AudioTrack,
@@ -58,6 +60,28 @@ function resolveCacheStorage(
   return cache;
 }
 
+function toImageModelV3(
+  model: Parameters<typeof generateImage>[0]["model"],
+): ImageModelV3 {
+  if (typeof model === "object" && model.specificationVersion === "v3") {
+    return model;
+  }
+  // for string IDs and v2 models, create a shell that satisfies the type.
+  // in preview mode the middleware intercepts before doGenerate is called.
+  const modelId = typeof model === "string" ? model : model.modelId;
+  return {
+    specificationVersion: "v3",
+    provider: "placeholder",
+    modelId,
+    maxImagesPerCall: 1,
+    doGenerate: async () => {
+      throw new Error(
+        `toImageModelV3 shell: doGenerate should not be called in preview mode (model: ${modelId})`,
+      );
+    },
+  };
+}
+
 export async function renderRoot(
   element: VargElement<"render">,
   options: RenderOptions,
@@ -84,23 +108,19 @@ export async function renderRoot(
     : generateVideo;
 
   const wrapGenerateImage: typeof generateImage = async (opts) => {
-    if (
-      typeof opts.model === "string" ||
-      opts.model.specificationVersion !== "v3"
-    ) {
-      return cachedGenerateImage(opts);
-    }
-
     if (mode === "preview") {
       trackPlaceholder("image");
-      const wrappedModel = wrapImageModel({
-        model: opts.model,
-        middleware: imagePlaceholderFallbackMiddleware({
-          mode: "preview",
-          onFallback: () => {},
+      return cachedGenerateImage({
+        ...opts,
+        model: wrapImageModel({
+          model: toImageModelV3(opts.model),
+          middleware: imagePlaceholderFallbackMiddleware({
+            mode: "preview",
+            onFallback: () => {},
+          }),
         }),
-      });
-      return generateImage({ ...opts, model: wrappedModel });
+        skipCacheWrite: true,
+      } as Parameters<typeof cachedGenerateImage>[0]);
     }
 
     return cachedGenerateImage(opts);
@@ -109,14 +129,17 @@ export async function renderRoot(
   const wrapGenerateVideo: typeof generateVideo = async (opts) => {
     if (mode === "preview") {
       trackPlaceholder("video");
-      const wrappedModel = wrapVideoModel({
-        model: opts.model,
-        middleware: placeholderFallbackMiddleware({
-          mode: "preview",
-          onFallback: () => {},
+      return cachedGenerateVideo({
+        ...opts,
+        model: wrapVideoModel({
+          model: opts.model,
+          middleware: placeholderFallbackMiddleware({
+            mode: "preview",
+            onFallback: () => {},
+          }),
         }),
-      });
-      return generateVideo({ ...opts, model: wrappedModel });
+        skipCacheWrite: true,
+      } as Parameters<typeof cachedGenerateVideo>[0]);
     }
 
     return cachedGenerateVideo(opts);

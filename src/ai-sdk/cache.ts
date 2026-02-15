@@ -11,7 +11,10 @@ export interface WithCacheOptions {
 
 type CacheKeyDeps = (string | number | boolean | null | undefined)[];
 
-type WithCacheKey<T> = Omit<T, "cacheKey"> & { cacheKey?: CacheKeyDeps };
+type WithCacheKey<T> = Omit<T, "cacheKey" | "skipCacheWrite"> & {
+  cacheKey?: CacheKeyDeps;
+  skipCacheWrite?: boolean;
+};
 
 type CachedFn<T, R> = (options: WithCacheKey<T>) => Promise<R>;
 
@@ -60,7 +63,8 @@ function parseTTL(ttl: number | string | undefined): number | undefined {
   }
 }
 
-function depsToKey(prefix: string, deps: CacheKeyDeps): string {
+/** Build a cache key string from a prefix and an array of dependencies. */
+export function depsToKey(prefix: string, deps: CacheKeyDeps): string {
   const depsStr = deps.map((d) => String(d ?? "")).join(":");
   return prefix ? `${prefix}:${depsStr}` : depsStr;
 }
@@ -116,7 +120,7 @@ export function withCache<T extends object, R>(
   const ttl = parseTTL(options.ttl ?? DEFAULT_TTL);
   const prefix = fn.name || "anonymous";
   return async (opts: WithCacheKey<T>): Promise<R> => {
-    const { cacheKey, ...rest } = opts;
+    const { cacheKey, skipCacheWrite, ...rest } = opts;
 
     if (!cacheKey) {
       return fn(rest as T);
@@ -128,8 +132,10 @@ export function withCache<T extends object, R>(
       return cached as R;
     }
     const result = await fn(rest as T);
-    const flattened = flatten(result);
-    await storage.set(key, flattened, ttl);
+    if (!skipCacheWrite) {
+      const flattened = flatten(result);
+      await storage.set(key, flattened, ttl);
+    }
 
     return result;
   };
