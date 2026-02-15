@@ -130,21 +130,6 @@ await test("registry search works", async () => {
 
 console.log("\n🔌 PROVIDER TESTS\n");
 
-await test("fal provider is registered", async () => {
-  const fal = providers.get("fal");
-  if (!fal) throw new Error("Fal provider not found");
-});
-
-await test("replicate provider is registered", async () => {
-  const replicate = providers.get("replicate");
-  if (!replicate) throw new Error("Replicate provider not found");
-});
-
-await test("elevenlabs provider is registered", async () => {
-  const el = providers.get("elevenlabs");
-  if (!el) throw new Error("ElevenLabs provider not found");
-});
-
 await test("groq provider is registered", async () => {
   const groq = providers.get("groq");
   if (!groq) throw new Error("Groq provider not found");
@@ -308,15 +293,18 @@ console.log("\n🌐 LIVE API TESTS (requires API keys)\n");
 await test(
   "fal: generate image with flux",
   async () => {
-    const { falProvider } = await import("../providers/fal");
-    const result = await falProvider.generateImage({
-      prompt: "a cute cat sitting on a rainbow",
-      imageSize: "square",
+    const { fal } = await import("@fal-ai/client");
+    const result = await fal.subscribe("fal-ai/flux-pro/v1.1" as string, {
+      input: {
+        prompt: "a cute cat sitting on a rainbow",
+        image_size: "square",
+      },
+      logs: true,
     });
-    if (!result?.data?.images?.[0]?.url) {
-      throw new Error("No image URL in result");
-    }
-    console.log(`   Generated: ${result.data.images[0].url}`);
+    const url = (result.data as { images?: Array<{ url?: string }> })
+      ?.images?.[0]?.url;
+    if (!url) throw new Error("No image URL in result");
+    console.log(`   Generated: ${url}`);
   },
   !hasApiKey(["FAL_API_KEY", "FAL_KEY"]),
 );
@@ -324,60 +312,38 @@ await test(
 await test(
   "fal: text-to-video with kling",
   async () => {
-    const { falProvider } = await import("../providers/fal");
-    const result = await falProvider.textToVideo({
-      prompt: "ocean waves crashing on beach",
-      duration: 5,
-    });
-    if (!result?.data?.video?.url) {
-      throw new Error("No video URL in result");
-    }
-    console.log(`   Generated: ${result.data.video.url}`);
+    const { fal } = await import("@fal-ai/client");
+    const result = await fal.subscribe(
+      "fal-ai/kling-video/v2.5-turbo/pro/text-to-video" as string,
+      {
+        input: { prompt: "ocean waves crashing on beach", duration: "5" },
+        logs: true,
+      },
+    );
+    const url = (result.data as { video?: { url?: string } })?.video?.url;
+    if (!url) throw new Error("No video URL in result");
+    console.log(`   Generated: ${url}`);
   },
   !hasApiKey(["FAL_API_KEY", "FAL_KEY"]),
-);
-
-// Replicate tests
-await test(
-  "replicate: run flux image generation",
-  async () => {
-    const { replicateProvider, MODELS } = await import(
-      "../providers/replicate"
-    );
-    const result = await replicateProvider.runImage({
-      model: MODELS.IMAGE.FLUX_SCHNELL,
-      input: { prompt: "a mountain landscape at sunset" },
-    });
-    console.log(`   Generated: ${JSON.stringify(result).slice(0, 100)}...`);
-  },
-  !hasApiKey("REPLICATE_API_TOKEN"),
 );
 
 // ElevenLabs tests
 await test(
   "elevenlabs: text-to-speech",
   async () => {
-    const { elevenlabsProvider } = await import("../providers/elevenlabs");
-    const buffer = await elevenlabsProvider.textToSpeech({
-      text: "Hello, this is a test of the varg SDK.",
+    const { ElevenLabsClient } = await import("@elevenlabs/elevenlabs-js");
+    const client = new ElevenLabsClient({
+      apiKey: process.env.ELEVENLABS_API_KEY,
     });
-    if (buffer.length === 0) {
-      throw new Error("Empty audio buffer");
-    }
+    const stream = await client.textToSpeech.convert("21m00Tcm4TlvDq8ikWAM", {
+      text: "Hello, this is a test of the varg SDK.",
+      modelId: "eleven_multilingual_v2",
+    });
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    const buffer = Buffer.concat(chunks);
+    if (buffer.length === 0) throw new Error("Empty audio buffer");
     console.log(`   Generated: ${buffer.length} bytes of audio`);
-  },
-  !hasApiKey("ELEVENLABS_API_KEY"),
-);
-
-await test(
-  "elevenlabs: list voices",
-  async () => {
-    const { elevenlabsProvider } = await import("../providers/elevenlabs");
-    const voices = await elevenlabsProvider.listVoices();
-    if (voices.length === 0) {
-      throw new Error("No voices found");
-    }
-    console.log(`   Found ${voices.length} voices`);
   },
   !hasApiKey("ELEVENLABS_API_KEY"),
 );
@@ -416,8 +382,12 @@ await test(
 await test(
   "higgsfield: list soul styles",
   async () => {
-    const { higgsfieldProvider } = await import("../providers/higgsfield");
-    const styles = await higgsfieldProvider.listSoulStyles();
+    const { HiggsfieldClient } = await import("@higgsfield/client");
+    const client = new HiggsfieldClient({
+      apiKey: process.env.HIGGSFIELD_API_KEY || process.env.HF_API_KEY,
+      apiSecret: process.env.HIGGSFIELD_SECRET || process.env.HF_API_SECRET,
+    });
+    const styles = await client.getSoulStyles();
     console.log(`   Found styles: ${JSON.stringify(styles).slice(0, 100)}...`);
   },
   !hasApiKey(["HIGGSFIELD_API_KEY", "HF_API_KEY"]),

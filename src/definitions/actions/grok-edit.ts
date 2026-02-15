@@ -3,10 +3,11 @@
  * Edit videos using xAI's Grok Imagine Video model
  */
 
+import { fal } from "@fal-ai/client";
 import { z } from "zod";
 import { filePathSchema } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
-import { falProvider } from "../../providers/fal";
+import { ensureUrl, logQueueUpdate } from "./utils";
 
 // Resolution enum matching the API spec
 const grokEditResolutionSchema = z
@@ -57,10 +58,15 @@ export const definition: ActionDefinition<typeof schema> = {
 
     console.log("[action/grok-edit] editing video with Grok Imagine");
 
-    const result = await falProvider.grokEditVideo({
-      prompt,
-      videoUrl: video,
-      resolution,
+    const inputUrl = await ensureUrl(video);
+    const result = await fal.subscribe("xai/grok-imagine-video/edit-video", {
+      input: {
+        prompt,
+        video_url: inputUrl,
+        resolution: resolution ?? "auto",
+      },
+      logs: true,
+      onQueueUpdate: logQueueUpdate("grok-edit"),
     });
 
     const data = result.data as {
@@ -100,10 +106,15 @@ export async function grokEditVideo(
 ): Promise<GrokEditOutput> {
   console.log("[grok-edit] editing video");
 
-  const result = await falProvider.grokEditVideo({
-    prompt,
-    videoUrl,
-    resolution: options.resolution,
+  const inputUrl = await ensureUrl(videoUrl);
+  const result = await fal.subscribe("xai/grok-imagine-video/edit-video", {
+    input: {
+      prompt,
+      video_url: inputUrl,
+      resolution: options.resolution ?? "auto",
+    },
+    logs: true,
+    onQueueUpdate: logQueueUpdate("grok-edit"),
   });
 
   const data = result.data as {
@@ -116,13 +127,13 @@ export async function grokEditVideo(
     };
   };
 
-  const url = data?.video?.url;
-  if (!url) {
+  const resultUrl = data?.video?.url;
+  if (!resultUrl) {
     throw new Error("No video URL in result");
   }
 
   return {
-    videoUrl: url,
+    videoUrl: resultUrl,
     width: data.video?.width,
     height: data.video?.height,
     duration: data.video?.duration,
