@@ -63,6 +63,7 @@ function parseTTL(ttl: number | string | undefined): number | undefined {
   }
 }
 
+/** Build a cache key string from a prefix and an array of dependencies. */
 export function depsToKey(prefix: string, deps: CacheKeyDeps): string {
   const depsStr = deps.map((d) => String(d ?? "")).join(":");
   return prefix ? `${prefix}:${depsStr}` : depsStr;
