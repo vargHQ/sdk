@@ -38,6 +38,7 @@
     "zod": "^3.25.76 || ^4.1.8"
   },
   "dependencies": {
+    "@vargai/gateway": "^0.1.4",
     "@ai-sdk/fal": "^1.0.23",
     "@ai-sdk/fireworks": "^2.0.16",
     "@ai-sdk/google": "^3.0.13",
