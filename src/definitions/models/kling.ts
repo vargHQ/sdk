@@ -47,7 +47,7 @@ export const definition: ModelDefinition<typeof schema> = {
   providers: ["fal", "replicate"],
   defaultProvider: "fal",
   providerModels: {
-    fal: "fal-ai/kling-video/v2.5-turbo/pro",
+    fal: "fal-ai/kling-video/o3/pro",
     replicate: "fofr/kling-v1.5",
   },
   schema,

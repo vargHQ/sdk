@@ -468,6 +468,9 @@ replicate.imageModel("owner/model-name")
 
 | model | provider | capabilities |
 |-------|----------|--------------|
+| kling-v3 | fal | text-to-video, image-to-video (O3 Pro, latest) |
+| kling-v3-standard | fal | text-to-video, image-to-video (O3 Standard, cheaper) |
+| kling-v2.6 | fal | text-to-video, image-to-video |
 | kling-v2.5 | fal | text-to-video, image-to-video |
 | kling-v2.1 | fal | text-to-video, image-to-video |
 | wan-2.5 | fal | image-to-video, good for characters |

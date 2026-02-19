@@ -97,7 +97,16 @@ const FAL_TIMEOUT_MS = (() => {
 })();
 
 const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
-  // Kling v2.6 - latest with native audio generation
+  // Kling O3 (v3) - latest with multi-prompt, voice IDs, 3-15s duration
+  "kling-v3": {
+    t2v: "fal-ai/kling-video/o3/pro/text-to-video",
+    i2v: "fal-ai/kling-video/o3/pro/image-to-video",
+  },
+  "kling-v3-standard": {
+    t2v: "fal-ai/kling-video/o3/standard/text-to-video",
+    i2v: "fal-ai/kling-video/o3/standard/image-to-video",
+  },
+  // Kling v2.6 - with native audio generation
   "kling-v2.6": {
     t2v: "fal-ai/kling-video/v2.6/pro/text-to-video",
     i2v: "fal-ai/kling-video/v2.6/pro/image-to-video",
@@ -444,6 +453,8 @@ class FalVideoModel implements VideoModelV3 {
     const isLipsync = LIPSYNC_MODELS[this.modelId] !== undefined;
     const isMotionControl = MOTION_CONTROL_MODELS[this.modelId] !== undefined;
     const isVideoEdit = VIDEO_EDIT_MODELS[this.modelId] !== undefined;
+    const isKlingV3 =
+      this.modelId === "kling-v3" || this.modelId === "kling-v3-standard";
     const isKlingV26 = this.modelId === "kling-v2.6";
     const isLtx2 = this.modelId === "ltx-2-19b-distilled";
     const isGrokImagine = this.modelId === "grok-imagine";
@@ -539,8 +550,8 @@ class FalVideoModel implements VideoModelV3 {
         if (input.video_size === undefined) {
           input.video_size = "auto";
         }
-      } else if (isKlingV26) {
-        // Duration must be string "5" or "10" for Kling v2.6
+      } else if (isKlingV3 || isKlingV26) {
+        // Duration must be string for Kling v2.6+ and O3 (v3)
         input.duration = String(duration ?? 5);
       } else if (isGrokImagine) {
         // Grok Imagine: duration 1-15 seconds (default 6)
@@ -563,7 +574,7 @@ class FalVideoModel implements VideoModelV3 {
           input.image_url = await fileToUrl(firstImage);
           // Second image (if provided) is end image for Kling v2.6 and LTX-2
           const secondImage = imageFiles[1];
-          if ((isKlingV26 || isLtx2) && secondImage) {
+          if ((isKlingV3 || isKlingV26 || isLtx2) && secondImage) {
             input.end_image_url = await fileToUrl(secondImage);
           }
         }
@@ -572,8 +583,8 @@ class FalVideoModel implements VideoModelV3 {
         input.aspect_ratio = aspectRatio ?? "16:9";
       }
 
-      // Kling v2.6 and LTX-2 support native audio generation
-      if (isKlingV26 || isLtx2) {
+      // Kling v2.6+, O3 (v3), and LTX-2 support native audio generation
+      if (isKlingV3 || isKlingV26 || isLtx2) {
         // Default to generating audio unless explicitly disabled
         if (input.generate_audio === undefined) {
           input.generate_audio = true;

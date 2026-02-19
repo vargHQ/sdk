@@ -26,6 +26,8 @@ export const MODEL_TIME_ESTIMATES: Record<string, number> = {
   ideogram: 8,
   // video models
   kling: 180,
+  "kling-v3": 180,
+  "kling-v3-standard": 120,
   "kling-v2": 180,
   "kling-v2.5": 180,
   "kling-v2.6": 180,
