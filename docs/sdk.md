@@ -741,7 +741,7 @@ createVideoAd();
 | model type | models |
 |---|---|
 | `imageModel` | `nano-banana-pro`, `nano-banana-pro/edit` |
-| `videoModel` | `kling-v2.5`, `kling-v2.5-pro` |
+| `videoModel` | `kling-v3`, `kling-v3-standard`, `kling-v2.6`, `kling-v2.5` |
 | `lipsyncModel` | `sync-v2-pro` |
 
 ### higgsfield
