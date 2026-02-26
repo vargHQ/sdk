@@ -10,9 +10,19 @@ const mockStorage: StorageProvider = {
   },
 };
 
+/** Mock storage that accepts uploads and returns a predictable URL. */
+const uploadableStorage: StorageProvider = {
+  async upload(_data: Uint8Array, key: string) {
+    return `https://mock-storage.test/${key}`;
+  },
+};
+
 describe("rendi backend validation", () => {
-  test("throws error when inputs array is empty", async () => {
-    const backend = createRendiBackend({ storage: mockStorage });
+  test("throws when inputs empty and no filterComplex", async () => {
+    const backend = createRendiBackend({
+      apiKey: "test-key",
+      storage: mockStorage,
+    });
 
     await expect(
       backend.run({
@@ -20,11 +30,16 @@ describe("rendi backend validation", () => {
         outputArgs: ["-c:v", "libx264"],
         outputPath: "output.mp4",
       }),
-    ).rejects.toThrow("Rendi backend requires at least one input file");
+    ).rejects.toThrow(
+      "Rendi backend requires at least one input file or a filterComplex",
+    );
   });
 
-  test("throws error when inputs is undefined", async () => {
-    const backend = createRendiBackend({ storage: mockStorage });
+  test("throws when inputs undefined and no filterComplex", async () => {
+    const backend = createRendiBackend({
+      apiKey: "test-key",
+      storage: mockStorage,
+    });
 
     await expect(
       backend.run({
@@ -32,7 +47,28 @@ describe("rendi backend validation", () => {
         outputArgs: ["-c:v", "libx264"],
         outputPath: "output.mp4",
       }),
-    ).rejects.toThrow("Rendi backend requires at least one input file");
+    ).rejects.toThrow(
+      "Rendi backend requires at least one input file or a filterComplex",
+    );
+  });
+
+  test("generates dummy input when inputs empty but filterComplex present", async () => {
+    // The run() call will still fail at the Rendi API fetch (no real server),
+    // but it should NOT throw the "requires at least one input" error.
+    // It should get past the validation and fail at the network call.
+    const backend = createRendiBackend({
+      apiKey: "test-key",
+      storage: uploadableStorage,
+    });
+
+    await expect(
+      backend.run({
+        inputs: [],
+        filterComplex: "color=c=#1a1a2e:s=1080x1920:d=5:r=30[color0]",
+        outputArgs: ["-map", "[color0]", "-c:v", "libx264"],
+        outputPath: "output.mp4",
+      }),
+    ).rejects.toThrow(/Rendi submit failed|fetch/);
   });
 });
 
