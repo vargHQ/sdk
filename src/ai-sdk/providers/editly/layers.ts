@@ -42,7 +42,7 @@ function getCropPositionExpr(position: CropPosition | undefined): {
   }
 }
 
-function escapeDrawText(text: string): string {
+export function escapeDrawText(text: string): string {
   return text
     .replace(/\\/g, "\\\\")
     .replace(/'/g, "'\\''")
@@ -51,7 +51,10 @@ function escapeDrawText(text: string): string {
     .replace(/\]/g, "\\]");
 }
 
-function parseSize(val: number | string | undefined, base: number): number {
+export function parseSize(
+  val: number | string | undefined,
+  base: number,
+): number {
   if (val === undefined) return base;
   if (typeof val === "number") return Math.round(val);
   if (val.endsWith("%")) {
@@ -464,7 +467,7 @@ export function getGradientFilter(
 // 3. Gets composited on top of base layers (not as base layer)
 // 4. Uses overlay filter for positioning instead of pad filter
 
-function resolvePositionForOverlay(
+export function resolvePositionForOverlay(
   position: Position | undefined,
   width: number,
   height: number,
