@@ -1,5 +1,6 @@
 import { type FFmpegBackend, localBackend } from "./backends";
 import {
+  getFillColorFilter,
   getImageOverlayFilter,
   getImageOverlayPositionFilter,
   getNewsTitleFilter,
@@ -204,7 +205,7 @@ function buildBaseClipFilter(
     cutFrom: number;
     mixVolume?: number | string;
   }[] = [];
-  let baseLabel = "";
+  let baseLabel: string | undefined;
   let inputIdx = inputOffset;
 
   const baseLayers = clip.layers.filter(
@@ -252,6 +253,18 @@ function buildBaseClipFilter(
     }
   }
 
+  if (!baseLabel && clipLocalOverlays.length > 0) {
+    const fillFilter = getFillColorFilter(
+      { type: "fill-color", color: "#000000" },
+      inputIdx,
+      width,
+      height,
+      clip.duration,
+    );
+    filters.push(fillFilter.filterComplex);
+    baseLabel = fillFilter.outputLabel;
+  }
+
   for (let i = 0; i < clipLocalOverlays.length; i++) {
     const layer = clipLocalOverlays[i];
     if (!layer) continue;
@@ -270,7 +283,7 @@ function buildBaseClipFilter(
 
     const outputLabel = `clip${clipIndex}ov${i}`;
     const positionFilter = getOverlayFilter(
-      baseLabel,
+      baseLabel!,
       overlayFilter.outputLabel,
       layer,
       width,
@@ -280,6 +293,12 @@ function buildBaseClipFilter(
     filters.push(positionFilter);
     baseLabel = outputLabel;
     inputIdx++;
+  }
+
+  if (!baseLabel) {
+    throw new Error(
+      `Clip ${clipIndex} produced no video output — ensure it has at least one visual layer (video, image, or fill-color)`,
+    );
   }
 
   return {
