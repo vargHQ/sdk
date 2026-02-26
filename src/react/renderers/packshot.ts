@@ -175,7 +175,7 @@ export async function renderPackshot(
 
   const basePath = `/tmp/varg-packshot-${Date.now()}.mp4`;
 
-  await editly({
+  const baseResult = await editly({
     outPath: basePath,
     width: ctx.width,
     height: ctx.height,
@@ -205,7 +205,7 @@ export async function renderPackshot(
 
     // Composite button overlay at correct position on base video via backend
     const baseInput = await resolveInputMaybeUpload(
-      { type: "file", path: basePath },
+      baseResult.output,
       ctx.backend,
     );
     const btnInput = await resolveInputMaybeUpload(btn.output, ctx.backend);
@@ -233,10 +233,10 @@ export async function renderPackshot(
       return overlayResult.output.path;
     }
     // Cloud backend returns URL
-    ctx.tempFiles.push(basePath);
     return overlayResult.output.url;
   }
 
+  if (baseResult.output.type === "url") return baseResult.output.url;
   ctx.tempFiles.push(basePath);
   return basePath;
 }
