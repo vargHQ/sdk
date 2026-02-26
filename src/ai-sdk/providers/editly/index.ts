@@ -205,7 +205,7 @@ function buildBaseClipFilter(
     cutFrom: number;
     mixVolume?: number | string;
   }[] = [];
-  let baseLabel = "";
+  let baseLabel: string | undefined;
   let inputIdx = inputOffset;
 
   const baseLayers = clip.layers.filter(
@@ -283,7 +283,7 @@ function buildBaseClipFilter(
 
     const outputLabel = `clip${clipIndex}ov${i}`;
     const positionFilter = getOverlayFilter(
-      baseLabel,
+      baseLabel!,
       overlayFilter.outputLabel,
       layer,
       width,
@@ -712,14 +712,14 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     }
   }
 
-  let finalVideoLabel = clipOutputLabels[0] || "v0";
+  let finalVideoLabel = clipOutputLabels[0] ?? "v0";
 
   if (clipOutputLabels.length > 1) {
-    let currentLabel = clipOutputLabels[0] || "v0";
+    let currentLabel = clipOutputLabels[0] ?? "v0";
     let accumulatedDuration = clips[0]?.duration ?? 0;
 
     for (let i = 0; i < clips.length - 1; i++) {
-      const nextLabel = clipOutputLabels[i + 1] || `v${i + 1}`;
+      const nextLabel = clipOutputLabels[i + 1] ?? `v${i + 1}`;
       const clip = clips[i];
       const nextClip = clips[i + 1];
       if (!clip) continue;
