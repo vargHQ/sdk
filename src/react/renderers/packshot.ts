@@ -1,4 +1,5 @@
 import { editly } from "../../ai-sdk/providers/editly";
+import type { FFmpegOutput } from "../../ai-sdk/providers/editly/backends/types";
 import type {
   Clip,
   ImageOverlayLayer,
@@ -8,10 +9,28 @@ import type {
   SizeValue,
   TitleLayer,
 } from "../../ai-sdk/providers/editly/types";
+import { uploadBuffer } from "../../providers/storage";
 import type { PackshotProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { createBlinkingButton } from "./packshot/blinking-button";
+
+/**
+ * Resolve an FFmpegOutput to a string path/URL, uploading local files for cloud backends.
+ */
+async function resolveInputMaybeUpload(
+  input: FFmpegOutput,
+  shouldUpload: boolean,
+): Promise<string> {
+  if (input.type === "url") return input.url;
+  if (!shouldUpload) return input.path;
+  const buffer = await Bun.file(input.path).arrayBuffer();
+  return uploadBuffer(
+    buffer,
+    `tmp/${Date.now()}-${input.path.split("/").pop()}`,
+    "application/octet-stream",
+  );
+}
 
 /**
  * Type guard: returns true if `pos` is a PositionObject ({ x, y }).
@@ -165,39 +184,61 @@ export async function renderPackshot(
     height: ctx.height,
     fps: ctx.fps,
     clips: [clip],
+    backend: ctx.backend,
   });
 
   // ===== BLINKING CTA OVERLAY =====
   if (props.cta && props.blinkCta) {
-    // Create animated button with Sharp at button-size canvas (fast)
-    const btn = await createBlinkingButton({
-      text: props.cta,
-      width: ctx.width,
-      height: ctx.height,
-      duration,
-      fps: ctx.fps,
-      bgColor: props.ctaColor ?? "#FF6B00",
-      textColor: props.ctaTextColor ?? "#FFFFFF",
-      blinkFrequency: props.blinkFrequency ?? 0.8,
-      position: mapCtaPosition(props.ctaPosition, ctx.height),
-      buttonWidth: props.ctaSize?.width,
-      buttonHeight: props.ctaSize?.height,
+    const btn = await createBlinkingButton(
+      {
+        text: props.cta,
+        width: ctx.width,
+        height: ctx.height,
+        duration,
+        fps: ctx.fps,
+        bgColor: props.ctaColor ?? "#FF6B00",
+        textColor: props.ctaTextColor ?? "#FFFFFF",
+        blinkFrequency: props.blinkFrequency ?? 0.8,
+        position: mapCtaPosition(props.ctaPosition, ctx.height),
+        buttonWidth: props.ctaSize?.width,
+        buttonHeight: props.ctaSize?.height,
+      },
+      ctx.backend,
+    );
+
+    // Composite button overlay at correct position on base video via backend
+    const isCloud = ctx.backend.name !== "local";
+    const baseInput = await resolveInputMaybeUpload(
+      { type: "file", path: basePath },
+      isCloud,
+    );
+    const btnInput = await resolveInputMaybeUpload(btn.output, isCloud);
+
+    const finalPath = `/tmp/varg-packshot-final-${Date.now()}.mp4`;
+
+    const overlayResult = await ctx.backend.run({
+      inputs: [baseInput, btnInput],
+      filterComplex: `[0:v][1:v]overlay=${btn.x}:${btn.y}:format=auto`,
+      outputArgs: [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "18",
+        "-pix_fmt",
+        "yuv420p",
+      ],
+      outputPath: finalPath,
     });
 
-    // Composite button-sized overlay at correct position on base video
-    const finalPath = `/tmp/varg-packshot-final-${Date.now()}.mp4`;
-    const { $ } = await import("bun");
-
-    // Overlay the blinking button (with alpha) on the packshot
-    await $`ffmpeg -y \
-      -i ${basePath} \
-      -i ${btn.path} \
-      -filter_complex "[0:v][1:v]overlay=${btn.x}:${btn.y}:format=auto" \
-      -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p \
-      ${finalPath}`.quiet();
-
-    ctx.tempFiles.push(basePath, btn.path);
-    return finalPath;
+    if (overlayResult.output.type === "file") {
+      ctx.tempFiles.push(basePath, overlayResult.output.path);
+      return overlayResult.output.path;
+    }
+    // Cloud backend returns URL
+    ctx.tempFiles.push(basePath);
+    return overlayResult.output.url;
   }
 
   ctx.tempFiles.push(basePath);
