@@ -1,5 +1,6 @@
 import { type FFmpegBackend, localBackend } from "./backends";
 import {
+  getFillColorFilter,
   getImageOverlayFilter,
   getImageOverlayPositionFilter,
   getNewsTitleFilter,
@@ -252,6 +253,18 @@ function buildBaseClipFilter(
     }
   }
 
+  if (!baseLabel && clipLocalOverlays.length > 0) {
+    const fillFilter = getFillColorFilter(
+      { type: "fill-color", color: "#000000" },
+      inputIdx,
+      width,
+      height,
+      clip.duration,
+    );
+    filters.push(fillFilter.filterComplex);
+    baseLabel = fillFilter.outputLabel;
+  }
+
   for (let i = 0; i < clipLocalOverlays.length; i++) {
     const layer = clipLocalOverlays[i];
     if (!layer) continue;
@@ -280,6 +293,12 @@ function buildBaseClipFilter(
     filters.push(positionFilter);
     baseLabel = outputLabel;
     inputIdx++;
+  }
+
+  if (!baseLabel) {
+    throw new Error(
+      `Clip ${clipIndex} produced no video output — ensure it has at least one visual layer (video, image, or fill-color)`,
+    );
   }
 
   return {
@@ -693,14 +712,14 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     }
   }
 
-  let finalVideoLabel = clipOutputLabels[0] ?? "v0";
+  let finalVideoLabel = clipOutputLabels[0] || "v0";
 
   if (clipOutputLabels.length > 1) {
-    let currentLabel = clipOutputLabels[0] ?? "v0";
+    let currentLabel = clipOutputLabels[0] || "v0";
     let accumulatedDuration = clips[0]?.duration ?? 0;
 
     for (let i = 0; i < clips.length - 1; i++) {
-      const nextLabel = clipOutputLabels[i + 1] ?? `v${i + 1}`;
+      const nextLabel = clipOutputLabels[i + 1] || `v${i + 1}`;
       const clip = clips[i];
       const nextClip = clips[i + 1];
       if (!clip) continue;

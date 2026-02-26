@@ -1334,4 +1334,79 @@ describe("editly", () => {
 
     expect(existsSync(outPath)).toBe(true);
   });
+
+  // Regression test for issue #123
+  // https://github.com/vargHQ/sdk/issues/123
+  test("issue #123: clip with only positioned videos (no base layer) generates valid filter", async () => {
+    // Bug: when a clip has only positioned videos (from Split/Slot) and no base layer,
+    // buildBaseClipFilter returns an empty outputLabel "", causing ffmpeg to crash with
+    // "Bad (empty?) label found" error like: "[]concat=n=2:v=1:a=0..."
+    // Fix: auto-insert fill-color base when clip has overlays but no base
+    const outPath = "output/editly-test-issue-123-no-base.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      clips: [
+        {
+          duration: 2,
+          layers: [{ type: "fill-color", color: "#ff0000" }],
+          transition: { name: "fade", duration: 0.5 },
+        },
+        {
+          duration: 2,
+          layers: [
+            // Only positioned videos — no base layer
+            {
+              type: "video",
+              path: VIDEO_1,
+              width: "50%",
+              height: "100%",
+              left: "0%",
+              top: "0%",
+              resizeMode: "cover",
+            },
+            {
+              type: "video",
+              path: VIDEO_2,
+              width: "50%",
+              height: "100%",
+              left: "50%",
+              top: "0%",
+              resizeMode: "cover",
+            },
+          ],
+          transition: { name: "fade", duration: 0.5 },
+        },
+        {
+          duration: 2,
+          layers: [{ type: "fill-color", color: "#0000ff" }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.duration).toBeGreaterThan(4);
+  });
+
+  test("issue #123: clip with no layers at all throws clear error", async () => {
+    await expect(
+      editly({
+        outPath: "output/editly-test-issue-123-empty.mp4",
+        width: 640,
+        height: 480,
+        fps: 30,
+        clips: [
+          {
+            duration: 2,
+            layers: [],
+          },
+        ],
+      }),
+    ).rejects.toThrow("produced no video output");
+  });
 });
