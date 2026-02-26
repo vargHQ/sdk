@@ -83,6 +83,7 @@ export async function renderSwipe(
     height: ctx.height,
     fps: ctx.fps,
     clips,
+    backend: ctx.backend,
   });
 
   ctx.tempFiles.push(outPath);

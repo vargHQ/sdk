@@ -72,6 +72,7 @@ export async function renderSlider(
     height: ctx.height,
     fps: ctx.fps,
     clips,
+    backend: ctx.backend,
   });
 
   ctx.tempFiles.push(outPath);
