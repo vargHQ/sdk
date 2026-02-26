@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { File } from "../../../file";
 import type { StorageProvider } from "../../../storage/types";
 import type {
@@ -122,7 +123,7 @@ export class RendiBackend implements FFmpegBackend {
   }
 
   async run(options: FFmpegRunOptions): Promise<FFmpegRunResult> {
-    const {
+    let {
       inputs,
       filterComplex,
       videoFilter,
@@ -131,11 +132,19 @@ export class RendiBackend implements FFmpegBackend {
       verbose,
     } = options;
 
+    // Synthetic-only commands (e.g. fill-color, gradient clips) produce a
+    // filterComplex that uses lavfi sources like `color=...` with zero file
+    // inputs.  Rendi requires at least one input_file, so we upload a tiny
+    // 1×1 transparent PNG as a dummy input that ffmpeg silently ignores
+    // (the filterComplex never references [0:v]).
     if (!inputs || inputs.length === 0) {
-      throw new Error(
-        "Rendi backend requires at least one input file. " +
-          "Ensure your render contains media elements (Video, Image, etc.) with valid sources.",
-      );
+      if (!filterComplex) {
+        throw new Error(
+          "Rendi backend requires at least one input file or a filterComplex with synthetic sources.",
+        );
+      }
+      const dummyUrl = await this.getOrCreateDummyInput();
+      inputs = [dummyUrl];
     }
 
     const inputFiles: Record<string, string> = {};
@@ -281,6 +290,31 @@ export class RendiBackend implements FFmpegBackend {
     }
     const file = File.fromPath(input);
     return file.upload(this.storage);
+  }
+
+  /** Cached URL of the 1×1 dummy PNG so we upload it at most once per backend instance. */
+  private dummyInputUrl: string | null = null;
+
+  /**
+   * Generate a 1×1 transparent PNG via sharp, upload it to storage, and cache
+   * the URL.  Used as a placeholder input for Rendi when the ffmpeg command
+   * has only synthetic (lavfi) sources and no real file inputs.
+   */
+  private async getOrCreateDummyInput(): Promise<string> {
+    if (this.dummyInputUrl) return this.dummyInputUrl;
+    const png = await sharp({
+      create: {
+        width: 1,
+        height: 1,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const key = "internal/rendi-dummy-1x1.png";
+    this.dummyInputUrl = await this.storage.upload(png, key, "image/png");
+    return this.dummyInputUrl;
   }
 
   private buildCommandString(args: string[]): string {
