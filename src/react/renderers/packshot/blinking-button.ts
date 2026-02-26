@@ -4,7 +4,6 @@ import type {
   FFmpegBackend,
   FFmpegOutput,
 } from "../../../ai-sdk/providers/editly/backends/types";
-import { uploadBuffer } from "../../../providers/storage";
 
 export interface BlinkingButtonOptions {
   text: string;
@@ -107,18 +106,15 @@ function oscExpr(tv: string, P: number): string {
 }
 
 /**
- * Resolve a local file path to a URL for cloud backends.
+ * Resolve a local file path to a string path/URL via the backend.
  * Local backend: returns the path as-is.
- * Cloud backend: uploads the file and returns the URL.
+ * Cloud backend (Rendi): uploads via its StorageProvider and returns the URL.
  */
 async function resolvePathForBackend(
   localPath: string,
   backend: FFmpegBackend,
 ): Promise<string> {
-  if (backend.name === "local") return localPath;
-  const buffer = await Bun.file(localPath).arrayBuffer();
-  const key = `tmp/${Date.now()}-${localPath.split("/").pop()}`;
-  return uploadBuffer(buffer, key, "image/png");
+  return backend.resolvePath(localPath);
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
