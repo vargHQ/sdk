@@ -1,5 +1,8 @@
 import { editly } from "../../ai-sdk/providers/editly";
-import type { FFmpegOutput } from "../../ai-sdk/providers/editly/backends/types";
+import type {
+  FFmpegBackend,
+  FFmpegOutput,
+} from "../../ai-sdk/providers/editly/backends/types";
 import type {
   Clip,
   ImageOverlayLayer,
@@ -9,27 +12,21 @@ import type {
   SizeValue,
   TitleLayer,
 } from "../../ai-sdk/providers/editly/types";
-import { uploadBuffer } from "../../providers/storage";
 import type { PackshotProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { createBlinkingButton } from "./packshot/blinking-button";
 
 /**
- * Resolve an FFmpegOutput to a string path/URL, uploading local files for cloud backends.
+ * Resolve an FFmpegOutput to a string path/URL via the backend.
+ * Local backend returns local paths; cloud backends upload and return URLs.
  */
 async function resolveInputMaybeUpload(
   input: FFmpegOutput,
-  shouldUpload: boolean,
+  backend: FFmpegBackend,
 ): Promise<string> {
   if (input.type === "url") return input.url;
-  if (!shouldUpload) return input.path;
-  const buffer = await Bun.file(input.path).arrayBuffer();
-  return uploadBuffer(
-    buffer,
-    `tmp/${Date.now()}-${input.path.split("/").pop()}`,
-    "application/octet-stream",
-  );
+  return backend.resolvePath(input.path);
 }
 
 /**
@@ -207,12 +204,11 @@ export async function renderPackshot(
     );
 
     // Composite button overlay at correct position on base video via backend
-    const isCloud = ctx.backend.name !== "local";
     const baseInput = await resolveInputMaybeUpload(
       { type: "file", path: basePath },
-      isCloud,
+      ctx.backend,
     );
-    const btnInput = await resolveInputMaybeUpload(btn.output, isCloud);
+    const btnInput = await resolveInputMaybeUpload(btn.output, ctx.backend);
 
     const finalPath = `/tmp/varg-packshot-final-${Date.now()}.mp4`;
 

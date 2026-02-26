@@ -3,28 +3,17 @@ import type {
   FFmpegBackend,
   FFmpegOutput,
 } from "../../ai-sdk/providers/editly/backends/types";
-import { uploadBuffer } from "../../providers/storage";
 
 /**
- * Resolves an FFmpegOutput to a string path/URL, uploading local files if needed.
- *
- * - URL input → returns URL as-is
- * - File input + shouldUpload=false → returns local path
- * - File input + shouldUpload=true → uploads to storage, returns URL
+ * Resolves an FFmpegOutput to a string path/URL via the backend.
+ * Local backend returns local paths; cloud backends upload and return URLs.
  */
 async function resolveInputPathMaybeUpload(
   input: FFmpegOutput,
-  options: { shouldUpload: boolean },
+  backend: FFmpegBackend,
 ): Promise<string> {
   if (input.type === "url") return input.url;
-  if (!options.shouldUpload) return input.path;
-
-  const buffer = await Bun.file(input.path).arrayBuffer();
-  return uploadBuffer(
-    buffer,
-    `tmp/${Date.now()}-${input.path.split("/").pop()}`,
-    "application/octet-stream",
-  );
+  return backend.resolvePath(input.path);
 }
 
 export interface CaptionOverlayOptions {
@@ -69,22 +58,15 @@ export async function burnCaptions(
   const { video, assPath, outputPath = "output.mp4", verbose } = options;
   const captions: FFmpegOutput = { type: "file", path: assPath };
 
-  // Resolve backend first so we can check if it's cloud or local
-  // TODO: This is a hack - we should abstract backend capabilities (e.g., supportsLocalPaths)
-  // instead of checking the name directly. For now, we assume "local" is the only local backend.
   const backend = options.backend ?? localBackend;
-  const isCloud = backend.name !== "local";
 
-  const videoInput = await resolveInputPathMaybeUpload(video, {
-    shouldUpload: isCloud,
-  });
-  const assInput = await resolveInputPathMaybeUpload(captions, {
-    shouldUpload: isCloud,
-  });
+  const videoInput = await resolveInputPathMaybeUpload(video, backend);
+  const assInput = await resolveInputPathMaybeUpload(captions, backend);
 
   // For cloud backends (Rendi): pass raw URL so replaceWithPlaceholders() can match
   // and replace with {{in_X}} placeholder. Rendi downloads inputs and provides local paths.
   // For local backend: escape for FFmpeg filter syntax (backslashes and colons)
+  const isCloud = backend.name !== "local";
   const subtitlesPath = isCloud
     ? assInput
     : assInput.replace(/\\/g, "\\\\").replace(/:/g, "\\:");
