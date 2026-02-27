@@ -207,7 +207,16 @@ export interface SwipeProps extends BaseProps {
 }
 
 export interface PackshotProps extends BaseProps {
-  background?: VargElement<"image"> | string;
+  /**
+   * Packshot background.
+   *
+   * - `string` — treated as a solid fill color (e.g. `"#000000"`).
+   * - `VargElement<"image">` — a generated or static image, rendered and
+   *   used as a full-bleed cover background.
+   * - `VargElement<"video">` — a generated or static video, rendered and
+   *   used as a looping full-bleed cover background.
+   */
+  background?: VargElement<"image"> | VargElement<"video"> | string;
   logo?: string;
   /**
    * Logo position on screen.
