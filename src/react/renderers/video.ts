@@ -161,6 +161,10 @@ export async function renderVideo(
       prompt: promptText,
     });
 
+    if (!file.url && ctx.storage) {
+      await file.upload(ctx.storage);
+    }
+
     ctx.generatedFiles.push(file);
 
     return file;

@@ -153,6 +153,7 @@ export async function renderRoot(
     height: props.height ?? 1080,
     fps: props.fps ?? 30,
     cache: cacheStorage,
+    storage: options.storage,
     generateImage: wrapGenerateImage,
     generateVideo: wrapGenerateVideo,
     tempFiles,
