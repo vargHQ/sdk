@@ -14,7 +14,8 @@ import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
 const VOICES: Record<string, string> = {
   rachel: "21m00Tcm4TlvDq8ikWAM",
   domi: "AZnzlk1XvdvUeBnXmlld",
-  bella: "EXAVITQu4vr4xnSDxMaL",
+  sarah: "EXAVITQu4vr4xnSDxMaL",
+  bella: "EXAVITQu4vr4xnSDxMaL", // alias — ElevenLabs calls this voice "Sarah"
   antoni: "ErXwobaYiN019PkySvjV",
   elli: "MF3mGyEYCl7XYWbV9V6O",
   josh: "TxGEqnHWrfWFTfGW9XjX",

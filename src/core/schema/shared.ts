@@ -25,9 +25,12 @@ export type Resolution = z.infer<typeof resolutionSchema>;
 export const voiceNameSchema = z.enum([
   "rachel",
   "domi",
-  "bella",
+  "sarah",
+  "bella", // alias for sarah
   "antoni",
+  "elli",
   "josh",
+  "arnold",
   "adam",
   "sam",
 ]);

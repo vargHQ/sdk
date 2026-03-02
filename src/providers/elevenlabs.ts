@@ -190,7 +190,8 @@ export class ElevenLabsProvider extends BaseProvider {
 export const VOICES = {
   RACHEL: "21m00Tcm4TlvDq8ikWAM",
   DOMI: "AZnzlk1XvdvUeBnXmlld",
-  BELLA: "EXAVITQu4vr4xnSDxMaL",
+  SARAH: "EXAVITQu4vr4xnSDxMaL",
+  BELLA: "EXAVITQu4vr4xnSDxMaL", // alias — ElevenLabs calls this voice "Sarah"
   ANTONI: "ErXwobaYiN019PkySvjV",
   ELLI: "MF3mGyEYCl7XYWbV9V6O",
   JOSH: "TxGEqnHWrfWFTfGW9XjX",
