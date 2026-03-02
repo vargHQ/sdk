@@ -68,6 +68,8 @@ export const elevenLabsModelSchema = z.enum([
   "eleven_multilingual_v2",
   "eleven_monolingual_v1",
   "eleven_turbo_v2",
+  "eleven_flash_v2",
+  "eleven_flash_v2_5",
 ]);
 export type ElevenLabsModel = z.infer<typeof elevenLabsModelSchema>;
 
