@@ -30,7 +30,7 @@ export async function renderSpeech(
   const { audio } = await generateSpeech({
     model,
     text,
-    voice: props.voice ?? "adam",
+    voice: props.voice ?? "rachel",
     cacheKey,
   } as Parameters<typeof generateSpeech>[0]);
 
