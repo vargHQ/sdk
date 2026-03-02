@@ -11,6 +11,8 @@ export function renderTitle(element: VargElement<"title">): TitleLayer {
     text,
     textColor: props.color,
     position: props.position,
+    outline: props.outline,
+    outlineColor: props.outlineColor,
     start: props.start,
     stop: props.end,
   };

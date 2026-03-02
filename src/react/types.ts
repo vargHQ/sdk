@@ -158,6 +158,8 @@ export interface TalkingHeadProps extends BaseProps {
 export interface TitleProps extends BaseProps {
   position?: Position;
   color?: string;
+  outline?: number;
+  outlineColor?: string;
   start?: number;
   end?: number;
   children?: string;
