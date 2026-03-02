@@ -642,9 +642,13 @@ export function getTitleFilter(
     ? `:fontfile='${escapeDrawText(layer.fontPath)}'`
     : "";
   const fontFamily = layer.fontFamily ? `:font='${layer.fontFamily}'` : "";
+  const border =
+    layer.outline != null
+      ? `:borderw=${layer.outline}:bordercolor=${layer.outlineColor ?? "black"}`
+      : "";
   const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
 
-  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}${fontFile}${fontFamily}${enable}`;
+  return `[${baseLabel}]drawtext=text='${text}':fontsize=${fontSize}:fontcolor=${color}:x=${x}:y=${y}${border}${fontFile}${fontFamily}${enable}`;
 }
 
 export function getSubtitleFilter(

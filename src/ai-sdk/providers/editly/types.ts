@@ -87,6 +87,8 @@ export interface TextLayer extends BaseLayer {
   textColor?: string;
   fontPath?: string;
   fontFamily?: string;
+  outline?: number;
+  outlineColor?: string;
 }
 
 /**
