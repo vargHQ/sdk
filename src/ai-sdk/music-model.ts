@@ -29,6 +29,12 @@ export type MusicModelV3CallOptions = {
   duration: number | undefined;
 
   /**
+   * Seed for reproducible generation.
+   * `undefined` will use a random seed.
+   */
+  seed: number | undefined;
+
+  /**
    * Additional provider-specific options.
    */
   providerOptions: SharedV3ProviderOptions;
