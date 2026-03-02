@@ -25,16 +25,13 @@ const VOICES: Record<string, string> = {
 };
 
 const TTS_MODELS: Record<string, string> = {
-  // Canonical model IDs
+  // First-class model IDs (pass directly to ElevenLabs API)
   eleven_multilingual_v2: "eleven_multilingual_v2",
+  eleven_v3: "eleven_v3",
   eleven_turbo_v2: "eleven_turbo_v2",
-  eleven_monolingual_v1: "eleven_monolingual_v1",
-  // Current-generation aliases (ElevenLabs renamed turbo -> flash)
-  eleven_flash_v2: "eleven_turbo_v2",
+  eleven_turbo_v2_5: "eleven_turbo_v2_5",
+  eleven_flash_v2: "eleven_flash_v2",
   eleven_flash_v2_5: "eleven_flash_v2_5",
-  eleven_multilingual_v3: "eleven_multilingual_v2", // alias until v3 is a distinct model
-  flash: "eleven_turbo_v2",
-  flash_v2: "eleven_turbo_v2",
   // Legacy aliases
   multilingual_v2: "eleven_multilingual_v2",
   turbo_v2: "eleven_turbo_v2",

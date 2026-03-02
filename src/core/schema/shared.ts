@@ -66,8 +66,9 @@ export type SoulQuality = z.infer<typeof soulQualitySchema>;
 // ElevenLabs TTS model IDs
 export const elevenLabsModelSchema = z.enum([
   "eleven_multilingual_v2",
-  "eleven_monolingual_v1",
+  "eleven_v3",
   "eleven_turbo_v2",
+  "eleven_turbo_v2_5",
   "eleven_flash_v2",
   "eleven_flash_v2_5",
 ]);
