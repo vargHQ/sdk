@@ -164,6 +164,8 @@ const LIPSYNC_MODELS: Record<string, string> = {
   "sync-v2": "fal-ai/sync-lipsync",
   "sync-v2-pro": "fal-ai/sync-lipsync/v2",
   lipsync: "fal-ai/sync-lipsync",
+  "omnihuman-v1.5": "fal-ai/bytedance/omnihuman/v1.5",
+  "veed-fabric-1.0": "veed/fabric-1.0",
 };
 
 const IMAGE_MODELS: Record<string, string> = {
@@ -474,9 +476,12 @@ class FalVideoModel implements VideoModelV3 {
     };
 
     if (isLipsync) {
-      // Lipsync: video + audio input
+      // Lipsync: either (video + audio) or (image + audio), depending on model
       const videoFile = files?.find((f) =>
         getMediaType(f)?.startsWith("video/"),
+      );
+      const imageFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("image/"),
       );
       const audioFile = files?.find((f) =>
         getMediaType(f)?.startsWith("audio/"),
@@ -484,9 +489,16 @@ class FalVideoModel implements VideoModelV3 {
 
       if (videoFile) {
         input.video_url = await fileToUrl(videoFile);
+      } else if (imageFile) {
+        input.image_url = await fileToUrl(imageFile);
       }
       if (audioFile) {
         input.audio_url = await fileToUrl(audioFile);
+      }
+
+      // OmniHuman supports an optional prompt
+      if (prompt && this.modelId === "omnihuman-v1.5") {
+        input.prompt = prompt;
       }
     } else if (isMotionControl) {
       // Motion control: image + reference video input
