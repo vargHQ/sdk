@@ -269,6 +269,12 @@ function buildBaseClipFilter(
     const layer = clipLocalOverlays[i];
     if (!layer) continue;
 
+    if (!baseLabel) {
+      throw new Error(
+        `Clip ${clipIndex} is missing a base layer for overlay placement — ensure it has at least one visual layer (video, image, or fill-color)`,
+      );
+    }
+
     const overlayFilter = getVideoFilter(
       layer,
       inputIdx,
@@ -283,7 +289,7 @@ function buildBaseClipFilter(
 
     const outputLabel = `clip${clipIndex}ov${i}`;
     const positionFilter = getOverlayFilter(
-      baseLabel!,
+      baseLabel,
       overlayFilter.outputLabel,
       layer,
       width,

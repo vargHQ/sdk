@@ -40,7 +40,9 @@ async function testGrokTextToVideo() {
 
   // Save the video
   const outputPath = join(import.meta.dir, "../output/grok-t2v-test.mp4");
-  await writeFile(outputPath, result.videos[0]!);
+  const firstVideo = result.videos[0];
+  if (!firstVideo) throw new Error("No video returned from model");
+  await writeFile(outputPath, firstVideo);
   console.log(`Video saved to: ${outputPath}`);
 
   return outputPath;
@@ -88,7 +90,9 @@ async function testGrokImageToVideo() {
 
   // Save the video
   const outputPath = join(import.meta.dir, "../output/grok-i2v-test.mp4");
-  await writeFile(outputPath, result.videos[0]!);
+  const firstVideo = result.videos[0];
+  if (!firstVideo) throw new Error("No video returned from model");
+  await writeFile(outputPath, firstVideo);
   console.log(`Video saved to: ${outputPath}`);
 
   return outputPath;
@@ -136,7 +140,9 @@ async function testGrokEditVideo() {
 
   // Save the video
   const outputPath = join(import.meta.dir, "../output/grok-edit-test.mp4");
-  await writeFile(outputPath, result.videos[0]!);
+  const firstVideo = result.videos[0];
+  if (!firstVideo) throw new Error("No video returned from model");
+  await writeFile(outputPath, firstVideo);
   console.log(`Video saved to: ${outputPath}`);
 
   return outputPath;
