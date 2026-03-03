@@ -22,7 +22,7 @@ const veedFabricInputSchema = z.object({
 const veedFabricOutputSchema = z.object({
   video: z.object({
     content_type: z.string().optional(),
-    url: z.string(),
+    url: z.string().url(),
   }),
 });
 
