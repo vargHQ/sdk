@@ -15,6 +15,11 @@ import { ffmpegProvider } from "../../providers/ffmpeg";
 
 // Input schema with Zod
 const syncInputSchema = z.object({
+  model: z
+    .enum(["wan-25", "omnihuman-v1.5", "veed-fabric-1.0"])
+    .optional()
+    .default("wan-25")
+    .describe("Lip sync / avatar backend model"),
   image: filePathSchema.describe("Input image"),
   audio: filePathSchema.describe("Audio file"),
   prompt: z.string().describe("Description of the scene"),
@@ -40,13 +45,14 @@ export const definition: ActionDefinition<typeof schema> = {
   schema,
   routes: [],
   execute: async (inputs) => {
-    const { image, audio, prompt, duration, resolution } = inputs;
-    return lipsync({ image, audio, prompt, duration, resolution });
+    const { model, image, audio, prompt, duration, resolution } = inputs;
+    return lipsync({ model, image, audio, prompt, duration, resolution });
   },
 };
 
 // Types
 export interface LipsyncOptions {
+  model?: "wan-25" | "omnihuman-v1.5" | "veed-fabric-1.0";
   image: string;
   audio: string;
   prompt: string;
@@ -65,20 +71,56 @@ export interface Wav2LipOptions {
 }
 
 /**
- * Generate lip-synced video using Wan-25
+ * Generate lip-synced / avatar video using selected backend.
  */
 export async function lipsync(options: LipsyncOptions): Promise<LipsyncResult> {
-  const { image, audio, prompt, duration = "5", resolution = "480p" } = options;
-
-  console.log("[sync] generating lip-synced video with wan-25...");
-
-  const result = await falProvider.wan25({
-    imageUrl: image,
-    audioUrl: audio,
+  const {
+    model = "wan-25",
+    image,
+    audio,
     prompt,
-    duration,
-    resolution,
-  });
+    duration = "5",
+    resolution = "480p",
+  } = options;
+
+  console.log(`[sync] generating lip-synced video with ${model}...`);
+
+  if (model === "omnihuman-v1.5" && resolution === "480p") {
+    console.warn(
+      "[sync] omnihuman-v1.5 does not support 480p; using 720p instead",
+    );
+  }
+  if (model === "veed-fabric-1.0" && resolution === "1080p") {
+    console.warn(
+      "[sync] veed-fabric-1.0 does not support 1080p; using 720p instead",
+    );
+  }
+
+  const result =
+    model === "omnihuman-v1.5"
+      ? await falProvider.omnihuman15({
+          imageUrl: image,
+          audioUrl: audio,
+          prompt,
+          resolution: (resolution === "480p" ? "720p" : resolution) as
+            | "720p"
+            | "1080p",
+        })
+      : model === "veed-fabric-1.0"
+        ? await falProvider.veedFabric10({
+            imageUrl: image,
+            audioUrl: audio,
+            resolution: (resolution === "1080p" ? "720p" : resolution) as
+              | "480p"
+              | "720p",
+          })
+        : await falProvider.wan25({
+            imageUrl: image,
+            audioUrl: audio,
+            prompt,
+            duration,
+            resolution,
+          });
 
   const videoUrl = result.data?.video?.url;
   if (!videoUrl) {

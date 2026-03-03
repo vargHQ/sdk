@@ -332,6 +332,86 @@ export class FalProvider extends BaseProvider {
     return result;
   }
 
+  async omnihuman15(args: {
+    imageUrl: string;
+    audioUrl: string;
+    prompt?: string;
+    turboMode?: boolean;
+    resolution?: "720p" | "1080p";
+  }) {
+    const modelId: string = "fal-ai/bytedance/omnihuman/v1.5";
+
+    console.log(`[fal] starting omnihuman v1.5: ${modelId}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+    const audioUrl = await ensureUrl(args.audioUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const input: Record<string, unknown> = {
+      ...(args.prompt ? { prompt: args.prompt } : {}),
+      image_url: imageUrl,
+      audio_url: audioUrl,
+      turbo_mode: args.turboMode ?? false,
+      resolution: args.resolution ?? "1080p",
+    };
+
+    const result = await fal.subscribe(modelId, {
+      input,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  async veedFabric10(args: {
+    imageUrl: string;
+    audioUrl: string;
+    resolution: "480p" | "720p";
+  }) {
+    const modelId: string = "veed/fabric-1.0";
+
+    console.log(`[fal] starting veed fabric 1.0: ${modelId}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+    const audioUrl = await ensureUrl(args.audioUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const input: Record<string, unknown> = {
+      image_url: imageUrl,
+      audio_url: audioUrl,
+      resolution: args.resolution,
+    };
+
+    const result = await fal.subscribe(modelId, {
+      input,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
   async textToMusic(args: {
     prompt?: string;
     tags?: string[];
@@ -584,5 +664,10 @@ export const imageToImage = (
 ) => falProvider.imageToImage(args);
 export const wan25 = (args: Parameters<FalProvider["wan25"]>[0]) =>
   falProvider.wan25(args);
+export const omnihuman15 = (args: Parameters<FalProvider["omnihuman15"]>[0]) =>
+  falProvider.omnihuman15(args);
+export const veedFabric10 = (
+  args: Parameters<FalProvider["veedFabric10"]>[0],
+) => falProvider.veedFabric10(args);
 export const textToMusic = (args: Parameters<FalProvider["textToMusic"]>[0]) =>
   falProvider.textToMusic(args);
