@@ -175,7 +175,7 @@ const IMAGE_MODELS: Record<string, string> = {
   "recraft-v3": "fal-ai/recraft/v3/text-to-image",
   "nano-banana-pro": "fal-ai/nano-banana-pro",
   "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
-  "nano-banana-2": "fal-ai/nano-banana-2/edit",
+  "nano-banana-2": "fal-ai/nano-banana-2",
   "nano-banana-2/edit": "fal-ai/nano-banana-2/edit",
   "seedream-v4.5/edit": "fal-ai/bytedance/seedream/v4.5/edit",
   // Qwen Image 2 - text-to-image and image-to-image editing (standard + pro)
