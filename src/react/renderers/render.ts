@@ -236,6 +236,18 @@ export async function renderRoot(
     }
   }
 
+  const concurrency =
+    options.concurrency === undefined
+      ? Number.POSITIVE_INFINITY
+      : options.concurrency;
+
+  if (
+    concurrency !== Number.POSITIVE_INFINITY &&
+    (!Number.isInteger(concurrency) || concurrency < 1)
+  ) {
+    throw new Error("render option `concurrency` must be a positive integer");
+  }
+
   const clipResults = await pMap(
     clipElements,
     async (clipElement, i) => {
@@ -253,7 +265,7 @@ export async function renderRoot(
         };
       }
     },
-    { concurrency: options.concurrency ?? Number.POSITIVE_INFINITY },
+    { concurrency },
   );
 
   const failures = clipResults.filter(
