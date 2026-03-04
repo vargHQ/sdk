@@ -285,6 +285,8 @@ export interface RenderOptions {
   defaults?: DefaultModels;
   backend?: FFmpegBackend;
   storage?: StorageProvider;
+  /** Max concurrent clip renders. Defaults to unlimited. */
+  concurrency?: number;
 }
 
 // Re-export from file module for convenience

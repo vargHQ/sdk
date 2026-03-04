@@ -1,5 +1,6 @@
 import type { ImageModelV3 } from "@ai-sdk/provider";
 import { generateImage, wrapImageModel } from "ai";
+import pMap from "p-map";
 import { type CacheStorage, withCache } from "../../ai-sdk/cache";
 import type { File, File as VargFile } from "../../ai-sdk/file";
 import { fileCache } from "../../ai-sdk/file-cache";
@@ -9,7 +10,6 @@ import {
   placeholderFallbackMiddleware,
   wrapVideoModel,
 } from "../../ai-sdk/middleware";
-
 import { editly, localBackend } from "../../ai-sdk/providers/editly";
 import type {
   AudioTrack,
@@ -236,15 +236,30 @@ export async function renderRoot(
     }
   }
 
-  const clipResults = await Promise.allSettled(
-    clipElements.map((clipElement) => renderClip(clipElement, ctx)),
+  const clipResults = await pMap(
+    clipElements,
+    async (clipElement, i) => {
+      try {
+        return {
+          status: "fulfilled" as const,
+          value: await renderClip(clipElement, ctx),
+          index: i,
+        };
+      } catch (reason) {
+        return {
+          status: "rejected" as const,
+          reason: reason as Error,
+          index: i,
+        };
+      }
+    },
+    { concurrency: options.concurrency ?? Number.POSITIVE_INFINITY },
   );
 
-  const failures = clipResults
-    .map((r, i) =>
-      r.status === "rejected" ? { index: i, reason: r.reason } : null,
-    )
-    .filter(Boolean) as { index: number; reason: Error }[];
+  const failures = clipResults.filter(
+    (r): r is Extract<typeof r, { status: "rejected" }> =>
+      r.status === "rejected",
+  );
 
   if (failures.length > 0) {
     const successCount = clipResults.length - failures.length;
@@ -266,11 +281,10 @@ export async function renderRoot(
     );
   }
 
-  const renderedClips = clipResults.map(
-    (r) =>
-      (r as PromiseFulfilledResult<Awaited<ReturnType<typeof renderClip>>>)
-        .value,
-  );
+  const renderedClips = clipResults.map((r) => {
+    if (r.status !== "fulfilled") throw new Error("unexpected");
+    return r.value;
+  });
 
   const clips: Clip[] = [];
   let currentTime = 0;
