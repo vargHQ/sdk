@@ -54,6 +54,23 @@ export class FalProvider extends BaseProvider {
         return "fal-ai/nano-banana-pro/edit";
       }
     }
+    // Nano Banana 2: always route to /edit endpoint (edit-only model)
+    if (model === "fal-ai/nano-banana-2") {
+      return "fal-ai/nano-banana-2/edit";
+    }
+    // Qwen Image 2: route to /edit endpoint when image_urls are provided
+    if (model === "fal-ai/qwen-image-2/text-to-image") {
+      const imageUrls = inputs.image_urls as string[] | undefined;
+      if (imageUrls && imageUrls.length > 0) {
+        return "fal-ai/qwen-image-2/edit";
+      }
+    }
+    if (model === "fal-ai/qwen-image-2/pro/text-to-image") {
+      const imageUrls = inputs.image_urls as string[] | undefined;
+      if (imageUrls && imageUrls.length > 0) {
+        return "fal-ai/qwen-image-2/pro/edit";
+      }
+    }
     return model;
   }
 
