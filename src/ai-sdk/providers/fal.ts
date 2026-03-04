@@ -175,9 +175,20 @@ const IMAGE_MODELS: Record<string, string> = {
   "recraft-v3": "fal-ai/recraft/v3/text-to-image",
   "nano-banana-pro": "fal-ai/nano-banana-pro",
   "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
+  "nano-banana-2": "fal-ai/nano-banana-2/edit",
+  "nano-banana-2/edit": "fal-ai/nano-banana-2/edit",
   "seedream-v4.5/edit": "fal-ai/bytedance/seedream/v4.5/edit",
+  // Qwen Image 2 - text-to-image and image-to-image editing (standard + pro)
+  "qwen-image-2": "fal-ai/qwen-image-2/text-to-image",
+  "qwen-image-2/edit": "fal-ai/qwen-image-2/edit",
+  "qwen-image-2-pro": "fal-ai/qwen-image-2/pro/text-to-image",
+  "qwen-image-2-pro/edit": "fal-ai/qwen-image-2/pro/edit",
   // Qwen Image Edit 2511 Multiple Angles - camera angle adjustment
   "qwen-angles": "fal-ai/qwen-image-edit-2511-multiple-angles",
+  // Recraft V4 Pro - text-to-image
+  "recraft-v4-pro": "fal-ai/recraft/v4/pro/text-to-image",
+  // Reve - image editing
+  "reve/edit": "fal-ai/reve/edit",
 };
 
 // Models that use image_size instead of aspect_ratio
@@ -186,10 +197,18 @@ const IMAGE_SIZE_MODELS = new Set([
   "flux-dev",
   "flux-pro",
   "seedream-v4.5/edit",
+  "qwen-image-2",
+  "qwen-image-2/edit",
+  "qwen-image-2-pro",
+  "qwen-image-2-pro/edit",
+  "recraft-v4-pro",
 ]);
 
 // Qwen Angles model - image-to-image with camera angle adjustment
 const QWEN_ANGLES_MODEL = "qwen-angles";
+
+// Models that use singular image_url instead of image_urls array
+const SINGULAR_IMAGE_URL_MODELS = new Set(["reve/edit"]);
 
 // Map aspect ratio to image_size for Qwen Angles (base dimension 1024)
 const ASPECT_RATIO_TO_QWEN_SIZE: Record<
@@ -848,7 +867,13 @@ class FalImageModel implements ImageModelV3 {
         modelId: this.modelId,
         fileHashes,
       });
-      input.image_urls = await pMap(files, fileToUrl, { concurrency: 2 });
+      const imageUrls = await pMap(files, fileToUrl, { concurrency: 2 });
+      // Reve uses singular image_url instead of image_urls array
+      if (SINGULAR_IMAGE_URL_MODELS.has(this.modelId)) {
+        input.image_url = imageUrls[0];
+      } else {
+        input.image_urls = imageUrls;
+      }
     }
 
     if (isQwenAngles && !input.image_urls) {
