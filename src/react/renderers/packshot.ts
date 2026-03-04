@@ -11,11 +11,13 @@ import type {
   PositionObject,
   SizeValue,
   TitleLayer,
+  VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
 import type { PackshotProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { createBlinkingButton } from "./packshot/blinking-button";
+import { renderVideo } from "./video";
 
 /**
  * Resolve an FFmpegOutput to a string path/URL via the backend.
@@ -118,8 +120,23 @@ export async function renderPackshot(
         type: "fill-color" as const,
         color: props.background,
       });
+    } else if (props.background.type === "video") {
+      const bgFile = await renderVideo(
+        props.background as VargElement<"video">,
+        ctx,
+      );
+      const bgPath = await ctx.backend.resolvePath(bgFile);
+      const videoLayer: VideoLayer = {
+        type: "video",
+        path: bgPath,
+        resizeMode: "cover",
+      };
+      layers.push(videoLayer);
     } else {
-      const bgFile = await renderImage(props.background, ctx);
+      const bgFile = await renderImage(
+        props.background as VargElement<"image">,
+        ctx,
+      );
       const bgPath = await ctx.backend.resolvePath(bgFile);
       layers.push({
         type: "image" as const,
