@@ -64,6 +64,7 @@ export {
 } from "./providers/editly/rendi";
 export {
   createElevenLabs,
+  ELEVENLABS_DEFAULTS,
   type ElevenLabsProvider,
   elevenlabs,
   VOICES,

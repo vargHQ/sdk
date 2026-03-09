@@ -168,6 +168,12 @@ export interface ElevenLabsProviderSettings {
   apiKey?: string;
 }
 
+/** Default model IDs used when callers omit the modelId argument. */
+export const ELEVENLABS_DEFAULTS = {
+  speechModel: "eleven_turbo_v2",
+  musicModel: "music_v1",
+} as const;
+
 export interface ElevenLabsProvider extends ProviderV3 {
   speechModel(modelId?: string): SpeechModelV3;
   musicModel(modelId?: string): MusicModelV3;
@@ -184,10 +190,10 @@ export function createElevenLabs(
 
   return {
     specificationVersion: "v3",
-    speechModel(modelId = "eleven_turbo_v2") {
+    speechModel(modelId = ELEVENLABS_DEFAULTS.speechModel) {
       return new ElevenLabsSpeechModel(modelId, client);
     },
-    musicModel(modelId = "music_v1") {
+    musicModel(modelId = ELEVENLABS_DEFAULTS.musicModel) {
       return new ElevenLabsMusicModel(modelId, client);
     },
     languageModel(modelId: string): LanguageModelV3 {

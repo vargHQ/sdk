@@ -268,6 +268,8 @@ export class File {
       "video/mp4": ".mp4",
       "video/webm": ".webm",
       "video/quicktime": ".mov",
+      "text/x-ssa": ".ass",
+      "application/x-subrip": ".srt",
     };
     return extMap[this._mediaType] ?? "";
   }
@@ -290,6 +292,9 @@ function inferMediaType(path: string): string {
     mp4: "video/mp4",
     webm: "video/webm",
     mov: "video/quicktime",
+    ass: "text/x-ssa",
+    ssa: "text/x-ssa",
+    srt: "application/x-subrip",
   };
   return mimeTypes[ext ?? ""] ?? "application/octet-stream";
 }
