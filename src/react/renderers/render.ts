@@ -170,6 +170,30 @@ export async function renderRoot(
   const audioTracks: AudioTrack[] = [];
   let captionsResult: Awaited<ReturnType<typeof renderCaptions>> | undefined;
 
+  // Hoist <Captions> out of <Clip> elements — the AI often places them inside
+  // clips, but captions must be processed at the <Render> level to work.
+  const hoistedCaptions: VargElement<"captions">[] = [];
+  for (const child of element.children) {
+    if (!child || typeof child !== "object" || !("type" in child)) continue;
+    const childElement = child as VargElement;
+    if (childElement.type === "clip" && childElement.children) {
+      const kept: typeof childElement.children = [];
+      for (const clipChild of childElement.children) {
+        if (
+          clipChild &&
+          typeof clipChild === "object" &&
+          "type" in clipChild &&
+          (clipChild as VargElement).type === "captions"
+        ) {
+          hoistedCaptions.push(clipChild as VargElement<"captions">);
+        } else {
+          kept.push(clipChild);
+        }
+      }
+      childElement.children = kept;
+    }
+  }
+
   for (const child of element.children) {
     if (!child || typeof child !== "object" || !("type" in child)) continue;
 
@@ -203,6 +227,18 @@ export async function renderRoot(
       });
     } else if (childElement.type === "music") {
       musicElements.push(childElement as VargElement<"music">);
+    }
+  }
+
+  // Process any <Captions> that were hoisted from inside <Clip> elements
+  if (!captionsResult && hoistedCaptions.length > 0) {
+    const captionsElement = hoistedCaptions[0]!;
+    captionsResult = await renderCaptions(captionsElement, ctx);
+    if (captionsResult.audioPath) {
+      audioTracks.push({
+        path: captionsResult.audioPath,
+        mixVolume: 1,
+      });
     }
   }
 
