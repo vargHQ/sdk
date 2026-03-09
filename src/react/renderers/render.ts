@@ -175,13 +175,18 @@ export async function renderRoot(
   // clips, but captions must be processed at the <Render> level to work.
   // Track which clip each caption came from so we can apply the correct
   // timeline offset when stitching audio and ASS files.
-  const hoistedCaptions: {
+  // We shallow-clone clip elements to avoid mutating the caller's tree.
+  interface HoistedCaption {
     element: VargElement<"captions">;
     clipIndex: number;
-  }[] = [];
+  }
+  const hoistedCaptions: HoistedCaption[] = [];
+  const processedChildren: VargElement[] = [];
   let clipIndexCounter = 0;
   for (const child of element.children) {
-    if (!child || typeof child !== "object" || !("type" in child)) continue;
+    if (!child || typeof child !== "object" || !("type" in child)) {
+      continue;
+    }
     const childElement = child as VargElement;
     if (childElement.type === "clip") {
       const currentClipIndex = clipIndexCounter++;
@@ -202,15 +207,22 @@ export async function renderRoot(
             kept.push(clipChild);
           }
         }
-        childElement.children = kept;
+        // Shallow-clone the clip with captions removed, leaving the
+        // original element tree untouched for potential re-renders.
+        processedChildren.push({
+          ...childElement,
+          children: kept,
+        } as VargElement);
+      } else {
+        processedChildren.push(childElement);
       }
+    } else {
+      processedChildren.push(childElement);
     }
   }
 
-  for (const child of element.children) {
-    if (!child || typeof child !== "object" || !("type" in child)) continue;
-
-    const childElement = child as VargElement;
+  for (const child of processedChildren) {
+    const childElement = child;
 
     if (childElement.type === "clip") {
       clipElements.push(childElement as VargElement<"clip">);
@@ -405,6 +417,9 @@ export async function renderRoot(
       const assPath = hoistedCaptionsResults[0]!.assPath;
       mergedAssPath =
         offset > 0 ? shiftAssTimestamps(assPath, offset) : assPath;
+      if (mergedAssPath !== assPath) {
+        ctx.tempFiles.push(mergedAssPath);
+      }
     } else if (hoistedCaptionsResults.length > 1) {
       const segments = hoistedCaptionsResults.map((result, i) => ({
         assPath: result.assPath,
@@ -412,6 +427,7 @@ export async function renderRoot(
         styleSuffix: `_${i}`,
       }));
       mergedAssPath = mergeAssFiles(segments, ctx.width, ctx.height);
+      ctx.tempFiles.push(mergedAssPath);
     }
   }
 

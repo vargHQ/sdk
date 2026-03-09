@@ -23,12 +23,15 @@ function parseAssTime(ts: string): number {
 
 /**
  * Format seconds to ASS timestamp `H:MM:SS.CC`.
+ * Computes from total centiseconds to avoid overflow when rounding
+ * lands on 100 cs (e.g. 1.999s would otherwise produce `0:00:01.100`).
  */
 function formatAssTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const cs = Math.round((seconds % 1) * 100);
+  const totalCs = Math.max(0, Math.round(seconds * 100));
+  const h = Math.floor(totalCs / 360000);
+  const m = Math.floor((totalCs % 360000) / 6000);
+  const s = Math.floor((totalCs % 6000) / 100);
+  const cs = totalCs % 100;
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
