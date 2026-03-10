@@ -101,8 +101,12 @@ export {
 } from "./providers/together";
 export {
   falStorage,
+  limitedRetryUpload,
   type R2StorageOptions,
+  type RetryOptions,
   r2Storage,
+  r2UploadLimiter,
+  retryR2Upload,
   type StorageProvider,
 } from "./storage";
 export type {

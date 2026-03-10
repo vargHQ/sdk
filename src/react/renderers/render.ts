@@ -290,9 +290,7 @@ export async function renderRoot(
   }
 
   const concurrency =
-    options.concurrency === undefined
-      ? Number.POSITIVE_INFINITY
-      : options.concurrency;
+    options.concurrency === undefined ? 3 : options.concurrency;
 
   if (
     concurrency !== Number.POSITIVE_INFINITY &&
