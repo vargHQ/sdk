@@ -29,10 +29,11 @@ import type {
   VargElement,
 } from "../types";
 import { burnCaptions } from "./burn-captions";
-import { renderCaptions } from "./captions";
+import { type CaptionsResult, renderCaptions } from "./captions";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
+import { mergeAssFiles, shiftAssTimestamps } from "./merge-ass";
 import { renderMusic } from "./music";
 import {
   addTask,
@@ -172,32 +173,56 @@ export async function renderRoot(
 
   // Hoist <Captions> out of <Clip> elements — the AI often places them inside
   // clips, but captions must be processed at the <Render> level to work.
-  const hoistedCaptions: VargElement<"captions">[] = [];
+  // Track which clip each caption came from so we can apply the correct
+  // timeline offset when stitching audio and ASS files.
+  // We shallow-clone clip elements to avoid mutating the caller's tree.
+  interface HoistedCaption {
+    element: VargElement<"captions">;
+    clipIndex: number;
+  }
+  const hoistedCaptions: HoistedCaption[] = [];
+  const processedChildren: VargElement[] = [];
+  let clipIndexCounter = 0;
   for (const child of element.children) {
-    if (!child || typeof child !== "object" || !("type" in child)) continue;
+    if (!child || typeof child !== "object" || !("type" in child)) {
+      continue;
+    }
     const childElement = child as VargElement;
-    if (childElement.type === "clip" && childElement.children) {
-      const kept: typeof childElement.children = [];
-      for (const clipChild of childElement.children) {
-        if (
-          clipChild &&
-          typeof clipChild === "object" &&
-          "type" in clipChild &&
-          (clipChild as VargElement).type === "captions"
-        ) {
-          hoistedCaptions.push(clipChild as VargElement<"captions">);
-        } else {
-          kept.push(clipChild);
+    if (childElement.type === "clip") {
+      const currentClipIndex = clipIndexCounter++;
+      if (childElement.children) {
+        const kept: typeof childElement.children = [];
+        for (const clipChild of childElement.children) {
+          if (
+            clipChild &&
+            typeof clipChild === "object" &&
+            "type" in clipChild &&
+            (clipChild as VargElement).type === "captions"
+          ) {
+            hoistedCaptions.push({
+              element: clipChild as VargElement<"captions">,
+              clipIndex: currentClipIndex,
+            });
+          } else {
+            kept.push(clipChild);
+          }
         }
+        // Shallow-clone the clip with captions removed, leaving the
+        // original element tree untouched for potential re-renders.
+        processedChildren.push({
+          ...childElement,
+          children: kept,
+        } as VargElement);
+      } else {
+        processedChildren.push(childElement);
       }
-      childElement.children = kept;
+    } else {
+      processedChildren.push(childElement);
     }
   }
 
-  for (const child of element.children) {
-    if (!child || typeof child !== "object" || !("type" in child)) continue;
-
-    const childElement = child as VargElement;
+  for (const child of processedChildren) {
+    const childElement = child;
 
     if (childElement.type === "clip") {
       clipElements.push(childElement as VargElement<"clip">);
@@ -230,17 +255,9 @@ export async function renderRoot(
     }
   }
 
-  // Process any <Captions> that were hoisted from inside <Clip> elements
-  if (!captionsResult && hoistedCaptions.length > 0) {
-    const captionsElement = hoistedCaptions[0]!;
-    captionsResult = await renderCaptions(captionsElement, ctx);
-    if (captionsResult.audioPath) {
-      audioTracks.push({
-        path: captionsResult.audioPath,
-        mixVolume: 1,
-      });
-    }
-  }
+  // Hoisted captions are processed AFTER clip timeline offsets are computed
+  // (see below) so that each caption's audio can be delayed to the correct
+  // clip start time and ASS timestamps can be shifted accordingly.
 
   const renderedOverlays: RenderedOverlay[] = [];
   for (const overlay of overlayElements) {
@@ -335,6 +352,7 @@ export async function renderRoot(
   });
 
   const clips: Clip[] = [];
+  const clipStartOffsets: number[] = [];
   let currentTime = 0;
 
   for (let i = 0; i < clipElements.length; i++) {
@@ -346,6 +364,8 @@ export async function renderRoot(
     const clipProps = clipElement.props as ClipProps;
     const clipDuration =
       typeof clipProps.duration === "number" ? clipProps.duration : 3;
+
+    clipStartOffsets.push(currentTime);
 
     for (const overlay of renderedOverlays) {
       const overlayLayer: VideoLayer = {
@@ -370,6 +390,54 @@ export async function renderRoot(
   }
 
   const totalDuration = currentTime;
+
+  // Process any <Captions> that were hoisted from inside <Clip> elements.
+  // Now that we know clipStartOffsets, each caption's audio can be delayed
+  // and ASS timestamps shifted to the correct position in the timeline.
+  const hoistedCaptionsResults: CaptionsResult[] = [];
+  let mergedAssPath: string | undefined;
+
+  if (captionsResult && hoistedCaptions.length > 0) {
+    console.warn(
+      `\x1b[33m⚠ Found both a Render-level <Captions> and ${hoistedCaptions.length} clip-level <Captions>. ` +
+        "Clip-level captions will be ignored — move all <Captions> inside clips, " +
+        "or use a single <Captions> at the Render level.\x1b[0m",
+    );
+  }
+
+  if (!captionsResult && hoistedCaptions.length > 0) {
+    for (const { element: captionsElement, clipIndex } of hoistedCaptions) {
+      const result = await renderCaptions(captionsElement, ctx);
+      hoistedCaptionsResults.push(result);
+
+      if (result.audioPath) {
+        audioTracks.push({
+          path: result.audioPath,
+          start: clipStartOffsets[clipIndex] ?? 0,
+          mixVolume: 1,
+        });
+      }
+    }
+
+    // Merge ASS files: shift timestamps by each clip's start offset
+    if (hoistedCaptionsResults.length === 1) {
+      const offset = clipStartOffsets[hoistedCaptions[0]!.clipIndex] ?? 0;
+      const assPath = hoistedCaptionsResults[0]!.assPath;
+      mergedAssPath =
+        offset > 0 ? shiftAssTimestamps(assPath, offset) : assPath;
+      if (mergedAssPath !== assPath) {
+        ctx.tempFiles.push(mergedAssPath);
+      }
+    } else if (hoistedCaptionsResults.length > 1) {
+      const segments = hoistedCaptionsResults.map((result, i) => ({
+        assPath: result.assPath,
+        timeOffset: clipStartOffsets[hoistedCaptions[i]!.clipIndex] ?? 0,
+        styleSuffix: `_${i}`,
+      }));
+      mergedAssPath = mergeAssFiles(segments, ctx.width, ctx.height);
+      ctx.tempFiles.push(mergedAssPath);
+    }
+  }
 
   // process music after clips so we know total duration for auto-trim
   for (const musicElement of musicElements) {
@@ -400,7 +468,10 @@ export async function renderRoot(
     });
   }
 
-  const hasCaptions = captionsResult !== undefined;
+  // Determine the ASS path to burn: Render-level captions take priority,
+  // then merged/shifted hoisted captions from clips.
+  const finalAssPath = captionsResult?.assPath ?? mergedAssPath;
+  const hasCaptions = finalAssPath !== undefined;
 
   const tempOutPath = hasCaptions
     ? `/tmp/varg-pre-captions-${Date.now()}.mp4`
@@ -426,13 +497,13 @@ export async function renderRoot(
 
   let output = editlyResult.output;
 
-  if (hasCaptions && captionsResult) {
+  if (hasCaptions && finalAssPath) {
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
 
     output = await burnCaptions({
       video: output,
-      assPath: captionsResult.assPath,
+      assPath: finalAssPath,
       outputPath: finalOutPath,
       backend: options.backend,
       verbose: options.verbose,
