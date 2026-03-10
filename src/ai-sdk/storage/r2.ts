@@ -1,4 +1,5 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { limitedRetryUpload } from "./retry";
 import type { StorageProvider } from "./types";
 
 export interface R2StorageOptions {
@@ -41,13 +42,15 @@ export function r2Storage(options?: R2StorageOptions): StorageProvider {
 
   return {
     async upload(data: Uint8Array, key: string, mediaType: string) {
-      await client.send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key: key,
-          Body: data,
-          ContentType: mediaType,
-        }),
+      await limitedRetryUpload(() =>
+        client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: data,
+            ContentType: mediaType,
+          }),
+        ),
       );
       return getPublicUrl(key);
     },

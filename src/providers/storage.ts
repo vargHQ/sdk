@@ -8,6 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { limitedRetryUpload } from "../ai-sdk/storage/retry";
 import type { JobStatusUpdate, ProviderConfig } from "../core/schema/types";
 import { BaseProvider } from "./base";
 
@@ -73,12 +74,14 @@ export class StorageProvider extends BaseProvider {
     const file = Bun.file(filePath);
     const buffer = await file.arrayBuffer();
 
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: objectKey,
-        Body: new Uint8Array(buffer),
-      }),
+    await limitedRetryUpload(() =>
+      this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: objectKey,
+          Body: new Uint8Array(buffer),
+        }),
+      ),
     );
 
     return this.getPublicUrl(objectKey);
@@ -93,12 +96,14 @@ export class StorageProvider extends BaseProvider {
     const response = await fetch(url);
     const buffer = await response.arrayBuffer();
 
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: objectKey,
-        Body: new Uint8Array(buffer),
-      }),
+    await limitedRetryUpload(() =>
+      this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: objectKey,
+          Body: new Uint8Array(buffer),
+        }),
+      ),
     );
 
     return this.getPublicUrl(objectKey);
@@ -114,13 +119,15 @@ export class StorageProvider extends BaseProvider {
   ): Promise<string> {
     console.log(`[storage] uploading buffer to ${objectKey}`);
 
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: objectKey,
-        Body: buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer),
-        ContentType: contentType,
-      }),
+    await limitedRetryUpload(() =>
+      this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: objectKey,
+          Body: buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer),
+          ContentType: contentType,
+        }),
+      ),
     );
 
     return this.getPublicUrl(objectKey);
