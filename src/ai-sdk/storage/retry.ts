@@ -20,13 +20,34 @@ const RETRYABLE_PATTERNS = [
   "socket hang up",
 ];
 
+/** HTTP status codes that indicate a retryable error */
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 503]);
+
 function isRetryable(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return RETRYABLE_PATTERNS.some((pattern) => message.includes(pattern));
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const err = error as {
+    message?: string;
+    name?: string;
+    code?: string;
+    $metadata?: { httpStatusCode?: number };
+  };
+
+  // Check AWS SDK v3 $metadata.httpStatusCode
+  const statusCode = err.$metadata?.httpStatusCode;
+  if (statusCode !== undefined && RETRYABLE_STATUS_CODES.has(statusCode)) {
+    return true;
+  }
+
+  // Check error.name, error.code, and error.message against known patterns
+  const haystack = [err.message, err.name, err.code].filter(Boolean).join(" ");
+  return RETRYABLE_PATTERNS.some((pattern) => haystack.includes(pattern));
 }
 
 export interface RetryOptions {
-  /** Maximum number of retry attempts (default: 5) */
+  /** Maximum number of retries after the initial attempt (default: 5) */
   maxRetries?: number;
   /** Initial backoff delay in ms (default: 500) */
   baseDelay?: number;
@@ -44,6 +65,13 @@ export async function retryR2Upload<T>(
 ): Promise<T> {
   const maxRetries = opts?.maxRetries ?? 5;
   const baseDelay = opts?.baseDelay ?? 500;
+
+  if (!Number.isInteger(maxRetries) || maxRetries < 0) {
+    throw new Error("retry option `maxRetries` must be a non-negative integer");
+  }
+  if (!Number.isFinite(baseDelay) || baseDelay < 0) {
+    throw new Error("retry option `baseDelay` must be a non-negative number");
+  }
 
   let lastError: unknown;
 

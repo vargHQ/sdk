@@ -103,6 +103,7 @@ export {
   falStorage,
   limitedRetryUpload,
   type R2StorageOptions,
+  type RetryOptions,
   r2Storage,
   r2UploadLimiter,
   retryR2Upload,
