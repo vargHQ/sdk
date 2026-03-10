@@ -80,9 +80,10 @@ export function mergeAssFiles(
 
     for (const styleLine of styleLines) {
       // Rename style: "Style: Default,..." -> "Style: Default_0,..."
+      // Use [^,]+ to handle style names that may contain spaces.
       const renamed = styleLine.replace(
-        /^Style:\s*(\S+?),/,
-        (_m, name: string) => `Style: ${name}${suffix},`,
+        /^Style:\s*([^,]+),/,
+        (_m, name: string) => `Style: ${name.trim()}${suffix},`,
       );
       allStyles.push(renamed);
     }

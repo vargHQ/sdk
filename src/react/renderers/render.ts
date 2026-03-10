@@ -397,6 +397,14 @@ export async function renderRoot(
   const hoistedCaptionsResults: CaptionsResult[] = [];
   let mergedAssPath: string | undefined;
 
+  if (captionsResult && hoistedCaptions.length > 0) {
+    console.warn(
+      `\x1b[33m⚠ Found both a Render-level <Captions> and ${hoistedCaptions.length} clip-level <Captions>. ` +
+        "Clip-level captions will be ignored — move all <Captions> inside clips, " +
+        "or use a single <Captions> at the Render level.\x1b[0m",
+    );
+  }
+
   if (!captionsResult && hoistedCaptions.length > 0) {
     for (const { element: captionsElement, clipIndex } of hoistedCaptions) {
       const result = await renderCaptions(captionsElement, ctx);
