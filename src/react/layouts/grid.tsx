@@ -5,7 +5,7 @@ export const Grid = ({
   columns,
   rows,
   children,
-  resize = "contain",
+  resize = "cover",
 }: {
   columns?: number;
   rows?: number;

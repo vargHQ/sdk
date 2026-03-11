@@ -232,11 +232,11 @@ describe("Grid", () => {
     expect(result[3]?.props.top).toBe("50%");
   });
 
-  test("defaults resize to contain", () => {
+  test("defaults resize to cover", () => {
     const children = [Video({ src: "a.mp4" })] as VargElement[];
     const result = asArray(Grid({ columns: 1, children }));
 
-    expect(result[0]?.props.resize).toBe("contain");
+    expect(result[0]?.props.resize).toBe("cover");
   });
 
   test("child resize overrides grid default", () => {
