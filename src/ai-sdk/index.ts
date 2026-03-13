@@ -1,3 +1,5 @@
+// Re-export Vercel AI SDK media generation functions for convenience
+export { experimental_generateSpeech, generateImage } from "ai";
 export {
   type CacheStorage,
   clearCache,
@@ -99,6 +101,11 @@ export {
   createTogetherProvider,
   together,
 } from "./providers/together";
+export {
+  createVarg,
+  type VargProvider,
+  varg,
+} from "./providers/varg";
 export {
   falStorage,
   limitedRetryUpload,
