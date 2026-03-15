@@ -17,6 +17,7 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
+import { ResolvedElement } from "../resolved-element";
 import type {
   ClipProps,
   MusicProps,
@@ -240,10 +241,11 @@ export async function renderRoot(
         });
       }
     } else if (childElement.type === "speech") {
-      const file = await renderSpeech(
-        childElement as VargElement<"speech">,
-        ctx,
-      );
+      // Use pre-generated file if already resolved, otherwise render
+      const file =
+        childElement instanceof ResolvedElement
+          ? childElement.meta.file
+          : await renderSpeech(childElement as VargElement<"speech">, ctx);
       const path = await ctx.backend.resolvePath(file);
       const speechProps = childElement.props as SpeechProps;
       audioTracks.push({

@@ -20,9 +20,11 @@ export {
 } from "./elements";
 export { Grid, Slot, Split } from "./layouts";
 export { render, renderStream } from "./render";
+export { ResolvedElement } from "./resolved-element";
 export type {
   CaptionsProps,
   ClipProps,
+  ElementMeta,
   FileMetadata,
   GeneratedFileType,
   ImageProps,

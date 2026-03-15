@@ -1,5 +1,6 @@
 import { experimental_generateSpeech as generateSpeech } from "ai";
 import { File } from "../../ai-sdk/file";
+import { ResolvedElement } from "../resolved-element";
 import type { SpeechProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
@@ -9,6 +10,11 @@ export async function renderSpeech(
   element: VargElement<"speech">,
   ctx: RenderContext,
 ): Promise<File> {
+  // If already resolved via `await Speech(...)`, reuse the pre-generated file
+  if (element instanceof ResolvedElement) {
+    return element.meta.file;
+  }
+
   const props = element.props as SpeechProps;
   const text = getTextContent(element.children);
 

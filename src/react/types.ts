@@ -5,6 +5,7 @@ import type {
 } from "@ai-sdk/provider";
 import type { FFmpegBackend } from "@/ai-sdk/providers/editly/backends";
 import type { CacheStorage } from "../ai-sdk/cache";
+import type { File } from "../ai-sdk/file";
 import type { MusicModelV3 } from "../ai-sdk/music-model";
 import type {
   CropPosition,
@@ -31,12 +32,28 @@ export type VargElementType =
   | "split"
   | "slider"
   | "swipe"
-  | "packshot";
+  | "packshot"
+  | "__lazy";
+
+/**
+ * Metadata attached to a VargElement after it has been resolved via `await`.
+ * Contains the generated file and probed media information.
+ */
+export interface ElementMeta {
+  /** The generated file (image, video, audio) */
+  file: File;
+  /** Duration in seconds. 0 for images. Probed via ffprobe for audio/video. */
+  duration: number;
+  /** Aspect ratio of the generated media, if applicable (e.g. "9:16") */
+  aspectRatio?: string;
+}
 
 export interface VargElement<T extends VargElementType = VargElementType> {
   type: T;
   props: Record<string, unknown>;
   children: VargNode[];
+  /** Populated when the element has been resolved via `await` */
+  meta?: ElementMeta;
 }
 
 export type VargNode =
@@ -291,8 +308,6 @@ export interface RenderOptions {
 
 // Re-export from file module for convenience
 export type { FileMetadata, GeneratedFileType } from "../ai-sdk/file";
-
-import type { File } from "../ai-sdk/file";
 
 export interface RenderResult {
   /** Final rendered video buffer */

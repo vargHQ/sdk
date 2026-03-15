@@ -7,6 +7,7 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
+import { ResolvedElement } from "../resolved-element";
 import type {
   ClipProps,
   ImageProps,
@@ -129,9 +130,13 @@ async function renderClipLayers(
 
       case "speech": {
         const props = element.props as SpeechProps;
+        const resolveFile =
+          element instanceof ResolvedElement
+            ? Promise.resolve(element.meta.file)
+            : renderSpeech(element as VargElement<"speech">, ctx);
         pending.push({
           type: "async",
-          promise: renderSpeech(element as VargElement<"speech">, ctx)
+          promise: resolveFile
             .then((file) => ctx.backend.resolvePath(file))
             .then(
               (path) =>

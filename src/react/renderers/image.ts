@@ -1,5 +1,6 @@
 import type { generateImage } from "ai";
 import { File } from "../../ai-sdk/file";
+import { ResolvedElement } from "../resolved-element";
 import type {
   ImageInput,
   ImagePrompt,
@@ -22,7 +23,20 @@ async function resolveImageInput(
     return new Uint8Array(await response.arrayBuffer());
   }
   const file = await renderImage(input, ctx);
-  return file.arrayBuffer();
+  const data: unknown = await file.arrayBuffer();
+  // Debug: ensure we always return a proper Uint8Array
+  if (!(data instanceof Uint8Array)) {
+    console.error(
+      `[resolveImageInput] file.arrayBuffer() returned ${typeof data} (constructor: ${(data as { constructor?: { name?: string } })?.constructor?.name}), converting...`,
+    );
+    if (data instanceof ArrayBuffer) {
+      return new Uint8Array(data);
+    }
+    throw new Error(
+      `resolveImageInput: unexpected data type ${typeof data} from file.arrayBuffer()`,
+    );
+  }
+  return data;
 }
 
 async function resolvePrompt(
@@ -35,6 +49,15 @@ async function resolvePrompt(
   const resolvedImages = await Promise.all(
     prompt.images.map((img) => resolveImageInput(img, ctx)),
   );
+  // Debug: verify all images are Uint8Array before passing to generateImage
+  for (let i = 0; i < resolvedImages.length; i++) {
+    const img = resolvedImages[i];
+    if (!(img instanceof Uint8Array)) {
+      console.error(
+        `[resolvePrompt] images[${i}] is ${typeof img} (constructor: ${(img as any)?.constructor?.name}), not Uint8Array`,
+      );
+    }
+  }
   return { text: prompt.text, images: resolvedImages };
 }
 
@@ -42,6 +65,11 @@ export async function renderImage(
   element: VargElement<"image">,
   ctx: RenderContext,
 ): Promise<File> {
+  // If already resolved via `await Image(...)`, reuse the pre-generated file
+  if (element instanceof ResolvedElement) {
+    return element.meta.file;
+  }
+
   const props = element.props as ImageProps;
 
   if (props.src) {

@@ -112,7 +112,10 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
     try {
       console.log(`[render] importing ${tempFile}`);
       const mod = await import(tempFile);
-      const element = mod.default;
+      let element = mod.default;
+      if (typeof element === "function") {
+        element = await element();
+      }
 
       if (
         !element ||
@@ -330,7 +333,10 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
         try {
           await Bun.write(tempFile, body.code);
           const mod = await import(tempFile);
-          const element = mod.default;
+          let element = mod.default;
+          if (typeof element === "function") {
+            element = await element();
+          }
 
           if (
             !element ||
@@ -367,7 +373,10 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
         try {
           await Bun.write(tempFile, body.code);
           const mod = await import(tempFile);
-          const element = mod.default;
+          let element = mod.default;
+          if (typeof element === "function") {
+            element = await element();
+          }
 
           if (
             !element ||

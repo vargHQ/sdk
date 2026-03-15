@@ -1,5 +1,6 @@
 import { File } from "../../ai-sdk/file";
 import type { generateVideo } from "../../ai-sdk/generate-video";
+import { ResolvedElement } from "../resolved-element";
 import type {
   ImageInput,
   VargElement,
@@ -36,6 +37,10 @@ async function resolveAudioInput(
   if (typeof input === "string") {
     const response = await fetch(toFileUrl(input));
     return new Uint8Array(await response.arrayBuffer());
+  }
+  // Resolved speech element — use pre-generated file directly
+  if (input instanceof ResolvedElement && input.type === "speech") {
+    return input.meta.file.arrayBuffer();
   }
   if (input.type === "speech") {
     const file = await renderSpeech(input, ctx);
@@ -99,6 +104,11 @@ export async function renderVideo(
   element: VargElement<"video">,
   ctx: RenderContext,
 ): Promise<File> {
+  // If already resolved via `await Video(...)`, reuse the pre-generated file
+  if (element instanceof ResolvedElement) {
+    return element.meta.file;
+  }
+
   const props = element.props as VideoProps;
 
   if (props.src && !props.prompt) {

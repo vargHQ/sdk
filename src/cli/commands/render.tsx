@@ -33,6 +33,20 @@ async function detectDefaultModels(): Promise<DefaultModels | undefined> {
   return Object.keys(defaults).length > 0 ? defaults : undefined;
 }
 
+/**
+ * Resolve the default export of a module.
+ * Handles async function exports: if mod.default is a function, call it and await.
+ */
+async function resolveDefaultExport(mod: {
+  default: unknown;
+}): Promise<VargElement> {
+  let component = mod.default;
+  if (typeof component === "function") {
+    component = await (component as () => unknown)();
+  }
+  return component as VargElement;
+}
+
 async function loadComponent(filePath: string): Promise<VargElement> {
   const resolvedPath = resolve(filePath);
   const source = await Bun.file(resolvedPath).text();
@@ -54,7 +68,7 @@ async function loadComponent(filePath: string): Promise<VargElement> {
 
   if (hasRelativeImport) {
     const mod = await import(resolvedPath);
-    return mod.default;
+    return resolveDefaultExport(mod);
   }
 
   if (hasVargaiImport) {
@@ -63,7 +77,7 @@ async function loadComponent(filePath: string): Promise<VargElement> {
 
     try {
       const mod = await import(tmpFile);
-      return mod.default;
+      return resolveDefaultExport(mod);
     } finally {
       (await Bun.file(tmpFile).exists()) && (await Bun.write(tmpFile, ""));
     }
@@ -72,7 +86,7 @@ async function loadComponent(filePath: string): Promise<VargElement> {
   const hasAnyImport = source.includes(" from ");
   if (hasAnyImport) {
     const mod = await import(resolvedPath);
-    return mod.default;
+    return resolveDefaultExport(mod);
   }
 
   const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
@@ -80,7 +94,7 @@ async function loadComponent(filePath: string): Promise<VargElement> {
 
   try {
     const mod = await import(tmpFile);
-    return mod.default;
+    return resolveDefaultExport(mod);
   } finally {
     (await Bun.file(tmpFile).exists()) && (await Bun.write(tmpFile, ""));
   }

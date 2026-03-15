@@ -1,3 +1,10 @@
+import {
+  resolveImageElement,
+  resolveMusicElement,
+  resolveSpeechElement,
+  resolveVideoElement,
+} from "./resolve";
+import type { ResolvedElement } from "./resolved-element";
 import type {
   CaptionsProps,
   ClipProps,
@@ -37,6 +44,38 @@ function createElement<T extends VargElement["type"]>(
   };
 }
 
+/**
+ * Attach a `.then()` method to a VargElement, making it awaitable.
+ *
+ * - Without `await`: returns the plain VargElement (backward compatible).
+ * - With `await`: triggers AI generation and returns a ResolvedElement
+ *   with `.duration`, `.file`, and `.meta` populated.
+ *
+ * The `.then()` is consumed on first call (deleted) to prevent
+ * double-resolution if the element is re-awaited.
+ */
+function makeThenable<T extends VargElement["type"]>(
+  element: VargElement<T>,
+  resolver: (el: VargElement<T>) => Promise<ResolvedElement<T>>,
+): VargElement<T> & PromiseLike<ResolvedElement<T>> {
+  const thenable = element as VargElement<T> & {
+    then?: PromiseLike<ResolvedElement<T>>["then"];
+  };
+
+  // biome-ignore lint/suspicious/noThenProperty: intentional — makes element awaitable
+  thenable.then = function (resolve, reject) {
+    // Remove .then to prevent double-resolution
+    delete this.then;
+    return resolver(this as VargElement<T>).then(resolve, reject);
+  };
+
+  return thenable as VargElement<T> & PromiseLike<ResolvedElement<T>>;
+}
+
+// ---------------------------------------------------------------------------
+// Element factories
+// ---------------------------------------------------------------------------
+
 export function Render(props: RenderProps): VargElement<"render"> {
   return createElement(
     "render",
@@ -61,19 +100,42 @@ export function Overlay(props: OverlayProps): VargElement<"overlay"> {
   );
 }
 
-export function Image(props: ImageProps): VargElement<"image"> {
-  return createElement("image", props as Record<string, unknown>, undefined);
+export function Image(
+  props: ImageProps,
+): VargElement<"image"> & PromiseLike<ResolvedElement<"image">> {
+  const element = createElement(
+    "image",
+    props as Record<string, unknown>,
+    undefined,
+  );
+  return makeThenable(element, (el) =>
+    resolveImageElement(el, el.props as unknown as ImageProps),
+  );
 }
 
-export function Video(props: VideoProps): VargElement<"video"> {
-  return createElement("video", props as Record<string, unknown>, undefined);
+export function Video(
+  props: VideoProps,
+): VargElement<"video"> & PromiseLike<ResolvedElement<"video">> {
+  const element = createElement(
+    "video",
+    props as Record<string, unknown>,
+    undefined,
+  );
+  return makeThenable(element, (el) =>
+    resolveVideoElement(el, el.props as Record<string, unknown>),
+  );
 }
 
-export function Speech(props: SpeechProps): VargElement<"speech"> {
-  return createElement(
+export function Speech(
+  props: SpeechProps,
+): VargElement<"speech"> & PromiseLike<ResolvedElement<"speech">> {
+  const element = createElement(
     "speech",
     props as Record<string, unknown>,
     props.children,
+  );
+  return makeThenable(element, (el) =>
+    resolveSpeechElement(el, el.props as unknown as SpeechProps),
   );
 }
 
@@ -103,8 +165,17 @@ export function Subtitle(props: SubtitleProps): VargElement<"subtitle"> {
   );
 }
 
-export function Music(props: MusicProps): VargElement<"music"> {
-  return createElement("music", props as Record<string, unknown>, undefined);
+export function Music(
+  props: MusicProps,
+): VargElement<"music"> & PromiseLike<ResolvedElement<"music">> {
+  const element = createElement(
+    "music",
+    props as Record<string, unknown>,
+    undefined,
+  );
+  return makeThenable(element, (el) =>
+    resolveMusicElement(el, el.props as unknown as MusicProps),
+  );
 }
 
 export function Captions(props: CaptionsProps): VargElement<"captions"> {
