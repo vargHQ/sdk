@@ -207,7 +207,7 @@ async function resolveImageInputForStandalone(
       nested,
       nested.props as ImageProps,
     );
-    return resolved.file.arrayBuffer();
+    return await resolved.file.arrayBuffer();
   }
   throw new Error(`Unsupported image input type: ${typeof input}`);
 }
@@ -342,6 +342,11 @@ export async function resolveVideoElement(
             if (img instanceof Uint8Array) return img;
             if (typeof img === "string") {
               const res = await fetch(img);
+              if (!res.ok) {
+                throw new Error(
+                  `Failed to fetch image from ${img}: ${res.status} ${res.statusText}`,
+                );
+              }
               return new Uint8Array(await res.arrayBuffer());
             }
             // VargElement<"image"> — could be resolved or unresolved
@@ -353,13 +358,13 @@ export async function resolveVideoElement(
             ) {
               const imgEl = img as VargElement<"image">;
               if (imgEl.meta?.file) {
-                return imgEl.meta.file.arrayBuffer();
+                return await imgEl.meta.file.arrayBuffer();
               }
               const resolved = await resolveImageElement(
                 imgEl,
                 imgEl.props as ImageProps,
               );
-              return resolved.file.arrayBuffer();
+              return await resolved.file.arrayBuffer();
             }
             throw new Error("Unsupported image input in Video prompt");
           }),
@@ -372,6 +377,11 @@ export async function resolveVideoElement(
         resolvedAudio = promptObj.audio;
       } else if (typeof promptObj.audio === "string") {
         const res = await fetch(promptObj.audio);
+        if (!res.ok) {
+          throw new Error(
+            `Failed to fetch audio from ${promptObj.audio}: ${res.status} ${res.statusText}`,
+          );
+        }
         resolvedAudio = new Uint8Array(await res.arrayBuffer());
       } else if (
         promptObj.audio &&
