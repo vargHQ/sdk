@@ -20,6 +20,7 @@ export {
 } from "./elements";
 export { Grid, Slot, Split } from "./layouts";
 export { render, renderStream } from "./render";
+export { resolveLazy } from "./renderers/resolve-lazy";
 export { type ResolveContext, withResolveContext } from "./resolve-context";
 export { ResolvedElement } from "./resolved-element";
 export type {
