@@ -1,5 +1,6 @@
 import { File } from "../../ai-sdk/file";
 import { generateMusic } from "../../ai-sdk/generate-music";
+import { ResolvedElement } from "../resolved-element";
 import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
@@ -8,6 +9,11 @@ export async function renderMusic(
   element: VargElement<"music">,
   ctx: RenderContext,
 ): Promise<File> {
+  // If already resolved via `await Music(...)`, reuse the pre-generated file
+  if (element instanceof ResolvedElement) {
+    return element.meta.file;
+  }
+
   const props = element.props as MusicProps;
 
   const prompt = props.prompt;

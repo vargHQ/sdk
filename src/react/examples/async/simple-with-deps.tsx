@@ -1,0 +1,23 @@
+import { elevenlabs } from "../../../ai-sdk/providers/elevenlabs";
+import { fal } from "../../../ai-sdk/providers/fal";
+import { Clip, Image, Render, Speech } from "../..";
+
+const audio = await Speech({
+  voice: "adam",
+  model: elevenlabs.speechModel("eleven_turbo_v2"),
+  children: "The sun sets over the Pacific. Another day ends.",
+});
+
+export default (
+  <Render width={1080} height={1920}>
+    <Clip duration={audio.duration}>
+      <Image
+        prompt={`A kittie with a letter: this video is exactly ${audio.duration} seconds long.`}
+        model={fal.imageModel("nano-banana-pro")}
+        aspectRatio="9:16"
+        zoom="in"
+      />
+      {audio}
+    </Clip>
+  </Render>
+);

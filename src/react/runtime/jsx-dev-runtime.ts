@@ -1,6 +1,8 @@
 import type { VargElement, VargNode } from "../types";
 
-type ElementFactory = (props: Record<string, unknown>) => VargElement;
+type ElementFactory = (
+  props: Record<string, unknown>,
+) => VargElement | Promise<VargNode>;
 
 export function jsx(
   type: ElementFactory,
@@ -11,7 +13,23 @@ export function jsx(
   if (key !== undefined) {
     finalProps.key = key;
   }
-  return type(finalProps);
+  const result = type(finalProps);
+
+  // Async component — wrap as lazy (see jsx-runtime.ts for details)
+  if (
+    result &&
+    typeof result === "object" &&
+    typeof (result as PromiseLike<unknown>).then === "function" &&
+    !("type" in result && typeof (result as VargElement).type === "string")
+  ) {
+    return {
+      type: "__lazy",
+      props: { _promise: result },
+      children: [],
+    } as VargElement<"__lazy">;
+  }
+
+  return result as VargElement;
 }
 
 export function jsxs(

@@ -1,5 +1,6 @@
 import type { generateImage } from "ai";
 import { File } from "../../ai-sdk/file";
+import { ResolvedElement } from "../resolved-element";
 import type {
   ImageInput,
   ImagePrompt,
@@ -22,7 +23,11 @@ async function resolveImageInput(
     return new Uint8Array(await response.arrayBuffer());
   }
   const file = await renderImage(input, ctx);
-  return file.arrayBuffer();
+  const data = await file.arrayBuffer();
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
+  }
+  return data;
 }
 
 async function resolvePrompt(
@@ -42,6 +47,11 @@ export async function renderImage(
   element: VargElement<"image">,
   ctx: RenderContext,
 ): Promise<File> {
+  // If already resolved via `await Image(...)`, reuse the pre-generated file
+  if (element instanceof ResolvedElement) {
+    return element.meta.file;
+  }
+
   const props = element.props as ImageProps;
 
   if (props.src) {

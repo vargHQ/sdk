@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { groq } from "@ai-sdk/groq";
 import { experimental_transcribe as transcribe } from "ai";
 import { z } from "zod";
+import { ResolvedElement } from "../resolved-element";
 import type { CaptionsProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
@@ -243,7 +244,11 @@ export async function renderCaptions(
       srtContent = await Bun.file(props.src).text();
       srtPath = props.src;
     } else if (props.src.type === "speech") {
-      const speechFile = await renderSpeech(props.src, ctx);
+      // Use pre-generated file if already resolved, otherwise render
+      const speechFile =
+        props.src instanceof ResolvedElement
+          ? props.src.meta.file
+          : await renderSpeech(props.src, ctx);
       audioPath = await ctx.backend.resolvePath(speechFile);
 
       const transcribeTaskId = ctx.progress

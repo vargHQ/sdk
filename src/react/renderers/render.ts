@@ -17,6 +17,7 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
+import { ResolvedElement } from "../resolved-element";
 import type {
   ClipProps,
   MusicProps,
@@ -169,81 +170,128 @@ export async function renderRoot(
   const overlayElements: VargElement<"overlay">[] = [];
   const musicElements: VargElement<"music">[] = [];
   const audioTracks: AudioTrack[] = [];
-  let captionsResult: Awaited<ReturnType<typeof renderCaptions>> | undefined;
 
-  // Hoist <Captions> out of <Clip> elements — the AI often places them inside
-  // clips, but captions must be processed at the <Render> level to work.
-  // Track which clip each caption came from so we can apply the correct
-  // timeline offset when stitching audio and ASS files.
-  // We shallow-clone clip elements to avoid mutating the caller's tree.
+  // ---------------------------------------------------------------------------
+  // Hoisted captions: track which clip each caption came from so we can apply
+  // the correct timeline offset when stitching audio and ASS files.
+  // ---------------------------------------------------------------------------
   interface HoistedCaption {
     element: VargElement<"captions">;
     clipIndex: number;
   }
   const hoistedCaptions: HoistedCaption[] = [];
-  const processedChildren: VargElement[] = [];
+
+  // ---------------------------------------------------------------------------
+  // Deferred audio: speech/music at a container-clip level that needs to be
+  // offset to the container's start position in the timeline.
+  // We don't know the offset yet (clips haven't been laid out), so we record
+  // the clipIndex of the first leaf clip inside the container and resolve the
+  // offset later, after clipStartOffsets are computed.
+  // ---------------------------------------------------------------------------
+  interface DeferredAudio {
+    element: VargElement<"speech"> | VargElement<"music">;
+    clipIndex: number; // first leaf clip of the container
+  }
+  const deferredAudioElements: DeferredAudio[] = [];
+
+  // ---------------------------------------------------------------------------
+  // flattenClip: recursively flatten nested clips into leaf clips.
+  //
+  // A "container clip" has child <Clip> elements. Its non-clip children
+  // (Speech, Music, Captions) are hoisted/deferred to span the container's
+  // time region, which starts at the first leaf clip's timeline position.
+  //
+  // A "leaf clip" has no child <Clip> elements — it contains visual/audio
+  // layers and is rendered directly by editly.
+  // ---------------------------------------------------------------------------
   let clipIndexCounter = 0;
-  for (const child of element.children) {
-    if (!child || typeof child !== "object" || !("type" in child)) {
-      continue;
-    }
-    const childElement = child as VargElement;
-    if (childElement.type === "clip") {
-      const currentClipIndex = clipIndexCounter++;
-      if (childElement.children) {
-        const kept: typeof childElement.children = [];
-        for (const clipChild of childElement.children) {
-          if (
-            clipChild &&
-            typeof clipChild === "object" &&
-            "type" in clipChild &&
-            (clipChild as VargElement).type === "captions"
-          ) {
-            hoistedCaptions.push({
-              element: clipChild as VargElement<"captions">,
-              clipIndex: currentClipIndex,
-            });
-          } else {
-            kept.push(clipChild);
-          }
-        }
-        // Shallow-clone the clip with captions removed, leaving the
-        // original element tree untouched for potential re-renders.
-        processedChildren.push({
-          ...childElement,
-          children: kept,
-        } as VargElement);
+
+  function flattenClip(clipElement: VargElement<"clip">): void {
+    const childClips: VargElement<"clip">[] = [];
+    const nonClipChildren: VargElement[] = [];
+
+    for (const child of clipElement.children) {
+      if (!child || typeof child !== "object" || !("type" in child)) continue;
+      const el = child as VargElement;
+      if (el.type === "clip") {
+        childClips.push(el as VargElement<"clip">);
       } else {
-        processedChildren.push(childElement);
+        nonClipChildren.push(el);
       }
-    } else {
-      processedChildren.push(childElement);
+    }
+
+    if (childClips.length === 0) {
+      // Leaf clip — hoist captions, keep everything else
+      const currentClipIndex = clipIndexCounter++;
+      const kept: typeof clipElement.children = [];
+      for (const el of nonClipChildren) {
+        if (el.type === "captions") {
+          hoistedCaptions.push({
+            element: el as VargElement<"captions">,
+            clipIndex: currentClipIndex,
+          });
+        } else {
+          kept.push(el);
+        }
+      }
+      clipElements.push({
+        ...clipElement,
+        children: kept,
+      } as VargElement<"clip">);
+      return;
+    }
+
+    // Container clip — has child clips.
+    // The first leaf clip's index is used as the anchor for audio/captions
+    // offsets (they all start at the container's position in the timeline).
+    const firstLeafClipIndex = clipIndexCounter; // before recursion increments it
+
+    // Recurse into child clips
+    for (const childClip of childClips) {
+      flattenClip(childClip);
+    }
+
+    // Process non-clip children at the container level
+    for (const el of nonClipChildren) {
+      if (el.type === "captions") {
+        hoistedCaptions.push({
+          element: el as VargElement<"captions">,
+          clipIndex: firstLeafClipIndex,
+        });
+      } else if (el.type === "speech" || el.type === "music") {
+        deferredAudioElements.push({
+          element: el as VargElement<"speech"> | VargElement<"music">,
+          clipIndex: firstLeafClipIndex,
+        });
+      }
+      // Image/Video at container level: not supported yet (would need
+      // background layer spanning all child clips — a future feature)
     }
   }
 
-  for (const child of processedChildren) {
-    const childElement = child;
+  // ---------------------------------------------------------------------------
+  // Process all children of <Render>
+  // ---------------------------------------------------------------------------
+  for (const child of element.children) {
+    if (!child || typeof child !== "object" || !("type" in child)) continue;
+    const childElement = child as VargElement;
 
     if (childElement.type === "clip") {
-      clipElements.push(childElement as VargElement<"clip">);
+      flattenClip(childElement as VargElement<"clip">);
     } else if (childElement.type === "overlay") {
       overlayElements.push(childElement as VargElement<"overlay">);
     } else if (childElement.type === "captions") {
-      captionsResult = await renderCaptions(
-        childElement as VargElement<"captions">,
-        ctx,
-      );
-      if (captionsResult.audioPath) {
-        audioTracks.push({
-          path: captionsResult.audioPath,
-          mixVolume: 1,
-        });
-      }
+      // Render-level captions — hoist with clipIndex 0 (start of timeline)
+      hoistedCaptions.push({
+        element: childElement as VargElement<"captions">,
+        clipIndex: 0,
+      });
     } else if (childElement.type === "speech") {
-      const file = await renderSpeech(
-        childElement as VargElement<"speech">,
-        ctx,
-      );
+      // Render-level speech — immediate audio track (no offset needed)
+      const file =
+        childElement instanceof ResolvedElement
+          ? childElement.meta.file
+          : await renderSpeech(childElement as VargElement<"speech">, ctx);
       const path = await ctx.backend.resolvePath(file);
       const speechProps = childElement.props as SpeechProps;
       audioTracks.push({
@@ -389,21 +437,58 @@ export async function renderRoot(
 
   const totalDuration = currentTime;
 
-  // Process any <Captions> that were hoisted from inside <Clip> elements.
-  // Now that we know clipStartOffsets, each caption's audio can be delayed
-  // and ASS timestamps shifted to the correct position in the timeline.
+  // ---------------------------------------------------------------------------
+  // Process deferred audio from container clips.
+  // Now that clipStartOffsets are known, we can resolve the audio elements
+  // and set the correct start offset in the timeline.
+  // ---------------------------------------------------------------------------
+  for (const { element: audioElement, clipIndex } of deferredAudioElements) {
+    const offset = clipStartOffsets[clipIndex] ?? 0;
+    if (audioElement.type === "speech") {
+      const file =
+        audioElement instanceof ResolvedElement
+          ? audioElement.meta.file
+          : await renderSpeech(audioElement as VargElement<"speech">, ctx);
+      const path = await ctx.backend.resolvePath(file);
+      const speechProps = audioElement.props as SpeechProps;
+      audioTracks.push({
+        path,
+        start: offset,
+        mixVolume: speechProps.volume ?? 1,
+      });
+    } else if (audioElement.type === "music") {
+      const musicProps = audioElement.props as MusicProps;
+      let path: string;
+      if (musicProps.src) {
+        path = resolvePath(musicProps.src);
+      } else if (musicProps.prompt) {
+        const file = await renderMusic(
+          audioElement as VargElement<"music">,
+          ctx,
+        );
+        path = await ctx.backend.resolvePath(file);
+      } else {
+        throw new Error("Music requires either src or prompt");
+      }
+      audioTracks.push({
+        path,
+        start: offset,
+        mixVolume: musicProps.volume ?? 1,
+        cutFrom: musicProps.cutFrom,
+        cutTo: musicProps.cutTo,
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Process hoisted captions (from leaf clips, container clips, and Render
+  // level). Now that clipStartOffsets are known, each caption's audio can be
+  // delayed and ASS timestamps shifted to the correct timeline position.
+  // ---------------------------------------------------------------------------
   const hoistedCaptionsResults: CaptionsResult[] = [];
   let mergedAssPath: string | undefined;
 
-  if (captionsResult && hoistedCaptions.length > 0) {
-    console.warn(
-      `\x1b[33m⚠ Found both a Render-level <Captions> and ${hoistedCaptions.length} clip-level <Captions>. ` +
-        "Clip-level captions will be ignored — move all <Captions> inside clips, " +
-        "or use a single <Captions> at the Render level.\x1b[0m",
-    );
-  }
-
-  if (!captionsResult && hoistedCaptions.length > 0) {
+  if (hoistedCaptions.length > 0) {
     for (const { element: captionsElement, clipIndex } of hoistedCaptions) {
       const result = await renderCaptions(captionsElement, ctx);
       hoistedCaptionsResults.push(result);
@@ -466,9 +551,8 @@ export async function renderRoot(
     });
   }
 
-  // Determine the ASS path to burn: Render-level captions take priority,
-  // then merged/shifted hoisted captions from clips.
-  const finalAssPath = captionsResult?.assPath ?? mergedAssPath;
+  // Determine the ASS path to burn from merged hoisted captions.
+  const finalAssPath = mergedAssPath;
   const hasCaptions = finalAssPath !== undefined;
 
   const tempOutPath = hasCaptions
