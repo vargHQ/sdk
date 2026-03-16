@@ -9,6 +9,7 @@ import {
   type SpeechModelV3CallOptions,
 } from "@ai-sdk/provider";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import type { ElevenLabsCharacterAlignment } from "../../speech/types";
 import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
 
 /**
@@ -108,19 +109,35 @@ class ElevenLabsMusicModel implements MusicModelV3 {
   }
 }
 
+/**
+ * Extended speech generation result that includes alignment data
+ * from the ElevenLabs `/with-timestamps` endpoint.
+ */
+export interface ElevenLabsSpeechResult {
+  audio: Uint8Array;
+  warnings: SharedV3Warning[];
+  response: { timestamp: Date; modelId: string; headers: undefined };
+  /** Character-level alignment data from ElevenLabs (original text). */
+  alignment?: ElevenLabsCharacterAlignment;
+  /** Character-level alignment data from ElevenLabs (normalized/spoken text). */
+  normalizedAlignment?: ElevenLabsCharacterAlignment;
+}
+
 class ElevenLabsSpeechModel implements SpeechModelV3 {
   readonly specificationVersion = "v3" as const;
   readonly provider = "elevenlabs";
   readonly modelId: string;
 
-  private client: ElevenLabsClient;
+  private apiKey: string;
 
-  constructor(modelId: string, client: ElevenLabsClient) {
+  constructor(modelId: string, apiKey: string) {
     this.modelId = modelId;
-    this.client = client;
+    this.apiKey = apiKey;
   }
 
-  async doGenerate(options: SpeechModelV3CallOptions) {
+  async doGenerate(
+    options: SpeechModelV3CallOptions,
+  ): Promise<ElevenLabsSpeechResult> {
     const { text, voice, speed, providerOptions } = options;
     const warnings: SharedV3Warning[] = [];
 
@@ -135,30 +152,49 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
       });
     }
 
-    const elevenLabsOptions = providerOptions?.elevenlabs ?? {};
-    const audio = await this.client.textToSpeech.convert(voiceId, {
-      text,
-      modelId: model,
-      outputFormat: "mp3_44100_128",
-      ...elevenLabsOptions,
-    } as Parameters<typeof this.client.textToSpeech.convert>[1]);
+    const elevenLabsOptions = (providerOptions?.elevenlabs ?? {}) as Record<
+      string,
+      unknown
+    >;
 
-    const reader = audio.getReader();
-    const chunks: Uint8Array[] = [];
+    // Call the /with-timestamps endpoint via raw fetch.
+    // Returns JSON with base64 audio + character-level alignment.
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": this.apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: model,
+          ...elevenLabsOptions,
+        }),
+      },
+    );
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `ElevenLabs speech with timestamps failed (${response.status}): ${errorText}`,
+      );
     }
 
-    const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
-    const result = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      result.set(chunk, offset);
-      offset += chunk.length;
-    }
+    const json = (await response.json()) as {
+      audio_base64: string;
+      alignment?: ElevenLabsCharacterAlignment;
+      normalized_alignment?: ElevenLabsCharacterAlignment;
+    };
+
+    // Decode base64 audio to binary
+    const audioBytes = Buffer.from(json.audio_base64, "base64");
+    const result = new Uint8Array(
+      audioBytes.buffer,
+      audioBytes.byteOffset,
+      audioBytes.byteLength,
+    );
 
     return {
       audio: result,
@@ -168,6 +204,8 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
         modelId: this.modelId,
         headers: undefined,
       },
+      alignment: json.alignment,
+      normalizedAlignment: json.normalized_alignment,
     };
   }
 }
@@ -199,7 +237,7 @@ export function createElevenLabs(
   return {
     specificationVersion: "v3",
     speechModel(modelId = ELEVENLABS_DEFAULTS.speechModel) {
-      return new ElevenLabsSpeechModel(modelId, client);
+      return new ElevenLabsSpeechModel(modelId, apiKey);
     },
     musicModel(modelId = ELEVENLABS_DEFAULTS.musicModel) {
       return new ElevenLabsMusicModel(modelId, client);

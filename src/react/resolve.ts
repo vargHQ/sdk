@@ -21,6 +21,10 @@ import { fileCache } from "../ai-sdk/file-cache";
 import { generateMusic as generateMusicRaw } from "../ai-sdk/generate-music";
 import { generateVideo as generateVideoRaw } from "../ai-sdk/generate-video";
 import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
+import type { ElevenLabsSpeechResult } from "../ai-sdk/providers/elevenlabs";
+import { mapWordsToSegments } from "../speech/map-segments";
+import { parseElevenLabsAlignment } from "../speech/parse-alignment";
+import type { Segment, WordTiming } from "../speech/types";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
 import { getResolveContext } from "./resolve-context";
 import { ResolvedElement } from "./resolved-element";
@@ -110,6 +114,88 @@ function getCachedGenerateMusic() {
 // ---------------------------------------------------------------------------
 // Speech
 // ---------------------------------------------------------------------------
+
+/**
+ * Extract the children array from SpeechProps.
+ * Returns the original string array if children was an array, or undefined if it was a single string.
+ */
+function getChildrenArray(props: SpeechProps): string[] | undefined {
+  const children = props.children;
+  if (Array.isArray(children)) return children;
+  return undefined;
+}
+
+/**
+ * Create Segment objects from segment descriptors and the full audio file.
+ * Each segment gets a lazy `.audio()` method that slices via ffmpeg on first call.
+ */
+function createSegments(
+  descriptors: import("../speech/types").SegmentDescriptor[],
+  fullFile: File,
+): Segment[] {
+  return descriptors.map((desc) => {
+    let cachedAudio: Promise<Uint8Array> | undefined;
+
+    return {
+      text: desc.text,
+      start: desc.start,
+      end: desc.end,
+      duration: desc.duration,
+      audio(): Promise<Uint8Array> {
+        if (!cachedAudio) {
+          cachedAudio = sliceAudio(fullFile, desc.start, desc.end);
+        }
+        return cachedAudio;
+      },
+    };
+  });
+}
+
+/**
+ * Extract a time range from an audio file using ffmpeg.
+ * Returns the sliced audio as a Uint8Array.
+ */
+async function sliceAudio(
+  file: File,
+  start: number,
+  end: number,
+): Promise<Uint8Array> {
+  const ctx = getResolveContext();
+
+  if (ctx?.backend) {
+    // Cloud/backend path — resolve to a URL/path, then use ffmpeg via backend
+    const inputPath = await ctx.backend.resolvePath(file);
+    const outPath = `/tmp/varg-segment-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`;
+    const duration = end - start;
+
+    await $`ffmpeg -y -i ${inputPath} -ss ${start} -t ${duration} -acodec copy ${outPath}`.quiet();
+
+    const sliced = await Bun.file(outPath).arrayBuffer();
+    // Clean up temp file
+    try {
+      await Bun.file(outPath).delete?.();
+    } catch {
+      /* ignore */
+    }
+    return new Uint8Array(sliced);
+  }
+
+  // Local fallback — write full audio to temp, slice, read back
+  const tmpInput = await file.toTempFile();
+  const outPath = `/tmp/varg-segment-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`;
+  const duration = end - start;
+
+  await $`ffmpeg -y -i ${tmpInput} -ss ${start} -t ${duration} -acodec copy ${outPath}`.quiet();
+
+  const sliced = await Bun.file(outPath).arrayBuffer();
+  try {
+    await Bun.file(outPath).delete?.();
+  } catch {
+    /* ignore */
+  }
+  return new Uint8Array(sliced);
+}
+
 /** Generate speech audio via the AI SDK and return a ResolvedElement with duration metadata. */
 export async function resolveSpeechElement(
   element: VargElement<"speech">,
@@ -131,7 +217,7 @@ export async function resolveSpeechElement(
 
   const cacheKey = computeCacheKey(element);
 
-  const { audio } = await generateSpeechAI({
+  const { audio, ...rest } = await generateSpeechAI({
     model,
     text,
     voice: props.voice ?? "rachel",
@@ -152,9 +238,45 @@ export async function resolveSpeechElement(
 
   const duration = await probeDuration(file);
 
+  // Extract alignment data if the provider returned it (ElevenLabs with-timestamps).
+  // The AI SDK passes through provider-specific fields on the result object.
+  const providerResult = rest as Partial<ElevenLabsSpeechResult>;
+  const alignment = providerResult.alignment;
+
+  let words: WordTiming[] | undefined;
+  let segments: Segment[] | undefined;
+
+  if (alignment) {
+    words = parseElevenLabsAlignment(alignment);
+
+    // Build segments if children was an array
+    const childrenArray = getChildrenArray(props);
+    if (childrenArray && childrenArray.length > 0 && words.length > 0) {
+      const descriptors = mapWordsToSegments(words, childrenArray);
+      segments = createSegments(descriptors, file);
+    } else if (words.length > 0) {
+      // Single string — create one segment spanning the entire audio
+      const firstWord = words[0]!;
+      const lastWord = words[words.length - 1]!;
+      segments = createSegments(
+        [
+          {
+            text,
+            start: firstWord.start,
+            end: lastWord.end,
+            duration: lastWord.end - firstWord.start,
+          },
+        ],
+        file,
+      );
+    }
+  }
+
   return new ResolvedElement(element, {
     file,
     duration,
+    words,
+    segments,
   });
 }
 

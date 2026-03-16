@@ -1,4 +1,5 @@
 import type { File } from "../ai-sdk/file";
+import type { Segment, WordTiming } from "../speech/types";
 import type { ElementMeta, VargElementType, VargNode } from "./types";
 
 /**
@@ -10,13 +11,22 @@ import type { ElementMeta, VargElementType, VargNode } from "./types";
  *
  * @example
  * ```tsx
+ * // Single string
  * const audio = await Speech({ voice: "adam", children: "Hello world" });
- * // audio instanceof ResolvedElement === true
- * // audio.duration === 3.8
- * // audio.type === "speech"
+ * audio.duration  // 3.8
+ * audio.words     // [{word: "Hello", start: 0, end: 0.5}, ...]
  *
- * <Clip duration={audio.duration}>
- *   {audio}
+ * // Array children — segments with lazy audio slicing
+ * const audio = await Speech({
+ *   voice: "adam",
+ *   children: ["Welcome.", "Main content.", "Thanks."]
+ * });
+ * audio.segments[0].duration  // 2.1
+ * audio.segments[0].audio()   // Promise<Uint8Array> (ffmpeg slice)
+ *
+ * <Clip duration={audio.segments[0].duration}>
+ *   <Video prompt={{ images: [portrait], audio: await audio.segments[0].audio() }}
+ *          model="veed-fabric-1.0" />
  * </Clip>
  * ```
  */
@@ -49,5 +59,23 @@ export class ResolvedElement<T extends VargElementType = VargElementType> {
   /** Aspect ratio of the generated media, if applicable. */
   get aspectRatio(): string | undefined {
     return this.meta.aspectRatio;
+  }
+
+  /**
+   * Word-level timing data from ElevenLabs character alignment.
+   * Available on speech elements when the provider returns alignment data.
+   */
+  get words(): WordTiming[] | undefined {
+    return this.meta.words;
+  }
+
+  /**
+   * Speech segments corresponding to each entry in the `children` array.
+   * Available when `children` was passed as a `string[]` to `Speech()`.
+   * Each segment has start/end timestamps and a lazy `.audio()` method
+   * that extracts just that segment's bytes via ffmpeg.
+   */
+  get segments(): Segment[] | undefined {
+    return this.meta.segments;
   }
 }

@@ -16,6 +16,7 @@ import type {
 } from "../ai-sdk/providers/editly/types";
 import type { StorageProvider } from "../ai-sdk/storage/types";
 import type { VideoModelV3 } from "../ai-sdk/video-model";
+import type { Segment, WordTiming } from "../speech/types";
 
 export type VargElementType =
   | "render"
@@ -46,6 +47,18 @@ export interface ElementMeta {
   duration: number;
   /** Aspect ratio of the generated media, if applicable (e.g. "9:16") */
   aspectRatio?: string;
+  /**
+   * Word-level timing data from ElevenLabs character alignment.
+   * Available on speech elements when the provider returns alignment data.
+   */
+  words?: WordTiming[];
+  /**
+   * Speech segments corresponding to each entry in the `children` array.
+   * Available when `children` was passed as a `string[]` to `Speech()`.
+   * Each segment has start/end timestamps and a lazy `.audio()` method
+   * that extracts just that segment's bytes via ffmpeg.
+   */
+  segments?: Segment[];
 }
 
 export interface VargElement<T extends VargElementType = VargElementType> {
@@ -156,7 +169,28 @@ export interface SpeechProps extends BaseProps, VolumeProps {
   voice?: string;
   model?: SpeechModelV3;
   id?: string;
-  children?: string;
+  /**
+   * Text to convert to speech.
+   *
+   * - `string` — single text, generates one audio track.
+   * - `string[]` — multiple segments, generates one audio track with word-level
+   *   timing. The resolved element exposes `.segments` with per-entry start/end
+   *   timestamps and lazy `.audio()` slicing.
+   *
+   * @example
+   * ```tsx
+   * // Single string
+   * const audio = await Speech({ children: "Hello world" });
+   *
+   * // Array segments — one API call, segments computed from alignment
+   * const audio = await Speech({
+   *   children: ["Welcome.", "Main content.", "Thanks."]
+   * });
+   * audio.segments[0].duration  // 2.1
+   * audio.segments[0].audio()   // Promise<Uint8Array> (ffmpeg slice)
+   * ```
+   */
+  children?: string | string[];
 }
 
 export interface TalkingHeadProps extends BaseProps {
