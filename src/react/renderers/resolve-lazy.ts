@@ -13,6 +13,14 @@
  */
 import type { VargElement, VargNode } from "../types";
 
+/**
+ * Recursively resolve all `__lazy` elements in a VargNode tree.
+ *
+ * Awaits lazy promises (from async JSX components), splices the resolved
+ * sub-trees back into the parent, and flattens Fragment arrays. Strips
+ * `.then` from spread results to prevent thenable VargElements from being
+ * incorrectly awaited by `Promise.all`.
+ */
 export async function resolveLazy(node: VargNode): Promise<VargNode> {
   // Primitives and nullish values — pass through
   if (node === null || node === undefined) return node;

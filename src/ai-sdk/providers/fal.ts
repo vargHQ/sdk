@@ -583,7 +583,14 @@ class FalVideoModel implements VideoModelV3 {
         }
       } else if (isKlingV3 || isKlingV26) {
         // Duration must be string for Kling v2.6+ and O3 (v3)
-        input.duration = String(duration ?? 5);
+        // Kling v3 (O3) supports 3-15s; v2.6 supports 5 or 10
+        const raw = duration ?? 5;
+        const clamped = isKlingV3
+          ? Math.max(3, Math.min(15, raw))
+          : raw <= 5
+            ? 5
+            : 10;
+        input.duration = String(clamped);
       } else if (isGrokImagine) {
         // Grok Imagine: duration 1-15 seconds (default 6)
         input.duration = duration ?? 6;

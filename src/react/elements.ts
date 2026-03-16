@@ -24,6 +24,7 @@ import type {
   VideoProps,
 } from "./types";
 
+/** Flatten and normalize children into a VargNode array. */
 function normalizeChildren(children: unknown): VargNode[] {
   if (children === null || children === undefined) return [];
   if (Array.isArray(children))
@@ -31,6 +32,7 @@ function normalizeChildren(children: unknown): VargNode[] {
   return [children as VargNode];
 }
 
+/** Create a VargElement with the given type, props, and normalized children. */
 function createElement<T extends VargElement["type"]>(
   type: T,
   props: Record<string, unknown>,
@@ -76,6 +78,7 @@ function makeThenable<T extends VargElement["type"]>(
 // Element factories
 // ---------------------------------------------------------------------------
 
+/** Create a `<Render>` root element that defines the video composition. */
 export function Render(props: RenderProps): VargElement<"render"> {
   return createElement(
     "render",
@@ -84,6 +87,7 @@ export function Render(props: RenderProps): VargElement<"render"> {
   );
 }
 
+/** Create a `<Clip>` element representing a time segment in the video timeline. */
 export function Clip(props: ClipProps): VargElement<"clip"> {
   return createElement(
     "clip",
@@ -92,6 +96,7 @@ export function Clip(props: ClipProps): VargElement<"clip"> {
   );
 }
 
+/** Create an `<Overlay>` element for picture-in-picture or watermark layers. */
 export function Overlay(props: OverlayProps): VargElement<"overlay"> {
   return createElement(
     "overlay",
@@ -100,6 +105,7 @@ export function Overlay(props: OverlayProps): VargElement<"overlay"> {
   );
 }
 
+/** Create an `<Image>` element. Awaitable: `await Image({...})` generates the image and returns a ResolvedElement. */
 export function Image(
   props: ImageProps,
 ): VargElement<"image"> & PromiseLike<ResolvedElement<"image">> {
@@ -113,6 +119,7 @@ export function Image(
   );
 }
 
+/** Create a `<Video>` element. Awaitable: `await Video({...})` generates the video and returns a ResolvedElement. */
 export function Video(
   props: VideoProps,
 ): VargElement<"video"> & PromiseLike<ResolvedElement<"video">> {
@@ -126,6 +133,7 @@ export function Video(
   );
 }
 
+/** Create a `<Speech>` element. Awaitable: `await Speech({...})` generates audio and returns a ResolvedElement with `.duration`. */
 export function Speech(
   props: SpeechProps,
 ): VargElement<"speech"> & PromiseLike<ResolvedElement<"speech">> {
@@ -139,6 +147,7 @@ export function Speech(
   );
 }
 
+/** Create a `<TalkingHead>` element for lipsync avatar generation. */
 export function TalkingHead(
   props: TalkingHeadProps,
 ): VargElement<"talking-head"> {
@@ -149,6 +158,7 @@ export function TalkingHead(
   );
 }
 
+/** Create a `<Title>` text overlay element. */
 export function Title(props: TitleProps): VargElement<"title"> {
   return createElement(
     "title",
@@ -157,6 +167,7 @@ export function Title(props: TitleProps): VargElement<"title"> {
   );
 }
 
+/** Create a `<Subtitle>` text overlay element. */
 export function Subtitle(props: SubtitleProps): VargElement<"subtitle"> {
   return createElement(
     "subtitle",
@@ -165,6 +176,7 @@ export function Subtitle(props: SubtitleProps): VargElement<"subtitle"> {
   );
 }
 
+/** Create a `<Music>` element. Awaitable: `await Music({...})` generates audio and returns a ResolvedElement with `.duration`. */
 export function Music(
   props: MusicProps,
 ): VargElement<"music"> & PromiseLike<ResolvedElement<"music">> {
@@ -178,10 +190,12 @@ export function Music(
   );
 }
 
+/** Create a `<Captions>` element for word-level subtitles burned into the video. */
 export function Captions(props: CaptionsProps): VargElement<"captions"> {
   return createElement("captions", props as Record<string, unknown>, undefined);
 }
 
+/** Create a `<Slider>` element for horizontal/vertical slide transitions between children. */
 export function Slider(props: SliderProps): VargElement<"slider"> {
   return createElement(
     "slider",
@@ -190,6 +204,7 @@ export function Slider(props: SliderProps): VargElement<"slider"> {
   );
 }
 
+/** Create a `<Swipe>` element for swipe-style transitions between children. */
 export function Swipe(props: SwipeProps): VargElement<"swipe"> {
   return createElement(
     "swipe",
@@ -198,6 +213,7 @@ export function Swipe(props: SwipeProps): VargElement<"swipe"> {
   );
 }
 
+/** Create a `<Packshot>` end-card element with logo and call-to-action. */
 export function Packshot(props: PackshotProps): VargElement<"packshot"> {
   return createElement("packshot", props as Record<string, unknown>, undefined);
 }

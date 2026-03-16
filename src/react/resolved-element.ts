@@ -26,6 +26,7 @@ export class ResolvedElement<T extends VargElementType = VargElementType> {
   readonly children: VargNode[];
   readonly meta: ElementMeta;
 
+  /** Create a resolved element from a plain VargElement and its generation metadata. */
   constructor(
     element: { type: T; props: Record<string, unknown>; children: VargNode[] },
     meta: ElementMeta,
