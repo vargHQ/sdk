@@ -11,6 +11,7 @@ export async function renderMusic(
 ): Promise<File> {
   // If already resolved via `await Music(...)`, reuse the pre-generated file
   if (element instanceof ResolvedElement) {
+    ctx.generatedFiles.push(element.meta.file);
     return element.meta.file;
   }
 

@@ -12,6 +12,7 @@ export async function renderSpeech(
 ): Promise<File> {
   // If already resolved via `await Speech(...)`, reuse the pre-generated file
   if (element instanceof ResolvedElement) {
+    ctx.generatedFiles.push(element.meta.file);
     return element.meta.file;
   }
 

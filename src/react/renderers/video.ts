@@ -106,6 +106,7 @@ export async function renderVideo(
 ): Promise<File> {
   // If already resolved via `await Video(...)`, reuse the pre-generated file
   if (element instanceof ResolvedElement) {
+    ctx.generatedFiles.push(element.meta.file);
     return element.meta.file;
   }
 
