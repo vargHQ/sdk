@@ -4,6 +4,10 @@
  * These are called when the user writes `await Speech({...})`, `await Image({...})`, etc.
  * They generate the asset, probe metadata (duration for audio/video), and return
  * a ResolvedElement that carries the result in its `meta` field.
+ *
+ * When running inside render() (via async components), the ResolveContext from
+ * AsyncLocalStorage provides the backend, cache, and storage — enabling cloud
+ * rendering. When running at top level (outside render()), local defaults are used.
  */
 
 import {
@@ -11,12 +15,14 @@ import {
   experimental_generateSpeech as generateSpeechAI,
 } from "ai";
 import { $ } from "bun";
-import { withCache } from "../ai-sdk/cache";
+import { type CacheStorage, withCache } from "../ai-sdk/cache";
 import { File } from "../ai-sdk/file";
 import { fileCache } from "../ai-sdk/file-cache";
 import { generateMusic } from "../ai-sdk/generate-music";
 import { generateVideo as generateVideoRaw } from "../ai-sdk/generate-video";
+import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
+import { getResolveContext } from "./resolve-context";
 import { ResolvedElement } from "./resolved-element";
 import type {
   ImagePrompt,
@@ -27,38 +33,71 @@ import type {
 } from "./types";
 
 // ---------------------------------------------------------------------------
-// Cache — use the same .cache/ai directory as the render pipeline
+// Local fallback cache (used only when no ResolveContext is available)
 // ---------------------------------------------------------------------------
 const DEFAULT_CACHE_DIR = ".cache/ai";
 
-let _cache: ReturnType<typeof fileCache> | undefined;
-/** Get or create the shared file cache instance for standalone element resolution. */
-function getCache() {
-  if (!_cache) {
-    _cache = fileCache({ dir: DEFAULT_CACHE_DIR });
+let _localCache: ReturnType<typeof fileCache> | undefined;
+/** Get the local file cache (fallback for top-level await without render context). */
+function getLocalCache(): CacheStorage {
+  if (!_localCache) {
+    _localCache = fileCache({ dir: DEFAULT_CACHE_DIR });
   }
-  return _cache;
+  return _localCache;
 }
 
-/** Cached video generation (same pattern as render pipeline) */
-const generateVideo = withCache(generateVideoRaw, {
-  storage: getCache(),
-});
+/** Get the active cache storage — from context if available, otherwise local fallback. */
+function getActiveCache(): CacheStorage {
+  return getResolveContext()?.cache ?? getLocalCache();
+}
 
 // ---------------------------------------------------------------------------
-// Duration probing via ffprobe
+// Duration probing — uses backend.ffprobe() when available, local ffprobe otherwise
 // ---------------------------------------------------------------------------
-/** Probe an audio file's duration in seconds using ffprobe. Returns 0 on failure. */
-async function probeAudioDuration(file: File): Promise<number> {
-  const tmpPath = await file.toTempFile();
+/** Probe an audio/video file's duration in seconds. Uses backend.ffprobe() when available. */
+async function probeDuration(file: File): Promise<number> {
+  const ctx = getResolveContext();
+  if (ctx?.backend) {
+    return probeDurationViaBackend(file, ctx.backend);
+  }
+  return probeDurationLocal(file);
+}
+
+/** Probe duration via the FFmpeg backend (works with both local and cloud backends). */
+async function probeDurationViaBackend(
+  file: File,
+  backend: FFmpegBackend,
+): Promise<number> {
   try {
+    const path = await backend.resolvePath(file);
+    const info = await backend.ffprobe(path);
+    return info.duration ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Probe duration via local ffprobe shell command (fallback for top-level await). */
+async function probeDurationLocal(file: File): Promise<number> {
+  try {
+    const tmpPath = await file.toTempFile();
     const result =
       await $`ffprobe -v error -show_entries format=duration -of json ${tmpPath}`.json();
-    const duration = parseFloat(result?.format?.duration ?? "0");
+    const duration = Number.parseFloat(result?.format?.duration ?? "0");
     return Number.isFinite(duration) ? duration : 0;
   } catch {
     return 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Cached video generation — uses context cache when available
+// ---------------------------------------------------------------------------
+/** Get a cached generateVideo wrapper using the active cache storage. */
+function getCachedGenerateVideo() {
+  const ctx = getResolveContext();
+  const storage = ctx?.cache ?? getLocalCache();
+  return withCache(generateVideoRaw, { storage });
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +143,7 @@ export async function resolveSpeechElement(
     prompt: text,
   });
 
-  const duration = await probeAudioDuration(file);
+  const duration = await probeDuration(file);
 
   return new ResolvedElement(element, {
     file,
@@ -135,6 +174,19 @@ async function resolveImageInputForStandalone(
       }
       return new Uint8Array(await response.arrayBuffer());
     }
+    // Local file path — resolve via backend if available
+    const ctx = getResolveContext();
+    if (ctx?.backend) {
+      const path = await ctx.backend.resolvePath(File.fromPath(input));
+      const response = await fetch(path);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch image from ${path}: ${response.status}`,
+        );
+      }
+      return new Uint8Array(await response.arrayBuffer());
+    }
+    // Local fallback
     const response = await fetch(`file://${input}`);
     if (!response.ok) {
       throw new Error(
@@ -309,7 +361,7 @@ export async function resolveVideoElement(
               );
               return resolved.file.arrayBuffer();
             }
-            throw new Error(`Unsupported image input in Video prompt`);
+            throw new Error("Unsupported image input in Video prompt");
           }),
         )
       : undefined;
@@ -346,6 +398,8 @@ export async function resolveVideoElement(
       video: undefined, // video-to-video not supported in standalone yet
     };
   }
+
+  const generateVideo = getCachedGenerateVideo();
 
   const { video } = await generateVideo({
     model: model as Parameters<typeof generateVideoRaw>[0]["model"],
@@ -410,7 +464,7 @@ export async function resolveMusicElement(
     prompt,
   });
 
-  const duration = await probeAudioDuration(file);
+  const duration = await probeDuration(file);
 
   return new ResolvedElement(element, {
     file,
