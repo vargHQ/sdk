@@ -12,7 +12,7 @@ export default (
   <Render width={1080} height={1920}>
     <Clip duration={audio.duration}>
       <Image
-        prompt={`A kittie with a letter: this video is exatly ${audio.duration} seconds long.`}
+        prompt={`A kittie with a letter: this video is exactly ${audio.duration} seconds long.`}
         model={fal.imageModel("nano-banana-pro")}
         aspectRatio="9:16"
         zoom="in"

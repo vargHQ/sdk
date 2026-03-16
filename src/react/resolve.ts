@@ -32,6 +32,7 @@ import type {
 const DEFAULT_CACHE_DIR = ".cache/ai";
 
 let _cache: ReturnType<typeof fileCache> | undefined;
+/** Get or create the shared file cache instance for standalone element resolution. */
 function getCache() {
   if (!_cache) {
     _cache = fileCache({ dir: DEFAULT_CACHE_DIR });
@@ -47,6 +48,7 @@ const generateVideo = withCache(generateVideoRaw, {
 // ---------------------------------------------------------------------------
 // Duration probing via ffprobe
 // ---------------------------------------------------------------------------
+/** Probe an audio file's duration in seconds using ffprobe. Returns 0 on failure. */
 async function probeAudioDuration(file: File): Promise<number> {
   const tmpPath = await file.toTempFile();
   try {
@@ -62,6 +64,7 @@ async function probeAudioDuration(file: File): Promise<number> {
 // ---------------------------------------------------------------------------
 // Speech
 // ---------------------------------------------------------------------------
+/** Generate speech audio via the AI SDK and return a ResolvedElement with duration metadata. */
 export async function resolveSpeechElement(
   element: VargElement<"speech">,
   props: SpeechProps,
@@ -113,6 +116,7 @@ export async function resolveSpeechElement(
 // Image
 // ---------------------------------------------------------------------------
 
+/** Resolve an image input (URL, path, Uint8Array, or nested Image element) to raw bytes. */
 async function resolveImageInputForStandalone(
   input: unknown,
 ): Promise<Uint8Array> {
@@ -124,9 +128,19 @@ async function resolveImageInputForStandalone(
       input.startsWith("file://")
     ) {
       const response = await fetch(input);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch image from ${input}: ${response.status}`,
+        );
+      }
       return new Uint8Array(await response.arrayBuffer());
     }
     const response = await fetch(`file://${input}`);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch image from ${input}: ${response.status}`,
+      );
+    }
     return new Uint8Array(await response.arrayBuffer());
   }
   // Nested VargElement<"image"> — resolve it recursively
@@ -146,6 +160,7 @@ async function resolveImageInputForStandalone(
   throw new Error(`Unsupported image input type: ${typeof input}`);
 }
 
+/** Resolve an image prompt, converting any nested image references to raw bytes. */
 async function resolveImagePrompt(
   prompt: ImagePrompt,
 ): Promise<string | { text?: string; images: Uint8Array[] }> {
@@ -156,15 +171,16 @@ async function resolveImagePrompt(
   return { text: prompt.text, images: resolvedImages };
 }
 
+/** Generate an image via the AI SDK (or load from src) and return a ResolvedElement. */
 export async function resolveImageElement(
   element: VargElement<"image">,
   props: ImageProps,
 ): Promise<ResolvedElement<"image">> {
   if (props.src) {
-    const file =
-      typeof props.src === "string" && props.src.startsWith("http")
-        ? File.fromUrl(props.src)
-        : File.fromPath(props.src);
+    const src = props.src as string;
+    const file = src.startsWith("http")
+      ? File.fromUrl(src)
+      : File.fromPath(src.startsWith("file://") ? src.slice(7) : src);
 
     return new ResolvedElement(element, {
       file,
@@ -226,6 +242,7 @@ export async function resolveImageElement(
 // ---------------------------------------------------------------------------
 // Video
 // ---------------------------------------------------------------------------
+/** Generate a video via the AI SDK (or load from src) and return a ResolvedElement. */
 export async function resolveVideoElement(
   element: VargElement<"video">,
   props: Record<string, unknown>,
@@ -234,7 +251,7 @@ export async function resolveVideoElement(
     const src = props.src as string;
     const file = src.startsWith("http")
       ? File.fromUrl(src)
-      : File.fromPath(src);
+      : File.fromPath(src.startsWith("file://") ? src.slice(7) : src);
     return new ResolvedElement(element, {
       file,
       duration: 0, // video duration probing deferred to a later phase
@@ -366,6 +383,7 @@ export async function resolveVideoElement(
 // ---------------------------------------------------------------------------
 // Music
 // ---------------------------------------------------------------------------
+/** Generate music audio via the AI SDK and return a ResolvedElement with duration metadata. */
 export async function resolveMusicElement(
   element: VargElement<"music">,
   props: MusicProps,

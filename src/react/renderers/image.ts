@@ -23,18 +23,9 @@ async function resolveImageInput(
     return new Uint8Array(await response.arrayBuffer());
   }
   const file = await renderImage(input, ctx);
-  const data: unknown = await file.arrayBuffer();
-  // Debug: ensure we always return a proper Uint8Array
-  if (!(data instanceof Uint8Array)) {
-    console.error(
-      `[resolveImageInput] file.arrayBuffer() returned ${typeof data} (constructor: ${(data as { constructor?: { name?: string } })?.constructor?.name}), converting...`,
-    );
-    if (data instanceof ArrayBuffer) {
-      return new Uint8Array(data);
-    }
-    throw new Error(
-      `resolveImageInput: unexpected data type ${typeof data} from file.arrayBuffer()`,
-    );
+  const data = await file.arrayBuffer();
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
   }
   return data;
 }
@@ -49,15 +40,6 @@ async function resolvePrompt(
   const resolvedImages = await Promise.all(
     prompt.images.map((img) => resolveImageInput(img, ctx)),
   );
-  // Debug: verify all images are Uint8Array before passing to generateImage
-  for (let i = 0; i < resolvedImages.length; i++) {
-    const img = resolvedImages[i];
-    if (!(img instanceof Uint8Array)) {
-      console.error(
-        `[resolvePrompt] images[${i}] is ${typeof img} (constructor: ${(img as any)?.constructor?.name}), not Uint8Array`,
-      );
-    }
-  }
   return { text: prompt.text, images: resolvedImages };
 }
 
