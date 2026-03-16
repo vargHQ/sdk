@@ -21,7 +21,15 @@ export type VideoDurationString = z.infer<typeof videoDurationStringSchema>;
 export const resolutionSchema = z.enum(["480p", "720p", "1080p"]);
 export type Resolution = z.infer<typeof resolutionSchema>;
 
-// ElevenLabs preset voices
+// Voice parameter: accepts any voice name or ElevenLabs voice_id string.
+// ElevenLabs has 1000+ voices — pass a voice_id directly for full catalog access.
+// Common names ("rachel", "adam", etc.) are resolved to voice_ids automatically.
+export const voiceSchema = z
+  .string()
+  .min(1, "Voice name or voice_id cannot be empty");
+export type Voice = z.infer<typeof voiceSchema>;
+
+/** @deprecated Use voiceSchema instead. Kept for backward compatibility. */
 export const voiceNameSchema = z.enum([
   "rachel",
   "domi",
@@ -35,6 +43,21 @@ export const voiceNameSchema = z.enum([
   "sam",
 ]);
 export type VoiceName = z.infer<typeof voiceNameSchema>;
+
+// Well-known voice names for quick reference in skills/prompts.
+// These are convenience aliases — any valid ElevenLabs voice_id also works.
+export const WELL_KNOWN_VOICE_NAMES = [
+  "rachel",
+  "domi",
+  "sarah",
+  "bella",
+  "antoni",
+  "elli",
+  "josh",
+  "arnold",
+  "adam",
+  "sam",
+] as const;
 
 // Simplified voice set (commonly used in skills)
 export const simpleVoiceSchema = z.enum(["rachel", "sam", "adam", "josh"]);

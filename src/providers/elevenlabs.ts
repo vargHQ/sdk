@@ -186,7 +186,11 @@ export class ElevenLabsProvider extends BaseProvider {
   }
 }
 
-// Popular voices
+/**
+ * Curated voice_id constants for common ElevenLabs voices.
+ * For the full catalog of 600+ voices, use voice_ids directly or
+ * call the gateway's GET /v1/voices endpoint to browse/search.
+ */
 export const VOICES = {
   RACHEL: "21m00Tcm4TlvDq8ikWAM",
   DOMI: "AZnzlk1XvdvUeBnXmlld",
