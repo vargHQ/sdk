@@ -11,6 +11,14 @@ import {
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
 
+/**
+ * Curated name → voice_id mapping for backward-compatible friendly names.
+ * These are convenience aliases only — any valid ElevenLabs voice_id can be
+ * passed directly as the `voice` parameter and it will be forwarded as-is.
+ *
+ * For the full catalog of 600+ voices, use voice_id strings directly or
+ * call the gateway's GET /v1/voices endpoint to browse/search.
+ */
 const VOICES: Record<string, string> = {
   rachel: "21m00Tcm4TlvDq8ikWAM",
   domi: "AZnzlk1XvdvUeBnXmlld",

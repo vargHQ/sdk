@@ -4,15 +4,17 @@
  */
 
 import { z } from "zod";
-import { filePathSchema, voiceNameSchema } from "../../core/schema/shared";
+import { filePathSchema, voiceSchema } from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
 import { elevenlabsProvider, VOICES } from "../../providers/elevenlabs";
 import { storageProvider } from "../../providers/storage";
 
-// Input schema with Zod
+// Input schema with Zod — accepts any voice name or ElevenLabs voice_id
 const voiceInputSchema = z.object({
   text: z.string().describe("Text to convert to speech"),
-  voice: voiceNameSchema.default("rachel").describe("Voice to use"),
+  voice: voiceSchema
+    .default("rachel")
+    .describe("Voice name or ElevenLabs voice_id"),
   output: filePathSchema.optional().describe("Output file path"),
 });
 
@@ -58,10 +60,11 @@ export interface VoiceResult {
   uploadUrl?: string;
 }
 
-// Voice name to ID mapping
+// Voice name to ID mapping. Unknown names pass through as voice_ids.
 const VOICE_MAP: Record<string, string> = {
   rachel: VOICES.RACHEL,
   domi: VOICES.DOMI,
+  sarah: VOICES.SARAH,
   bella: VOICES.BELLA,
   antoni: VOICES.ANTONI,
   elli: VOICES.ELLI,
