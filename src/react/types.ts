@@ -125,6 +125,8 @@ export interface ImageProps extends BaseProps, PositionProps {
   position?: Position;
   size?: { width: string; height: string };
   removeBackground?: boolean;
+  /** Seed for reproducible generation */
+  seed?: number;
   /** Provider-specific options (e.g., fal: { acceleration: "high" }) */
   providerOptions?: SharedV3ProviderOptions;
 }
@@ -148,6 +150,8 @@ export type VideoProps = BaseProps &
     resize?: ResizeMode;
     cropPosition?: CropPosition;
     aspectRatio?: `${number}:${number}`;
+    /** Seed for reproducible generation */
+    seed?: number;
     /** Provider-specific options (e.g., fal: { generate_audio: true }) */
     providerOptions?: SharedV3ProviderOptions;
   };
@@ -197,6 +201,10 @@ export type MusicProps = BaseProps &
     start?: number;
     loop?: boolean;
     ducking?: boolean;
+    /** Seed for reproducible generation */
+    seed?: number;
+    /** Provider-specific options */
+    providerOptions?: SharedV3ProviderOptions;
   };
 
 export interface CaptionsProps extends BaseProps {

@@ -5,6 +5,7 @@ export interface GenerateMusicOptions {
   model: MusicModelV3;
   prompt: string;
   duration?: number;
+  seed?: number;
   providerOptions?: SharedV3ProviderOptions;
   abortSignal?: AbortSignal;
   headers?: Record<string, string | undefined>;
@@ -25,12 +26,13 @@ export interface GenerateMusicResult {
 export async function generateMusic(
   options: GenerateMusicOptions,
 ): Promise<GenerateMusicResult> {
-  const { model, prompt, duration, providerOptions, abortSignal, headers } =
+  const { model, prompt, duration, seed, providerOptions, abortSignal, headers } =
     options;
 
   const result = await model.doGenerate({
     prompt,
     duration,
+    seed,
     providerOptions: providerOptions ?? {},
     abortSignal,
     headers,
