@@ -1,5 +1,6 @@
-import { elevenlabs, fal } from "../../ai-sdk";
-import { Captions, Clip, Image, Render, Speech } from "..";
+import { elevenlabs } from "../../../ai-sdk/providers/elevenlabs";
+import { fal } from "../../../ai-sdk/providers/fal";
+import { Clip, Image, Render, Speech } from "../..";
 
 const audio = await Speech({
   voice: "adam",

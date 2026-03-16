@@ -1,5 +1,6 @@
-import { elevenlabs, fal } from "../../ai-sdk";
-import { Captions, Clip, Image, type Render, Speech, Video } from "..";
+import { elevenlabs } from "../../../ai-sdk/providers/elevenlabs";
+import { fal } from "../../../ai-sdk/providers/fal";
+import { Captions, Clip, Image, Render, Speech, Video } from "../..";
 
 // Two fragments of narration
 const audio1 = await Speech({
@@ -23,29 +24,30 @@ const portrait = Image({
   aspectRatio: "9:16",
 });
 
-// Scene 1: girl talking head (lipsync with VEED)
+// Scene 1: lipsync talking head via VEED Fabric
 const talkingHead = Video({
   prompt: { images: [portrait], audio: audio1 },
   model: fal.videoModel("veed-fabric-1.0"),
   keepAudio: true,
+  providerOptions: { fal: { resolution: "720p" } },
 });
 
 export default (
   <Render width={1080} height={1920}>
-    {/* Scene 1: talking head — audio baked into the lipsync video */}
+    {/* Scene 1: talking head — lipsync via VEED, audio baked in */}
     <Clip duration={audio1.duration}>
       {talkingHead}
       <Captions src={audio1} style="tiktok" />
     </Clip>
 
-    {/* Scene 2: science b-roll — audio2 as voiceover */}
+    {/* Scene 2: science b-roll — image + voiceover via captions */}
     <Clip duration={audio2.duration}>
-      <Video
-        prompt="macro shot of a banana being peeled and sliced, scientific diagram overlay showing potassium molecules, bright lab lighting, educational documentary style"
-        model={fal.videoModel("kling-v3")}
-        duration={audio2.duration}
+      <Image
+        prompt="macro shot of banana being peeled and sliced, potassium molecule diagrams overlaid, bright lab lighting, educational documentary style"
+        model={fal.imageModel("nano-banana-pro")}
+        aspectRatio="9:16"
+        zoom="out"
       />
-      {audio2}
       <Captions src={audio2} style="tiktok" />
     </Clip>
   </Render>

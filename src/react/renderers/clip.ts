@@ -221,6 +221,15 @@ async function renderClipLayers(
         break;
       }
 
+      case "clip": {
+        console.warn(
+          "[varg] Warning: nested <Clip> found inside a leaf clip's layers. " +
+            "Nested clips should be handled by the flattenClip() logic in render.ts. " +
+            "This clip will be ignored.",
+        );
+        break;
+      }
+
       case "overlay": {
         console.warn(
           "[varg] Warning: <Overlay> placed inside <Clip> will be ignored. " +

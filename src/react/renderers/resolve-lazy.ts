@@ -53,9 +53,15 @@ export async function resolveLazy(node: VargNode): Promise<VargNode> {
     }
   }
 
-  // Return a new element with resolved children (don't mutate the original)
-  return {
+  // Return a new element with resolved children (don't mutate the original).
+  // IMPORTANT: strip .then from the spread to prevent Promise.all from
+  // treating the result as a thenable (Image/Speech/etc. elements are thenable).
+  const result = {
     ...element,
     children: flatChildren,
   };
+  if ("then" in result) {
+    delete (result as Record<string, unknown>).then;
+  }
+  return result;
 }

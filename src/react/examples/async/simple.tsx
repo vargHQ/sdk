@@ -1,5 +1,6 @@
-import { elevenlabs, fal } from "../../ai-sdk";
-import { Captions, Clip, Image, Render, Speech } from "..";
+import { elevenlabs } from "../../../ai-sdk/providers/elevenlabs";
+import { fal } from "../../../ai-sdk/providers/fal";
+import { Captions, Clip, Image, Render, Speech } from "../..";
 
 const audio = await Speech({
   voice: "adam",
@@ -15,7 +16,6 @@ export default (
         aspectRatio="9:16"
         zoom="in"
       />
-      {audio}
     </Clip>
     <Captions src={audio} style="tiktok" />
   </Render>

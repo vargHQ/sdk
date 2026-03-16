@@ -428,3 +428,191 @@ describe("resolveLazy", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Nested clips (container clip pattern)
+// ---------------------------------------------------------------------------
+describe("nested clips (container clip pattern)", () => {
+  test("container clip with child clips produces correct structure", () => {
+    // Pattern 1: shared audio across sub-clips
+    const audio = makeResolved(
+      Speech({ voice: "adam", children: "hello world" }),
+      4.0,
+    );
+
+    const tree = Render({
+      width: 1080,
+      height: 1920,
+      children: [
+        Clip({
+          duration: audio.duration,
+          children: [
+            Clip({
+              duration: 2,
+              children: [Image({ prompt: "black dog" })],
+            }),
+            Clip({
+              duration: 2,
+              children: [Image({ prompt: "orange cat" })],
+            }),
+            Captions({
+              src: audio as unknown as VargElement<"speech">,
+              style: "tiktok",
+            }),
+          ],
+        }),
+      ],
+    });
+
+    expect(tree.type).toBe("render");
+    // The outer Clip is a container — it has child clips
+    const containerClip = tree.children[0] as VargElement<"clip">;
+    expect(containerClip.type).toBe("clip");
+    expect(containerClip.props.duration).toBe(4.0);
+
+    // Container has 3 children: 2 inner clips + captions
+    expect(containerClip.children.length).toBe(3);
+    expect((containerClip.children[0] as VargElement).type).toBe("clip");
+    expect((containerClip.children[1] as VargElement).type).toBe("clip");
+    expect((containerClip.children[2] as VargElement).type).toBe("captions");
+  });
+
+  test("pattern 2: per-clip audio with auto-duration parent", () => {
+    const s1 = makeResolved(
+      Speech({ voice: "adam", children: "this is a black dog" }),
+      2.5,
+    );
+    const s2 = makeResolved(
+      Speech({ voice: "adam", children: "this is an orange cat" }),
+      3.0,
+    );
+
+    const tree = Render({
+      width: 1080,
+      height: 1920,
+      children: [
+        Clip({
+          children: [
+            Clip({
+              duration: s1.duration,
+              children: [
+                Image({ prompt: "black dog" }),
+                s1 as unknown as VargNode,
+              ],
+            }),
+            Clip({
+              duration: s2.duration,
+              children: [
+                Image({ prompt: "orange cat" }),
+                s2 as unknown as VargNode,
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    // Outer clip has no explicit duration — children define it
+    const containerClip = tree.children[0] as VargElement<"clip">;
+    expect(containerClip.type).toBe("clip");
+    expect(containerClip.props.duration).toBeUndefined();
+
+    // Inner clips have durations matching their speech
+    const inner0 = containerClip.children[0] as VargElement<"clip">;
+    const inner1 = containerClip.children[1] as VargElement<"clip">;
+    expect(inner0.props.duration).toBe(2.5);
+    expect(inner1.props.duration).toBe(3.0);
+  });
+
+  test("3-level nesting produces correct flat structure", () => {
+    // Scene > Acts > Clips
+    const tree = Render({
+      width: 1080,
+      height: 1920,
+      children: [
+        Clip({
+          children: [
+            Clip({
+              children: [
+                Clip({ duration: 3, children: [Image({ prompt: "a" })] }),
+                Clip({ duration: 3, children: [Image({ prompt: "b" })] }),
+              ],
+            }),
+            Clip({
+              duration: 4,
+              children: [Image({ prompt: "c" })],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    // Verify the structure exists — the flattening happens inside renderRoot,
+    // which we can't easily unit test without mocking the whole render pipeline.
+    // But we can verify the element tree is valid.
+    const scene = tree.children[0] as VargElement<"clip">;
+    expect(scene.type).toBe("clip");
+    const act1 = scene.children[0] as VargElement<"clip">;
+    const act2 = scene.children[1] as VargElement<"clip">;
+    expect(act1.type).toBe("clip");
+    expect(act2.type).toBe("clip");
+    expect(act2.props.duration).toBe(4);
+
+    const clip1 = act1.children[0] as VargElement<"clip">;
+    const clip2 = act1.children[1] as VargElement<"clip">;
+    expect(clip1.props.duration).toBe(3);
+    expect(clip2.props.duration).toBe(3);
+  });
+
+  test("async Scene component with container clip pattern", async () => {
+    const { jsx } = require("./runtime/jsx-runtime");
+
+    async function Scene(props: { clipCount: number }) {
+      const audio = makeResolved(
+        Speech({ voice: "adam", children: "narration" }),
+        props.clipCount * 2,
+      );
+
+      return Clip({
+        duration: audio.duration,
+        children: [
+          ...Array.from({ length: props.clipCount }, (_, i) =>
+            Clip({
+              duration: 2,
+              children: [Image({ prompt: `image ${i}` })],
+            }),
+          ),
+          Captions({
+            src: audio as unknown as VargElement<"speech">,
+            style: "tiktok",
+          }),
+        ],
+      });
+    }
+
+    const tree = Render({
+      width: 1080,
+      height: 1920,
+      children: [jsx(Scene, { clipCount: 3 }), jsx(Scene, { clipCount: 2 })],
+    });
+
+    // Before resolution: lazy elements
+    expect((tree.children[0] as VargElement).type).toBe("__lazy");
+    expect((tree.children[1] as VargElement).type).toBe("__lazy");
+
+    // After resolution: container clips
+    const resolved = (await resolveLazy(tree)) as VargElement<"render">;
+    const children = resolved.children as VargElement[];
+
+    expect(children.length).toBe(2);
+    expect(children[0]!.type).toBe("clip");
+    expect(children[0]!.props.duration).toBe(6); // 3 clips * 2s
+    expect(children[1]!.type).toBe("clip");
+    expect(children[1]!.props.duration).toBe(4); // 2 clips * 2s
+
+    // First container has 3 inner clips + 1 captions = 4 children
+    expect(children[0]!.children.length).toBe(4);
+    // Second container has 2 inner clips + 1 captions = 3 children
+    expect(children[1]!.children.length).toBe(3);
+  });
+});
