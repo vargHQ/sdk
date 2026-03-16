@@ -18,7 +18,7 @@ import { $ } from "bun";
 import { type CacheStorage, withCache } from "../ai-sdk/cache";
 import { File } from "../ai-sdk/file";
 import { fileCache } from "../ai-sdk/file-cache";
-import { generateMusic } from "../ai-sdk/generate-music";
+import { generateMusic as generateMusicRaw } from "../ai-sdk/generate-music";
 import { generateVideo as generateVideoRaw } from "../ai-sdk/generate-video";
 import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
@@ -98,6 +98,13 @@ function getCachedGenerateVideo() {
   const ctx = getResolveContext();
   const storage = ctx?.cache ?? getLocalCache();
   return withCache(generateVideoRaw, { storage });
+}
+
+/** Get a cached generateMusic wrapper using the active cache storage. */
+function getCachedGenerateMusic() {
+  const ctx = getResolveContext();
+  const storage = ctx?.cache ?? getLocalCache();
+  return withCache(generateMusicRaw, { storage });
 }
 
 // ---------------------------------------------------------------------------
@@ -459,10 +466,14 @@ export async function resolveMusicElement(
     throw new Error("await Music() requires 'prompt' and 'model' props");
   }
 
+  const generateMusic = getCachedGenerateMusic();
+  const cacheKey = computeCacheKey(element);
+
   const { audio } = await generateMusic({
     model,
     prompt,
     duration: props.duration,
+    cacheKey,
   });
 
   const file = File.fromGenerated({
