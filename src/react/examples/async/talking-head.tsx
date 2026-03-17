@@ -37,7 +37,7 @@ export default (
     {/* Scene 1: talking head — lipsync via VEED, audio baked in */}
     <Clip duration={audio1.duration}>
       {talkingHead}
-      <Captions src={audio1} style="tiktok" />
+      <Captions src={audio1} style="tiktok" withAudio />
     </Clip>
 
     {/* Scene 2: science b-roll — image + voiceover via captions */}
@@ -48,7 +48,7 @@ export default (
         aspectRatio="9:16"
         zoom="out"
       />
-      <Captions src={audio2} style="tiktok" />
+      <Captions src={audio2} style="tiktok" withAudio />
     </Clip>
   </Render>
 );

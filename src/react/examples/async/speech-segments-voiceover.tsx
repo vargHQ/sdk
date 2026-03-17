@@ -19,7 +19,7 @@
 
 import { elevenlabs } from "../../../ai-sdk/providers/elevenlabs";
 import { fal } from "../../../ai-sdk/providers/fal";
-import { Clip, Image, Render, render, Speech, Video } from "../..";
+import { Captions, Clip, Image, Render, render, Speech, Video } from "../..";
 
 // --- One speech call, three segments ---
 const { audio, segments } = await Speech({
@@ -84,6 +84,9 @@ const demo = (
 
     {/* Full continuous voiceover — smooth, no splicing */}
     {audio}
+
+    {/* Captions from the voiceover — no withAudio since audio is already included above */}
+    <Captions src={audio} style="tiktok" />
   </Render>
 );
 

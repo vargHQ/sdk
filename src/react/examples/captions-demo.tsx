@@ -20,7 +20,7 @@ async function main() {
       <Clip duration={5}>
         <Image src="media/cyberpunk-street.png" />
       </Clip>
-      <Captions src={speech} style="tiktok" />
+      <Captions src={speech} style="tiktok" withAudio />
     </Render>
   );
 

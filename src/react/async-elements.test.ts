@@ -190,6 +190,7 @@ describe("ResolvedElement in composition tree", () => {
     const captions = Captions({
       src: audio as unknown as VargElement<"speech">,
       style: "tiktok",
+      withAudio: true,
     });
 
     expect(captions.type).toBe("captions");
@@ -458,6 +459,7 @@ describe("nested clips (container clip pattern)", () => {
             Captions({
               src: audio as unknown as VargElement<"speech">,
               style: "tiktok",
+              withAudio: true,
             }),
           ],
         }),
@@ -585,6 +587,7 @@ describe("nested clips (container clip pattern)", () => {
           Captions({
             src: audio as unknown as VargElement<"speech">,
             style: "tiktok",
+            withAudio: true,
           }),
         ],
       });
