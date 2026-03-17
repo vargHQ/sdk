@@ -85,7 +85,13 @@ function serializeValue(v: unknown): string {
     return v;
   }
   if (v instanceof Uint8Array) {
-    return Buffer.from(v).toString("base64");
+    // Hash binary data instead of base64-encoding to keep cache keys small.
+    // Raw base64 can produce 65-110KB strings for audio segments, exceeding
+    // Upstash Redis' 32KB key size limit.
+    return `uint8:${v.byteLength}:${Bun.hash(v).toString(16)}`;
+  }
+  if (isVargElement(v)) {
+    return `element:${computeCacheKey(v).join(":")}`;
   }
   if (Array.isArray(v)) {
     return `[${v.map(serializeValue).join(",")}]`;
@@ -128,7 +134,7 @@ export function computeCacheKey(element: VargElement): CacheKeyPart[] {
     } else if (v === null || v === undefined) {
       key.push(k, v);
     } else if (v instanceof Uint8Array) {
-      key.push(k, Buffer.from(v).toString("base64"));
+      key.push(k, `uint8:${v.byteLength}:${Bun.hash(v).toString(16)}`);
     } else if (isVargElement(v)) {
       key.push(k, ...computeCacheKey(v));
     } else if (Array.isArray(v) || typeof v === "object") {
