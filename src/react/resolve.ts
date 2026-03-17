@@ -187,6 +187,12 @@ async function sliceSegments(
     descriptors.map(async (desc) => {
       const bytes = await sliceAudio(fullFile, desc.start, desc.end);
       const segmentFile = File.fromBuffer(bytes, "audio/mpeg");
+      // Upload segment to storage so downstream cache keys use the URL
+      // instead of serializing raw audio bytes (which can exceed Redis key limits).
+      const ctx = getResolveContext();
+      if (ctx?.storage) {
+        await segmentFile.upload(ctx.storage);
+      }
 
       // Rebase word timings relative to the segment's sliced audio (t=0)
       const segmentWords = allWords

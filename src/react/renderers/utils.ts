@@ -1,5 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { ResolvedElement } from "../resolved-element";
 import type { VargElement, VargNode } from "../types";
 
 export function resolvePath(path: string): string {
@@ -84,11 +85,22 @@ function serializeValue(v: unknown): string {
     }
     return v;
   }
+  // Never put raw binary data in cache keys — use semantic identity instead.
+  // Audio segments can be 48-110KB; base64-encoding them would exceed
+  // Upstash Redis' 32KB key size limit.
   if (v instanceof Uint8Array) {
-    // Hash binary data instead of base64-encoding to keep cache keys small.
-    // Raw base64 can produce 65-110KB strings for audio segments, exceeding
-    // Upstash Redis' 32KB key size limit.
-    return `uint8:${v.byteLength}:${Bun.hash(v).toString(16)}`;
+    return `uint8:${v.byteLength}`;
+  }
+  // ResolvedElement (e.g. a speech segment used as Video audio input):
+  // serialize by content identity (type + text + duration), not binary data.
+  if (v instanceof ResolvedElement) {
+    const parts = [v.type];
+    for (const child of v.children) {
+      if (typeof child === "string") parts.push(child);
+    }
+    if (v.meta.duration) parts.push(String(v.meta.duration));
+    if (v.meta.file?.url) parts.push(v.meta.file.url);
+    return `resolved(${parts.join(",")})`;
   }
   if (isVargElement(v)) {
     return `element:${computeCacheKey(v).join(":")}`;
@@ -97,6 +109,12 @@ function serializeValue(v: unknown): string {
     return `[${v.map(serializeValue).join(",")}]`;
   }
   if (v && typeof v === "object") {
+    // Skip File-like objects with binary data — use URL if available
+    if ("_data" in v && "_mediaType" in v) {
+      const url = (v as { _url?: string | null })._url;
+      const mediaType = (v as { _mediaType: string })._mediaType;
+      return url ? `file(${url})` : `file(${mediaType})`;
+    }
     const entries = Object.entries(v)
       .map(([key, val]) => `${key}:${serializeValue(val)}`)
       .join(",");
@@ -134,7 +152,7 @@ export function computeCacheKey(element: VargElement): CacheKeyPart[] {
     } else if (v === null || v === undefined) {
       key.push(k, v);
     } else if (v instanceof Uint8Array) {
-      key.push(k, `uint8:${v.byteLength}:${Bun.hash(v).toString(16)}`);
+      key.push(k, `uint8:${v.byteLength}`);
     } else if (isVargElement(v)) {
       key.push(k, ...computeCacheKey(v));
     } else if (Array.isArray(v) || typeof v === "object") {
