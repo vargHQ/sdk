@@ -226,13 +226,13 @@ export default (
        <Clip duration={21}>
          <Image src={character} />
        </Clip>
-       <Captions src={voiceover} style="tiktok" color="#ffffff" activeColor="#FFD700" />
+       <Captions src={voiceover} style="tiktok" color="#ffffff" activeColor="#FFD700" withAudio />
      </Render>
    );
    \`\`\`
    This file can be both rendered directly (\`bunx vargai render file.tsx\`) and imported by other files (\`import { character } from "./file.tsx"\`).
 
-2. **Captions include audio** - \`<Captions src={voiceover} />\` already plays the audio. No need for separate \`<Speech>\` in the clip.
+2. **Captions and audio** - \`<Captions src={voiceover} />\` renders captions only (no audio). Add \`withAudio\` to also play the speech audio: \`<Captions src={voiceover} withAudio />\`.
 
 3. **Clip duration** - Omit \`duration\` to auto-fit content. Set explicit \`duration={N}\` to lock length. If duration is shorter than content, you get black screen while audio continues.
 
@@ -305,7 +305,7 @@ export default (
         aspectRatio="9:16"
       />
     </Clip>
-    <Captions src={voiceover} style="tiktok" color="#ffffff" activeColor="#FFD700" />
+    <Captions src={voiceover} style="tiktok" color="#ffffff" activeColor="#FFD700" withAudio />
   </Render>
 );
 \`\`\`

@@ -102,6 +102,6 @@ export default (
     </Clip>
 
     {/* TikTok-style captions */}
-    <Captions src={voiceover} style="tiktok" color="#ffffff" />
+    <Captions src={voiceover} style="tiktok" color="#ffffff" withAudio />
   </Render>
 );

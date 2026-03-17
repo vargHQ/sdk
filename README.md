@@ -199,7 +199,7 @@ await render(
 | `<Music>` | background music | `prompt`, `src`, `model`, `volume`, `loop`, `ducking` |
 | `<Title>` | text overlay | `position`, `color`, `start`, `end` |
 | `<Subtitle>` | subtitle text | `backgroundColor` |
-| `<Captions>` | auto-generated subs | `src`, `srt`, `style`, `color`, `activeColor` |
+| `<Captions>` | auto-generated subs | `src`, `srt`, `style`, `color`, `activeColor`, `withAudio` |
 | `<Overlay>` | positioned layer | `left`, `top`, `width`, `height`, `keepAudio` |
 | `<Split>` | side-by-side | `direction` |
 | `<Slider>` | before/after reveal | `direction` |
@@ -282,7 +282,7 @@ await render(
       />
     </Clip>
     
-    <Captions src={voiceover} style="tiktok" color="#ffffff" />
+    <Captions src={voiceover} style="tiktok" color="#ffffff" withAudio />
   </Render>,
   { output: "output/talking-head.mp4" }
 );
@@ -337,7 +337,7 @@ await render(
       <Title position="top" color="#ffffff">My 3-Month Transformation</Title>
     </Clip>
     
-    <Captions src={voiceover} style="tiktok" color="#ffffff" />
+    <Captions src={voiceover} style="tiktok" color="#ffffff" withAudio />
   </Render>,
   { output: "output/transformation.mp4" }
 );

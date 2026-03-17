@@ -328,9 +328,12 @@ or feed it a speech element directly:
   <Captions 
     src={ralph-speech}
     style="tiktok"
+    withAudio
   />
 </Clip>
 ```
+
+> by default, `<Captions src={speech} />` renders captions only (no audio). add `withAudio` to include the speech audio track in the video.
 
 ### caption styles
 

@@ -143,7 +143,7 @@ export default (
         model={fal.videoModel("wan-2.5")}
       />
     </Clip>
-    <Captions src={voiceover} style="tiktok" />
+    <Captions src={voiceover} style="tiktok" withAudio />
   </Render>
 );
 ```

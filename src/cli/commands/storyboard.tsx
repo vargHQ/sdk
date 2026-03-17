@@ -249,6 +249,7 @@ function extractElementInfo(element: VargElement): StoryboardElement {
         color: props.color,
         activeColor: props.activeColor,
         fontSize: props.fontSize,
+        withAudio: props.withAudio,
       };
       break;
     }

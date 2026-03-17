@@ -346,5 +346,9 @@ export async function renderCaptions(
   writeFileSync(assPath, assContent);
   ctx.tempFiles.push(assPath);
 
-  return { assPath, srtPath, audioPath };
+  return {
+    assPath,
+    srtPath,
+    audioPath: props.withAudio ? audioPath : undefined,
+  };
 }

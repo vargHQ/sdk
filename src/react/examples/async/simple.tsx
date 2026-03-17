@@ -17,6 +17,6 @@ export default (
         zoom="in"
       />
     </Clip>
-    <Captions src={audio} style="tiktok" />
+    <Captions src={audio} style="tiktok" withAudio />
   </Render>
 );

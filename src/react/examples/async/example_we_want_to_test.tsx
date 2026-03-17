@@ -50,7 +50,7 @@ async function Scene({
           </Clip>
         );
       })}
-      <Captions src={audio} style="tiktok" position="bottom" />
+      <Captions src={audio} style="tiktok" position="bottom" withAudio />
     </Clip>
   );
 }

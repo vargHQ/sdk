@@ -240,6 +240,8 @@ export interface CaptionsProps extends BaseProps {
   color?: string;
   activeColor?: string;
   fontSize?: number;
+  /** When src is a Speech element, include its audio track in the video. Defaults to false. */
+  withAudio?: boolean;
 }
 
 export interface SplitProps extends BaseProps {
