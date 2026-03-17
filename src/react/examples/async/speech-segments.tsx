@@ -1,13 +1,16 @@
 /**
- * Speech segments demo — per-clip audio with transitions.
+ * Speech segments demo — per-clip audio, hard cuts between scenes.
  *
  *   Scene 1: VEED lipsync talking head  (segment 0, keepAudio)
  *   Scene 2: image b-roll + voiceover   (segment 1 as clip child)
  *   Scene 3: VEED lipsync talking head   (segment 2, keepAudio)
  *
- * Each clip carries its own segment audio. Short crossfade transitions
- * blend video between scenes. The b-roll clip adds a small pause after
- * audio ends for a natural beat before the next talking head.
+ * Each clip carries its own segment audio. Hard cuts between scenes —
+ * no crossfade transitions, so audio from adjacent clips never overlaps.
+ * This is the cleanest approach for per-clip audio.
+ *
+ * For smooth audio with crossfade transitions, use the single-voiceover
+ * pattern instead (see speech-segments-voiceover.tsx).
  *
  * Run: bun run src/react/examples/async/speech-segments.tsx
  * Output: output/speech-segments.mp4
@@ -61,14 +64,11 @@ const talking3 = Video({
 
 const demo = (
   <Render width={1080} height={1920}>
-    {/* Scene 1: talking head — exact segment duration */}
+    {/* Scene 1: talking head */}
     <Clip duration={segments[0]!.duration}>{talking1}</Clip>
 
-    {/* Scene 2: b-roll + voiceover — small pause after audio for a natural beat */}
-    <Clip
-      duration={segments[1]!.duration + 0.15}
-      transition={{ duration: 0.1, name: "fade" }}
-    >
+    {/* Scene 2: b-roll + segment voiceover */}
+    <Clip duration={segments[1]!.duration}>
       <Image
         prompt="macro shot of a dangerous banana with dramatic dark lighting, bacteria visualization, medical documentary style, gut health danger concept"
         model={fal.imageModel("nano-banana-pro")}
@@ -78,13 +78,8 @@ const demo = (
       {segments[1]}
     </Clip>
 
-    {/* Scene 3: talking head — exact segment duration */}
-    <Clip
-      duration={segments[2]!.duration}
-      transition={{ duration: 0.1, name: "fade" }}
-    >
-      {talking3}
-    </Clip>
+    {/* Scene 3: talking head */}
+    <Clip duration={segments[2]!.duration}>{talking3}</Clip>
   </Render>
 );
 
