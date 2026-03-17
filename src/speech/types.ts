@@ -1,3 +1,5 @@
+import type { ResolvedElement } from "../react/resolved-element";
+
 /**
  * Word-level timing from ElevenLabs character alignment.
  * Derived by grouping characters between whitespace boundaries.
@@ -12,40 +14,37 @@ export interface WordTiming {
 }
 
 /**
- * A segment of speech audio — a `Uint8Array` of MP3 bytes with timing metadata.
+ * A speech segment — a `ResolvedElement<"speech">` with timing metadata.
  *
- * Because `Segment extends Uint8Array`, it can be passed directly anywhere
- * audio bytes are expected (e.g., `Video({ prompt: { audio: segments[0] } })`).
+ * Each segment is a real ResolvedElement instance, so it works everywhere
+ * a speech element is accepted: as a Clip child, Video audio input,
+ * Captions source, etc.
  *
  * Created by `await Speech({ children: ["s1", "s2", ...] })`.
+ *
+ * @example
+ * ```tsx
+ * const { segments } = await Speech({
+ *   children: ["Welcome.", "Main content.", "Thanks."],
+ *   model: elevenlabs.speechModel("eleven_v3"),
+ *   voice: "adam",
+ * });
+ *
+ * // As clip child (plays audio)
+ * <Clip duration={segments[0].duration}>{segments[0]}</Clip>
+ *
+ * // As video audio input (for lipsync)
+ * Video({ prompt: { audio: segments[0] } })
+ * ```
  */
-export interface Segment extends Uint8Array {
+export type Segment = ResolvedElement<"speech"> & {
   /** The original text for this segment. */
   readonly text: string;
   /** Start time in seconds (relative to full audio). */
   readonly start: number;
   /** End time in seconds (relative to full audio). */
   readonly end: number;
-  /** Duration in seconds (convenience: `end - start`). */
-  readonly duration: number;
-}
-
-/**
- * Create a Segment: a Uint8Array of audio bytes decorated with timing metadata.
- */
-export function createSegment(
-  audioBytes: Uint8Array,
-  meta: { text: string; start: number; end: number; duration: number },
-): Segment {
-  const segment = new Uint8Array(audioBytes) as Segment;
-  Object.defineProperties(segment, {
-    text: { value: meta.text, enumerable: true },
-    start: { value: meta.start, enumerable: true },
-    end: { value: meta.end, enumerable: true },
-    duration: { value: meta.duration, enumerable: true },
-  });
-  return segment;
-}
+};
 
 /**
  * Raw character-level alignment returned by ElevenLabs
@@ -67,7 +66,7 @@ export interface ElevenLabsTimestampResponse {
 }
 
 /**
- * Internal representation used to create Segment objects.
+ * Internal representation used before creating Segment objects.
  */
 export interface SegmentDescriptor {
   text: string;

@@ -11,6 +11,7 @@
  * Must be called BEFORE renderRoot() so the render pipeline sees a fully
  * static VargElement tree.
  */
+import { ResolvedElement } from "../resolved-element";
 import type { VargElement, VargNode } from "../types";
 
 export async function resolveLazy(node: VargNode): Promise<VargNode> {
@@ -51,6 +52,13 @@ export async function resolveLazy(node: VargNode): Promise<VargNode> {
     } else {
       flatChildren.push(child);
     }
+  }
+
+  // Preserve ResolvedElement instances (segments, pre-resolved speech/images).
+  // Spreading would destroy the prototype and break `instanceof` checks
+  // used by the clip renderer to detect pre-resolved elements.
+  if (element instanceof ResolvedElement) {
+    return element;
   }
 
   // Return a new element with resolved children (don't mutate the original).

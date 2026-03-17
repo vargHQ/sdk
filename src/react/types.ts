@@ -53,10 +53,9 @@ export interface ElementMeta {
    */
   words?: WordTiming[];
   /**
-   * Speech segments corresponding to each entry in the `children` array.
-   * Available when `children` was passed as a `string[]` to `Speech()`.
-   * Each segment has start/end timestamps and a lazy `.audio()` method
-   * that extracts just that segment's bytes via ffmpeg.
+   * Speech segments — each is a `ResolvedElement<"speech">` with timing metadata.
+   * Undefined for non-speech elements. Empty array when speech has no segments.
+   * Each segment works as a clip child, video audio input, or captions source.
    */
   segments?: Segment[];
 }

@@ -29,7 +29,6 @@ import type {
   SegmentDescriptor,
   WordTiming,
 } from "../speech/types";
-import { createSegment } from "../speech/types";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
 import { getResolveContext } from "./resolve-context";
 import { ResolvedElement } from "./resolved-element";
@@ -137,8 +136,9 @@ function getChildrenArray(
 }
 
 /**
- * Pre-slice audio into Segment objects (Uint8Array with timing metadata).
- * All slicing happens eagerly so segments can be passed directly as audio bytes.
+ * Pre-slice audio into Segment objects (ResolvedElement<"speech"> with timing metadata).
+ * Each segment is a real ResolvedElement instance, so it works as a clip child,
+ * video audio input, or captions source — no special handling needed in renderers.
  */
 async function sliceSegments(
   descriptors: SegmentDescriptor[],
@@ -147,7 +147,18 @@ async function sliceSegments(
   return Promise.all(
     descriptors.map(async (desc) => {
       const bytes = await sliceAudio(fullFile, desc.start, desc.end);
-      return createSegment(bytes, desc);
+      const segmentFile = File.fromBuffer(bytes, "audio/mpeg");
+      const resolved = new ResolvedElement<"speech">(
+        { type: "speech", props: {}, children: [desc.text] },
+        { file: segmentFile, duration: desc.duration, segments: [] },
+      );
+      // Attach timing metadata so segments[i].text/.start/.end work
+      Object.defineProperties(resolved, {
+        text: { value: desc.text, enumerable: true },
+        start: { value: desc.start, enumerable: true },
+        end: { value: desc.end, enumerable: true },
+      });
+      return resolved as Segment;
     }),
   );
 }

@@ -16,11 +16,9 @@ import type { ElementMeta, VargElementType, VargNode } from "./types";
  *   children: ["Welcome.", "Main content.", "Thanks."]
  * });
  *
- * // segments[i] is a Uint8Array — pass directly as video audio input
+ * // segments[i] is a ResolvedElement<"speech"> — use as clip child or video audio
+ * <Clip duration={segments[0].duration}>{segments[0]}</Clip>
  * Video({ prompt: { images: [portrait], audio: segments[0] } })
- *
- * // segments[i].duration for clip sizing
- * <Clip duration={segments[0].duration}>{talking}</Clip>
  * ```
  */
 export class ResolvedElement<T extends VargElementType = VargElementType> {
@@ -72,12 +70,11 @@ export class ResolvedElement<T extends VargElementType = VargElementType> {
   }
 
   /**
-   * Speech segments — each is a `Uint8Array` of sliced MP3 bytes with
-   * `.text`, `.start`, `.end`, `.duration` properties.
-   *
-   * Pass directly as audio input: `Video({ prompt: { audio: segments[0] } })`.
+   * Speech segments — each is a `ResolvedElement<"speech">` with timing metadata.
+   * Empty array when no segments. Each segment works as a clip child, video audio
+   * input, or captions source.
    */
-  get segments(): Segment[] | undefined {
-    return this.meta.segments;
+  get segments(): Segment[] {
+    return this.meta.segments ?? [];
   }
 }

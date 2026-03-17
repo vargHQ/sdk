@@ -7,4 +7,3 @@ export type {
   SegmentDescriptor,
   WordTiming,
 } from "./types";
-export { createSegment } from "./types";

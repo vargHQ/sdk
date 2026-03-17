@@ -143,21 +143,38 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
 
     // Call the /with-timestamps endpoint via raw fetch.
     // Returns JSON with base64 audio + character-level alignment.
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": this.apiKey,
-          "Content-Type": "application/json",
+    const controller = new AbortController();
+    const timeoutMs = 120_000; // 2 minutes — generous for long-form TTS
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": this.apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text,
+            model_id: model,
+            ...elevenLabsOptions,
+          }),
+          signal: controller.signal,
         },
-        body: JSON.stringify({
-          text,
-          model_id: model,
-          ...elevenLabsOptions,
-        }),
-      },
-    );
+      );
+    } catch (error) {
+      clearTimeout(timer);
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new Error(
+          `ElevenLabs speech timed out after ${timeoutMs / 1000}s for voice ${voiceId}`,
+        );
+      }
+      throw error;
+    }
+    clearTimeout(timer);
 
     if (!response.ok) {
       const errorText = await response.text();
