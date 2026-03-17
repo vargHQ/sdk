@@ -221,6 +221,10 @@ async function sliceSegments(
  *
  * Adds a small safety padding (50ms) to capture any trailing silence
  * that exists in the original audio beyond the segment boundary.
+ *
+ * Routes through the FFmpegBackend when available (local or cloud/Rendi),
+ * falling back to a direct local `ffmpeg` shell command only when no
+ * backend exists (top-level `await` outside render()).
  */
 const SLICE_PADDING_S = 0.05; // 50ms safety padding
 
@@ -234,18 +238,45 @@ async function sliceAudio(
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const outPath = `/tmp/varg-segment-${suffix}.mp3`;
 
-  const inputPath = ctx?.backend
-    ? await ctx.backend.resolvePath(file)
-    : await file.toTempFile();
+  if (ctx?.backend) {
+    // Use the backend abstraction (works for both local ffmpeg and cloud/Rendi).
+    // -ss goes in input options (before -i for fast seek).
+    const result = await ctx.backend.run({
+      inputs: [{ path: file, options: ["-ss", String(start)] }],
+      outputArgs: [
+        "-t",
+        String(duration),
+        "-acodec",
+        "libmp3lame",
+        "-q:a",
+        "2",
+      ],
+      outputPath: outPath,
+    });
 
-  // -ss before -i for fast seek, then re-encode for sample-accurate cut
+    // Rendi returns a URL, local backend returns a file path.
+    if (result.output.type === "url") {
+      const response = await fetch(result.output.url);
+      return new Uint8Array(await response.arrayBuffer());
+    }
+    const sliced = await Bun.file(result.output.path).arrayBuffer();
+    try {
+      await Bun.file(result.output.path).delete?.();
+    } catch {
+      /* ignore cleanup errors */
+    }
+    return new Uint8Array(sliced);
+  }
+
+  // Fallback: no backend (top-level `await` outside render()) — use local ffmpeg directly.
+  const inputPath = await file.toTempFile();
   await $`ffmpeg -y -ss ${start} -i ${inputPath} -t ${duration} -acodec libmp3lame -q:a 2 ${outPath}`.quiet();
 
   const sliced = await Bun.file(outPath).arrayBuffer();
   try {
     await Bun.file(outPath).delete?.();
   } catch {
-    /* ignore */
+    /* ignore cleanup errors */
   }
   return new Uint8Array(sliced);
 }
