@@ -71,7 +71,7 @@
     "zod": "^4.2.1"
   },
   "sideEffects": false,
-  "version": "0.4.0-alpha76",
+  "version": "0.4.0-alpha77",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",
