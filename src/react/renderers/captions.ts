@@ -267,24 +267,27 @@ export async function renderCaptions(
         if (transcribeTaskId && ctx.progress)
           startTask(ctx.progress, transcribeTaskId);
 
-        const audioData =
-          audioPath.startsWith("http://") || audioPath.startsWith("https://")
-            ? await fetch(audioPath).then((res) => res.arrayBuffer())
-            : await Bun.file(audioPath).arrayBuffer();
+        let result: Awaited<ReturnType<typeof transcribe>>;
+        try {
+          const audioData =
+            audioPath.startsWith("http://") || audioPath.startsWith("https://")
+              ? await fetch(audioPath).then((res) => res.arrayBuffer())
+              : await Bun.file(audioPath).arrayBuffer();
 
-        const result = await transcribe({
-          model: groq.transcription("whisper-large-v3"),
-          audio: new Uint8Array(audioData),
-          providerOptions: {
-            groq: {
-              responseFormat: "verbose_json",
-              timestampGranularities: ["word"],
+          result = await transcribe({
+            model: groq.transcription("whisper-large-v3"),
+            audio: new Uint8Array(audioData),
+            providerOptions: {
+              groq: {
+                responseFormat: "verbose_json",
+                timestampGranularities: ["word"],
+              },
             },
-          },
-        });
-
-        if (transcribeTaskId && ctx.progress)
-          completeTask(ctx.progress, transcribeTaskId);
+          });
+        } finally {
+          if (transcribeTaskId && ctx.progress)
+            completeTask(ctx.progress, transcribeTaskId);
+        }
 
         const rawBody = (result.responses[0] as { body?: unknown })?.body;
         const parsed = groqResponseSchema.safeParse(rawBody);
