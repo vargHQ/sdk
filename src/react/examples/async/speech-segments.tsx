@@ -5,9 +5,9 @@
  *   Scene 2: image b-roll + voiceover   (segment 1 as clip child)
  *   Scene 3: VEED lipsync talking head   (segment 2, keepAudio)
  *
- * Each clip carries its own segment audio. Natural pauses between scenes
- * are created by extending clip durations beyond the segment duration.
- * Crossfade transitions blend both video and audio between scenes.
+ * Each clip carries its own segment audio. Short crossfade transitions
+ * blend video between scenes. The b-roll clip adds a small pause after
+ * audio ends for a natural beat before the next talking head.
  *
  * Run: bun run src/react/examples/async/speech-segments.tsx
  * Output: output/speech-segments.mp4
@@ -43,10 +43,6 @@ const portrait = Image({
   aspectRatio: "9:16",
 });
 
-// Transition settings
-const PAUSE = 0.35; // seconds of visual hold after audio ends (creates natural pause)
-const CROSSFADE = 0.1; // seconds of crossfade between scenes
-
 // --- Scene 1: lipsync talking head ---
 const talking1 = Video({
   model: fal.videoModel("veed-fabric-1.0"),
@@ -65,13 +61,13 @@ const talking3 = Video({
 
 const demo = (
   <Render width={1080} height={1920}>
-    {/* Scene 1: talking head — extra duration creates pause before scene 2 */}
-    <Clip duration={segments[0]!.duration + PAUSE}>{talking1}</Clip>
+    {/* Scene 1: talking head — exact segment duration */}
+    <Clip duration={segments[0]!.duration}>{talking1}</Clip>
 
-    {/* Scene 2: banana b-roll + segment voiceover */}
+    {/* Scene 2: b-roll + voiceover — small pause after audio for a natural beat */}
     <Clip
-      duration={segments[1]!.duration + PAUSE}
-      transition={{ duration: CROSSFADE, name: "fade" }}
+      duration={segments[1]!.duration + 0.15}
+      transition={{ duration: 0.1, name: "fade" }}
     >
       <Image
         prompt="macro shot of a dangerous banana with dramatic dark lighting, bacteria visualization, medical documentary style, gut health danger concept"
@@ -82,10 +78,10 @@ const demo = (
       {segments[1]}
     </Clip>
 
-    {/* Scene 3: talking head */}
+    {/* Scene 3: talking head — exact segment duration */}
     <Clip
-      duration={segments[2]!.duration + 0.15}
-      transition={{ duration: CROSSFADE, name: "fade" }}
+      duration={segments[2]!.duration}
+      transition={{ duration: 0.1, name: "fade" }}
     >
       {talking3}
     </Clip>
