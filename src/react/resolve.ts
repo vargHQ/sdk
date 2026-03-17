@@ -165,7 +165,9 @@ async function sliceSegments(
 
 /**
  * Extract a time range from an audio file using ffmpeg.
- * Returns the sliced audio as a Uint8Array.
+ * Re-encodes (not stream-copy) for sample-accurate cuts — MP3 stream-copy
+ * can only cut at frame boundaries (~26ms granularity), causing audible
+ * glitches at segment transitions.
  */
 async function sliceAudio(
   file: File,
@@ -173,31 +175,16 @@ async function sliceAudio(
   end: number,
 ): Promise<Uint8Array> {
   const ctx = getResolveContext();
-
-  if (ctx?.backend) {
-    // Cloud/backend path — resolve to a URL/path, then use ffmpeg via backend
-    const inputPath = await ctx.backend.resolvePath(file);
-    const outPath = `/tmp/varg-segment-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`;
-    const duration = end - start;
-
-    await $`ffmpeg -y -i ${inputPath} -ss ${start} -t ${duration} -acodec copy ${outPath}`.quiet();
-
-    const sliced = await Bun.file(outPath).arrayBuffer();
-    // Clean up temp file
-    try {
-      await Bun.file(outPath).delete?.();
-    } catch {
-      /* ignore */
-    }
-    return new Uint8Array(sliced);
-  }
-
-  // Local fallback — write full audio to temp, slice, read back
-  const tmpInput = await file.toTempFile();
-  const outPath = `/tmp/varg-segment-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`;
   const duration = end - start;
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const outPath = `/tmp/varg-segment-${suffix}.mp3`;
 
-  await $`ffmpeg -y -i ${tmpInput} -ss ${start} -t ${duration} -acodec copy ${outPath}`.quiet();
+  const inputPath = ctx?.backend
+    ? await ctx.backend.resolvePath(file)
+    : await file.toTempFile();
+
+  // -ss before -i for fast seek, then re-encode for sample-accurate cut
+  await $`ffmpeg -y -ss ${start} -i ${inputPath} -t ${duration} -acodec libmp3lame -q:a 2 ${outPath}`.quiet();
 
   const sliced = await Bun.file(outPath).arrayBuffer();
   try {

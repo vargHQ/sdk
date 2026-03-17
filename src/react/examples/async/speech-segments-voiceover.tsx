@@ -1,16 +1,20 @@
 /**
- * Speech segments demo — per-clip audio with transitions.
+ * Speech segments demo — single continuous voiceover.
  *
- *   Scene 1: VEED lipsync talking head  (segment 0, keepAudio)
- *   Scene 2: image b-roll + voiceover   (segment 1 as clip child)
- *   Scene 3: VEED lipsync talking head   (segment 2, keepAudio)
+ *   Scene 1: VEED lipsync talking head  (segment 0 for lipsync, audio muted)
+ *   Scene 2: image b-roll               (no per-clip audio)
+ *   Scene 3: VEED lipsync talking head   (segment 2 for lipsync, audio muted)
  *
- * Each clip carries its own segment audio. Natural pauses between scenes
- * are created by extending clip durations beyond the segment duration.
- * Crossfade transitions blend both video and audio between scenes.
+ * One full voiceover plays at the Render level — smooth, continuous audio
+ * with no splicing artifacts. VEED videos use keepAudio: false so the
+ * baked-in lipsync audio doesn't double up with the voiceover.
  *
- * Run: bun run src/react/examples/async/speech-segments.tsx
- * Output: output/speech-segments.mp4
+ * Segments are only used for:
+ *   - Feeding audio to VEED for lipsync generation
+ *   - Setting clip durations from segment timing
+ *
+ * Run: bun run src/react/examples/async/speech-segments-voiceover.tsx
+ * Output: output/speech-segments-voiceover.mp4
  */
 
 import { elevenlabs } from "../../../ai-sdk/providers/elevenlabs";
@@ -18,7 +22,7 @@ import { fal } from "../../../ai-sdk/providers/fal";
 import { Clip, Image, Render, render, Speech, Video } from "../..";
 
 // --- One speech call, three segments ---
-const { segments } = await Speech({
+const { audio, segments } = await Speech({
   model: elevenlabs.speechModel("eleven_v3"),
   voice: "adam",
   children: [
@@ -28,6 +32,7 @@ const { segments } = await Speech({
   ],
 });
 
+console.log(`Total duration: ${audio.duration.toFixed(2)}s`);
 console.log(`Segments: ${segments.length}`);
 for (const [i, seg] of segments.entries()) {
   console.log(
@@ -43,52 +48,42 @@ const portrait = Image({
   aspectRatio: "9:16",
 });
 
-// Transition settings
-const PAUSE = 0.35; // seconds of visual hold after audio ends (creates natural pause)
-const CROSSFADE = 0.1; // seconds of crossfade between scenes
-
-// --- Scene 1: lipsync talking head ---
+// --- Scene 1: lipsync (segment audio for VEED, but muted in final video) ---
 const talking1 = Video({
   model: fal.videoModel("veed-fabric-1.0"),
-  keepAudio: true,
+  keepAudio: false, // muted — full voiceover handles audio
   prompt: { images: [portrait], audio: segments[0] },
   providerOptions: { fal: { resolution: "720p" } },
 });
 
-// --- Scene 3: lipsync talking head ---
+// --- Scene 3: lipsync (segment audio for VEED, but muted in final video) ---
 const talking3 = Video({
   model: fal.videoModel("veed-fabric-1.0"),
-  keepAudio: true,
+  keepAudio: false, // muted — full voiceover handles audio
   prompt: { images: [portrait], audio: segments[2] },
   providerOptions: { fal: { resolution: "720p" } },
 });
 
 const demo = (
   <Render width={1080} height={1920}>
-    {/* Scene 1: talking head — extra duration creates pause before scene 2 */}
-    <Clip duration={segments[0]!.duration + PAUSE}>{talking1}</Clip>
+    {/* Scene 1: talking head */}
+    <Clip duration={segments[0]!.duration}>{talking1}</Clip>
 
-    {/* Scene 2: banana b-roll + segment voiceover */}
-    <Clip
-      duration={segments[1]!.duration + PAUSE}
-      transition={{ duration: CROSSFADE, name: "fade" }}
-    >
+    {/* Scene 2: banana b-roll (no per-clip audio — voiceover covers it) */}
+    <Clip duration={segments[1]!.duration}>
       <Image
         prompt="macro shot of a dangerous banana with dramatic dark lighting, bacteria visualization, medical documentary style, gut health danger concept"
         model={fal.imageModel("nano-banana-pro")}
         aspectRatio="9:16"
         zoom="in"
       />
-      {segments[1]}
     </Clip>
 
     {/* Scene 3: talking head */}
-    <Clip
-      duration={segments[2]!.duration + 0.15}
-      transition={{ duration: CROSSFADE, name: "fade" }}
-    >
-      {talking3}
-    </Clip>
+    <Clip duration={segments[2]!.duration}>{talking3}</Clip>
+
+    {/* Full continuous voiceover — smooth, no splicing */}
+    {audio}
   </Render>
 );
 
@@ -103,12 +98,12 @@ async function main() {
   }
 
   const result = await render(demo, {
-    output: "output/speech-segments.mp4",
-    cache: ".cache/ai-speech-segments",
+    output: "output/speech-segments-voiceover.mp4",
+    cache: ".cache/ai-speech-segments-voiceover",
   });
 
   console.log(
-    `Done: output/speech-segments.mp4 (${(result.video.byteLength / 1024 / 1024).toFixed(2)} MB)`,
+    `Done: output/speech-segments-voiceover.mp4 (${(result.video.byteLength / 1024 / 1024).toFixed(2)} MB)`,
   );
 }
 
