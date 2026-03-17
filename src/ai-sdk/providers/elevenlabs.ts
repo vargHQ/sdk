@@ -109,20 +109,6 @@ class ElevenLabsMusicModel implements MusicModelV3 {
   }
 }
 
-/**
- * Extended speech generation result that includes alignment data
- * from the ElevenLabs `/with-timestamps` endpoint.
- */
-export interface ElevenLabsSpeechResult {
-  audio: Uint8Array;
-  warnings: SharedV3Warning[];
-  response: { timestamp: Date; modelId: string; headers: undefined };
-  /** Character-level alignment data from ElevenLabs (original text). */
-  alignment?: ElevenLabsCharacterAlignment;
-  /** Character-level alignment data from ElevenLabs (normalized/spoken text). */
-  normalizedAlignment?: ElevenLabsCharacterAlignment;
-}
-
 class ElevenLabsSpeechModel implements SpeechModelV3 {
   readonly specificationVersion = "v3" as const;
   readonly provider = "elevenlabs";
@@ -135,9 +121,7 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
     this.apiKey = apiKey;
   }
 
-  async doGenerate(
-    options: SpeechModelV3CallOptions,
-  ): Promise<ElevenLabsSpeechResult> {
+  async doGenerate(options: SpeechModelV3CallOptions) {
     const { text, voice, speed, providerOptions } = options;
     const warnings: SharedV3Warning[] = [];
 
@@ -196,6 +180,19 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
       audioBytes.byteLength,
     );
 
+    // Pack alignment data into providerMetadata so the AI SDK passes it through.
+    // biome-ignore lint/suspicious/noExplicitAny: JSON.parse returns any, matching JSONObject
+    const providerMetadata: Record<string, any> | undefined = json.alignment
+      ? JSON.parse(
+          JSON.stringify({
+            elevenlabs: {
+              alignment: json.alignment,
+              normalizedAlignment: json.normalized_alignment,
+            },
+          }),
+        )
+      : undefined;
+
     return {
       audio: result,
       warnings,
@@ -204,8 +201,7 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
         modelId: this.modelId,
         headers: undefined,
       },
-      alignment: json.alignment,
-      normalizedAlignment: json.normalized_alignment,
+      providerMetadata,
     };
   }
 }

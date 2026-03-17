@@ -9,25 +9,18 @@ import type { ElementMeta, VargElementType, VargNode } from "./types";
  * Satisfies the VargElement interface structurally, so it can be used
  * anywhere a VargElement is accepted (Clip children, Captions src, etc.).
  *
- * @example
+ * Supports destructuring for speech elements:
  * ```tsx
- * // Single string
- * const audio = await Speech({ voice: "adam", children: "Hello world" });
- * audio.duration  // 3.8
- * audio.words     // [{word: "Hello", start: 0, end: 0.5}, ...]
- *
- * // Array children — segments with lazy audio slicing
- * const audio = await Speech({
+ * const { audio, segments, words, duration } = await Speech({
  *   voice: "adam",
  *   children: ["Welcome.", "Main content.", "Thanks."]
  * });
- * audio.segments[0].duration  // 2.1
- * audio.segments[0].audio()   // Promise<Uint8Array> (ffmpeg slice)
  *
- * <Clip duration={audio.segments[0].duration}>
- *   <Video prompt={{ images: [portrait], audio: await audio.segments[0].audio() }}
- *          model="veed-fabric-1.0" />
- * </Clip>
+ * // segments[i] is a Uint8Array — pass directly as video audio input
+ * Video({ prompt: { images: [portrait], audio: segments[0] } })
+ *
+ * // segments[i].duration for clip sizing
+ * <Clip duration={segments[0].duration}>{talking}</Clip>
  * ```
  */
 export class ResolvedElement<T extends VargElementType = VargElementType> {
@@ -51,9 +44,18 @@ export class ResolvedElement<T extends VargElementType = VargElementType> {
     return this.meta.duration;
   }
 
-  /** The generated file. */
+  /** The generated file (image, video, audio). */
   get file(): File {
     return this.meta.file;
+  }
+
+  /**
+   * Self-reference for destructuring convenience.
+   * Enables `const { audio, segments } = await Speech(...)`.
+   * `audio` is the full resolved speech element — pass it anywhere a speech element is accepted.
+   */
+  get audio(): this {
+    return this;
   }
 
   /** Aspect ratio of the generated media, if applicable. */
@@ -70,10 +72,10 @@ export class ResolvedElement<T extends VargElementType = VargElementType> {
   }
 
   /**
-   * Speech segments corresponding to each entry in the `children` array.
-   * Available when `children` was passed as a `string[]` to `Speech()`.
-   * Each segment has start/end timestamps and a lazy `.audio()` method
-   * that extracts just that segment's bytes via ffmpeg.
+   * Speech segments — each is a `Uint8Array` of sliced MP3 bytes with
+   * `.text`, `.start`, `.end`, `.duration` properties.
+   *
+   * Pass directly as audio input: `Video({ prompt: { audio: segments[0] } })`.
    */
   get segments(): Segment[] | undefined {
     return this.meta.segments;

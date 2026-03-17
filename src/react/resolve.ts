@@ -21,10 +21,15 @@ import { fileCache } from "../ai-sdk/file-cache";
 import { generateMusic as generateMusicRaw } from "../ai-sdk/generate-music";
 import { generateVideo as generateVideoRaw } from "../ai-sdk/generate-video";
 import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
-import type { ElevenLabsSpeechResult } from "../ai-sdk/providers/elevenlabs";
 import { mapWordsToSegments } from "../speech/map-segments";
 import { parseElevenLabsAlignment } from "../speech/parse-alignment";
-import type { Segment, WordTiming } from "../speech/types";
+import type {
+  ElevenLabsCharacterAlignment,
+  Segment,
+  SegmentDescriptor,
+  WordTiming,
+} from "../speech/types";
+import { createSegment } from "../speech/types";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
 import { getResolveContext } from "./resolve-context";
 import { ResolvedElement } from "./resolved-element";
@@ -116,39 +121,35 @@ function getCachedGenerateMusic() {
 // ---------------------------------------------------------------------------
 
 /**
- * Extract the children array from SpeechProps.
- * Returns the original string array if children was an array, or undefined if it was a single string.
+ * Extract the children as a string array for segment mapping.
+ * Returns the array if there are multiple string children, undefined for a single string.
+ * Checks element.children (the normalized VargNode[]) since props.children is stripped by createElement.
  */
-function getChildrenArray(props: SpeechProps): string[] | undefined {
-  const children = props.children;
-  if (Array.isArray(children)) return children;
+function getChildrenArray(
+  element: VargElement<"speech">,
+): string[] | undefined {
+  const children = element.children;
+  // Multiple string children → treat each as a segment
+  if (children.length > 1 && children.every((c) => typeof c === "string")) {
+    return children as string[];
+  }
   return undefined;
 }
 
 /**
- * Create Segment objects from segment descriptors and the full audio file.
- * Each segment gets a lazy `.audio()` method that slices via ffmpeg on first call.
+ * Pre-slice audio into Segment objects (Uint8Array with timing metadata).
+ * All slicing happens eagerly so segments can be passed directly as audio bytes.
  */
-function createSegments(
-  descriptors: import("../speech/types").SegmentDescriptor[],
+async function sliceSegments(
+  descriptors: SegmentDescriptor[],
   fullFile: File,
-): Segment[] {
-  return descriptors.map((desc) => {
-    let cachedAudio: Promise<Uint8Array> | undefined;
-
-    return {
-      text: desc.text,
-      start: desc.start,
-      end: desc.end,
-      duration: desc.duration,
-      audio(): Promise<Uint8Array> {
-        if (!cachedAudio) {
-          cachedAudio = sliceAudio(fullFile, desc.start, desc.end);
-        }
-        return cachedAudio;
-      },
-    };
-  });
+): Promise<Segment[]> {
+  return Promise.all(
+    descriptors.map(async (desc) => {
+      const bytes = await sliceAudio(fullFile, desc.start, desc.end);
+      return createSegment(bytes, desc);
+    }),
+  );
 }
 
 /**
@@ -239,9 +240,14 @@ export async function resolveSpeechElement(
   const duration = await probeDuration(file);
 
   // Extract alignment data if the provider returned it (ElevenLabs with-timestamps).
-  // The AI SDK passes through provider-specific fields on the result object.
-  const providerResult = rest as Partial<ElevenLabsSpeechResult>;
-  const alignment = providerResult.alignment;
+  // The AI SDK passes provider-specific data via `providerMetadata`.
+  const providerMeta = (
+    rest as { providerMetadata?: Record<string, Record<string, unknown>> }
+  ).providerMetadata;
+  const elevenLabsMeta = providerMeta?.elevenlabs;
+  const alignment = elevenLabsMeta?.alignment as
+    | ElevenLabsCharacterAlignment
+    | undefined;
 
   let words: WordTiming[] | undefined;
   let segments: Segment[] | undefined;
@@ -250,15 +256,15 @@ export async function resolveSpeechElement(
     words = parseElevenLabsAlignment(alignment);
 
     // Build segments if children was an array
-    const childrenArray = getChildrenArray(props);
+    const childrenArray = getChildrenArray(element);
     if (childrenArray && childrenArray.length > 0 && words.length > 0) {
       const descriptors = mapWordsToSegments(words, childrenArray);
-      segments = createSegments(descriptors, file);
+      segments = await sliceSegments(descriptors, file);
     } else if (words.length > 0) {
       // Single string — create one segment spanning the entire audio
       const firstWord = words[0]!;
       const lastWord = words[words.length - 1]!;
-      segments = createSegments(
+      segments = await sliceSegments(
         [
           {
             text,

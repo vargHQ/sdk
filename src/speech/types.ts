@@ -1,5 +1,3 @@
-import type { File } from "../ai-sdk/file";
-
 /**
  * Word-level timing from ElevenLabs character alignment.
  * Derived by grouping characters between whitespace boundaries.
@@ -14,26 +12,39 @@ export interface WordTiming {
 }
 
 /**
- * A segment of speech corresponding to one entry in the `children` array.
+ * A segment of speech audio — a `Uint8Array` of MP3 bytes with timing metadata.
  *
- * Each segment carries start/end timestamps relative to the full audio track
- * and a lazy `.audio()` method that extracts just that segment's bytes via ffmpeg.
+ * Because `Segment extends Uint8Array`, it can be passed directly anywhere
+ * audio bytes are expected (e.g., `Video({ prompt: { audio: segments[0] } })`).
+ *
+ * Created by `await Speech({ children: ["s1", "s2", ...] })`.
  */
-export interface Segment {
+export interface Segment extends Uint8Array {
   /** The original text for this segment. */
-  text: string;
+  readonly text: string;
   /** Start time in seconds (relative to full audio). */
-  start: number;
+  readonly start: number;
   /** End time in seconds (relative to full audio). */
-  end: number;
+  readonly end: number;
   /** Duration in seconds (convenience: `end - start`). */
-  duration: number;
-  /**
-   * Extract this segment's audio as a standalone Uint8Array.
-   * Uses ffmpeg to slice the full audio at [start, end].
-   * The result is cached after the first call.
-   */
-  audio: () => Promise<Uint8Array>;
+  readonly duration: number;
+}
+
+/**
+ * Create a Segment: a Uint8Array of audio bytes decorated with timing metadata.
+ */
+export function createSegment(
+  audioBytes: Uint8Array,
+  meta: { text: string; start: number; end: number; duration: number },
+): Segment {
+  const segment = new Uint8Array(audioBytes) as Segment;
+  Object.defineProperties(segment, {
+    text: { value: meta.text, enumerable: true },
+    start: { value: meta.start, enumerable: true },
+    end: { value: meta.end, enumerable: true },
+    duration: { value: meta.duration, enumerable: true },
+  });
+  return segment;
 }
 
 /**
@@ -56,20 +67,7 @@ export interface ElevenLabsTimestampResponse {
 }
 
 /**
- * Result of speech generation with timing data.
- */
-export interface SpeechWithTimings {
-  /** Raw audio bytes (decoded from base64). */
-  audio: Uint8Array;
-  /** Word-level timing data parsed from character alignment. */
-  words: WordTiming[];
-  /** Total audio duration in seconds (from alignment end time). */
-  duration: number;
-}
-
-/**
  * Internal representation used to create Segment objects.
- * Carries the full audio File reference needed for lazy slicing.
  */
 export interface SegmentDescriptor {
   text: string;

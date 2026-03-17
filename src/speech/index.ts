@@ -5,6 +5,6 @@ export type {
   ElevenLabsTimestampResponse,
   Segment,
   SegmentDescriptor,
-  SpeechWithTimings,
   WordTiming,
 } from "./types";
+export { createSegment } from "./types";
