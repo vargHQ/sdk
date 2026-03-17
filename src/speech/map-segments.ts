@@ -7,8 +7,15 @@ import type { SegmentDescriptor, WordTiming } from "./types";
  * before sending to ElevenLabs. This function reconstructs which words belong
  * to which original segment by counting words in each child string.
  *
+ * After computing raw boundaries from word timing, adjacent segments are expanded
+ * to absorb the natural inter-sentence gaps. Each gap is split at its midpoint:
+ * the first half extends the preceding segment, the second half pulls back the
+ * following segment. This ensures no silence is lost when clips are placed
+ * back-to-back.
+ *
  * @param words - Word-level timing data from `parseElevenLabsAlignment()`
  * @param children - The original string array passed as Speech children
+ * @param audioDuration - Total audio duration (extends last segment to include trailing silence)
  * @returns Array of segment descriptors with start/end timestamps
  *
  * @example
@@ -24,17 +31,19 @@ import type { SegmentDescriptor, WordTiming } from "./types";
  *   "Welcome everyone.",
  *   "Main content.",
  *   "Thanks.",
- * ]);
+ * ], 3.2);
+ * // Boundaries expanded: segments touch at midpoints of original gaps
  * // [
- * //   {text: "Welcome everyone.", start: 0, end: 1.2, duration: 1.2},
- * //   {text: "Main content.", start: 1.4, end: 2.3, duration: 0.9},
- * //   {text: "Thanks.", start: 2.5, end: 3.0, duration: 0.5},
+ * //   {text: "Welcome everyone.", start: 0, end: 1.3, duration: 1.3},
+ * //   {text: "Main content.", start: 1.3, end: 2.4, duration: 1.1},
+ * //   {text: "Thanks.", start: 2.4, end: 3.2, duration: 0.8},
  * // ]
  * ```
  */
 export function mapWordsToSegments(
   words: WordTiming[],
   children: string[],
+  audioDuration?: number,
 ): SegmentDescriptor[] {
   if (!words.length || !children.length) return [];
 
@@ -46,32 +55,29 @@ export function mapWordsToSegments(
     return [
       {
         text: children[0]!,
-        start: firstWord.start,
-        end: lastWord.end,
-        duration: lastWord.end - firstWord.start,
+        start: 0,
+        end: audioDuration ?? lastWord.end,
+        duration: (audioDuration ?? lastWord.end) - 0,
       },
     ];
   }
 
-  const segments: SegmentDescriptor[] = [];
+  // --- Pass 1: compute raw segment boundaries from word timing ---
+  const raw: SegmentDescriptor[] = [];
   let wordIndex = 0;
 
   for (const text of children) {
-    // Count how many words are in this segment's original text.
-    // Split on whitespace, filter empties (handles multiple spaces, leading/trailing).
     const segmentWordCount = text.trim().split(/\s+/).filter(Boolean).length;
 
     if (segmentWordCount === 0) {
-      // Empty segment -> zero duration at the current position
       const pos =
         wordIndex < words.length ? words[wordIndex]!.start : lastWord.end;
-      segments.push({ text, start: pos, end: pos, duration: 0 });
+      raw.push({ text, start: pos, end: pos, duration: 0 });
       continue;
     }
 
-    // If we've run out of words (more segments than words), clamp
     if (wordIndex >= words.length) {
-      segments.push({
+      raw.push({
         text,
         start: lastWord.end,
         end: lastWord.end,
@@ -81,23 +87,69 @@ export function mapWordsToSegments(
     }
 
     const segStart = words[wordIndex]!.start;
-
-    // Advance through words for this segment. Clamp to available words.
     const endWordIndex = Math.min(
       wordIndex + segmentWordCount - 1,
       words.length - 1,
     );
     const segEnd = words[endWordIndex]!.end;
 
-    segments.push({
+    raw.push({
       text,
       start: segStart,
       end: segEnd,
       duration: segEnd - segStart,
     });
-
     wordIndex += segmentWordCount;
   }
 
-  return segments;
+  // --- Pass 2: absorb inter-segment gaps ---
+  // Split each gap at its midpoint so adjacent segments touch seamlessly.
+  // First segment starts at 0, last segment extends to audioDuration.
+  const expanded: SegmentDescriptor[] = [];
+
+  for (let i = 0; i < raw.length; i++) {
+    const seg = raw[i]!;
+
+    // Skip zero-duration segments (empty text)
+    if (seg.duration === 0) {
+      expanded.push(seg);
+      continue;
+    }
+
+    let start = seg.start;
+    let end = seg.end;
+
+    if (i === 0) {
+      // First segment: start from the very beginning
+      start = 0;
+    } else {
+      // Absorb gap from previous segment: pull start to midpoint of gap
+      const prev = raw[i - 1]!;
+      if (prev.duration > 0 && prev.end < seg.start) {
+        const midpoint = prev.end + (seg.start - prev.end) / 2;
+        start = midpoint;
+      }
+    }
+
+    if (i === raw.length - 1) {
+      // Last segment: extend to full audio duration
+      end = audioDuration ?? seg.end;
+    } else {
+      // Absorb gap to next segment: push end to midpoint of gap
+      const next = raw[i + 1]!;
+      if (next.duration > 0 && seg.end < next.start) {
+        const midpoint = seg.end + (next.start - seg.end) / 2;
+        end = midpoint;
+      }
+    }
+
+    expanded.push({
+      text: seg.text,
+      start,
+      end,
+      duration: end - start,
+    });
+  }
+
+  return expanded;
 }

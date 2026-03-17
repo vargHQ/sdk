@@ -168,14 +168,19 @@ async function sliceSegments(
  * Re-encodes (not stream-copy) for sample-accurate cuts — MP3 stream-copy
  * can only cut at frame boundaries (~26ms granularity), causing audible
  * glitches at segment transitions.
+ *
+ * Adds a small safety padding (50ms) to capture any trailing silence
+ * that exists in the original audio beyond the segment boundary.
  */
+const SLICE_PADDING_S = 0.05; // 50ms safety padding
+
 async function sliceAudio(
   file: File,
   start: number,
   end: number,
 ): Promise<Uint8Array> {
   const ctx = getResolveContext();
-  const duration = end - start;
+  const duration = end - start + SLICE_PADDING_S;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const outPath = `/tmp/varg-segment-${suffix}.mp3`;
 
@@ -200,7 +205,13 @@ export async function resolveSpeechElement(
   element: VargElement<"speech">,
   props: SpeechProps,
 ): Promise<ResolvedElement<"speech">> {
-  const text = getTextContent(element.children);
+  // Join array children with " " so ElevenLabs gets proper word boundaries
+  // between segments (e.g., "bananas. Bananas" not "bananas.Bananas").
+  // getTextContent joins with "" which loses inter-segment spacing.
+  const childrenArray = getChildrenArray(element);
+  const text = childrenArray
+    ? childrenArray.join(" ")
+    : getTextContent(element.children);
   if (!text) {
     throw new Error(
       "Speech element requires text content (pass as children prop)",
@@ -254,9 +265,8 @@ export async function resolveSpeechElement(
     words = parseElevenLabsAlignment(alignment);
 
     // Build segments if children was an array
-    const childrenArray = getChildrenArray(element);
     if (childrenArray && childrenArray.length > 0 && words.length > 0) {
-      const descriptors = mapWordsToSegments(words, childrenArray);
+      const descriptors = mapWordsToSegments(words, childrenArray, duration);
       segments = await sliceSegments(descriptors, file);
     } else if (words.length > 0) {
       // Single string — create one segment spanning the entire audio
