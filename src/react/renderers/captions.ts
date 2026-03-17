@@ -251,39 +251,53 @@ export async function renderCaptions(
           : await renderSpeech(props.src, ctx);
       audioPath = await ctx.backend.resolvePath(speechFile);
 
-      const transcribeTaskId = ctx.progress
-        ? addTask(ctx.progress, "transcribe", "groq-whisper")
-        : null;
-      if (transcribeTaskId && ctx.progress)
-        startTask(ctx.progress, transcribeTaskId);
+      // Check if the speech element already has word-level timing from ElevenLabs.
+      // If so, skip the Whisper transcription step entirely (saves time and cost).
+      const nativeWords =
+        props.src instanceof ResolvedElement ? props.src.meta.words : undefined;
 
-      const audioData =
-        audioPath.startsWith("http://") || audioPath.startsWith("https://")
-          ? await fetch(audioPath).then((res) => res.arrayBuffer())
-          : await Bun.file(audioPath).arrayBuffer();
-
-      const result = await transcribe({
-        model: groq.transcription("whisper-large-v3"),
-        audio: new Uint8Array(audioData),
-        providerOptions: {
-          groq: {
-            responseFormat: "verbose_json",
-            timestampGranularities: ["word"],
-          },
-        },
-      });
-
-      if (transcribeTaskId && ctx.progress)
-        completeTask(ctx.progress, transcribeTaskId);
-
-      const rawBody = (result.responses[0] as { body?: unknown })?.body;
-      const parsed = groqResponseSchema.safeParse(rawBody);
-      const words = parsed.success ? parsed.data.words : undefined;
-
-      if (!words || words.length === 0) {
-        srtContent = `1\n00:00:00,000 --> 00:00:05,000\n${result.text}\n`;
+      if (nativeWords && nativeWords.length > 0) {
+        // Use native ElevenLabs word timing — same shape as GroqWord
+        srtContent = convertToSRT(nativeWords);
       } else {
-        srtContent = convertToSRT(words);
+        // Fallback: transcribe with Groq Whisper to get word-level timestamps
+        const transcribeTaskId = ctx.progress
+          ? addTask(ctx.progress, "transcribe", "groq-whisper")
+          : null;
+        if (transcribeTaskId && ctx.progress)
+          startTask(ctx.progress, transcribeTaskId);
+
+        let result: Awaited<ReturnType<typeof transcribe>>;
+        try {
+          const audioData =
+            audioPath.startsWith("http://") || audioPath.startsWith("https://")
+              ? await fetch(audioPath).then((res) => res.arrayBuffer())
+              : await Bun.file(audioPath).arrayBuffer();
+
+          result = await transcribe({
+            model: groq.transcription("whisper-large-v3"),
+            audio: new Uint8Array(audioData),
+            providerOptions: {
+              groq: {
+                responseFormat: "verbose_json",
+                timestampGranularities: ["word"],
+              },
+            },
+          });
+        } finally {
+          if (transcribeTaskId && ctx.progress)
+            completeTask(ctx.progress, transcribeTaskId);
+        }
+
+        const rawBody = (result.responses[0] as { body?: unknown })?.body;
+        const parsed = groqResponseSchema.safeParse(rawBody);
+        const words = parsed.success ? parsed.data.words : undefined;
+
+        if (!words || words.length === 0) {
+          srtContent = `1\n00:00:00,000 --> 00:00:05,000\n${result.text}\n`;
+        } else {
+          srtContent = convertToSRT(words);
+        }
       }
 
       srtPath = `/tmp/varg-captions-${Date.now()}.srt`;

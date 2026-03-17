@@ -21,6 +21,14 @@ import { fileCache } from "../ai-sdk/file-cache";
 import { generateMusic as generateMusicRaw } from "../ai-sdk/generate-music";
 import { generateVideo as generateVideoRaw } from "../ai-sdk/generate-video";
 import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
+import { mapWordsToSegments } from "../speech/map-segments";
+import { parseElevenLabsAlignment } from "../speech/parse-alignment";
+import type {
+  ElevenLabsCharacterAlignment,
+  Segment,
+  SegmentDescriptor,
+  WordTiming,
+} from "../speech/types";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
 import { getResolveContext } from "./resolve-context";
 import { ResolvedElement } from "./resolved-element";
@@ -110,12 +118,150 @@ function getCachedGenerateMusic() {
 // ---------------------------------------------------------------------------
 // Speech
 // ---------------------------------------------------------------------------
+
+/**
+ * Extract the children as a string array for segment mapping.
+ * Returns the array if there are multiple string children, undefined for a single string.
+ * Checks element.children (the normalized VargNode[]) since props.children is stripped by createElement.
+ */
+function getChildrenArray(
+  element: VargElement<"speech">,
+): string[] | undefined {
+  const children = element.children;
+  // Multiple string children → treat each as a segment
+  if (children.length > 1 && children.every((c) => typeof c === "string")) {
+    return children as string[];
+  }
+  return undefined;
+}
+
+/**
+ * Pick non-transient speech props that should be preserved on segment elements.
+ * Excludes `children` (set per-segment), `model` (transient/generation-only),
+ * and `key` (unique per-element).
+ */
+function pickSpeechProps(props: SpeechProps): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  if (props.volume !== undefined) picked.volume = props.volume;
+  if (props.voice !== undefined) picked.voice = props.voice;
+  if (props.id !== undefined) picked.id = props.id;
+  return picked;
+}
+
+/**
+ * Filter words that overlap a segment's time range and rebase their timestamps
+ * relative to the segment start (so the segment's audio starts at t=0).
+ */
+function rebaseWords(
+  allWords: WordTiming[],
+  segStart: number,
+  segEnd: number,
+): WordTiming[] {
+  return allWords
+    .filter((w) => w.end > segStart && w.start < segEnd)
+    .map((w) => ({
+      word: w.word,
+      start: Math.max(0, w.start - segStart),
+      end: Math.max(0, w.end - segStart),
+    }));
+}
+
+/**
+ * Pre-slice audio into Segment objects (ResolvedElement<"speech"> with timing metadata).
+ * Each segment is a real ResolvedElement instance, so it works as a clip child,
+ * video audio input, or captions source — no special handling needed in renderers.
+ *
+ * @param descriptors - Segment time ranges and text
+ * @param fullFile - The full audio file to slice from
+ * @param speechProps - Parent speech props to inherit (volume, voice, id)
+ * @param allWords - Full word-level timing array for rebasing per-segment words
+ */
+async function sliceSegments(
+  descriptors: SegmentDescriptor[],
+  fullFile: File,
+  speechProps: SpeechProps,
+  allWords?: WordTiming[],
+): Promise<Segment[]> {
+  const inheritedProps = pickSpeechProps(speechProps);
+  return Promise.all(
+    descriptors.map(async (desc) => {
+      const bytes = await sliceAudio(fullFile, desc.start, desc.end);
+      const segmentFile = File.fromBuffer(bytes, "audio/mpeg");
+
+      // Rebase word timings relative to the segment's sliced audio (t=0)
+      const segmentWords = allWords
+        ? rebaseWords(allWords, desc.start, desc.end)
+        : undefined;
+
+      const resolved = new ResolvedElement<"speech">(
+        { type: "speech", props: inheritedProps, children: [desc.text] },
+        {
+          file: segmentFile,
+          duration: desc.duration,
+          segments: [],
+          words: segmentWords,
+        },
+      );
+      // Attach timing metadata so segments[i].text/.start/.end work
+      Object.defineProperties(resolved, {
+        text: { value: desc.text, enumerable: true },
+        start: { value: desc.start, enumerable: true },
+        end: { value: desc.end, enumerable: true },
+      });
+      return resolved as Segment;
+    }),
+  );
+}
+
+/**
+ * Extract a time range from an audio file using ffmpeg.
+ * Re-encodes (not stream-copy) for sample-accurate cuts — MP3 stream-copy
+ * can only cut at frame boundaries (~26ms granularity), causing audible
+ * glitches at segment transitions.
+ *
+ * Adds a small safety padding (50ms) to capture any trailing silence
+ * that exists in the original audio beyond the segment boundary.
+ */
+const SLICE_PADDING_S = 0.05; // 50ms safety padding
+
+async function sliceAudio(
+  file: File,
+  start: number,
+  end: number,
+): Promise<Uint8Array> {
+  const ctx = getResolveContext();
+  const duration = end - start + SLICE_PADDING_S;
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const outPath = `/tmp/varg-segment-${suffix}.mp3`;
+
+  const inputPath = ctx?.backend
+    ? await ctx.backend.resolvePath(file)
+    : await file.toTempFile();
+
+  // -ss before -i for fast seek, then re-encode for sample-accurate cut
+  await $`ffmpeg -y -ss ${start} -i ${inputPath} -t ${duration} -acodec libmp3lame -q:a 2 ${outPath}`.quiet();
+
+  const sliced = await Bun.file(outPath).arrayBuffer();
+  try {
+    await Bun.file(outPath).delete?.();
+  } catch {
+    /* ignore */
+  }
+  return new Uint8Array(sliced);
+}
+
 /** Generate speech audio via the AI SDK and return a ResolvedElement with duration metadata. */
 export async function resolveSpeechElement(
   element: VargElement<"speech">,
   props: SpeechProps,
 ): Promise<ResolvedElement<"speech">> {
-  const text = getTextContent(element.children);
+  // Join array children with " " so ElevenLabs gets proper word boundaries
+  // between segments (e.g., "bananas. Bananas" not "bananas.Bananas").
+  // getTextContent joins with "" which loses inter-segment spacing.
+  const childrenArray = getChildrenArray(element);
+  const text = childrenArray
+    ? childrenArray.join(" ")
+    : getTextContent(element.children);
   if (!text) {
     throw new Error(
       "Speech element requires text content (pass as children prop)",
@@ -131,7 +277,7 @@ export async function resolveSpeechElement(
 
   const cacheKey = computeCacheKey(element);
 
-  const { audio } = await generateSpeechAI({
+  const { audio, ...rest } = await generateSpeechAI({
     model,
     text,
     voice: props.voice ?? "rachel",
@@ -152,9 +298,43 @@ export async function resolveSpeechElement(
 
   const duration = await probeDuration(file);
 
+  // Extract alignment data if the provider returned it (ElevenLabs with-timestamps).
+  // The AI SDK passes provider-specific data via `providerMetadata`.
+  const providerMeta = (
+    rest as { providerMetadata?: Record<string, Record<string, unknown>> }
+  ).providerMetadata;
+  const elevenLabsMeta = providerMeta?.elevenlabs;
+  const alignment = elevenLabsMeta?.alignment as
+    | ElevenLabsCharacterAlignment
+    | undefined;
+
+  let words: WordTiming[] | undefined;
+  let segments: Segment[] | undefined;
+
+  if (alignment) {
+    words = parseElevenLabsAlignment(alignment);
+
+    // Build segments if children was an array
+    if (childrenArray && childrenArray.length > 0 && words.length > 0) {
+      const descriptors = mapWordsToSegments(words, childrenArray, duration);
+      segments = await sliceSegments(descriptors, file, props, words);
+    } else if (words.length > 0) {
+      // Single string — one segment spanning the full probed audio duration
+      // (not word bounds, which would trim leading/trailing silence)
+      segments = await sliceSegments(
+        [{ text, start: 0, end: duration, duration }],
+        file,
+        props,
+        words,
+      );
+    }
+  }
+
   return new ResolvedElement(element, {
     file,
     duration,
+    words,
+    segments,
   });
 }
 
