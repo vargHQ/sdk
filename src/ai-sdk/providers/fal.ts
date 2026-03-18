@@ -145,11 +145,21 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     t2v: "xai/grok-imagine-video/text-to-video",
     i2v: "xai/grok-imagine-video/image-to-video",
   },
+  // Sora 2 - OpenAI's video model via fal (t2v + i2v, with audio)
+  "sora-2": {
+    t2v: "fal-ai/sora-2/text-to-video",
+    i2v: "fal-ai/sora-2/image-to-video",
+  },
+  "sora-2-pro": {
+    t2v: "fal-ai/sora-2/text-to-video/pro",
+    i2v: "fal-ai/sora-2/image-to-video/pro",
+  },
 };
 
 // Video edit models - video-to-video editing
 const VIDEO_EDIT_MODELS: Record<string, string> = {
   "grok-imagine-edit": "xai/grok-imagine-video/edit-video",
+  "sora-2-remix": "fal-ai/sora-2/video-to-video/remix",
 };
 
 // Motion control models - video-to-video with motion transfer
@@ -479,6 +489,7 @@ class FalVideoModel implements VideoModelV3 {
     const isKlingV26 = this.modelId === "kling-v2.6";
     const isLtx2 = this.modelId === "ltx-2-19b-distilled";
     const isGrokImagine = this.modelId === "grok-imagine";
+    const isSora2 = this.modelId === "sora-2" || this.modelId === "sora-2-pro";
 
     const fileHashes = await computeFileHashes(files as ImageModelV3File[]);
 
@@ -590,6 +601,23 @@ class FalVideoModel implements VideoModelV3 {
         // Grok Imagine supports resolution: "480p", "720p" (default "720p")
         if (!input.resolution) {
           input.resolution = "720p";
+        }
+      } else if (isSora2) {
+        // Sora 2: only supports 4, 8, 12, 16, 20 second durations
+        const allowedDurations = [4, 8, 12, 16, 20];
+        const d = duration ?? 4;
+        if (!allowedDurations.includes(d)) {
+          warnings.push({
+            type: "other",
+            message: `Sora 2 only supports durations: ${allowedDurations.join(", ")}s. Got ${d}s, defaulting to 4s.`,
+          });
+          input.duration = 4;
+        } else {
+          input.duration = d;
+        }
+        // Disable video deletion so generated video URLs remain accessible
+        if (input.delete_video === undefined) {
+          input.delete_video = false;
         }
       } else {
         input.duration = duration ?? 5;
