@@ -45,6 +45,8 @@ export interface FFmpegRunOptions {
   outputPath: string;
   /** Enable verbose logging */
   verbose?: boolean;
+  /** Max execution time in seconds (used by cloud backends like Rendi, ignored by local) */
+  timeoutSeconds?: number;
 }
 
 export type FFmpegOutput =
