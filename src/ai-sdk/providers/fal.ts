@@ -193,6 +193,9 @@ const IMAGE_MODELS: Record<string, string> = {
   "qwen-image-2/edit": "fal-ai/qwen-image-2/edit",
   "qwen-image-2-pro": "fal-ai/qwen-image-2/pro/text-to-image",
   "qwen-image-2-pro/edit": "fal-ai/qwen-image-2/pro/edit",
+  // Grok Imagine Image - xAI text-to-image and image editing
+  "grok-imagine-image": "xai/grok-imagine-image",
+  "grok-imagine-image/edit": "xai/grok-imagine-image/edit",
   // Qwen Image Edit 2511 Multiple Angles - camera angle adjustment
   "qwen-angles": "fal-ai/qwen-image-edit-2511-multiple-angles",
   // Recraft V4 Pro - text-to-image
