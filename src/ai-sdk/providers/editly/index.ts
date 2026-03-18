@@ -419,6 +419,8 @@ interface TimedTextLayer {
   layer: TextLayer;
   startTime: number;
   duration: number;
+  transitionInDuration: number;
+  transitionOutDuration: number;
 }
 
 function collectTextLayers(clips: ProcessedClip[]): TimedTextLayer[] {
@@ -429,12 +431,19 @@ function collectTextLayers(clips: ProcessedClip[]): TimedTextLayer[] {
     const clip = clips[i];
     if (!clip) continue;
 
+    const transitionInDuration =
+      i > 0 ? (clips[i - 1]?.transition.duration ?? 0) : 0;
+    const transitionOutDuration =
+      i < clips.length - 1 ? clip.transition.duration : 0;
+
     for (const layer of clip.layers) {
       if (layer && isTextOverlayLayer(layer)) {
         textLayers.push({
           layer: layer as TextLayer,
           startTime: currentTime,
           duration: clip.duration,
+          transitionInDuration,
+          transitionOutDuration,
         });
       }
     }
@@ -845,13 +854,23 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
       const timedLayer = textLayers[i];
       if (!timedLayer) continue;
 
-      const { layer, startTime, duration } = timedLayer;
+      const {
+        layer,
+        startTime,
+        duration,
+        transitionInDuration,
+        transitionOutDuration,
+      } = timedLayer;
       const outputLabel = `vwithtext${i}`;
+
+      // Shrink text visibility to avoid overlap during transitions
+      const effectiveStart = startTime + transitionInDuration;
+      const effectiveStop = startTime + duration - transitionOutDuration;
 
       const timedLayerWithEnable = {
         ...layer,
-        start: layer.start ?? startTime,
-        stop: layer.stop ?? startTime + duration,
+        start: layer.start != null ? layer.start + startTime : effectiveStart,
+        stop: layer.stop != null ? layer.stop + startTime : effectiveStop,
       };
 
       if (layer.type === "title") {
