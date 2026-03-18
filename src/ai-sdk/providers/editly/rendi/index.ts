@@ -13,7 +13,7 @@ import type {
 const RENDI_API_BASE = "https://api.rendi.dev/v1";
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_ATTEMPTS = 300;
-const DEFAULT_MAX_COMMAND_SECONDS = 60;
+const DEFAULT_MAX_COMMAND_SECONDS = 300;
 
 interface RendiCommandResponse {
   command_id: string;
@@ -39,16 +39,21 @@ interface RendiStatusResponse {
 export interface RendiBackendOptions {
   apiKey?: string;
   storage: StorageProvider;
+  /** Max seconds for FFmpeg execution on Rendi servers. Default: 300 (Rendi's own default) */
+  maxCommandRunSeconds?: number;
 }
 
 export class RendiBackend implements FFmpegBackend {
   readonly name = "rendi";
   private apiKey: string;
   private storage: StorageProvider;
+  private maxCommandRunSeconds: number;
 
   constructor(options: RendiBackendOptions) {
     this.apiKey = options.apiKey ?? process.env.RENDI_API_KEY ?? "";
     this.storage = options.storage;
+    this.maxCommandRunSeconds =
+      options.maxCommandRunSeconds ?? DEFAULT_MAX_COMMAND_SECONDS;
     if (!this.apiKey) {
       throw new Error("RENDI_API_KEY is required for Rendi backend");
     }
@@ -67,7 +72,7 @@ export class RendiBackend implements FFmpegBackend {
         input_files: { in_1: inputUrl },
         output_files: { out_1: "probe.mp4" },
         ffmpeg_command: "-i {{in_1}} -c copy {{out_1}}",
-        max_command_run_seconds: DEFAULT_MAX_COMMAND_SECONDS,
+        max_command_run_seconds: 60, // probes are fast, no need for full timeout
       }),
     });
 
@@ -218,7 +223,8 @@ export class RendiBackend implements FFmpegBackend {
         input_files: inputFiles,
         output_files: { out_1: outputFilename },
         ffmpeg_command: ffmpegCommand,
-        max_command_run_seconds: DEFAULT_MAX_COMMAND_SECONDS,
+        max_command_run_seconds:
+          options.timeoutSeconds ?? this.maxCommandRunSeconds,
       }),
     });
 
