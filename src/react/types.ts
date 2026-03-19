@@ -2,6 +2,7 @@ import type {
   ImageModelV3,
   SharedV3ProviderOptions,
   SpeechModelV3,
+  TranscriptionModelV3,
 } from "@ai-sdk/provider";
 import type { FFmpegBackend } from "@/ai-sdk/providers/editly/backends";
 import type { CacheStorage } from "../ai-sdk/cache";
@@ -326,6 +327,7 @@ export interface DefaultModels {
   video?: VideoModelV3;
   speech?: SpeechModelV3;
   music?: MusicModelV3;
+  transcription?: TranscriptionModelV3;
 }
 
 export interface RenderOptions {

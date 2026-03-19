@@ -260,41 +260,63 @@ export async function renderCaptions(
         // Use native ElevenLabs word timing — same shape as GroqWord
         srtContent = convertToSRT(nativeWords);
       } else {
-        // Fallback: transcribe with Groq Whisper to get word-level timestamps
+        // Transcribe audio to get word-level timestamps for captions.
+        // Uses gateway transcription model if available (deployed render),
+        // falls back to direct Groq Whisper for local/CLI usage.
+        const transcriptionModel = ctx.defaults?.transcription;
         const transcribeTaskId = ctx.progress
-          ? addTask(ctx.progress, "transcribe", "groq-whisper")
+          ? addTask(
+              ctx.progress,
+              "transcribe",
+              transcriptionModel ? "gateway-whisper" : "groq-whisper",
+            )
           : null;
         if (transcribeTaskId && ctx.progress)
           startTask(ctx.progress, transcribeTaskId);
 
-        let result: Awaited<ReturnType<typeof transcribe>>;
+        let words: GroqWord[] | undefined;
+        let fallbackText = "";
         try {
           const audioData =
             audioPath.startsWith("http://") || audioPath.startsWith("https://")
               ? await fetch(audioPath).then((res) => res.arrayBuffer())
               : await Bun.file(audioPath).arrayBuffer();
 
-          result = await transcribe({
-            model: groq.transcription("whisper-large-v3"),
+          const model =
+            transcriptionModel ?? groq.transcription("whisper-large-v3");
+          const result = await transcribe({
+            model,
             audio: new Uint8Array(audioData),
-            providerOptions: {
-              groq: {
-                responseFormat: "verbose_json",
-                timestampGranularities: ["word"],
-              },
-            },
+            providerOptions: transcriptionModel
+              ? {}
+              : {
+                  groq: {
+                    responseFormat: "verbose_json",
+                    timestampGranularities: ["word"],
+                  },
+                },
           });
+
+          fallbackText = result.text;
+
+          // Extract words: from providerMetadata (gateway) or response body (direct groq)
+          const metaWords = (
+            result.providerMetadata?.varg as { words?: GroqWord[] } | undefined
+          )?.words;
+          if (metaWords && metaWords.length > 0) {
+            words = metaWords;
+          } else {
+            const rawBody = (result.responses[0] as { body?: unknown })?.body;
+            const parsed = groqResponseSchema.safeParse(rawBody);
+            words = parsed.success ? parsed.data.words : undefined;
+          }
         } finally {
           if (transcribeTaskId && ctx.progress)
             completeTask(ctx.progress, transcribeTaskId);
         }
 
-        const rawBody = (result.responses[0] as { body?: unknown })?.body;
-        const parsed = groqResponseSchema.safeParse(rawBody);
-        const words = parsed.success ? parsed.data.words : undefined;
-
         if (!words || words.length === 0) {
-          srtContent = `1\n00:00:00,000 --> 00:00:05,000\n${result.text}\n`;
+          srtContent = `1\n00:00:00,000 --> 00:00:05,000\n${fallbackText}\n`;
         } else {
           srtContent = convertToSRT(words);
         }
