@@ -276,7 +276,16 @@ async function sliceAudio(
 
   // Fallback: no backend (top-level `await` outside render()) — use local ffmpeg directly.
   const inputPath = await file.toTempFile();
-  await $`ffmpeg -y -ss ${start} -i ${inputPath} -t ${duration} -acodec libmp3lame -q:a 2 ${outPath}`.quiet();
+  const sliceResult =
+    await $`ffmpeg -y -ss ${start} -i ${inputPath} -t ${duration} -acodec libmp3lame -q:a 2 ${outPath}`
+      .quiet()
+      .nothrow();
+  if (sliceResult.exitCode !== 0) {
+    const stderr = sliceResult.stderr.toString().trim();
+    throw new Error(
+      `ffmpeg audio slice failed (exit ${sliceResult.exitCode}): ${stderr || "unknown error"}`,
+    );
+  }
 
   const sliced = await Bun.file(outPath).arrayBuffer();
   try {

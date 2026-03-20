@@ -84,22 +84,40 @@ export async function generatePlaceholder(
   const { $ } = await import("bun");
 
   try {
+    let ffmpegResult: Awaited<ReturnType<typeof $>>;
+
     if (type === "audio") {
-      await $`ffmpeg -y -f lavfi -i anullsrc=r=44100:cl=stereo -t ${duration} -c:a libmp3lame ${outputPath}`.quiet();
+      ffmpegResult =
+        await $`ffmpeg -y -f lavfi -i anullsrc=r=44100:cl=stereo -t ${duration} -c:a libmp3lame ${outputPath}`
+          .quiet()
+          .nothrow();
     } else if (type === "image") {
       const colorInput = `color=c=0x${hexColor}:s=${width}x${height}:d=1`;
       const labelY = `(h/2)-${labelFontSize}`;
       const promptY = `(h/2)+${Math.floor(labelFontSize * 0.5)}`;
       const drawLabel = `drawtext=text='${typeLabel}':fontcolor=white:fontsize=${labelFontSize}:x=(w-text_w)/2:y=${labelY}`;
       const drawPrompt = `drawtext=text='${promptText}':fontcolor=white@0.7:fontsize=${promptFontSize}:x=(w-text_w)/2:y=${promptY}`;
-      await $`ffmpeg -y -f lavfi -i ${colorInput} -vf ${drawLabel},${drawPrompt} -frames:v 1 -update 1 ${outputPath}`.quiet();
+      ffmpegResult =
+        await $`ffmpeg -y -f lavfi -i ${colorInput} -vf ${drawLabel},${drawPrompt} -frames:v 1 -update 1 ${outputPath}`
+          .quiet()
+          .nothrow();
     } else {
       const colorInput = `color=c=0x${hexColor}:s=${width}x${height}:d=${duration}:r=30`;
       const labelY = `(h/2)-${labelFontSize}`;
       const promptY = `(h/2)+${Math.floor(labelFontSize * 0.5)}`;
       const drawLabel = `drawtext=text='${typeLabel}':fontcolor=white:fontsize=${labelFontSize}:x=(w-text_w)/2:y=${labelY}`;
       const drawPrompt = `drawtext=text='${promptText}':fontcolor=white@0.7:fontsize=${promptFontSize}:x=(w-text_w)/2:y=${promptY}`;
-      await $`ffmpeg -y -f lavfi -i ${colorInput} -vf ${drawLabel},${drawPrompt} -c:v libx264 -preset ultrafast -pix_fmt yuv420p ${outputPath}`.quiet();
+      ffmpegResult =
+        await $`ffmpeg -y -f lavfi -i ${colorInput} -vf ${drawLabel},${drawPrompt} -c:v libx264 -preset ultrafast -pix_fmt yuv420p ${outputPath}`
+          .quiet()
+          .nothrow();
+    }
+
+    if (ffmpegResult.exitCode !== 0) {
+      const stderr = ffmpegResult.stderr.toString().trim();
+      throw new Error(
+        `ffmpeg placeholder failed (exit ${ffmpegResult.exitCode}): ${stderr || "unknown error"}`,
+      );
     }
 
     const data = await Bun.file(outputPath).bytes();

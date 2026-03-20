@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 
-import { existsSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { defineCommand } from "citty";
 import { Box, Text } from "ink";
 import { render } from "../../react/render";
@@ -11,12 +11,22 @@ import { renderStatic } from "../ui/render.ts";
 
 const AUTO_IMPORTS = `/** @jsxImportSource vargai */
 import { Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech, Split, Subtitle, Swipe, TalkingHead, Title, Video, Grid } from "vargai/react";
-import { fal, elevenlabs, replicate } from "vargai/ai";
+import { fal, elevenlabs, replicate, varg } from "vargai/ai";
 `;
 
 async function detectDefaultModels(): Promise<DefaultModels | undefined> {
   const defaults: DefaultModels = {};
 
+  // Gateway provider — single key for all models (recommended)
+  if (process.env.VARG_API_KEY) {
+    const { varg } = await import("../../ai-sdk/providers/varg");
+    defaults.image = varg.imageModel("nano-banana-pro");
+    defaults.video = varg.videoModel("wan-2.5");
+    defaults.speech = varg.speechModel("eleven_multilingual_v2");
+    defaults.music = varg.musicModel("music_v1");
+  }
+
+  // Direct providers override gateway when available
   const falKey = process.env.FAL_API_KEY ?? process.env.FAL_KEY;
   if (falKey) {
     const { fal } = await import("../../ai-sdk/providers/fal");
@@ -73,13 +83,23 @@ async function loadComponent(filePath: string): Promise<VargElement> {
 
   if (hasVargaiImport) {
     const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
-    await Bun.write(tmpFile, source);
+    // Resolve @jsxImportSource to absolute path so it works from the cache dir
+    const runtimeDir = resolve(pkgDir, "src/react/runtime");
+    const resolvedSource = source.replace(
+      /@jsxImportSource\s+vargai/,
+      `@jsxImportSource ${runtimeDir}`,
+    );
+    await Bun.write(tmpFile, resolvedSource);
 
     try {
       const mod = await import(tmpFile);
       return resolveDefaultExport(mod);
     } finally {
-      (await Bun.file(tmpFile).exists()) && (await Bun.write(tmpFile, ""));
+      try {
+        unlinkSync(tmpFile);
+      } catch {
+        /* ignore cleanup errors */
+      }
     }
   }
 
@@ -96,7 +116,11 @@ async function loadComponent(filePath: string): Promise<VargElement> {
     const mod = await import(tmpFile);
     return resolveDefaultExport(mod);
   } finally {
-    (await Bun.file(tmpFile).exists()) && (await Bun.write(tmpFile, ""));
+    try {
+      unlinkSync(tmpFile);
+    } catch {
+      /* ignore cleanup errors */
+    }
   }
 }
 
@@ -165,6 +189,9 @@ async function runRender(
     .split("/")
     .pop();
   const outputPath = (args.output as string) ?? `output/${basename}.mp4`;
+
+  // Ensure the output directory exists (ffmpeg cannot create directories)
+  mkdirSync(dirname(outputPath), { recursive: true });
 
   if (!args.quiet) {
     const modeLabel = mode === "preview" ? " (fast)" : "";
