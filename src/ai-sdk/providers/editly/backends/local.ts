@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { $ } from "bun";
 import { File } from "../../../file";
 import type {
@@ -86,14 +88,20 @@ export class LocalBackend implements FFmpegBackend {
       outputPath,
     ];
 
+    // Ensure the output directory exists (ffmpeg cannot create directories)
+    mkdirSync(dirname(outputPath), { recursive: true });
+
     if (verbose) {
       console.log("ffmpeg", ffmpegArgs.join(" "));
     }
 
-    const result = await $`ffmpeg ${ffmpegArgs}`.quiet();
+    const result = await $`ffmpeg ${ffmpegArgs}`.quiet().nothrow();
 
     if (result.exitCode !== 0) {
-      throw new Error(`ffmpeg failed with exit code ${result.exitCode}`);
+      const stderr = result.stderr.toString().trim();
+      throw new Error(
+        `ffmpeg failed (exit ${result.exitCode}): ${stderr || "unknown error"}`,
+      );
     }
 
     return { output: { type: "file", path: outputPath } };
