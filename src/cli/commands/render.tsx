@@ -21,8 +21,8 @@ async function detectDefaultModels(): Promise<DefaultModels | undefined> {
   if (process.env.VARG_API_KEY) {
     const { varg } = await import("../../ai-sdk/providers/varg");
     defaults.image = varg.imageModel("nano-banana-pro");
-    defaults.video = varg.videoModel("wan-2.5");
-    defaults.speech = varg.speechModel("eleven_multilingual_v2");
+    defaults.video = varg.videoModel("kling-v3");
+    defaults.speech = varg.speechModel("eleven_v3");
     defaults.music = varg.musicModel("music_v1");
   }
 
@@ -36,7 +36,7 @@ async function detectDefaultModels(): Promise<DefaultModels | undefined> {
 
   if (process.env.ELEVENLABS_API_KEY) {
     const { elevenlabs } = await import("../../ai-sdk/providers/elevenlabs");
-    defaults.speech = elevenlabs.speechModel("eleven_multilingual_v2");
+    defaults.speech = elevenlabs.speechModel("eleven_v3");
     defaults.music = elevenlabs.musicModel("music_v1");
   }
 
