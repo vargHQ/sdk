@@ -232,7 +232,7 @@ async function sliceSegments(
  * falling back to a direct local `ffmpeg` shell command only when no
  * backend exists (top-level `await` outside render()).
  */
-const SLICE_PADDING_S = 0.05; // 50ms safety padding
+const SLICE_PADDING_S = 0; // no padding — Math.ceil frame-snap handles alignment
 
 async function sliceAudio(
   file: File,

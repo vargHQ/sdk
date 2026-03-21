@@ -99,12 +99,24 @@ async function processClips(
     let duration = clip.duration ?? defaultDuration;
 
     for (const layer of layers) {
-      if (layer.type === "video" && !clip.duration) {
+      if (layer.type === "video") {
         const videoLayer = layer as VideoLayer;
         const videoDuration = await getVideoDuration(videoLayer.path, backend);
         const cutFrom = videoLayer.cutFrom ?? 0;
         const cutTo = videoLayer.cutTo ?? videoDuration;
-        duration = cutTo - cutFrom;
+        const availableDuration = cutTo - cutFrom;
+        if (!clip.duration) {
+          // No duration specified — use the video's duration
+          duration = availableDuration;
+        } else if (duration > availableDuration) {
+          // Duration exceeds source video — clamp and warn
+          console.warn(
+            `[varg] Warning: clip duration (${duration.toFixed(3)}s) exceeds source video duration (${availableDuration.toFixed(3)}s). ` +
+              `Clamping to ${availableDuration.toFixed(3)}s. This causes A/V sync drift — the audio track expects ${duration.toFixed(3)}s but the video can only provide ${availableDuration.toFixed(3)}s (delta: ${((duration - availableDuration) * 1000).toFixed(0)}ms). ` +
+              `To fix: use a shorter clip duration, or use a longer source video.`,
+          );
+          duration = availableDuration;
+        }
         break;
       }
     }
@@ -670,6 +682,14 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
 
   const clips = await processClips(clipsIn, defaults, backend);
 
+  // Snap clip durations DOWN to the nearest frame boundary so that the
+  // frame-quantized video track and the millisecond-positioned audio track
+  // (adelay) use identical durations. Floor guarantees we never request
+  // more frames than the source video actually contains.
+  for (const clip of clips) {
+    clip.duration = Math.floor(clip.duration * fps) / fps;
+  }
+
   const continuousVideoOverlays = collectContinuousVideoOverlays(clips);
   const imageOverlays = collectImageOverlays(clips);
   const overlayInputs: string[] = [];
@@ -979,6 +999,129 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
       ].join(" "),
     );
     console.log("\nFilter complex:\n", filterComplex.split(";").join(";\n"));
+  }
+
+  // ── Clip-by-clip A/V duration log ──
+  if (verbose) {
+    console.log("\n=== CLIP-BY-CLIP A/V DURATION ANALYSIS ===");
+    let cumVideoStart = 0;
+    for (const [i, clip] of clips.entries()) {
+      const videoLayer = clip.layers.find(
+        (l) => l?.type === "video" || l?.type === "image",
+      );
+      const audioLayer = clip.layers.find((l) => l?.type === "audio") as
+        | AudioLayer
+        | undefined;
+      const hasKeepAudio = clip.layers.some(
+        (l) => l?.type === "video" && (l as any).keepAudio,
+      );
+      const frames = Math.floor(clip.duration * fps);
+      const actualVideoDur = frames / fps;
+      const frameLoss = (clip.duration - actualVideoDur) * 1000;
+
+      console.log(
+        `\nClip ${i}: duration=${clip.duration.toFixed(4)}s | frames=${frames} | actualVideo=${actualVideoDur.toFixed(4)}s | frameLoss=${frameLoss.toFixed(1)}ms`,
+      );
+      console.log(`  videoStart(cum)=${cumVideoStart.toFixed(4)}s`);
+
+      if (videoLayer?.type === "video") {
+        const vl = videoLayer as any;
+        console.log(
+          `  video: path=${vl.path?.split("/").pop()} | keepAudio=${!!vl.keepAudio}`,
+        );
+      } else if (videoLayer?.type === "image") {
+        console.log(`  image: zoompan clip`);
+      }
+
+      if (audioLayer) {
+        console.log(
+          `  audioLayer: path=${audioLayer.path?.split("/").pop()} | cutFrom=${audioLayer.cutFrom} | cutTo=${audioLayer.cutTo}`,
+        );
+      }
+      if (hasKeepAudio) {
+        console.log(`  keepAudio: yes (audio from video source)`);
+      }
+
+      cumVideoStart += clip.duration;
+      if (i < clips.length - 1) {
+        cumVideoStart -= clip.transition.duration;
+      }
+    }
+
+    // Log video source audio (keepAudio clips)
+    console.log("\n--- Video Source Audio (keepAudio) ---");
+    for (const vsa of videoSourceAudio) {
+      console.log(
+        `  input[${vsa.inputIndex}]: startTime=${vsa.startTime.toFixed(4)}s | duration=${vsa.duration.toFixed(4)}s | cutFrom=${vsa.cutFrom} | adelay=${Math.round(vsa.startTime * 1000)}ms`,
+      );
+    }
+
+    // Log clip audio layers (speech inside clips)
+    console.log("\n--- Clip Audio Layers (speech segments) ---");
+    for (const [i, { layer, clipStartTime }] of clipAudioLayers.entries()) {
+      const al = layer as AudioLayer;
+      console.log(
+        `  aclip${i}: path=${al.path?.split("/").pop()} | clipStart=${clipStartTime.toFixed(4)}s | adelay=${Math.round(clipStartTime * 1000)}ms | cutFrom=${al.cutFrom} | cutTo=${al.cutTo} | mixVolume=${al.mixVolume}`,
+      );
+    }
+
+    // Log audio tracks (music etc.)
+    console.log("\n--- Audio Tracks (music/global) ---");
+    for (const [i, track] of audioTracks.entries()) {
+      console.log(
+        `  atrk${i}: path=${track.path?.split("/").pop()} | start=${track.start} | cutFrom=${track.cutFrom} | cutTo=${track.cutTo} | volume=${track.mixVolume}`,
+      );
+    }
+
+    // Now probe actual file durations
+    console.log("\n--- Actual file durations (ffprobe) ---");
+    for (const [i, input] of allInputs.entries()) {
+      try {
+        const proc = Bun.spawnSync([
+          "ffprobe",
+          "-v",
+          "error",
+          "-show_entries",
+          "format=duration",
+          "-of",
+          "csv=p=0",
+          input,
+        ]);
+        const dur = parseFloat(proc.stdout.toString().trim());
+        const proc2 = Bun.spawnSync([
+          "ffprobe",
+          "-v",
+          "error",
+          "-select_streams",
+          "v:0",
+          "-show_entries",
+          "stream=duration,r_frame_rate,nb_frames",
+          "-of",
+          "csv=p=0",
+          input,
+        ]);
+        const vinfo = proc2.stdout.toString().trim();
+        const proc3 = Bun.spawnSync([
+          "ffprobe",
+          "-v",
+          "error",
+          "-select_streams",
+          "a:0",
+          "-show_entries",
+          "stream=duration",
+          "-of",
+          "csv=p=0",
+          input,
+        ]);
+        const adur = proc3.stdout.toString().trim();
+        console.log(
+          `  input[${i}]: ${input.split("/").pop()} | format_dur=${dur.toFixed(4)}s | video=${vinfo} | audio_dur=${adur || "N/A"}`,
+        );
+      } catch {
+        console.log(`  input[${i}]: ${input.split("/").pop()} | probe failed`);
+      }
+    }
+    console.log("=== END A/V ANALYSIS ===\n");
   }
 
   const result = await backend.run({
