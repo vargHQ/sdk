@@ -246,12 +246,24 @@ export async function renderRoot(
     // offsets (they all start at the container's position in the timeline).
     const firstLeafClipIndex = clipIndexCounter; // before recursion increments it
 
-    // Recurse into child clips
+    // Collect overlays from container level — these get injected into each
+    // child clip so the overlay appears across all inner clips.
+    const containerOverlays: VargElement[] = [];
+    for (const el of nonClipChildren) {
+      if (el.type === "overlay") {
+        containerOverlays.push(el);
+      }
+    }
+
+    // Recurse into child clips, injecting container-level overlays
     for (const childClip of childClips) {
+      if (containerOverlays.length > 0) {
+        childClip.children = [...childClip.children, ...containerOverlays];
+      }
       flattenClip(childClip);
     }
 
-    // Process non-clip children at the container level
+    // Process remaining non-clip children at the container level
     for (const el of nonClipChildren) {
       if (el.type === "captions") {
         hoistedCaptions.push({
@@ -264,6 +276,7 @@ export async function renderRoot(
           clipIndex: firstLeafClipIndex,
         });
       }
+      // overlay: already handled above (distributed to child clips)
       // Image/Video at container level: not supported yet (would need
       // background layer spanning all child clips — a future feature)
     }
