@@ -3,7 +3,7 @@ import { existsSync, unlinkSync, writeFileSync } from "node:fs";
 
 describe("warnings", () => {
   test(
-    "issue #45: warns when Overlay is placed inside Clip",
+    "issue #45: Overlay inside Clip renders without warning",
     async () => {
       const script = `
 import { Clip, Image, Overlay, Render, render } from "./src/react/index";
@@ -45,8 +45,10 @@ await render(
       unlinkSync(tmpFile);
 
       const output = stdout + stderr;
-      expect(output).toContain("Overlay");
-      expect(output).toContain("Clip");
+      // <Overlay> inside <Clip> is now valid — no warning should be emitted
+      expect(output).not.toContain(
+        "<Overlay> placed inside <Clip> will be ignored",
+      );
       expect(existsSync("output/test-issue-45.mp4")).toBe(true);
     },
     { timeout: 15000 },

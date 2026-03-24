@@ -121,6 +121,10 @@ export interface ClipProps extends BaseProps {
 }
 
 export interface OverlayProps extends BaseProps, PositionProps, AudioProps {
+  /** Start time in seconds (relative to parent clip). Only used when inside a <Clip>. */
+  start?: number;
+  /** End time in seconds (relative to parent clip). Only used when inside a <Clip>. */
+  end?: number;
   children?: VargNode;
 }
 

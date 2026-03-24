@@ -168,6 +168,15 @@ function isImageOverlayLayer(layer: Layer): boolean {
   return layer.type === "image-overlay";
 }
 
+/**
+ * Clip-local image overlay: has start/stop timing (from <Overlay start end> inside <Clip>).
+ * These should be composited within their clip with enable expressions.
+ */
+function isClipLocalImageOverlay(layer: Layer): boolean {
+  if (!isImageOverlayLayer(layer)) return false;
+  return layer.start !== undefined || layer.stop !== undefined;
+}
+
 function isOverlayLayer(layer: Layer): boolean {
   return isVideoOverlayLayer(layer) || isImageOverlayLayer(layer);
 }
@@ -216,6 +225,10 @@ function buildBaseClipFilter(
     (l) => l && isClipLocalVideoOverlay(l),
   ) as VideoLayer[];
 
+  const clipLocalImageOverlays = clip.layers.filter(
+    (l) => l && isClipLocalImageOverlay(l),
+  ) as ImageOverlayLayer[];
+
   for (let i = 0; i < baseLayers.length; i++) {
     const layer = baseLayers[i];
     if (!layer) continue;
@@ -253,7 +266,10 @@ function buildBaseClipFilter(
     }
   }
 
-  if (!baseLabel && clipLocalOverlays.length > 0) {
+  if (
+    !baseLabel &&
+    (clipLocalOverlays.length > 0 || clipLocalImageOverlays.length > 0)
+  ) {
     const fillFilter = getFillColorFilter(
       { type: "fill-color", color: "#000000" },
       inputIdx,
@@ -295,8 +311,46 @@ function buildBaseClipFilter(
       width,
       height,
       outputLabel,
+      clip.duration,
     );
     filters.push(positionFilter);
+    baseLabel = outputLabel;
+    inputIdx++;
+  }
+
+  // Composite clip-local image overlays (from <Overlay start end> inside <Clip>)
+  for (let i = 0; i < clipLocalImageOverlays.length; i++) {
+    const layer = clipLocalImageOverlays[i];
+    if (!layer) continue;
+
+    if (!baseLabel) {
+      throw new Error(
+        `Clip ${clipIndex} is missing a base layer for image overlay placement`,
+      );
+    }
+
+    const imgFilter = getImageOverlayFilter(
+      layer,
+      inputIdx,
+      width,
+      height,
+      clip.duration,
+    );
+
+    inputs.push(layer.path);
+    filters.push(imgFilter.filterComplex);
+
+    const outputLabel = `clip${clipIndex}imgov${i}`;
+    const posFilter = getImageOverlayPositionFilter(
+      baseLabel,
+      imgFilter.outputLabel,
+      layer,
+      width,
+      height,
+      outputLabel,
+      clip.duration,
+    );
+    filters.push(posFilter);
     baseLabel = outputLabel;
     inputIdx++;
   }
@@ -356,7 +410,12 @@ function collectImageOverlays(
 
   for (const clip of clips) {
     for (const layer of clip.layers) {
-      if (layer && isImageOverlayLayer(layer)) {
+      // Skip clip-local image overlays (with start/stop) — they are composited per-clip
+      if (
+        layer &&
+        isImageOverlayLayer(layer) &&
+        !isClipLocalImageOverlay(layer)
+      ) {
         const imgLayer = layer as ImageOverlayLayer;
         const key = `${imgLayer.path}:${JSON.stringify(imgLayer.position ?? "")}:${imgLayer.width ?? ""}:${imgLayer.height ?? ""}`;
         const existing = overlays.get(key);

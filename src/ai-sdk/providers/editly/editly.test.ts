@@ -1409,4 +1409,114 @@ describe("editly", () => {
       }),
     ).rejects.toThrow("produced no video output");
   });
+
+  // Per-clip overlay tests (feature/per-clip-overlay)
+
+  test("clip-local video overlay with start/stop timing", async () => {
+    const outPath = "output/editly-test-clip-overlay-timing.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 4,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            {
+              type: "video",
+              path: VIDEO_1,
+              width: "30%",
+              height: "30%",
+              left: "68%",
+              top: "2%",
+              start: 1,
+              stop: 3,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.duration).toBeCloseTo(4, 0);
+  });
+
+  test("clip-local image overlay with start/stop timing", async () => {
+    const outPath = "output/editly-test-clip-image-overlay-timing.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 4,
+          layers: [
+            { type: "fill-color", color: "#1a1a2e" },
+            {
+              type: "image-overlay",
+              path: IMAGE_SQUARE,
+              position: "top-right",
+              width: "20%",
+              start: 1,
+              stop: 3,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.duration).toBeCloseTo(4, 0);
+  });
+
+  test("clip-local overlay only appears in its clip, not in others", async () => {
+    const outPath = "output/editly-test-clip-overlay-scoped.mp4";
+    if (existsSync(outPath)) unlinkSync(outPath);
+
+    await editly({
+      outPath,
+      width: 1280,
+      height: 720,
+      fps: 30,
+      clips: [
+        {
+          duration: 2,
+          layers: [{ type: "fill-color", color: "#ff0000" }],
+          transition: { name: "fade", duration: 0.3 },
+        },
+        {
+          duration: 2,
+          layers: [
+            { type: "fill-color", color: "#00ff00" },
+            {
+              type: "image-overlay",
+              path: IMAGE_SQUARE,
+              position: "center",
+              width: "30%",
+              start: 0.5,
+              stop: 1.5,
+            },
+          ],
+          transition: { name: "fade", duration: 0.3 },
+        },
+        {
+          duration: 2,
+          layers: [{ type: "fill-color", color: "#0000ff" }],
+        },
+      ],
+    });
+
+    expect(existsSync(outPath)).toBe(true);
+    const info = await ffprobe(outPath);
+    expect(info.duration).toBeGreaterThan(4);
+  });
 });

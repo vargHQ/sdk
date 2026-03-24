@@ -12,6 +12,7 @@ import type {
   ClipProps,
   ImageProps,
   MusicProps,
+  OverlayProps,
   SpeechProps,
   VargElement,
   VargNode,
@@ -231,11 +232,79 @@ async function renderClipLayers(
       }
 
       case "overlay": {
-        console.warn(
-          "[varg] Warning: <Overlay> placed inside <Clip> will be ignored. " +
-            "Move <Overlay> to be a sibling of <Clip> inside <Render>. " +
-            "See: https://github.com/vargHQ/sdk/issues/45",
-        );
+        const overlayProps = element.props as OverlayProps;
+        for (const overlayChild of element.children) {
+          if (
+            !overlayChild ||
+            typeof overlayChild !== "object" ||
+            !("type" in overlayChild)
+          )
+            continue;
+          const overlayChildElement = overlayChild as VargElement;
+
+          if (overlayChildElement.type === "image") {
+            const hasPosition =
+              overlayProps.left !== undefined ||
+              overlayProps.top !== undefined ||
+              overlayProps.width !== undefined ||
+              overlayProps.height !== undefined;
+
+            pending.push({
+              type: "async",
+              promise: renderImage(
+                overlayChildElement as VargElement<"image">,
+                ctx,
+              )
+                .then((file) => ctx.backend.resolvePath(file))
+                .then((path) =>
+                  hasPosition
+                    ? ({
+                        type: "image-overlay",
+                        path,
+                        width: overlayProps.width,
+                        height: overlayProps.height,
+                        position: {
+                          x: overlayProps.left ?? 0,
+                          y: overlayProps.top ?? 0,
+                        },
+                        start: overlayProps.start,
+                        stop: overlayProps.end,
+                      } as ImageOverlayLayer)
+                    : ({
+                        type: "image",
+                        path,
+                        start: overlayProps.start,
+                        stop: overlayProps.end,
+                      } as ImageLayer),
+                ),
+            });
+          } else if (overlayChildElement.type === "video") {
+            pending.push({
+              type: "async",
+              promise: renderVideo(
+                overlayChildElement as VargElement<"video">,
+                ctx,
+              )
+                .then((file) => ctx.backend.resolvePath(file))
+                .then(
+                  (path) =>
+                    ({
+                      type: "video",
+                      path,
+                      mixVolume: overlayProps.keepAudio
+                        ? (overlayProps.volume ?? 1)
+                        : 0,
+                      left: overlayProps.left,
+                      top: overlayProps.top,
+                      width: overlayProps.width,
+                      height: overlayProps.height,
+                      start: overlayProps.start,
+                      stop: overlayProps.end,
+                    }) as VideoLayer,
+                ),
+            });
+          }
+        }
         break;
       }
     }
