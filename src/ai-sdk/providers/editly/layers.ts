@@ -247,6 +247,7 @@ export function getOverlayFilter(
   width: number,
   height: number,
   outputLabel: string,
+  clipDuration?: number,
 ): string {
   const baseX = layer.left !== undefined ? parseSize(layer.left, width) : 0;
   const baseY = layer.top !== undefined ? parseSize(layer.top, height) : 0;
@@ -266,7 +267,8 @@ export function getOverlayFilter(
     yExpr = `${baseY}-overlay_h`;
   }
 
-  return `[${baseLabel}][${overlayLabel}]overlay=${xExpr}:${yExpr}:shortest=1[${outputLabel}]`;
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
+  return `[${baseLabel}][${overlayLabel}]overlay=${xExpr}:${yExpr}:shortest=1${enable}[${outputLabel}]`;
 }
 
 export function getImageFilter(
@@ -594,9 +596,11 @@ export function getImageOverlayPositionFilter(
   width: number,
   height: number,
   outputLabel: string,
+  clipDuration?: number,
 ): string {
   const { x, y } = resolvePositionForOverlay(layer.position, width, height);
-  return `[${baseLabel}][${overlayLabel}]overlay=${x}:${y}:shortest=1[${outputLabel}]`;
+  const enable = getEnableExpr(layer.start, layer.stop, clipDuration ?? 9999);
+  return `[${baseLabel}][${overlayLabel}]overlay=${x}:${y}:shortest=1${enable}[${outputLabel}]`;
 }
 
 function getEnableExpr(
