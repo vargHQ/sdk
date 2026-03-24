@@ -1,0 +1,39 @@
+# Dev/build artifacts
+node_modules
+bun.lock
+*.tgz
+coverage
+*.lcov
+.cache
+*.tsbuildinfo
+
+# IDE/OS
+.idea
+.DS_Store
+.worktrees
+
+# Env
+.env
+.env.*
+
+# Media/output (large files)
+media/
+output/
+*.mp4
+
+# Dev scripts
+scripts/*
+!scripts/.gitkeep
+test-*.tsx
+garry-tan-varg.tsx
+
+# Git/CI
+.github/
+.husky/
+.claude/
+.git/
+
+# Reference
+reference/
+sdk-py-reference
+__pycache__
