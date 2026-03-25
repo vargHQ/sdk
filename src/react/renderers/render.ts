@@ -255,10 +255,18 @@ export async function renderRoot(
       }
     }
 
-    // Recurse into child clips, injecting container-level overlays
+    // Recurse into child clips, injecting container-level overlays.
+    // Mark them as clip-local (start: 0) so they are composited per-clip
+    // in buildBaseClipFilter instead of being swept into the global overlay
+    // pool by collectImageOverlays. Without this, the last container overlay
+    // visually wins across the entire video (all share the same position).
     for (const childClip of childClips) {
       if (containerOverlays.length > 0) {
-        childClip.children = [...childClip.children, ...containerOverlays];
+        const localOverlays = containerOverlays.map((ov) => ({
+          ...ov,
+          props: { ...ov.props, start: 0 },
+        }));
+        childClip.children = [...childClip.children, ...localOverlays];
       }
       flattenClip(childClip);
     }
