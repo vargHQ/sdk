@@ -18,7 +18,18 @@ async function detectDefaultModels(): Promise<DefaultModels | undefined> {
   const defaults: DefaultModels = {};
 
   // Gateway provider — single key for all models (recommended)
-  if (process.env.VARG_API_KEY) {
+  // Check env var first, then global credentials (~/.varg/credentials)
+  let hasVargKey = !!process.env.VARG_API_KEY;
+  if (!hasVargKey) {
+    try {
+      const { getGlobalApiKey } = await import("../credentials");
+      hasVargKey = !!getGlobalApiKey();
+    } catch {
+      // credentials module may not be available
+    }
+  }
+
+  if (hasVargKey) {
     const { varg } = await import("../../ai-sdk/providers/varg");
     defaults.image = varg.imageModel("nano-banana-pro");
     defaults.video = varg.videoModel("kling-v3");

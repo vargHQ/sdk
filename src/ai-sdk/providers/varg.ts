@@ -43,7 +43,20 @@ class VargAPIError extends Error {
 }
 
 function resolveConfig(settings: VargProviderSettings = {}) {
-  const apiKey = settings.apiKey ?? process.env.VARG_API_KEY ?? "";
+  let apiKey = settings.apiKey ?? process.env.VARG_API_KEY ?? "";
+
+  // Fallback to global credentials (~/.varg/credentials) if no key from settings or env
+  if (!apiKey) {
+    try {
+      const { getGlobalApiKey } = require("../../cli/credentials") as {
+        getGlobalApiKey: () => string | null;
+      };
+      apiKey = getGlobalApiKey() ?? "";
+    } catch {
+      // credentials module may not be available in all contexts (e.g., browser)
+    }
+  }
+
   const baseUrl = settings.baseUrl ?? "https://api.varg.ai/v1";
   return { apiKey, baseUrl };
 }

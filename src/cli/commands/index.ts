@@ -4,6 +4,8 @@ export { helloCmd } from "./hello.ts";
 export { helpCmd, showHelp } from "./help.tsx";
 export { initCmd, showInitHelp } from "./init.tsx";
 export { listCmd, showListHelp } from "./list.tsx";
+export { loginCmd } from "./login.tsx";
+export { logoutCmd } from "./logout.ts";
 export {
   previewCmd,
   renderCmd,

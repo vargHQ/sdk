@@ -18,6 +18,8 @@ import {
   helpCmd,
   initCmd,
   listCmd,
+  loginCmd,
+  logoutCmd,
   previewCmd,
   renderCmd,
   runCmd,
@@ -116,6 +118,8 @@ const main = defineCommand({
     description: "ai video generation sdk",
   },
   subCommands: {
+    login: loginCmd,
+    logout: logoutCmd,
     hello: helloCmd,
     init: initCmd,
     render: renderCmd,
