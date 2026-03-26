@@ -54,10 +54,15 @@ export const balanceCmd = defineCommand({
 
       if (!res.ok) {
         process.stdout.write("\r\x1b[K");
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        console.log(
-          `${COLORS.red} ✗${COLORS.reset}  ${err.error ?? `Failed to fetch balance (${res.status})`}`,
-        );
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string | { message?: string };
+        };
+        const errMsg =
+          typeof body.error === "string"
+            ? body.error
+            : (body.error?.message ??
+              `Failed to fetch balance (${res.status})`);
+        console.log(`${COLORS.red} ✗${COLORS.reset}  ${errMsg}`);
         console.log();
         return;
       }
