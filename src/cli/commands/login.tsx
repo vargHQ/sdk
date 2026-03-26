@@ -323,6 +323,7 @@ async function loginFlow(): Promise<void> {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
+      Origin: APP_URL,
     },
     body: JSON.stringify({ packageId: selectedPkg.id }),
   });
