@@ -36,6 +36,7 @@ import {
   showWhichHelp,
   storyboardCmd,
   studioCmd,
+  topupCmd,
   whichCmd,
 } from "./commands";
 
@@ -120,6 +121,7 @@ const main = defineCommand({
   subCommands: {
     login: loginCmd,
     logout: logoutCmd,
+    topup: topupCmd,
     hello: helloCmd,
     init: initCmd,
     render: renderCmd,

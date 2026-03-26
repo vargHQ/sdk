@@ -336,7 +336,7 @@ async function loginFlow(): Promise<void> {
     log.error(err.error ?? "Failed to create checkout session.");
     console.log();
     log.info(
-      `You can add credits later at ${COLORS.cyan}https://app.varg.ai${COLORS.reset}`,
+      `You can add credits anytime with ${COLORS.cyan}vargai topup${COLORS.reset} or at ${COLORS.cyan}https://app.varg.ai${COLORS.reset}`,
     );
     console.log();
     printGetStarted();
@@ -369,6 +369,9 @@ function printGetStarted(): void {
   );
   console.log(
     `  ${COLORS.cyan}vargai render${COLORS.reset}    ${COLORS.dim}Render a video${COLORS.reset}`,
+  );
+  console.log(
+    `  ${COLORS.cyan}vargai topup${COLORS.reset}     ${COLORS.dim}Add credits to your account${COLORS.reset}`,
   );
   console.log();
 }
