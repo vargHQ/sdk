@@ -1,6 +1,10 @@
 {
   "permissions": {
-    "allow": ["Bash(bun run:*)", "WebFetch(domain:fal.ai)"],
+    "allow": [
+      "Bash(bun run:*)",
+      "WebFetch(domain:fal.ai)",
+      "Skill(varg-video-generation)"
+    ],
     "deny": [],
     "ask": []
   }
