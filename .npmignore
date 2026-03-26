@@ -11,6 +11,7 @@ coverage
 .idea
 .DS_Store
 .worktrees
+.vscode
 
 # Env
 .env
@@ -21,19 +22,53 @@ media/
 output/
 *.mp4
 
-# Dev scripts
-scripts/*
-!scripts/.gitkeep
+# Test files
+*.test.ts
+*.test.tsx
+.test-hooks.ts
+src/tests/
+test-*.ts
 test-*.tsx
-garry-tan-varg.tsx
+
+# Examples
+examples/
+src/ai-sdk/examples/
+src/react/examples/
+
+# Dev scripts & docs
+scripts/
+launch-videos/
+pipeline/
+ffmpeg/
+docs/
+skills/
+plan.md
+hello.tsx
+video.tsx
+CONTRIBUTING.md
+SKILLS.md
+STRUCTURE.md
+CLAUDE.md
+AGENTS.md
+
+# Dev config
+biome.json
+commitlint.config.js
+.size-limit.json
+tsconfig.cli.json
 
 # Git/CI
 .github/
 .husky/
 .claude/
+.opencode/
 .git/
 
 # Reference
 reference/
 sdk-py-reference
 __pycache__
+
+# Provider internal docs
+src/ai-sdk/providers/CONTRIBUTING.md
+src/ai-sdk/providers/editly/plan.md
