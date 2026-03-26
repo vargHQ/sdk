@@ -94,7 +94,7 @@ async function loadComponent(filePath: string): Promise<VargElement> {
 
   if (hasVargaiImport) {
     const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
-    // Resolve @jsxImportSource to absolute path so it works from the cache dir
+    // Resolve jsxImportSource pragma to absolute path so it works from the cache dir
     const runtimeDir = resolve(pkgDir, "src/react/runtime");
     const resolvedSource = source.replace(
       /@jsxImportSource\s+vargai/,
