@@ -41,7 +41,7 @@ launch-videos/
 pipeline/
 ffmpeg/
 docs/
-skills/
+/skills/
 plan.md
 hello.tsx
 video.tsx
