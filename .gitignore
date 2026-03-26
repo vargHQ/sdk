@@ -57,3 +57,6 @@ garry-tan-varg.tsx
 src/ai-sdk/examples/garry-tan-varg.ts
 src/react/examples/garry-tan-varg.tsx
 src/react/examples/omnihuman15-react-test.tsx
+
+.cache/
+output/

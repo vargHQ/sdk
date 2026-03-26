@@ -124,6 +124,10 @@ bun --hot ./index.ts
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
 
+## JSX Pragma in Comments
+
+**NEVER write `@jsxImportSource` in code comments or strings in `.tsx` files.** Bun's parser treats any `@jsxImportSource <value>` as a real JSX pragma, even inside comments. For example, `// Resolve @jsxImportSource to absolute path` makes Bun try to import `to/jsx-dev-runtime`, which crashes the CLI. Use alternative wording like "jsxImportSource pragma" or "JSX import source directive" instead.
+
 ## Cache Policy
 
 **NEVER clear or delete the user's cache**, even when debugging.
