@@ -1,14 +1,11 @@
 /**
  * vargai login — agent-first authentication
  *
- * Flow:
- * 1. Prompt for email
- * 2. Send OTP via app → Supabase
- * 3. Prompt for 6-digit code
- * 4. Verify OTP → get API key + access token
- * 5. Save API key to ~/.varg/credentials
- * 6. Show credit packages selector
- * 7. Open Stripe checkout in browser (if selected)
+ * Two modes:
+ *   1. Email OTP — sign in via email magic code (creates account + API key)
+ *   2. API key   — paste an existing API key directly
+ *
+ * The `runLogin()` function is exported so `init` can embed the login flow.
  */
 
 import { defineCommand } from "citty";
@@ -19,8 +16,9 @@ import {
 } from "../credentials";
 
 const APP_URL = process.env.VARG_APP_URL ?? "https://app.varg.ai";
+const GATEWAY_URL = process.env.VARG_GATEWAY_URL ?? "https://api.varg.ai";
 
-const COLORS = {
+export const COLORS = {
   reset: "\x1b[0m",
   bold: "\x1b[1m",
   dim: "\x1b[2m",
@@ -32,7 +30,7 @@ const COLORS = {
   gray: "\x1b[90m",
 };
 
-const log = {
+export const log = {
   info: (msg: string) =>
     console.log(`${COLORS.blue}info${COLORS.reset} ${msg}`),
   success: (msg: string) =>
@@ -96,17 +94,20 @@ function maskApiKey(key: string): string {
   return `${key.slice(0, 12)}...${key.slice(-4)}`;
 }
 
-async function readLine(prompt: string): Promise<string> {
+export async function readLine(prompt: string): Promise<string> {
   process.stdout.write(prompt);
   return new Promise<string>((resolve) => {
     process.stdin.setEncoding("utf8");
+    process.stdin.ref();
+    process.stdin.resume();
     process.stdin.once("data", (data) => {
+      process.stdin.pause();
       resolve(data.toString().trim());
     });
   });
 }
 
-async function openBrowser(url: string): Promise<void> {
+export async function openBrowser(url: string): Promise<void> {
   const platform = process.platform;
   try {
     if (platform === "darwin") {
@@ -123,47 +124,111 @@ async function openBrowser(url: string): Promise<void> {
   }
 }
 
-async function loginFlow(): Promise<void> {
+// ──── Login Result ────
+
+export interface LoginResult {
+  apiKey: string;
+  email: string;
+  balanceCents: number;
+  /** Only available after email OTP login, not API key login */
+  accessToken: string;
+}
+
+// ──── API Key Login ────
+
+async function loginWithApiKey(): Promise<LoginResult | null> {
   console.log();
   console.log(
-    `${COLORS.bold}${COLORS.cyan}varg${COLORS.reset}${COLORS.dim} — ai video infrastructure${COLORS.reset}`,
+    `${COLORS.dim}  Paste your API key from ${COLORS.reset}${COLORS.cyan}https://app.varg.ai${COLORS.reset}`,
   );
   console.log();
 
-  // Check if already logged in
-  const existing = getCredentials();
-  if (existing) {
-    console.log(
-      `${COLORS.dim}Already logged in as ${COLORS.reset}${COLORS.bold}${existing.email}${COLORS.reset}`,
-    );
-    console.log(
-      `${COLORS.dim}API key: ${maskApiKey(existing.api_key)}${COLORS.reset}`,
-    );
-    console.log();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const key = await readLine(`  API key: `);
 
-    const answer = await readLine(
-      `${COLORS.yellow}Log in as a different account?${COLORS.reset} (y/N): `,
-    );
-
-    if (answer.toLowerCase() !== "y") {
-      log.info("Keeping existing credentials.");
-      return;
+    if (!key) {
+      log.error("No key entered.");
+      if (attempt < 2) {
+        console.log(
+          `${COLORS.dim}  Try again (${2 - attempt} attempts left)${COLORS.reset}`,
+        );
+        continue;
+      }
+      return null;
     }
-    console.log();
+
+    // Validate by calling the gateway balance endpoint
+    process.stdout.write(
+      `${COLORS.dim}  ● Validating API key...${COLORS.reset}`,
+    );
+
+    try {
+      const res = await fetch(`${GATEWAY_URL}/v1/balance`, {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+
+      if (!res.ok) {
+        process.stdout.write("\r\x1b[K");
+        if (res.status === 401 || res.status === 403) {
+          log.error("Invalid API key.");
+        } else {
+          const body = (await res.json().catch(() => ({}))) as {
+            error?: string | { message?: string };
+          };
+          const errMsg =
+            typeof body.error === "string"
+              ? body.error
+              : (body.error?.message ?? `Validation failed (${res.status})`);
+          log.error(errMsg);
+        }
+
+        if (attempt < 2) {
+          console.log(
+            `${COLORS.dim}  Try again (${2 - attempt} attempts left)${COLORS.reset}`,
+          );
+          continue;
+        }
+        return null;
+      }
+
+      const data = (await res.json()) as { balance_cents: number };
+      process.stdout.write("\r\x1b[K");
+
+      return {
+        apiKey: key,
+        email: "", // unknown for direct API key login
+        balanceCents: data.balance_cents,
+        accessToken: "", // not available for API key login
+      };
+    } catch {
+      process.stdout.write("\r\x1b[K");
+      log.error("Failed to connect to gateway. Check your connection.");
+      if (attempt < 2) {
+        console.log(
+          `${COLORS.dim}  Try again (${2 - attempt} attempts left)${COLORS.reset}`,
+        );
+        continue;
+      }
+      return null;
+    }
   }
 
-  // Step 1: Get email
-  log.step("Sign in to varg.ai");
+  return null;
+}
+
+// ──── Email OTP Login ────
+
+async function loginWithEmail(): Promise<LoginResult | null> {
   console.log();
 
   const email = await readLine(`  Enter your email: `);
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     log.error("Invalid email address.");
-    process.exit(1);
+    return null;
   }
 
-  // Step 2: Send OTP
+  // Send OTP
   console.log();
   process.stdout.write(
     `${COLORS.dim}  ● Sending verification code...${COLORS.reset}`,
@@ -177,21 +242,16 @@ async function loginFlow(): Promise<void> {
 
   if (!sendRes.ok) {
     const err = (await sendRes.json().catch(() => ({}))) as { error?: string };
-    process.stdout.write("\r\x1b[K"); // Clear line
+    process.stdout.write("\r\x1b[K");
     log.error(err.error ?? "Failed to send verification code.");
-    process.exit(1);
+    return null;
   }
 
-  process.stdout.write("\r\x1b[K"); // Clear line
+  process.stdout.write("\r\x1b[K");
   log.success("Code sent! Check your inbox.");
   console.log();
 
-  // Step 3: Get OTP code (up to 3 attempts)
-  let apiKey = "";
-  let userEmail = "";
-  let balanceCents = 0;
-  let accessToken = "";
-
+  // Get OTP code (up to 3 attempts)
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = await readLine(`  Enter the 6-digit code: `);
 
@@ -203,10 +263,9 @@ async function loginFlow(): Promise<void> {
         );
         continue;
       }
-      process.exit(1);
+      return null;
     }
 
-    // Step 4: Verify OTP
     process.stdout.write(`${COLORS.dim}  ● Verifying...${COLORS.reset}`);
 
     const verifyRes = await fetch(`${APP_URL}/api/auth/cli/verify-otp`, {
@@ -219,7 +278,7 @@ async function loginFlow(): Promise<void> {
       const err = (await verifyRes.json().catch(() => ({}))) as {
         error?: string;
       };
-      process.stdout.write("\r\x1b[K"); // Clear line
+      process.stdout.write("\r\x1b[K");
 
       if (verifyRes.status === 401 && attempt < 2) {
         log.error(err.error ?? "Invalid code.");
@@ -230,7 +289,7 @@ async function loginFlow(): Promise<void> {
       }
 
       log.error(err.error ?? "Verification failed.");
-      process.exit(1);
+      return null;
     }
 
     const result = (await verifyRes.json()) as {
@@ -240,37 +299,31 @@ async function loginFlow(): Promise<void> {
       access_token: string;
     };
 
-    process.stdout.write("\r\x1b[K"); // Clear line
+    process.stdout.write("\r\x1b[K");
 
-    apiKey = result.api_key;
-    userEmail = result.email;
-    balanceCents = result.balance_cents;
-    accessToken = result.access_token;
-    break;
+    return {
+      apiKey: result.api_key,
+      email: result.email,
+      balanceCents: result.balance_cents,
+      accessToken: result.access_token,
+    };
   }
 
-  if (!apiKey) {
-    log.error("Failed to authenticate.");
-    process.exit(1);
+  return null;
+}
+
+// ──── Credit Package Selector ────
+
+export async function showCreditPackages(accessToken: string): Promise<void> {
+  // Need an access token for Stripe checkout — only available after email login
+  if (!accessToken) {
+    console.log();
+    console.log(
+      `${COLORS.dim}  Add credits anytime with ${COLORS.cyan}vargai topup${COLORS.reset}${COLORS.dim} or at ${COLORS.cyan}https://app.varg.ai${COLORS.reset}`,
+    );
+    return;
   }
 
-  // Step 5: Save credentials
-  saveCredentials({
-    api_key: apiKey,
-    email: userEmail,
-    created_at: new Date().toISOString(),
-  });
-
-  console.log();
-  log.success(`Logged in as ${COLORS.bold}${userEmail}${COLORS.reset}`);
-  log.success(
-    `API key saved to ${COLORS.dim}${getCredentialsPath()}${COLORS.reset}`,
-  );
-  log.success(
-    `Balance: ${COLORS.bold}${balanceCents.toLocaleString()} credits${COLORS.reset} (${formatCents(balanceCents)})`,
-  );
-
-  // Step 6: Credit packages selector
   console.log();
   console.log(
     `${COLORS.dim}───${COLORS.reset} ${COLORS.bold}Add credits${COLORS.reset} ${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`,
@@ -298,22 +351,18 @@ async function loginFlow(): Promise<void> {
   );
 
   if (selection.toLowerCase() === "s" || selection === "") {
-    console.log();
-    printGetStarted();
     return;
   }
 
   const pkgIndex = parseInt(selection, 10) - 1;
   if (isNaN(pkgIndex) || pkgIndex < 0 || pkgIndex >= CREDIT_PACKAGES.length) {
     log.warn("Invalid selection. Skipping.");
-    console.log();
-    printGetStarted();
     return;
   }
 
   const selectedPkg = CREDIT_PACKAGES[pkgIndex]!;
 
-  // Step 7: Create Stripe checkout session via the app
+  // Create Stripe checkout session
   process.stdout.write(
     `\n${COLORS.dim}  ● Creating checkout session...${COLORS.reset}`,
   );
@@ -329,7 +378,7 @@ async function loginFlow(): Promise<void> {
   });
 
   if (!checkoutRes.ok) {
-    process.stdout.write("\r\x1b[K"); // Clear line
+    process.stdout.write("\r\x1b[K");
     const err = (await checkoutRes.json().catch(() => ({}))) as {
       error?: string;
     };
@@ -338,14 +387,12 @@ async function loginFlow(): Promise<void> {
     log.info(
       `You can add credits anytime with ${COLORS.cyan}vargai topup${COLORS.reset} or at ${COLORS.cyan}https://app.varg.ai${COLORS.reset}`,
     );
-    console.log();
-    printGetStarted();
     return;
   }
 
   const { url } = (await checkoutRes.json()) as { url: string };
 
-  process.stdout.write("\r\x1b[K"); // Clear line
+  process.stdout.write("\r\x1b[K");
 
   log.success("Opening Stripe checkout in your browser...");
   console.log();
@@ -358,11 +405,130 @@ async function loginFlow(): Promise<void> {
   console.log(`  ${COLORS.cyan}${url}${COLORS.reset}`);
   console.log();
   log.info("Credits will be added to your account after payment.");
-  console.log();
-  printGetStarted();
 }
 
+// ──── Main Login Flow (exported for use by init) ────
+
+export interface RunLoginOptions {
+  /** Show credit package selector after login. Default: true */
+  showPackages?: boolean;
+  /** Show the header banner. Default: true */
+  showHeader?: boolean;
+  /** Skip the "already logged in" check. Default: false */
+  forceLogin?: boolean;
+}
+
+/**
+ * Run the interactive login flow. Returns the login result, or null if
+ * the user cancelled / was already logged in and chose to keep credentials.
+ *
+ * Can be called from `vargai login` or embedded in `vargai init`.
+ */
+export async function runLogin(
+  options: RunLoginOptions = {},
+): Promise<LoginResult | null> {
+  const {
+    showPackages = true,
+    showHeader = true,
+    forceLogin = false,
+  } = options;
+
+  if (showHeader) {
+    console.log();
+    console.log(
+      `${COLORS.bold}${COLORS.cyan}varg${COLORS.reset}${COLORS.dim} — ai video infrastructure${COLORS.reset}`,
+    );
+    console.log();
+  }
+
+  // Check if already logged in
+  if (!forceLogin) {
+    const existing = getCredentials();
+    if (existing) {
+      const emailLabel = existing.email
+        ? existing.email
+        : maskApiKey(existing.api_key);
+      console.log(
+        `${COLORS.dim}Already logged in as ${COLORS.reset}${COLORS.bold}${emailLabel}${COLORS.reset}`,
+      );
+      if (existing.email) {
+        console.log(
+          `${COLORS.dim}API key: ${maskApiKey(existing.api_key)}${COLORS.reset}`,
+        );
+      }
+      console.log();
+
+      const answer = await readLine(
+        `${COLORS.yellow}Log in as a different account?${COLORS.reset} (y/N): `,
+      );
+
+      if (answer.toLowerCase() !== "y") {
+        log.info("Keeping existing credentials.");
+        return null;
+      }
+      console.log();
+    }
+  }
+
+  // Mode selector
+  log.step("Sign in to varg.ai");
+  console.log();
+  console.log(
+    `  ${COLORS.cyan}[1]${COLORS.reset}  Email ${COLORS.dim}— sign in with your email (creates account if needed)${COLORS.reset}`,
+  );
+  console.log(
+    `  ${COLORS.cyan}[2]${COLORS.reset}  API key ${COLORS.dim}— paste an existing API key${COLORS.reset}`,
+  );
+  console.log();
+
+  const mode = await readLine(`  Select login method (1-2): `);
+
+  let result: LoginResult | null = null;
+
+  if (mode === "2") {
+    result = await loginWithApiKey();
+  } else {
+    // Default to email login (mode "1" or anything else)
+    result = await loginWithEmail();
+  }
+
+  if (!result) {
+    log.error("Login failed.");
+    return null;
+  }
+
+  // Save credentials
+  saveCredentials({
+    api_key: result.apiKey,
+    email: result.email,
+    created_at: new Date().toISOString(),
+  });
+
+  console.log();
+  if (result.email) {
+    log.success(`Logged in as ${COLORS.bold}${result.email}${COLORS.reset}`);
+  } else {
+    log.success("API key validated and saved.");
+  }
+  log.success(
+    `API key saved to ${COLORS.dim}${getCredentialsPath()}${COLORS.reset}`,
+  );
+  log.success(
+    `Balance: ${COLORS.bold}${result.balanceCents.toLocaleString()} credits${COLORS.reset} (${formatCents(result.balanceCents)})`,
+  );
+
+  // Credit packages
+  if (showPackages) {
+    await showCreditPackages(result.accessToken);
+  }
+
+  return result;
+}
+
+// ──── Get Started Message ────
+
 function printGetStarted(): void {
+  console.log();
   console.log(`${COLORS.bold}Get started:${COLORS.reset}`);
   console.log(
     `  ${COLORS.cyan}vargai init${COLORS.reset}      ${COLORS.dim}Set up a new project${COLORS.reset}`,
@@ -384,6 +550,14 @@ export const loginCmd = defineCommand({
     description: "sign in to varg.ai and get your API key",
   },
   async run() {
-    await loginFlow();
+    try {
+      const result = await runLogin({ showPackages: true, showHeader: true });
+      if (result) {
+        printGetStarted();
+      }
+    } finally {
+      // Allow process to exit cleanly after interactive prompts
+      process.stdin.unref();
+    }
   },
 });
