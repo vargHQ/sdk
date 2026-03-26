@@ -12,6 +12,7 @@ import { defineCommand, runMain } from "citty";
 import { registry } from "../core/registry";
 import { allDefinitions } from "../definitions";
 import {
+  balanceCmd,
   findCmd,
   frameCmd,
   helloCmd,
@@ -121,6 +122,7 @@ const main = defineCommand({
   subCommands: {
     login: loginCmd,
     logout: logoutCmd,
+    balance: balanceCmd,
     topup: topupCmd,
     hello: helloCmd,
     init: initCmd,

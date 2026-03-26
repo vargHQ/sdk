@@ -1,3 +1,4 @@
+export { balanceCmd } from "./balance.ts";
 export { findCmd, showFindHelp } from "./find.tsx";
 export { frameCmd, showFrameHelp } from "./frame.tsx";
 export { helloCmd } from "./hello.ts";
