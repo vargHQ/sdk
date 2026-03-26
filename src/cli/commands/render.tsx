@@ -75,7 +75,9 @@ async function loadComponent(filePath: string): Promise<VargElement> {
   const hasVargaiImport =
     source.includes("from 'vargai") ||
     source.includes('from "vargai') ||
-    source.includes("@jsxImportSource vargai");
+    source.includes("@jsxImportSource vargai") ||
+    source.includes('from "@vargai/gateway"') ||
+    source.includes("from '@vargai/gateway'");
 
   const hasRelativeImport =
     source.includes("from './") || source.includes('from "./');
@@ -94,12 +96,16 @@ async function loadComponent(filePath: string): Promise<VargElement> {
 
   if (hasVargaiImport) {
     const tmpFile = `${tmpDir}/${Date.now()}.tsx`;
-    // Resolve jsxImportSource pragma to absolute path so it works from the cache dir
+    // Resolve all vargai-related imports to absolute paths so they work from
+    // the bunx cache dir (where @vargai/gateway and vargai/* aren't installed)
     const runtimeDir = resolve(pkgDir, "src/react/runtime");
-    const resolvedSource = source.replace(
-      /@jsxImportSource\s+vargai/,
-      `@jsxImportSource ${runtimeDir}`,
-    );
+    const aiSdkDir = resolve(pkgDir, "src/ai-sdk/index.ts");
+    const reactDir = resolve(pkgDir, "src/react/index.ts");
+    const resolvedSource = source
+      .replace(/@jsxImportSource\s+vargai/, `@jsxImportSource ${runtimeDir}`)
+      .replace(/from\s+["']@vargai\/gateway["']/g, `from "${aiSdkDir}"`)
+      .replace(/from\s+["']vargai\/ai["']/g, `from "${aiSdkDir}"`)
+      .replace(/from\s+["']vargai\/react["']/g, `from "${reactDir}"`);
     await Bun.write(tmpFile, resolvedSource);
 
     try {
