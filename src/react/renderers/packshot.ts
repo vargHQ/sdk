@@ -153,9 +153,19 @@ export async function renderPackshot(
 
   // ===== LOGO LAYER =====
   if (props.logo) {
+    let logoPath: string;
+    if (typeof props.logo === "string") {
+      logoPath = props.logo;
+    } else {
+      const logoFile = await renderImage(
+        props.logo as VargElement<"image">,
+        ctx,
+      );
+      logoPath = await ctx.backend.resolvePath(logoFile);
+    }
     const logoLayer: ImageOverlayLayer = {
       type: "image-overlay",
-      path: props.logo,
+      path: logoPath,
       position: resolvePosition(props.logoPosition ?? "center"),
       width: props.logoSize ?? "40%",
     };
