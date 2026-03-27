@@ -9,6 +9,11 @@ export { definition as llama } from "./llama";
 export { definition as nanoBanana2 } from "./nano-banana-2";
 export { definition as nanoBananaPro } from "./nano-banana-pro";
 export { definition as omnihuman } from "./omnihuman";
+export {
+  photaDefinition as phota,
+  photaEditDefinition as photaEdit,
+  photaEnhanceDefinition as photaEnhance,
+} from "./phota";
 export { definition as qwenImage2 } from "./qwen-image-2";
 export { definition as recraftV4 } from "./recraft-v4";
 export { definition as reve } from "./reve";
@@ -26,6 +31,11 @@ import { definition as llamaDefinition } from "./llama";
 import { definition as nanoBanana2Definition } from "./nano-banana-2";
 import { definition as nanoBananaProDefinition } from "./nano-banana-pro";
 import { definition as omnihumanDefinition } from "./omnihuman";
+import {
+  photaDefinition,
+  photaEditDefinition,
+  photaEnhanceDefinition,
+} from "./phota";
 import { definition as qwenImage2Definition } from "./qwen-image-2";
 import { definition as recraftV4Definition } from "./recraft-v4";
 import { definition as reveDefinition } from "./reve";
@@ -42,6 +52,9 @@ export const allModels = [
   nanoBanana2Definition,
   qwenImage2Definition,
   recraftV4Definition,
+  photaDefinition,
+  photaEditDefinition,
+  photaEnhanceDefinition,
   reveDefinition,
   wanDefinition,
   omnihumanDefinition,

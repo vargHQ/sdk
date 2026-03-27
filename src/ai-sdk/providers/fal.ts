@@ -202,6 +202,10 @@ const IMAGE_MODELS: Record<string, string> = {
   "recraft-v4-pro": "fal-ai/recraft/v4/pro/text-to-image",
   // Reve - image editing
   "reve/edit": "fal-ai/reve/edit",
+  // Phota - personalized photo generation, editing, and enhancement
+  phota: "fal-ai/phota",
+  "phota/edit": "fal-ai/phota/edit",
+  "phota/enhance": "fal-ai/phota/enhance",
 };
 
 // Models that use image_size instead of aspect_ratio
@@ -221,7 +225,7 @@ const IMAGE_SIZE_MODELS = new Set([
 const QWEN_ANGLES_MODEL = "qwen-angles";
 
 // Models that use singular image_url instead of image_urls array
-const SINGULAR_IMAGE_URL_MODELS = new Set(["reve/edit"]);
+const SINGULAR_IMAGE_URL_MODELS = new Set(["reve/edit", "phota/enhance"]);
 
 // Map aspect ratio to image_size for Qwen Angles (base dimension 1024)
 const ASPECT_RATIO_TO_QWEN_SIZE: Record<
