@@ -280,7 +280,14 @@ export interface PackshotProps extends BaseProps {
    *   used as a looping full-bleed cover background.
    */
   background?: VargElement<"image"> | VargElement<"video"> | string;
-  logo?: string;
+  /**
+   * Logo image.
+   *
+   * - `string` — a URL or local file path pointing to an existing image.
+   * - `VargElement<"image">` — a generated image (e.g. `Image({ prompt, model })`),
+   *   which will be rendered via the AI pipeline and used as an overlay.
+   */
+  logo?: VargElement<"image"> | string;
   /**
    * Logo position on screen.
    *
