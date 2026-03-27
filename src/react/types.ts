@@ -213,6 +213,10 @@ export interface TalkingHeadProps extends BaseProps {
 export interface TitleProps extends BaseProps {
   position?: Position;
   color?: string;
+  /** Path to a custom font file (.ttf, .otf) */
+  fontPath?: string;
+  /** System font family name (e.g. "Helvetica Neue", "Arial Black") */
+  fontFamily?: string;
   outline?: number;
   outlineColor?: string;
   start?: number;

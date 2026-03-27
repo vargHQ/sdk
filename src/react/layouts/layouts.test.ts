@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { Video } from "../index";
+import { Image, Video } from "../index";
 import type { VargElement } from "../types";
+import { Composite } from "./composite";
 import { Grid } from "./grid";
 import { Slot } from "./slot";
 import { Split } from "./split";
@@ -341,5 +342,169 @@ describe("Grid + Slot integration", () => {
     expect(result[2]?.props.resize).toBe("contain");
     expect(result[3]?.props.cropPosition).toBe("bottom-right");
     expect(result[3]?.props.resize).toBe("stretch");
+  });
+});
+
+describe("Composite", () => {
+  test("positions layers with arbitrary left/top/width/height", () => {
+    const imgA = Image({ src: "https://example.com/a.png" });
+    const imgB = Image({ src: "https://example.com/b.png" });
+    const imgC = Image({ src: "https://example.com/c.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [
+          { src: imgA, left: "0%", top: "0%", width: "50%", height: "100%" },
+          { src: imgB, left: "50%", top: "0%", width: "50%", height: "100%" },
+          { src: imgC, left: "25%", top: "10%", width: "50%", height: "80%" },
+        ],
+      }),
+    );
+
+    expect(result.length).toBe(3);
+
+    // Layer 0: left half
+    expect(result[0]?.props.left).toBe("0%");
+    expect(result[0]?.props.top).toBe("0%");
+    expect(result[0]?.props.width).toBe("50%");
+    expect(result[0]?.props.height).toBe("100%");
+
+    // Layer 1: right half
+    expect(result[1]?.props.left).toBe("50%");
+    expect(result[1]?.props.top).toBe("0%");
+    expect(result[1]?.props.width).toBe("50%");
+    expect(result[1]?.props.height).toBe("100%");
+
+    // Layer 2: centered overlay
+    expect(result[2]?.props.left).toBe("25%");
+    expect(result[2]?.props.top).toBe("10%");
+    expect(result[2]?.props.width).toBe("50%");
+    expect(result[2]?.props.height).toBe("80%");
+  });
+
+  test("preserves original element type as image", () => {
+    const img = Image({ src: "https://example.com/a.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [
+          { src: img, left: "0%", top: "0%", width: "100%", height: "100%" },
+        ],
+      }),
+    );
+
+    expect(result[0]?.type).toBe("image");
+  });
+
+  test("preserves child props (src, prompt, model)", () => {
+    const img = Image({ src: "https://example.com/photo.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [
+          { src: img, left: "10%", top: "20%", width: "80%", height: "60%" },
+        ],
+      }),
+    );
+
+    expect(result[0]?.props.src).toBe("https://example.com/photo.png");
+  });
+
+  test("defaults position to 0% and size to 100% when omitted", () => {
+    const img = Image({ src: "https://example.com/a.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [{ src: img }],
+      }),
+    );
+
+    expect(result[0]?.props.left).toBe("0%");
+    expect(result[0]?.props.top).toBe("0%");
+    expect(result[0]?.props.width).toBe("100%");
+    expect(result[0]?.props.height).toBe("100%");
+  });
+
+  test("defaults resize to cover", () => {
+    const img = Image({ src: "https://example.com/a.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [{ src: img }],
+      }),
+    );
+
+    expect(result[0]?.props.resize).toBe("cover");
+  });
+
+  test("per-layer resize overrides default", () => {
+    const img = Image({ src: "https://example.com/a.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [{ src: img, resize: "contain" }],
+        resize: "cover",
+      }),
+    );
+
+    expect(result[0]?.props.resize).toBe("contain");
+  });
+
+  test("supports pixel values for position", () => {
+    const img = Image({ src: "https://example.com/a.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [
+          { src: img, left: "100px", top: "50px", width: "800px", height: "600px" },
+        ],
+      }),
+    );
+
+    expect(result[0]?.props.left).toBe("100px");
+    expect(result[0]?.props.top).toBe("50px");
+    expect(result[0]?.props.width).toBe("800px");
+    expect(result[0]?.props.height).toBe("600px");
+  });
+
+  test("supports numeric values for position", () => {
+    const img = Image({ src: "https://example.com/a.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [{ src: img, left: 100, top: 50, width: 800, height: 600 }],
+      }),
+    );
+
+    expect(result[0]?.props.left).toBe(100);
+    expect(result[0]?.props.top).toBe(50);
+    expect(result[0]?.props.width).toBe(800);
+    expect(result[0]?.props.height).toBe(600);
+  });
+
+  test("returns null for empty layers", () => {
+    const result = Composite({ layers: [] });
+    expect(result).toBeNull();
+  });
+
+  test("layer order matches array order (later layers on top)", () => {
+    const imgA = Image({ src: "https://example.com/bottom.png" });
+    const imgB = Image({ src: "https://example.com/middle.png" });
+    const imgC = Image({ src: "https://example.com/top.png" });
+
+    const result = asArray(
+      Composite({
+        layers: [
+          { src: imgA, left: "0%", top: "0%", width: "100%", height: "100%" },
+          { src: imgB, left: "10%", top: "10%", width: "80%", height: "80%" },
+          { src: imgC, left: "20%", top: "20%", width: "60%", height: "60%" },
+        ],
+      }),
+    );
+
+    // Order preserved — bottom layer first, top layer last
+    expect(result[0]?.props.src).toBe("https://example.com/bottom.png");
+    expect(result[1]?.props.src).toBe("https://example.com/middle.png");
+    expect(result[2]?.props.src).toBe("https://example.com/top.png");
   });
 });
