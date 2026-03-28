@@ -9,13 +9,60 @@
  * 5. Create hello.tsx template (gateway pattern)
  * 6. Update .gitignore
  * 7. Print next steps (Claude-first messaging)
+ * 8. Ask to star the repo on GitHub (via gh CLI, if available)
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { defineCommand } from "citty";
 import { getCredentials, getGlobalApiKey } from "../credentials";
-import { COLORS, log, runLogin } from "./login.tsx";
+import { COLORS, log, readLine, runLogin } from "./login.tsx";
+
+// ──── GitHub Star Prompt ────
+
+async function maybeAskForStar(): Promise<void> {
+  try {
+    // Check if gh CLI is available and authenticated
+    const authCheck = Bun.spawn(["gh", "auth", "status"], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const authExit = await authCheck.exited;
+    if (authExit !== 0) return;
+
+    // Check if already starred (204 = starred, 404 = not starred)
+    const starCheck = Bun.spawn(["gh", "api", "user/starred/vargHQ/sdk"], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const starExit = await starCheck.exited;
+
+    if (starExit === 0) {
+      // Already starred — skip silently
+      return;
+    }
+
+    // Ask user (default: yes)
+    console.log();
+    const answer = await readLine(
+      `  ${COLORS.dim}Star varg on GitHub to help us grow?${COLORS.reset} (Y/n): `,
+    );
+
+    if (answer.toLowerCase() === "n") return;
+
+    const star = Bun.spawn(
+      ["gh", "api", "-X", "PUT", "user/starred/vargHQ/sdk"],
+      { stdout: "pipe", stderr: "pipe" },
+    );
+    const starResult = await star.exited;
+
+    if (starResult === 0) {
+      log.success("Starred vargHQ/sdk on GitHub — thanks!");
+    }
+  } catch {
+    // gh not available or any error — skip silently
+  }
+}
 
 const HELLO_TEMPLATE = `/** @jsxImportSource vargai */
 import { Render, Clip, Image, Video, assets } from "vargai/react";
@@ -281,6 +328,11 @@ ${COLORS.bold}Next steps:${COLORS.reset}
       console.log();
     }
 
+    // ──── Step 6: GitHub Star ────
+
+    await maybeAskForStar();
+
+    console.log();
     console.log(
       `${COLORS.dim}Documentation: https://docs.varg.ai${COLORS.reset}`,
     );
