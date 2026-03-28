@@ -1,21 +1,22 @@
 <p align="center">
-  <h1 align="center">varg</h1>
-  <p align="center">AI video generation SDK. JSX for videos, built on Vercel AI SDK.</p>
+  <h1 align="center">varg — AI Video Generation SDK</h1>
+  <p align="center">Create AI videos with JSX. One SDK for Kling, Flux, ElevenLabs, Sora and more. Built on Vercel AI SDK.</p>
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/vargai"><img src="https://img.shields.io/npm/v/vargai.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/vargai"><img src="https://img.shields.io/npm/dm/vargai.svg" alt="npm downloads"></a>
   <a href="https://github.com/vargHQ/sdk/stargazers"><img src="https://img.shields.io/github/stars/vargHQ/sdk" alt="GitHub stars"></a>
-  <a href="https://github.com/vargHQ/sdk/blob/main/LICENSE.md"><img src="https://img.shields.io/github/license/vargHQ/sdk" alt="License"></a>
+  <a href="https://github.com/vargHQ/sdk/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License"></a>
 </p>
 
 <p align="center">
-  <a href="https://docs.varg.ai">Docs</a> &middot; <a href="https://app.varg.ai">Dashboard</a> &middot; <a href="https://docs.varg.ai/quickstart">Quickstart</a> &middot; <a href="https://docs.varg.ai/sdk/models">Models</a>
+  <a href="https://docs.varg.ai">Docs</a> &middot; <a href="https://app.varg.ai">Dashboard</a> &middot; <a href="https://docs.varg.ai/quickstart">Quickstart</a> &middot; <a href="https://docs.varg.ai/sdk/models">Models</a> &middot; <a href="https://discord.gg/varg">Discord</a>
 </p>
 
 ---
 
-One API key. One gateway. Images, video, speech, music, lipsync, and captions — all through `varg.*` providers. Write videos like React components, render locally or in the cloud.
+**varg** is an open-source TypeScript SDK for AI video generation. One API key, one gateway — generate images, video, speech, music, lipsync, and captions through `varg.*` providers. Write videos as JSX components (like React), render locally or in the cloud.
 
 ## Get started
 
