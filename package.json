@@ -70,6 +70,39 @@
     "sharp": "^0.34.5",
     "zod": "^4.2.1"
   },
+  "description": "AI video generation SDK — JSX for videos. Generate, compose and render AI videos with Kling, Flux, ElevenLabs, and more through one API. Built on Vercel AI SDK.",
+  "keywords": [
+    "ai-video",
+    "video-generation",
+    "ai-sdk",
+    "typescript",
+    "jsx",
+    "text-to-video",
+    "image-to-video",
+    "ai-video-api",
+    "kling",
+    "flux",
+    "elevenlabs",
+    "vercel-ai-sdk",
+    "video-editing",
+    "ai-tools",
+    "generative-ai",
+    "video-api",
+    "text-to-speech",
+    "music-generation",
+    "lipsync",
+    "video-rendering"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vargHQ/sdk.git"
+  },
+  "homepage": "https://varg.ai",
+  "bugs": {
+    "url": "https://github.com/vargHQ/sdk/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "varg.ai <hello@varg.ai> (https://varg.ai)",
   "sideEffects": false,
   "version": "0.4.0-alpha92",
   "exports": {
