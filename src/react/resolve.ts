@@ -647,7 +647,7 @@ export async function resolveVideoElement(
   const { video } = await generateVideo({
     model: model as Parameters<typeof generateVideoRaw>[0]["model"],
     prompt: resolvedPrompt,
-    duration: (props.duration as number) ?? 5,
+    duration: Number(props.duration) || 5,
     aspectRatio: props.aspectRatio as `${number}:${number}` | undefined,
     providerOptions: props.providerOptions as Parameters<
       typeof generateVideoRaw

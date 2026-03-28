@@ -27,7 +27,7 @@ export async function renderMusic(
     type: "music",
     prompt,
     model: model.modelId,
-    duration: props.duration,
+    duration: props.duration != null ? Number(props.duration) : undefined,
   });
 
   const modelId = model.modelId ?? "music";
@@ -37,7 +37,7 @@ export async function renderMusic(
     const result = await generateMusic({
       model,
       prompt,
-      duration: props.duration,
+      duration: props.duration != null ? Number(props.duration) : undefined,
     });
     return result.audio;
   };

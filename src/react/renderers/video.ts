@@ -150,7 +150,7 @@ export async function renderVideo(
     const { video } = await ctx.generateVideo({
       model,
       prompt: resolvedPrompt,
-      duration: props.duration ?? 5,
+      duration: Number(props.duration) || 5,
       aspectRatio: props.aspectRatio,
       providerOptions: props.providerOptions,
       cacheKey,
