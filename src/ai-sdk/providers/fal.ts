@@ -219,7 +219,6 @@ const IMAGE_MODELS: Record<string, string> = {
   "recraft-clarity": "fal-ai/recraft-clarity-upscale",
   "clarity-upscaler": "fal-ai/clarity-upscaler",
   topaz: "fal-ai/topaz/upscale/image",
-  "sima-upscaler": "simalabs/sima-upscaler",
   ccsr: "fal-ai/ccsr",
   "aura-sr": "fal-ai/aura-sr",
 };
@@ -249,7 +248,6 @@ const SINGULAR_IMAGE_URL_MODELS = new Set([
   "recraft-clarity",
   "clarity-upscaler",
   "topaz",
-  "sima-upscaler",
   "ccsr",
   "aura-sr",
 ]);

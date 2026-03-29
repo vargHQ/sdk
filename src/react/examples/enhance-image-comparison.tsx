@@ -1,11 +1,11 @@
 /**
- * Enhance Image Comparison — all 7 image upscale models side by side
+ * Enhance Image Comparison — all 6 image upscale models side by side
  *
  * Run with: bun run src/react/examples/enhance-image-comparison.tsx
  *
  * Generates a comparison video with Split layout:
  *   Original (left) | Upscaled (right)
- * for each of the 7 image upscale models, concatenated with transitions.
+ * for each of the 6 image upscale models, concatenated with transitions.
  *
  * Requires FAL_KEY or FAL_API_KEY in environment.
  */
@@ -51,12 +51,6 @@ const IMAGE_UPSCALE_MODELS: Array<{
     providerOptions: { fal: { upscale_factor: 2, model: "Standard V2" } },
   },
   {
-    id: "sima-upscaler",
-    label: "SimaLabs",
-    bestFor: "Fast, balanced",
-    providerOptions: { fal: { scale: 4 } },
-  },
-  {
     id: "ccsr",
     label: "CCSR",
     bestFor: "Super-resolution",
@@ -71,7 +65,7 @@ const IMAGE_UPSCALE_MODELS: Array<{
 ];
 
 async function main() {
-  console.log("Enhance Image Comparison - 7 upscale models\n");
+  console.log("Enhance Image Comparison - 6 upscale models\n");
   console.log(`Source: ${SOURCE_IMAGE}\n`);
 
   const { mkdir } = await import("node:fs/promises");
@@ -80,7 +74,7 @@ async function main() {
   const original = Image({ src: SOURCE_IMAGE });
 
   // Run all upscale models in parallel
-  console.log("Starting all 7 image upscale models in parallel...\n");
+  console.log("Starting all 6 image upscale models in parallel...\n");
 
   const upscaledImages = await Promise.all(
     IMAGE_UPSCALE_MODELS.map(async (m) => {
