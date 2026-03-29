@@ -151,53 +151,110 @@ export class PiAPIProvider extends BaseProvider {
   }
 
   // ============================================================================
-  // High-level convenience methods
+  // High-level convenience methods (same pattern as fal provider)
   // ============================================================================
 
   /**
-   * Generate a video with Seedance and wait for completion.
+   * Generate a video from text with Seedance.
    * For seedance-2-preview, automatically runs watermark removal.
    */
-  async generateVideo(options: {
-    taskType: string;
+  async textToVideo(args: {
     prompt: string;
-    duration?: number;
-    aspectRatio?: string;
-    imageUrls?: string[];
-    videoUrls?: string[];
-  }): Promise<{ videoUrl: string }> {
-    const jobId = await this.submit(options.taskType, {
-      task_type: options.taskType,
-      prompt: options.prompt,
-      ...(options.duration != null ? { duration: options.duration } : {}),
-      ...(options.aspectRatio ? { aspect_ratio: options.aspectRatio } : {}),
-      ...(options.imageUrls?.length ? { image_urls: options.imageUrls } : {}),
-      ...(options.videoUrls?.length ? { video_urls: options.videoUrls } : {}),
+    model?: "seedance-2-preview" | "seedance-2-fast-preview";
+    duration?: 5 | 10 | 15;
+    aspectRatio?: "16:9" | "9:16" | "4:3" | "3:4";
+  }) {
+    const model = args.model || "seedance-2-preview";
+
+    console.log(`[piapi] starting text-to-video: ${model}`);
+    console.log(`[piapi] prompt: ${args.prompt}`);
+
+    return this.runAndWait(model, {
+      prompt: args.prompt,
+      ...(args.duration != null ? { duration: args.duration } : {}),
+      ...(args.aspectRatio ? { aspect_ratio: args.aspectRatio } : {}),
     });
-
-    const result = (await this.waitForCompletion(jobId, {
-      maxWait: this.config.timeout ?? 3600000,
-      pollInterval: 10000,
-    })) as { video?: string };
-
-    const videoUrl = result?.video;
-    if (!videoUrl) {
-      throw new Error("piapi task completed but no video URL in output");
-    }
-
-    // For seedance-2-preview, run watermark removal
-    if (options.taskType === "seedance-2-preview") {
-      const cleanUrl = await this.removeWatermark(videoUrl);
-      return { videoUrl: cleanUrl };
-    }
-
-    return { videoUrl };
   }
 
   /**
-   * Submit a watermark removal task and wait for it to complete.
+   * Generate a video from image(s) with Seedance.
+   * Use @imageN in the prompt to reference images (e.g. @image1).
+   * For seedance-2-preview, automatically runs watermark removal.
    */
-  async removeWatermark(videoUrl: string): Promise<string> {
+  async imageToVideo(args: {
+    prompt: string;
+    imageUrls: string[];
+    model?: "seedance-2-preview" | "seedance-2-fast-preview";
+    duration?: 5 | 10 | 15;
+    aspectRatio?: "16:9" | "9:16" | "4:3" | "3:4";
+  }) {
+    const model = args.model || "seedance-2-preview";
+
+    console.log(`[piapi] starting image-to-video: ${model}`);
+    console.log(`[piapi] prompt: ${args.prompt}`);
+    console.log(`[piapi] images: ${args.imageUrls.length}`);
+
+    return this.runAndWait(model, {
+      prompt: args.prompt,
+      image_urls: args.imageUrls,
+      ...(args.duration != null ? { duration: args.duration } : {}),
+      ...(args.aspectRatio ? { aspect_ratio: args.aspectRatio } : {}),
+    });
+  }
+
+  /**
+   * Edit a video with Seedance. The output has the same length as the input.
+   * Optionally provide image references for character replacement.
+   * For seedance-2-preview, automatically runs watermark removal.
+   */
+  async editVideo(args: {
+    prompt: string;
+    videoUrl: string;
+    imageUrls?: string[];
+    model?: "seedance-2-preview" | "seedance-2-fast-preview";
+    aspectRatio?: "16:9" | "9:16" | "4:3" | "3:4";
+  }) {
+    const model = args.model || "seedance-2-preview";
+
+    console.log(`[piapi] starting video edit: ${model}`);
+    console.log(`[piapi] prompt: ${args.prompt}`);
+
+    return this.runAndWait(model, {
+      prompt: args.prompt,
+      video_urls: [args.videoUrl],
+      ...(args.imageUrls?.length ? { image_urls: args.imageUrls } : {}),
+      ...(args.aspectRatio ? { aspect_ratio: args.aspectRatio } : {}),
+    });
+  }
+
+  /**
+   * Extend a previously generated video.
+   * If prompt/duration/aspect_ratio are omitted, the parent task params are reused.
+   */
+  async extendVideo(args: {
+    parentTaskId: string;
+    prompt?: string;
+    model?: "seedance-2-preview" | "seedance-2-fast-preview";
+    duration?: 5 | 10 | 15;
+    aspectRatio?: "16:9" | "9:16" | "4:3" | "3:4";
+  }) {
+    const model = args.model || "seedance-2-preview";
+
+    console.log(`[piapi] starting extend video: ${model}`);
+    console.log(`[piapi] parent task: ${args.parentTaskId}`);
+
+    return this.runAndWait(model, {
+      parent_task_id: args.parentTaskId,
+      ...(args.prompt ? { prompt: args.prompt } : {}),
+      ...(args.duration != null ? { duration: args.duration } : {}),
+      ...(args.aspectRatio ? { aspect_ratio: args.aspectRatio } : {}),
+    });
+  }
+
+  /**
+   * Remove watermark from a video.
+   */
+  async removeWatermark(videoUrl: string) {
     console.log("[piapi] submitting watermark removal...");
 
     const response = await fetch(`${PIAPI_BASE_URL}/api/v1/task`, {
@@ -234,12 +291,47 @@ export class PiAPIProvider extends BaseProvider {
       pollInterval: 5000,
     })) as { video?: string };
 
-    const cleanUrl = result?.video;
-    if (!cleanUrl) {
+    const videoUrl2 = result?.video;
+    if (!videoUrl2) {
       throw new Error("piapi watermark removal completed but no video URL");
     }
 
-    return cleanUrl;
+    console.log("[piapi] watermark removal completed!");
+    return { video: { url: videoUrl2 } };
+  }
+
+  // ============================================================================
+  // Internal helpers
+  // ============================================================================
+
+  /**
+   * Submit a task, wait for completion, and auto-remove watermark for seedance-2-preview.
+   * Returns the same shape as fal convenience methods.
+   */
+  private async runAndWait(model: string, input: Record<string, unknown>) {
+    const jobId = await this.submit(model, {
+      task_type: model,
+      ...input,
+    });
+
+    const result = (await this.waitForCompletion(jobId, {
+      maxWait: this.config.timeout ?? 3600000,
+      pollInterval: 10000,
+    })) as { video?: string };
+
+    const videoUrl = result?.video;
+    if (!videoUrl) {
+      throw new Error("piapi task completed but no video URL in output");
+    }
+
+    // Auto watermark removal for seedance-2-preview
+    if (model === "seedance-2-preview") {
+      console.log("[piapi] auto watermark removal for seedance-2-preview...");
+      return this.removeWatermark(videoUrl);
+    }
+
+    console.log("[piapi] completed!");
+    return { video: { url: videoUrl } };
   }
 }
 
