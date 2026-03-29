@@ -977,8 +977,12 @@ class FalImageModel implements ImageModelV3 {
       { logs: true, stableKey },
     );
 
-    const data = result.data as { images?: Array<{ url?: string }> };
-    const images = data?.images ?? [];
+    const data = result.data as {
+      images?: Array<{ url?: string }>;
+      image?: { url?: string };
+    };
+    // Upscale models return singular `image`, generation models return `images` array
+    const images = data?.images ?? (data?.image ? [data.image] : []);
 
     if (images.length === 0) {
       throw new Error("No images in fal response");
