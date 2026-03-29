@@ -98,6 +98,8 @@ export {
   SoulQuality,
   SoulSize,
 } from "./higgsfield";
+// PiAPI provider (Seedance video generation)
+export { PiAPIProvider, piapiProvider } from "./piapi";
 // Replicate provider (video/image generation)
 export {
   MODELS,
@@ -128,6 +130,7 @@ import { ffmpegProvider } from "./ffmpeg";
 import { fireworksProvider } from "./fireworks";
 import { groqProvider } from "./groq";
 import { higgsfieldProvider } from "./higgsfield";
+import { piapiProvider } from "./piapi";
 import { replicateProvider } from "./replicate";
 import { storageProvider } from "./storage";
 
@@ -139,5 +142,6 @@ providers.register(elevenlabsProvider);
 providers.register(groqProvider);
 providers.register(fireworksProvider);
 providers.register(higgsfieldProvider);
+providers.register(piapiProvider);
 providers.register(ffmpegProvider);
 providers.register(storageProvider);
