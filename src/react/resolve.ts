@@ -634,11 +634,41 @@ export async function resolveVideoElement(
       }
     }
 
+    let resolvedVideo: Uint8Array | undefined;
+    if (promptObj.video) {
+      if (promptObj.video instanceof Uint8Array) {
+        resolvedVideo = promptObj.video;
+      } else if (typeof promptObj.video === "string") {
+        const res = await fetch(promptObj.video);
+        if (!res.ok) {
+          throw new Error(
+            `Failed to fetch video from ${promptObj.video}: ${res.status} ${res.statusText}`,
+          );
+        }
+        resolvedVideo = new Uint8Array(await res.arrayBuffer());
+      } else if (
+        promptObj.video &&
+        typeof promptObj.video === "object" &&
+        "type" in promptObj.video
+      ) {
+        const videoEl = promptObj.video as VargElement<"video">;
+        if (videoEl.meta?.file) {
+          resolvedVideo = await videoEl.meta.file.arrayBuffer();
+        } else {
+          const resolved = await resolveVideoElement(
+            videoEl,
+            videoEl.props as Record<string, unknown>,
+          );
+          resolvedVideo = await resolved.file.arrayBuffer();
+        }
+      }
+    }
+
     resolvedPrompt = {
       text: promptObj.text,
       images: resolvedImages,
       audio: resolvedAudio,
-      video: undefined, // video-to-video not supported in standalone yet
+      video: resolvedVideo,
     };
   }
 
