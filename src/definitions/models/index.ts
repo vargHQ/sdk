@@ -17,6 +17,10 @@ export {
 export { definition as qwenImage2 } from "./qwen-image-2";
 export { definition as recraftV4 } from "./recraft-v4";
 export { definition as reve } from "./reve";
+export {
+  definition as seedance2Preview,
+  fastDefinition as seedance2FastPreview,
+} from "./seedance";
 export { definition as sonauto } from "./sonauto";
 export { definition as soul } from "./soul";
 export { definition as veedFabric } from "./veed-fabric";
@@ -39,6 +43,10 @@ import {
 import { definition as qwenImage2Definition } from "./qwen-image-2";
 import { definition as recraftV4Definition } from "./recraft-v4";
 import { definition as reveDefinition } from "./reve";
+import {
+  fastDefinition as seedance2FastPreviewDefinition,
+  definition as seedance2PreviewDefinition,
+} from "./seedance";
 import { definition as sonautoDefinition } from "./sonauto";
 import { definition as soulDefinition } from "./soul";
 import { definition as veedFabricDefinition } from "./veed-fabric";
@@ -62,6 +70,8 @@ export const allModels = [
   whisperDefinition,
   elevenlabsDefinition,
   soulDefinition,
+  seedance2PreviewDefinition,
+  seedance2FastPreviewDefinition,
   sonautoDefinition,
   llamaDefinition,
 ];
