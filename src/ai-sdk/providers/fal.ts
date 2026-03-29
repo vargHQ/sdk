@@ -178,6 +178,14 @@ const LIPSYNC_MODELS: Record<string, string> = {
   "veed-fabric-1.0": "veed/fabric-1.0",
 };
 
+// Video upscale models - video input, upscaled video output
+const VIDEO_UPSCALE_MODELS: Record<string, string> = {
+  "seedvr-video": "fal-ai/seedvr/upscale/video",
+  "topaz-video": "fal-ai/topaz/upscale/video",
+  "bytedance-upscaler": "fal-ai/bytedance-upscaler/upscale/video",
+  "sima-video-upscaler": "simalabs/sima-video-upscaler-lite",
+};
+
 const IMAGE_MODELS: Record<string, string> = {
   "flux-pro": "fal-ai/flux-pro/v1.1",
   "flux-dev": "fal-ai/flux/dev",
@@ -206,6 +214,13 @@ const IMAGE_MODELS: Record<string, string> = {
   phota: "fal-ai/phota",
   "phota/edit": "fal-ai/phota/edit",
   "phota/enhance": "fal-ai/phota/enhance",
+  // Image upscale models
+  seedvr: "fal-ai/seedvr/upscale/image",
+  "recraft-clarity": "fal-ai/recraft-clarity-upscale",
+  "clarity-upscaler": "fal-ai/clarity-upscaler",
+  topaz: "fal-ai/topaz/upscale/image",
+  ccsr: "fal-ai/ccsr",
+  "aura-sr": "fal-ai/aura-sr",
 };
 
 // Models that use image_size instead of aspect_ratio
@@ -225,7 +240,17 @@ const IMAGE_SIZE_MODELS = new Set([
 const QWEN_ANGLES_MODEL = "qwen-angles";
 
 // Models that use singular image_url instead of image_urls array
-const SINGULAR_IMAGE_URL_MODELS = new Set(["reve/edit", "phota/enhance"]);
+const SINGULAR_IMAGE_URL_MODELS = new Set([
+  "reve/edit",
+  "phota/enhance",
+  // Image upscale models
+  "seedvr",
+  "recraft-clarity",
+  "clarity-upscaler",
+  "topaz",
+  "ccsr",
+  "aura-sr",
+]);
 
 // Map aspect ratio to image_size for Qwen Angles (base dimension 1024)
 const ASPECT_RATIO_TO_QWEN_SIZE: Record<
@@ -491,6 +516,7 @@ class FalVideoModel implements VideoModelV3 {
     const isLipsync = LIPSYNC_MODELS[this.modelId] !== undefined;
     const isMotionControl = MOTION_CONTROL_MODELS[this.modelId] !== undefined;
     const isVideoEdit = VIDEO_EDIT_MODELS[this.modelId] !== undefined;
+    const isVideoUpscale = VIDEO_UPSCALE_MODELS[this.modelId] !== undefined;
     const isKlingV3 =
       this.modelId === "kling-v3" || this.modelId === "kling-v3-standard";
     const isKlingV26 = this.modelId === "kling-v2.6";
@@ -506,7 +532,9 @@ class FalVideoModel implements VideoModelV3 {
         ? this.resolveMotionControlEndpoint()
         : isVideoEdit
           ? this.resolveVideoEditEndpoint()
-          : this.resolveEndpoint(hasImageInput ?? false);
+          : isVideoUpscale
+            ? this.resolveVideoUpscaleEndpoint()
+            : this.resolveEndpoint(hasImageInput ?? false);
 
     const input: Record<string, unknown> = {
       ...(providerOptions?.fal ?? {}),
@@ -581,6 +609,15 @@ class FalVideoModel implements VideoModelV3 {
       // Grok Imagine Edit supports resolution: "auto", "480p", "720p"
       if (!input.resolution) {
         input.resolution = "auto";
+      }
+    } else if (isVideoUpscale) {
+      // Video upscale: video input, no prompt needed
+      const videoFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("video/"),
+      );
+
+      if (videoFile) {
+        input.video_url = await fileToUrl(videoFile);
       }
     } else {
       // Standard video generation
@@ -787,6 +824,14 @@ class FalVideoModel implements VideoModelV3 {
 
     return VIDEO_EDIT_MODELS[this.modelId] ?? this.modelId;
   }
+
+  private resolveVideoUpscaleEndpoint(): string {
+    if (this.modelId.startsWith("raw:")) {
+      return this.modelId.slice(4);
+    }
+
+    return VIDEO_UPSCALE_MODELS[this.modelId] ?? this.modelId;
+  }
 }
 
 class FalImageModel implements ImageModelV3 {
@@ -930,8 +975,12 @@ class FalImageModel implements ImageModelV3 {
       { logs: true, stableKey },
     );
 
-    const data = result.data as { images?: Array<{ url?: string }> };
-    const images = data?.images ?? [];
+    const data = result.data as {
+      images?: Array<{ url?: string }>;
+      image?: { url?: string };
+    };
+    // Upscale models return singular `image`, generation models return `images` array
+    const images = data?.images ?? (data?.image ? [data.image] : []);
 
     if (images.length === 0) {
       throw new Error("No images in fal response");
