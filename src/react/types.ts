@@ -335,7 +335,7 @@ export interface PackshotProps extends BaseProps {
   duration?: number;
 }
 
-export type RenderMode = "strict" | "preview";
+export type RenderMode = "strict" | "preview" | "prerender";
 
 export interface DefaultModels {
   image?: ImageModelV3;
@@ -343,6 +343,8 @@ export interface DefaultModels {
   speech?: SpeechModelV3;
   music?: MusicModelV3;
   transcription?: TranscriptionModelV3;
+  /** Image model used in prerender mode to replace t2v generation (default: nano-banana-2) */
+  prerenderImage?: ImageModelV3;
 }
 
 export interface RenderOptions {
