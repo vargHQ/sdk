@@ -2,6 +2,7 @@ import {
   resolveImageElement,
   resolveMusicElement,
   resolveSpeechElement,
+  resolveTalkingHeadElement,
   resolveVideoElement,
 } from "./resolve";
 import type { ResolvedElement } from "./resolved-element";
@@ -141,11 +142,14 @@ export function Speech(
 
 export function TalkingHead(
   props: TalkingHeadProps,
-): VargElement<"talking-head"> {
-  return createElement(
+): VargElement<"talking-head"> & PromiseLike<ResolvedElement<"talking-head">> {
+  const element = createElement(
     "talking-head",
     props as Record<string, unknown>,
-    props.children,
+    undefined,
+  );
+  return makeThenable(element, (el) =>
+    resolveTalkingHeadElement(el, el.props as unknown as TalkingHeadProps),
   );
 }
 

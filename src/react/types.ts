@@ -198,16 +198,20 @@ export interface SpeechProps extends BaseProps, VolumeProps {
 }
 
 export interface TalkingHeadProps extends BaseProps {
-  character?: string;
-  src?: string;
-  voice?: string;
+  /** Pre-resolved or lazy image element to use as the character face. */
+  image?: VargElement<"image">;
+  /** Pre-resolved or lazy speech element to use as the audio track. */
+  audio?: VargElement<"speech">;
+  /** Lipsync video model (e.g. fal.videoModel("sync-v2-pro")). */
   model?: VideoModelV3;
+  /** Separate lipsync model override (defaults to `model`). */
   lipsyncModel?: VideoModelV3;
+  /** Video resolution for lipsync generation (default: "720p") */
+  resolution?: "480p" | "720p" | "1080p";
   position?:
     | Position
     | { left?: string; right?: string; top?: string; bottom?: string };
   size?: { width: string; height: string };
-  children?: string;
 }
 
 export interface TitleProps extends BaseProps {

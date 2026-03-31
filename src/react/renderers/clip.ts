@@ -26,6 +26,7 @@ import { renderSlider } from "./slider";
 import { renderSpeech } from "./speech";
 import { renderSubtitle } from "./subtitle";
 import { renderSwipe } from "./swipe";
+import { renderTalkingHead } from "./talking-head";
 import { renderTitle } from "./title";
 import { resolvePath } from "./utils";
 import { renderVideo } from "./video";
@@ -146,6 +147,27 @@ async function renderClipLayers(
                   path,
                   mixVolume: props.volume ?? 1,
                 }) as AudioLayer,
+            ),
+        });
+        break;
+      }
+
+      case "talking-head": {
+        pending.push({
+          type: "async",
+          promise: renderTalkingHead(
+            element as VargElement<"talking-head">,
+            ctx,
+          )
+            .then((file) => ctx.backend.resolvePath(file))
+            .then(
+              (path) =>
+                ({
+                  type: "video",
+                  path,
+                  resizeMode: "cover",
+                  mixVolume: 1,
+                }) as VideoLayer,
             ),
         });
         break;
