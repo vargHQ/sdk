@@ -37,6 +37,7 @@ import type {
   ImageProps,
   MusicProps,
   SpeechProps,
+  TalkingHeadProps,
   VargElement,
 } from "./types";
 
@@ -739,6 +740,98 @@ export async function resolveMusicElement(
     type: "music",
     model: typeof model === "string" ? model : model.modelId,
     prompt,
+  });
+
+  const duration = await probeDuration(file);
+
+  return new ResolvedElement(element, {
+    file,
+    duration,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// TalkingHead
+// ---------------------------------------------------------------------------
+/**
+ * Resolve a TalkingHead element by combining a pre-resolved image and speech
+ * into a lipsync video. Returns a ResolvedElement<"talking-head"> wrapping the
+ * final video.
+ *
+ * Pipeline:
+ * 1. Resolve the image from `image` prop (generate or reuse pre-resolved)
+ * 2. Resolve the speech from `audio` prop (generate or reuse pre-resolved)
+ * 3. Generate lipsync video from image + audio via `model`
+ */
+export async function resolveTalkingHeadElement(
+  element: VargElement<"talking-head">,
+  props: TalkingHeadProps,
+): Promise<ResolvedElement<"talking-head">> {
+  const model = props.model;
+  if (!model) {
+    throw new Error(
+      "await TalkingHead() requires 'model' prop for lipsync video generation",
+    );
+  }
+
+  if (!props.image) {
+    throw new Error(
+      "await TalkingHead() requires 'image' prop (an Image element).",
+    );
+  }
+
+  if (!props.audio) {
+    throw new Error(
+      "await TalkingHead() requires 'audio' prop (a Speech element).",
+    );
+  }
+
+  // Step 1: Resolve image — if it's a ResolvedElement, use its file directly;
+  // otherwise resolve the lazy Image element via generateImage.
+  const resolvedImage =
+    props.image instanceof ResolvedElement
+      ? props.image
+      : await resolveImageElement(props.image, props.image.props as ImageProps);
+  const characterBytes = new Uint8Array(await resolvedImage.file.arrayBuffer());
+
+  // Step 2: Resolve speech — same pattern.
+  const resolvedSpeech =
+    props.audio instanceof ResolvedElement
+      ? props.audio
+      : await resolveSpeechElement(
+          props.audio,
+          props.audio.props as SpeechProps,
+        );
+  const speechBytes = new Uint8Array(await resolvedSpeech.file.arrayBuffer());
+
+  // Step 3: Generate lipsync video (image + audio → video)
+  const lipsyncModel = props.lipsyncModel ?? model;
+  const generateVideo = getCachedGenerateVideo();
+
+  const { video } = await generateVideo({
+    model: lipsyncModel as Parameters<typeof generateVideoRaw>[0]["model"],
+    prompt: {
+      images: [characterBytes],
+      audio: speechBytes,
+    },
+    duration: 0, // duration determined by audio length
+  });
+
+  const mediaType = video.mimeType ?? "video/mp4";
+  const modelId =
+    typeof lipsyncModel === "string" ? lipsyncModel : lipsyncModel.modelId;
+
+  const promptLabel =
+    getTextContent(element.children) ?? "talking-head lipsync";
+
+  const file = File.fromGenerated({
+    uint8Array: video.uint8Array,
+    mediaType,
+    url: (video as { url?: string }).url,
+  }).withMetadata({
+    type: "video",
+    model: modelId,
+    prompt: `talking-head: ${promptLabel.slice(0, 100)}`,
   });
 
   const duration = await probeDuration(file);
