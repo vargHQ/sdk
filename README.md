@@ -315,6 +315,16 @@ See the [BYOK docs](https://docs.varg.ai/sdk/byok) for details.
 
 A typical 3-clip video costs $2-5. Cache hits are always free.
 
+## Star History
+
+<a href="https://star-history.com/#vargHQ/sdk&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=vargHQ/sdk&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=vargHQ/sdk&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=vargHQ/sdk&type=Date" />
+ </picture>
+</a>
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
