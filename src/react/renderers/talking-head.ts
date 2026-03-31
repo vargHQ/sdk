@@ -68,10 +68,15 @@ export async function renderTalkingHead(
   const characterImageData = await characterFile.arrayBuffer();
   const speechAudioData = await speechFile.arrayBuffer();
 
-  // Determine the model ID to check if it requires video input
-  const modelId =
+  // Determine the model ID to check if it requires video input.
+  // Strip provider prefix (e.g. "fal:sync-v2-pro" → "sync-v2-pro") since
+  // the render service wraps providers via prefixedGateway.
+  const rawModelId =
     typeof lipsyncModel === "string" ? lipsyncModel : lipsyncModel.modelId;
-  const requiresVideo = VIDEO_ONLY_LIPSYNC_MODELS.has(modelId);
+  const bareModelId = rawModelId.includes(":")
+    ? rawModelId.split(":").pop()!
+    : rawModelId;
+  const requiresVideo = VIDEO_ONLY_LIPSYNC_MODELS.has(bareModelId);
 
   if (requiresVideo) {
     // Models like sync-v2-pro require a video, not a static image.
