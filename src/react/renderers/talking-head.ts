@@ -7,12 +7,26 @@ import { renderSpeech } from "./speech";
 import { renderVideo } from "./video";
 
 /**
+ * Lipsync models that require a video input (not a static image).
+ * When TalkingHead uses one of these, we first generate a short video
+ * from the image via an image-to-video model, then lipsync.
+ */
+const VIDEO_ONLY_LIPSYNC_MODELS = new Set([
+  "sync-v2",
+  "sync-v2-pro",
+  "lipsync",
+]);
+
+/**
  * Render a TalkingHead element into a video file.
  *
  * Pipeline:
  * 1. Resolve the character image from `image` prop (VargElement or ResolvedElement)
  * 2. Resolve the speech audio from `audio` prop (VargElement or ResolvedElement)
  * 3. Generate a lipsync video via `model` (image + audio → video)
+ *    - For models that accept images (veed-fabric, omnihuman): pass image directly
+ *    - For models that require video (sync-v2-pro): first animate image → video,
+ *      then lipsync the video
  *
  * The result is a video File suitable for use as a VideoLayer.
  */
@@ -54,16 +68,56 @@ export async function renderTalkingHead(
   const characterImageData = await characterFile.arrayBuffer();
   const speechAudioData = await speechFile.arrayBuffer();
 
-  // Create a synthetic video element for the lipsync generation.
-  // Lipsync models (sync-v2-pro, etc.) require `video_url`, not `image_url`,
-  // so we pass the character image as the `video` input. The fal provider will
-  // upload it and set `video_url` in the API request. Fal.ai accepts image
-  // files as the video input for lipsync — it treats them as single-frame video.
+  // Determine the model ID to check if it requires video input
+  const modelId =
+    typeof lipsyncModel === "string" ? lipsyncModel : lipsyncModel.modelId;
+  const requiresVideo = VIDEO_ONLY_LIPSYNC_MODELS.has(modelId);
+
+  if (requiresVideo) {
+    // Models like sync-v2-pro require a video, not a static image.
+    // First animate the image into a short video, then lipsync.
+    const animateVideoElement: VargElement<"video"> = {
+      type: "video",
+      props: {
+        prompt: {
+          images: [characterImageData],
+          text: "person looking at camera, subtle idle movement, breathing, blinking",
+        },
+        model: ctx.defaults?.video,
+        providerOptions: {
+          fal: { resolution: props.resolution ?? "720p" },
+        },
+      },
+      children: [],
+    };
+
+    const animatedFile = await renderVideo(animateVideoElement, ctx);
+    const animatedVideoData = await animatedFile.arrayBuffer();
+
+    // Now lipsync the animated video with the speech audio
+    const lipsyncElement: VargElement<"video"> = {
+      type: "video",
+      props: {
+        prompt: {
+          video: animatedVideoData,
+          audio: speechAudioData,
+        },
+        model: lipsyncModel,
+        keepAudio: true,
+        providerOptions: { fal: { resolution: props.resolution ?? "720p" } },
+      },
+      children: [],
+    };
+
+    return renderVideo(lipsyncElement, ctx);
+  }
+
+  // For models that accept images directly (veed-fabric, omnihuman, etc.)
   const videoElement: VargElement<"video"> = {
     type: "video",
     props: {
       prompt: {
-        video: characterImageData,
+        images: [characterImageData],
         audio: speechAudioData,
       },
       model: lipsyncModel,

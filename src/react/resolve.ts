@@ -808,12 +808,13 @@ export async function resolveTalkingHeadElement(
   const lipsyncModel = props.lipsyncModel ?? model;
   const generateVideo = getCachedGenerateVideo();
 
-  // Lipsync models require `video_url`, not `image_url`, so pass the
-  // character image as the `video` input (fal accepts images as video input).
+  // Pass image + audio to the lipsync model. Models like veed-fabric and
+  // omnihuman accept images directly. For standalone await TalkingHead(),
+  // we don't support the animate-then-lipsync path (use render() for that).
   const { video } = await generateVideo({
     model: lipsyncModel as Parameters<typeof generateVideoRaw>[0]["model"],
     prompt: {
-      video: characterBytes,
+      images: [characterBytes],
       audio: speechBytes,
     },
     duration: 0, // duration determined by audio length
