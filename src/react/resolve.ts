@@ -808,10 +808,12 @@ export async function resolveTalkingHeadElement(
   const lipsyncModel = props.lipsyncModel ?? model;
   const generateVideo = getCachedGenerateVideo();
 
+  // Lipsync models require `video_url`, not `image_url`, so pass the
+  // character image as the `video` input (fal accepts images as video input).
   const { video } = await generateVideo({
     model: lipsyncModel as Parameters<typeof generateVideoRaw>[0]["model"],
     prompt: {
-      images: [characterBytes],
+      video: characterBytes,
       audio: speechBytes,
     },
     duration: 0, // duration determined by audio length

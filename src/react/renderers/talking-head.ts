@@ -54,12 +54,16 @@ export async function renderTalkingHead(
   const characterImageData = await characterFile.arrayBuffer();
   const speechAudioData = await speechFile.arrayBuffer();
 
-  // Create a synthetic video element for the lipsync generation
+  // Create a synthetic video element for the lipsync generation.
+  // Lipsync models (sync-v2-pro, etc.) require `video_url`, not `image_url`,
+  // so we pass the character image as the `video` input. The fal provider will
+  // upload it and set `video_url` in the API request. Fal.ai accepts image
+  // files as the video input for lipsync — it treats them as single-frame video.
   const videoElement: VargElement<"video"> = {
     type: "video",
     props: {
       prompt: {
-        images: [characterImageData],
+        video: characterImageData,
         audio: speechAudioData,
       },
       model: lipsyncModel,
