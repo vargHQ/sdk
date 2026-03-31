@@ -85,6 +85,52 @@ const CREDIT_PACKAGES = [
   },
 ];
 
+// Common disposable email domains for fast client-side rejection.
+// The server enforces a comprehensive 55k+ domain blocklist (mailchecker);
+// this is just for instant UX feedback on the most common offenders.
+const DISPOSABLE_DOMAINS = new Set([
+  "guerrillamail.com",
+  "guerrillamailblock.com",
+  "guerrillamail.net",
+  "guerrillamail.org",
+  "guerrillamail.de",
+  "grr.la",
+  "sharklasers.com",
+  "guerrilla.ml",
+  "yopmail.com",
+  "yopmail.fr",
+  "yopmail.net",
+  "tempmail.com",
+  "temp-mail.org",
+  "temp-mail.io",
+  "mailinator.com",
+  "mailinator2.com",
+  "throwaway.email",
+  "trashmail.com",
+  "trashmail.net",
+  "trashmail.me",
+  "10minutemail.com",
+  "10minutemail.net",
+  "dispostable.com",
+  "maildrop.cc",
+  "fakeinbox.com",
+  "mailnesia.com",
+  "tempail.com",
+  "tempr.email",
+  "discard.email",
+  "discardmail.com",
+  "mohmal.com",
+  "burpcollaborator.net",
+]);
+
+function isDisposableDomain(domain: string): boolean {
+  if (DISPOSABLE_DOMAINS.has(domain)) return true;
+  for (const d of DISPOSABLE_DOMAINS) {
+    if (domain.endsWith(`.${d}`)) return true;
+  }
+  return false;
+}
+
 function formatCents(cents: number): string {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
 }
@@ -225,6 +271,17 @@ async function loginWithEmail(): Promise<LoginResult | null> {
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     log.error("Invalid email address.");
+    return null;
+  }
+
+  // Quick client-side check for common disposable email domains.
+  // The server enforces a comprehensive 55k+ domain blocklist (mailchecker);
+  // this is just for faster UX feedback on the most common offenders.
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (domain && isDisposableDomain(domain)) {
+    log.error(
+      "Disposable email addresses are not allowed. Please use a permanent email address.",
+    );
     return null;
   }
 
