@@ -6,6 +6,7 @@ export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
 export { definition as kling } from "./kling";
 export { definition as llama } from "./llama";
+export { definition as ltxA2v } from "./ltx-a2v";
 export { definition as nanoBanana2 } from "./nano-banana-2";
 export { definition as nanoBananaPro } from "./nano-banana-pro";
 export { definition as omnihuman } from "./omnihuman";
@@ -32,6 +33,7 @@ import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
 import { definition as klingDefinition } from "./kling";
 import { definition as llamaDefinition } from "./llama";
+import { definition as ltxA2vDefinition } from "./ltx-a2v";
 import { definition as nanoBanana2Definition } from "./nano-banana-2";
 import { definition as nanoBananaProDefinition } from "./nano-banana-pro";
 import { definition as omnihumanDefinition } from "./omnihuman";
@@ -66,6 +68,7 @@ export const allModels = [
   reveDefinition,
   wanDefinition,
   omnihumanDefinition,
+  ltxA2vDefinition,
   veedFabricDefinition,
   whisperDefinition,
   elevenlabsDefinition,

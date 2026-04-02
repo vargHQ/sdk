@@ -176,6 +176,7 @@ const LIPSYNC_MODELS: Record<string, string> = {
   lipsync: "fal-ai/sync-lipsync",
   "omnihuman-v1.5": "fal-ai/bytedance/omnihuman/v1.5",
   "veed-fabric-1.0": "veed/fabric-1.0",
+  "ltx-2-a2v": "fal-ai/ltx-2-19b/audio-to-video",
 };
 
 // Video upscale models - video input, upscaled video output
@@ -561,8 +562,11 @@ class FalVideoModel implements VideoModelV3 {
         input.audio_url = await fileToUrl(audioFile);
       }
 
-      // OmniHuman supports an optional prompt
-      if (prompt && this.modelId === "omnihuman-v1.5") {
+      // OmniHuman and LTX-2 a2v support prompt (required for LTX-2 a2v)
+      if (
+        prompt &&
+        (this.modelId === "omnihuman-v1.5" || this.modelId === "ltx-2-a2v")
+      ) {
         input.prompt = prompt;
       }
     } else if (isMotionControl) {

@@ -429,6 +429,72 @@ export class FalProvider extends BaseProvider {
     return result;
   }
 
+  async ltx2AudioToVideo(args: {
+    prompt: string;
+    audioUrl: string;
+    imageUrl?: string;
+    matchAudioLength?: boolean;
+    numFrames?: number;
+    videoSize?: string;
+    useMultiscale?: boolean;
+    fps?: number;
+    guidanceScale?: number;
+    numInferenceSteps?: number;
+    seed?: number;
+    enablePromptExpansion?: boolean;
+    audioStrength?: number;
+    imageStrength?: number;
+  }) {
+    const modelId: string = "fal-ai/ltx-2-19b/audio-to-video";
+
+    console.log(`[fal] starting LTX-2 audio-to-video: ${modelId}`);
+
+    const audioUrl = await ensureUrl(args.audioUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const input: Record<string, unknown> = {
+      prompt: args.prompt,
+      audio_url: audioUrl,
+      match_audio_length: args.matchAudioLength ?? true,
+      use_multiscale: args.useMultiscale ?? true,
+      enable_prompt_expansion: args.enablePromptExpansion ?? true,
+    };
+
+    if (args.imageUrl) {
+      input.image_url = await ensureUrl(args.imageUrl, (buffer) =>
+        this.uploadFile(buffer),
+      );
+    }
+    if (args.numFrames !== undefined) input.num_frames = args.numFrames;
+    if (args.videoSize) input.video_size = args.videoSize;
+    if (args.fps !== undefined) input.fps = args.fps;
+    if (args.guidanceScale !== undefined)
+      input.guidance_scale = args.guidanceScale;
+    if (args.numInferenceSteps !== undefined)
+      input.num_inference_steps = args.numInferenceSteps;
+    if (args.seed !== undefined) input.seed = args.seed;
+    if (args.audioStrength !== undefined)
+      input.audio_strength = args.audioStrength;
+    if (args.imageStrength !== undefined)
+      input.image_strength = args.imageStrength;
+
+    const result = await fal.subscribe(modelId, {
+      input,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
   async textToMusic(args: {
     prompt?: string;
     tags?: string[];
@@ -686,5 +752,8 @@ export const omnihuman15 = (args: Parameters<FalProvider["omnihuman15"]>[0]) =>
 export const veedFabric10 = (
   args: Parameters<FalProvider["veedFabric10"]>[0],
 ) => falProvider.veedFabric10(args);
+export const ltx2AudioToVideo = (
+  args: Parameters<FalProvider["ltx2AudioToVideo"]>[0],
+) => falProvider.ltx2AudioToVideo(args);
 export const textToMusic = (args: Parameters<FalProvider["textToMusic"]>[0]) =>
   falProvider.textToMusic(args);
