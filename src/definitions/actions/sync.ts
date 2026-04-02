@@ -16,11 +16,13 @@ import { ffmpegProvider } from "../../providers/ffmpeg";
 // Input schema with Zod
 const syncInputSchema = z.object({
   model: z
-    .enum(["wan-25", "omnihuman-v1.5", "veed-fabric-1.0"])
+    .enum(["wan-25", "omnihuman-v1.5", "veed-fabric-1.0", "ltx-2-a2v"])
     .optional()
     .default("wan-25")
     .describe("Lip sync / avatar backend model"),
-  image: filePathSchema.describe("Input image"),
+  image: filePathSchema
+    .optional()
+    .describe("Input image (optional for ltx-2-a2v)"),
   audio: filePathSchema.describe("Audio file"),
   prompt: z.string().describe("Description of the scene"),
   duration: videoDurationStringSchema.default("5").describe("Output duration"),
@@ -52,8 +54,8 @@ export const definition: ActionDefinition<typeof schema> = {
 
 // Types
 export interface LipsyncOptions {
-  model?: "wan-25" | "omnihuman-v1.5" | "veed-fabric-1.0";
-  image: string;
+  model?: "wan-25" | "omnihuman-v1.5" | "veed-fabric-1.0" | "ltx-2-a2v";
+  image?: string;
   audio: string;
   prompt: string;
   duration?: "5" | "10";
@@ -85,6 +87,10 @@ export async function lipsync(options: LipsyncOptions): Promise<LipsyncResult> {
 
   console.log(`[sync] generating lip-synced video with ${model}...`);
 
+  if (model !== "ltx-2-a2v" && !image) {
+    throw new Error(`[sync] ${model} requires an input image`);
+  }
+
   if (model === "omnihuman-v1.5" && resolution === "480p") {
     console.warn(
       "[sync] omnihuman-v1.5 does not support 480p; using 720p instead",
@@ -97,30 +103,36 @@ export async function lipsync(options: LipsyncOptions): Promise<LipsyncResult> {
   }
 
   const result =
-    model === "omnihuman-v1.5"
-      ? await falProvider.omnihuman15({
-          imageUrl: image,
-          audioUrl: audio,
+    model === "ltx-2-a2v"
+      ? await falProvider.ltx2AudioToVideo({
           prompt,
-          resolution: (resolution === "480p" ? "720p" : resolution) as
-            | "720p"
-            | "1080p",
+          audioUrl: audio,
+          ...(image ? { imageUrl: image } : {}),
         })
-      : model === "veed-fabric-1.0"
-        ? await falProvider.veedFabric10({
-            imageUrl: image,
-            audioUrl: audio,
-            resolution: (resolution === "1080p" ? "720p" : resolution) as
-              | "480p"
-              | "720p",
-          })
-        : await falProvider.wan25({
-            imageUrl: image,
+      : model === "omnihuman-v1.5"
+        ? await falProvider.omnihuman15({
+            imageUrl: image!,
             audioUrl: audio,
             prompt,
-            duration,
-            resolution,
-          });
+            resolution: (resolution === "480p" ? "720p" : resolution) as
+              | "720p"
+              | "1080p",
+          })
+        : model === "veed-fabric-1.0"
+          ? await falProvider.veedFabric10({
+              imageUrl: image!,
+              audioUrl: audio,
+              resolution: (resolution === "1080p" ? "720p" : resolution) as
+                | "480p"
+                | "720p",
+            })
+          : await falProvider.wan25({
+              imageUrl: image!,
+              audioUrl: audio,
+              prompt,
+              duration,
+              resolution,
+            });
 
   const videoUrl = result.data?.video?.url;
   if (!videoUrl) {
