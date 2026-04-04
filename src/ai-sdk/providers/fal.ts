@@ -15,6 +15,7 @@ import pMap from "p-map";
 import type { CacheStorage } from "../cache";
 import { fileCache } from "../file-cache";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
+import { normalizeProviderInput } from "./model-rules";
 
 interface PendingRequest {
   request_id: string;
@@ -640,35 +641,22 @@ class FalVideoModel implements VideoModelV3 {
         if (input.video_size === undefined) {
           input.video_size = "auto";
         }
-      } else if (isKlingV3 || isKlingV26) {
-        // Duration must be string for Kling v2.6+ and O3 (v3)
-        input.duration = String(duration ?? 5);
-      } else if (isGrokImagine) {
-        // Grok Imagine: duration 1-15 seconds (default 6)
-        input.duration = duration ?? 6;
-        // Grok Imagine supports resolution: "480p", "720p" (default "720p")
-        if (!input.resolution) {
-          input.resolution = "720p";
-        }
-      } else if (isSora2) {
-        // Sora 2: only supports 4, 8, 12, 16, 20 second durations
-        const allowedDurations = [4, 8, 12, 16, 20];
-        const d = duration ?? 4;
-        if (!allowedDurations.includes(d)) {
-          warnings.push({
-            type: "other",
-            message: `Sora 2 only supports durations: ${allowedDurations.join(", ")}s. Got ${d}s, defaulting to 4s.`,
-          });
-          input.duration = 4;
-        } else {
-          input.duration = d;
-        }
-        // Disable video deletion so generated video URLs remain accessible
-        if (input.delete_video === undefined) {
-          input.delete_video = false;
-        }
       } else {
-        input.duration = duration ?? 5;
+        // Apply model-specific duration normalization via Zod schemas
+        // (clamp to valid range, round floats, convert type e.g. number → string for Kling v3)
+        const normalized = normalizeProviderInput(this.modelId, { duration });
+        input.duration = normalized.duration;
+
+        // Model-specific non-duration defaults
+        if (isGrokImagine) {
+          if (!input.resolution) {
+            input.resolution = "720p";
+          }
+        } else if (isSora2) {
+          if (input.delete_video === undefined) {
+            input.delete_video = false;
+          }
+        }
       }
 
       if (hasImageInput && files) {
