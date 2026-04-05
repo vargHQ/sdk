@@ -171,97 +171,130 @@ class HeyGenVideoModel implements VideoModelV3 {
       unknown
     >;
 
-    // Build HeyGen API payload for POST /v2/videos
-    const payload: Record<string, unknown> = {};
-
-    // ---- Avatar / image source ----
+    // ---- Resolve inputs ----
     const avatarId = heygenOpts.avatar_id as string | undefined;
-    if (avatarId) {
-      payload.avatar_id = avatarId;
-    } else {
-      // Look for image files to upload
+    const voiceId = heygenOpts.voice_id as string | undefined;
+
+    // Upload image file to HeyGen if present (for photo-to-video)
+    let imageAssetId: string | undefined;
+    if (!avatarId) {
       const imageFile = files?.find((f) =>
         getMediaType(f)?.startsWith("image/"),
       );
       if (imageFile) {
         const bytes = await fileToBytes(imageFile);
         const contentType = getMediaType(imageFile) ?? "image/jpeg";
-        const assetId = await uploadToHeyGen(this.apiKey, bytes, contentType);
-        payload.image_asset_id = assetId;
+        imageAssetId = await uploadToHeyGen(this.apiKey, bytes, contentType);
       }
     }
 
-    // ---- Voice: script mode or audio mode ----
-    const voiceId = heygenOpts.voice_id as string | undefined;
+    // Upload audio file if present (external audio mode)
+    let audioAssetId: string | undefined;
     const audioFile = files?.find((f) => getMediaType(f)?.startsWith("audio/"));
-
     if (audioFile) {
-      // External audio mode (e.g., from ElevenLabs Speech())
       const audioBytes = await fileToBytes(audioFile);
       const audioContentType = getMediaType(audioFile) ?? "audio/mpeg";
-      const audioAssetId = await uploadToHeyGen(
+      audioAssetId = await uploadToHeyGen(
         this.apiKey,
         audioBytes,
         audioContentType,
       );
-      payload.audio_asset_id = audioAssetId;
-    } else if (prompt && voiceId) {
-      // Script mode: HeyGen handles TTS internally
-      payload.script = prompt;
-      payload.voice_id = voiceId;
-    } else if (prompt && !voiceId) {
-      // Script provided but no voice_id — this is likely the prompt-only path
-      // The user must provide voice_id in providerOptions
+    }
+
+    if (prompt && voiceId === undefined && !audioFile) {
       warnings.push({
         type: "other",
         message:
           "HeyGen requires voice_id when using script mode. Pass it via providerOptions.heygen.voice_id",
       });
-      payload.script = prompt;
     }
-
-    // ---- Optional parameters ----
-    if (heygenOpts.motion_prompt)
-      payload.motion_prompt = heygenOpts.motion_prompt;
-    if (heygenOpts.expressiveness)
-      payload.expressiveness = heygenOpts.expressiveness;
-    if (heygenOpts.remove_background)
-      payload.remove_background = heygenOpts.remove_background;
-    if (heygenOpts.callback_url) payload.callback_url = heygenOpts.callback_url;
 
     // Aspect ratio from VideoModelV3 options or HeyGen-specific
     const aspectRatio =
       (heygenOpts.aspect_ratio as string | undefined) ?? options.aspectRatio;
-    if (aspectRatio) payload.aspect_ratio = aspectRatio;
 
-    // Resolution
-    const resolution = heygenOpts.resolution as string | undefined;
-    if (resolution) payload.resolution = resolution;
+    // ---- Dual-endpoint strategy ----
+    // Pre-registered avatars → Studio V2 (POST /v2/video/generate) nested payload
+    // Custom image (photo-to-video) → Avatar IV (POST /v2/videos) flat payload
+    const useStudioV2 = !!avatarId;
 
-    // Voice settings
-    const voiceSettings = heygenOpts.voice_settings as
-      | Record<string, unknown>
-      | undefined;
-    if (voiceSettings) payload.voice_settings = voiceSettings;
+    let submitUrl: string;
+    let submitBody: string;
 
-    // Background
-    const background = heygenOpts.background as
-      | Record<string, unknown>
-      | undefined;
-    if (background) payload.background = background;
+    if (useStudioV2) {
+      // --- Studio V2 ---
+      const character: Record<string, unknown> = {
+        type: "avatar",
+        avatar_id: avatarId,
+        avatar_style: "normal",
+      };
 
-    // Title
-    if (heygenOpts.title) payload.title = heygenOpts.title;
+      const voice: Record<string, unknown> = {};
+      if (audioAssetId) {
+        voice.type = "audio";
+        voice.audio_asset_id = audioAssetId;
+      } else if (prompt && voiceId) {
+        voice.type = "text";
+        voice.input_text = prompt;
+        voice.voice_id = voiceId;
+      }
+
+      const dim =
+        aspectRatio === "9:16"
+          ? { width: 720, height: 1280 }
+          : { width: 1280, height: 720 };
+
+      const studioPayload: Record<string, unknown> = {
+        video_inputs: [{ character, voice }],
+        dimension: dim,
+      };
+      if (heygenOpts.callback_url)
+        studioPayload.callback_url = heygenOpts.callback_url;
+      if (heygenOpts.title) studioPayload.title = heygenOpts.title;
+
+      submitUrl = `${HEYGEN_API_BASE}/v2/video/generate`;
+      submitBody = JSON.stringify(studioPayload);
+    } else {
+      // --- Avatar IV ---
+      const av4Payload: Record<string, unknown> = {};
+
+      if (imageAssetId) av4Payload.image_asset_id = imageAssetId;
+
+      if (audioAssetId) {
+        av4Payload.audio_asset_id = audioAssetId;
+      } else if (prompt && voiceId) {
+        av4Payload.script = prompt;
+        av4Payload.voice_id = voiceId;
+      }
+
+      if (heygenOpts.motion_prompt)
+        av4Payload.motion_prompt = heygenOpts.motion_prompt;
+      if (heygenOpts.expressiveness)
+        av4Payload.expressiveness = heygenOpts.expressiveness;
+      if (heygenOpts.remove_background)
+        av4Payload.remove_background = heygenOpts.remove_background;
+      if (aspectRatio) av4Payload.aspect_ratio = aspectRatio;
+
+      const resolution = heygenOpts.resolution as string | undefined;
+      if (resolution) av4Payload.resolution = resolution;
+
+      if (heygenOpts.callback_url)
+        av4Payload.callback_url = heygenOpts.callback_url;
+      if (heygenOpts.title) av4Payload.title = heygenOpts.title;
+
+      submitUrl = `${HEYGEN_API_BASE}/v2/videos`;
+      submitBody = JSON.stringify(av4Payload);
+    }
 
     // ---- Submit ----
-    const submitRes = await fetch(`${HEYGEN_API_BASE}/v2/videos`, {
+    const submitRes = await fetch(submitUrl, {
       method: "POST",
       headers: {
         "X-Api-Key": this.apiKey,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(payload),
+      body: submitBody,
       signal: abortSignal,
     });
 

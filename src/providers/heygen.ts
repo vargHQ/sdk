@@ -114,44 +114,87 @@ export class HeyGenProvider extends BaseProvider {
     const callbackUrl = inputs.callback_url as string | undefined;
     const title = inputs.title as string | undefined;
 
-    const payload: Record<string, unknown> = {};
+    // Dual-endpoint strategy:
+    //   Pre-registered avatars → Studio V2 (POST /v2/video/generate) nested payload
+    //   Custom image (photo-to-video) → Avatar IV (POST /v2/videos) flat payload
+    const useStudioV2 = !!avatarId;
+    let fetchUrl: string;
+    let fetchBody: string;
 
-    // Avatar or image source (one of these)
-    if (avatarId) {
-      payload.avatar_id = avatarId;
-    } else if (imageUrl) {
-      payload.image_url = imageUrl;
-    } else if (imageAssetId) {
-      payload.image_asset_id = imageAssetId;
+    if (useStudioV2) {
+      // --- Studio V2 ---
+      const character: Record<string, unknown> = {
+        type: "avatar",
+        avatar_id: avatarId,
+        avatar_style: "normal",
+      };
+
+      const voice: Record<string, unknown> = {};
+      if (script && voiceId) {
+        voice.type = "text";
+        voice.input_text = script;
+        voice.voice_id = voiceId;
+      } else if (audioUrl) {
+        voice.type = "audio";
+        voice.audio_url = audioUrl;
+      } else if (audioAssetId) {
+        voice.type = "audio";
+        voice.audio_asset_id = audioAssetId;
+      }
+
+      const dim =
+        aspectRatio === "9:16"
+          ? { width: 720, height: 1280 }
+          : { width: 1280, height: 720 };
+
+      const payload: Record<string, unknown> = {
+        video_inputs: [{ character, voice }],
+        dimension: dim,
+      };
+      if (callbackUrl) payload.callback_url = callbackUrl;
+      if (title) payload.title = title;
+
+      fetchUrl = `${HEYGEN_API_BASE}/v2/video/generate`;
+      fetchBody = JSON.stringify(payload);
+    } else {
+      // --- Avatar IV ---
+      const payload: Record<string, unknown> = {};
+
+      if (imageUrl) payload.image_url = imageUrl;
+      else if (imageAssetId) payload.image_asset_id = imageAssetId;
+
+      if (script && voiceId) {
+        payload.script = script;
+        payload.voice_id = voiceId;
+      } else if (audioUrl) {
+        payload.audio_url = audioUrl;
+      } else if (audioAssetId) {
+        payload.audio_asset_id = audioAssetId;
+      }
+
+      if (motionPrompt) payload.motion_prompt = motionPrompt;
+      if (expressiveness) payload.expressiveness = expressiveness;
+      if (aspectRatio) payload.aspect_ratio = aspectRatio;
+      if (resolution) payload.resolution = resolution;
+      if (callbackUrl) payload.callback_url = callbackUrl;
+      if (title) payload.title = title;
+
+      fetchUrl = `${HEYGEN_API_BASE}/v2/videos`;
+      fetchBody = JSON.stringify(payload);
     }
 
-    // Voice: script mode (TTS built-in) or audio mode (external audio)
-    if (script && voiceId) {
-      payload.script = script;
-      payload.voice_id = voiceId;
-    } else if (audioUrl) {
-      payload.audio_url = audioUrl;
-    } else if (audioAssetId) {
-      payload.audio_asset_id = audioAssetId;
-    }
+    console.log(
+      `[heygen] submitting via ${useStudioV2 ? "Studio V2" : "Avatar IV"}...`,
+    );
 
-    if (motionPrompt) payload.motion_prompt = motionPrompt;
-    if (expressiveness) payload.expressiveness = expressiveness;
-    if (aspectRatio) payload.aspect_ratio = aspectRatio;
-    if (resolution) payload.resolution = resolution;
-    if (callbackUrl) payload.callback_url = callbackUrl;
-    if (title) payload.title = title;
-
-    console.log("[heygen] submitting avatar video generation...");
-
-    const response = await fetch(`${HEYGEN_API_BASE}/v2/videos`, {
+    const response = await fetch(fetchUrl, {
       method: "POST",
       headers: {
         "X-Api-Key": this.apiKey,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(payload),
+      body: fetchBody,
     });
 
     if (!response.ok) {
