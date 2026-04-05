@@ -86,6 +86,8 @@ export {
   listModels,
   transcribeAudio,
 } from "./groq";
+// HeyGen provider (AI avatar video generation)
+export { HeyGenProvider, heygenProvider } from "./heygen";
 // Higgsfield provider (Soul image generation)
 export {
   BatchSize,
@@ -129,6 +131,7 @@ import { falProvider } from "./fal";
 import { ffmpegProvider } from "./ffmpeg";
 import { fireworksProvider } from "./fireworks";
 import { groqProvider } from "./groq";
+import { heygenProvider } from "./heygen";
 import { higgsfieldProvider } from "./higgsfield";
 import { piapiProvider } from "./piapi";
 import { replicateProvider } from "./replicate";
@@ -142,6 +145,7 @@ providers.register(elevenlabsProvider);
 providers.register(groqProvider);
 providers.register(fireworksProvider);
 providers.register(higgsfieldProvider);
+providers.register(heygenProvider);
 providers.register(piapiProvider);
 providers.register(ffmpegProvider);
 providers.register(storageProvider);
