@@ -192,16 +192,30 @@ export class ElevenLabsProvider extends BaseProvider {
  * call the gateway's GET /v1/voices endpoint to browse/search.
  */
 export const VOICES = {
-  RACHEL: "21m00Tcm4TlvDq8ikWAM",
-  DOMI: "AZnzlk1XvdvUeBnXmlld",
-  SARAH: "EXAVITQu4vr4xnSDxMaL",
-  BELLA: "EXAVITQu4vr4xnSDxMaL", // alias — ElevenLabs calls this voice "Sarah"
-  ANTONI: "ErXwobaYiN019PkySvjV",
-  ELLI: "MF3mGyEYCl7XYWbV9V6O",
-  JOSH: "TxGEqnHWrfWFTfGW9XjX",
-  ARNOLD: "VR6AewLTigWG4xSOukaG",
+  // Current ElevenLabs premade voices (source: skills/varg-ai/references/models.md)
   ADAM: "pNInz6obpgDQGcFmaJgB",
-  SAM: "yoZ06aMxZJJ28mfd3POQ",
+  ALICE: "Xb7hH8MSUJpSbSDYk0k2",
+  BELLA: "hpp4J3VqNfWAUOO0d1Us",
+  BILL: "pqHfZKP75CvOlQylNhV4",
+  BRIAN: "nPczCjzI2devNBz1zQrb",
+  CALLUM: "N2lVS1w4EtoT3dr4eOWO",
+  CHARLIE: "IKne3meq5aSn9XLyUdCD",
+  CHRIS: "iP95p4xoKVk53GoZ742B",
+  DANIEL: "onwK4e9ZLuTAKqWW03F9",
+  ERIC: "cjVigY5qzO86Huf0OWal",
+  GEORGE: "JBFqnCBsd6RMkjVDRZzb",
+  HARRY: "SOYHLrjzK2X1ezoPC6cr",
+  JESSICA: "cgSgspJ2msm6clMCkdW9",
+  LAURA: "FGY2WhTYpPnrIDTdsKH5",
+  LIAM: "TX3LPaxmHKxFdv7VOQHJ",
+  LILY: "pFZP5JQG7iQjIQuC4Bku",
+  MATILDA: "XrExE9yKIg1WjnnlVkGX",
+  RIVER: "SAz9YHcvj6GT2YYXdXww",
+  ROGER: "CwhRBWXzGAHq8TQ4Fs17",
+  SARAH: "EXAVITQu4vr4xnSDxMaL",
+  WILL: "bIHbv24MWmeRgasZH58o",
+  // Legacy
+  RACHEL: "21m00Tcm4TlvDq8ikWAM",
 };
 
 // Export singleton instance (lazy initialization means no error on import)
