@@ -21,16 +21,30 @@ import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
  * call the gateway's GET /v1/voices endpoint to browse/search.
  */
 const VOICES: Record<string, string> = {
-  rachel: "21m00Tcm4TlvDq8ikWAM",
-  domi: "AZnzlk1XvdvUeBnXmlld",
-  sarah: "EXAVITQu4vr4xnSDxMaL",
-  bella: "EXAVITQu4vr4xnSDxMaL", // alias — ElevenLabs calls this voice "Sarah"
-  antoni: "ErXwobaYiN019PkySvjV",
-  elli: "MF3mGyEYCl7XYWbV9V6O",
-  josh: "TxGEqnHWrfWFTfGW9XjX",
-  arnold: "VR6AewLTigWG4xSOukaG",
+  // Current ElevenLabs premade voices (source: skills/varg-ai/references/models.md)
   adam: "pNInz6obpgDQGcFmaJgB",
-  sam: "yoZ06aMxZJJ28mfd3POQ",
+  alice: "Xb7hH8MSUJpSbSDYk0k2",
+  bella: "hpp4J3VqNfWAUOO0d1Us",
+  bill: "pqHfZKP75CvOlQylNhV4",
+  brian: "nPczCjzI2devNBz1zQrb",
+  callum: "N2lVS1w4EtoT3dr4eOWO",
+  charlie: "IKne3meq5aSn9XLyUdCD",
+  chris: "iP95p4xoKVk53GoZ742B",
+  daniel: "onwK4e9ZLuTAKqWW03F9",
+  eric: "cjVigY5qzO86Huf0OWal",
+  george: "JBFqnCBsd6RMkjVDRZzb",
+  harry: "SOYHLrjzK2X1ezoPC6cr",
+  jessica: "cgSgspJ2msm6clMCkdW9",
+  laura: "FGY2WhTYpPnrIDTdsKH5",
+  liam: "TX3LPaxmHKxFdv7VOQHJ",
+  lily: "pFZP5JQG7iQjIQuC4Bku",
+  matilda: "XrExE9yKIg1WjnnlVkGX",
+  river: "SAz9YHcvj6GT2YYXdXww",
+  roger: "CwhRBWXzGAHq8TQ4Fs17",
+  sarah: "EXAVITQu4vr4xnSDxMaL",
+  will: "bIHbv24MWmeRgasZH58o",
+  // Legacy
+  rachel: "21m00Tcm4TlvDq8ikWAM",
 };
 
 const TTS_MODELS: Record<string, string> = {

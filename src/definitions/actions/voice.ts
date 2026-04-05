@@ -62,16 +62,30 @@ export interface VoiceResult {
 
 // Voice name to ID mapping. Unknown names pass through as voice_ids.
 const VOICE_MAP: Record<string, string> = {
-  rachel: VOICES.RACHEL,
-  domi: VOICES.DOMI,
-  sarah: VOICES.SARAH,
-  bella: VOICES.BELLA,
-  antoni: VOICES.ANTONI,
-  elli: VOICES.ELLI,
-  josh: VOICES.JOSH,
-  arnold: VOICES.ARNOLD,
+  // Current ElevenLabs premade voices (source: skills/varg-ai/references/models.md)
   adam: VOICES.ADAM,
-  sam: VOICES.SAM,
+  alice: VOICES.ALICE,
+  bella: VOICES.BELLA,
+  bill: VOICES.BILL,
+  brian: VOICES.BRIAN,
+  callum: VOICES.CALLUM,
+  charlie: VOICES.CHARLIE,
+  chris: VOICES.CHRIS,
+  daniel: VOICES.DANIEL,
+  eric: VOICES.ERIC,
+  george: VOICES.GEORGE,
+  harry: VOICES.HARRY,
+  jessica: VOICES.JESSICA,
+  laura: VOICES.LAURA,
+  liam: VOICES.LIAM,
+  lily: VOICES.LILY,
+  matilda: VOICES.MATILDA,
+  river: VOICES.RIVER,
+  roger: VOICES.ROGER,
+  sarah: VOICES.SARAH,
+  will: VOICES.WILL,
+  // Legacy
+  rachel: VOICES.RACHEL,
 };
 
 export async function generateVoice(
