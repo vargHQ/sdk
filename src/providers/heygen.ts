@@ -103,98 +103,86 @@ export class HeyGenProvider extends BaseProvider {
     const script = inputs.script as string | undefined;
     const voiceId = inputs.voice_id as string | undefined;
     const avatarId = inputs.avatar_id as string | undefined;
-    const imageUrl = inputs.image_url as string | undefined;
-    const imageAssetId = inputs.image_asset_id as string | undefined;
+    const talkingPhotoId = inputs.talking_photo_id as string | undefined;
     const audioUrl = inputs.audio_url as string | undefined;
     const audioAssetId = inputs.audio_asset_id as string | undefined;
-    const motionPrompt = inputs.motion_prompt as string | undefined;
-    const expressiveness = inputs.expressiveness as string | undefined;
     const aspectRatio = inputs.aspect_ratio as string | undefined;
-    const resolution = inputs.resolution as string | undefined;
     const callbackUrl = inputs.callback_url as string | undefined;
     const title = inputs.title as string | undefined;
+    const background = inputs.background as
+      | Record<string, unknown>
+      | string
+      | undefined;
 
-    // Dual-endpoint strategy:
-    //   Pre-registered avatars → Studio V2 (POST /v2/video/generate) nested payload
-    //   Custom image (photo-to-video) → Avatar IV (POST /v2/videos) flat payload
-    const useStudioV2 = !!avatarId;
-    let fetchUrl: string;
-    let fetchBody: string;
+    // Always use Studio V2 (POST /v2/video/generate)
+    // Works for avatars, talking photos, and uploaded images
 
-    if (useStudioV2) {
-      // --- Studio V2 ---
-      const character: Record<string, unknown> = {
-        type: "avatar",
-        avatar_id: avatarId,
-        avatar_style: "normal",
-      };
-
-      const voice: Record<string, unknown> = {};
-      if (script && voiceId) {
-        voice.type = "text";
-        voice.input_text = script;
-        voice.voice_id = voiceId;
-      } else if (audioUrl) {
-        voice.type = "audio";
-        voice.audio_url = audioUrl;
-      } else if (audioAssetId) {
-        voice.type = "audio";
-        voice.audio_asset_id = audioAssetId;
-      }
-
-      const dim =
-        aspectRatio === "9:16"
-          ? { width: 720, height: 1280 }
-          : { width: 1280, height: 720 };
-
-      const payload: Record<string, unknown> = {
-        video_inputs: [{ character, voice }],
-        dimension: dim,
-      };
-      if (callbackUrl) payload.callback_url = callbackUrl;
-      if (title) payload.title = title;
-
-      fetchUrl = `${HEYGEN_API_BASE}/v2/video/generate`;
-      fetchBody = JSON.stringify(payload);
-    } else {
-      // --- Avatar IV ---
-      const payload: Record<string, unknown> = {};
-
-      if (imageUrl) payload.image_url = imageUrl;
-      else if (imageAssetId) payload.image_asset_id = imageAssetId;
-
-      if (script && voiceId) {
-        payload.script = script;
-        payload.voice_id = voiceId;
-      } else if (audioUrl) {
-        payload.audio_url = audioUrl;
-      } else if (audioAssetId) {
-        payload.audio_asset_id = audioAssetId;
-      }
-
-      if (motionPrompt) payload.motion_prompt = motionPrompt;
-      if (expressiveness) payload.expressiveness = expressiveness;
-      if (aspectRatio) payload.aspect_ratio = aspectRatio;
-      if (resolution) payload.resolution = resolution;
-      if (callbackUrl) payload.callback_url = callbackUrl;
-      if (title) payload.title = title;
-
-      fetchUrl = `${HEYGEN_API_BASE}/v2/videos`;
-      fetchBody = JSON.stringify(payload);
+    // Build character
+    const character: Record<string, unknown> = {};
+    if (avatarId) {
+      character.type = "avatar";
+      character.avatar_id = avatarId;
+      character.avatar_style = (inputs.avatar_style as string) ?? "normal";
+    } else if (talkingPhotoId) {
+      character.type = "talking_photo";
+      character.talking_photo_id = talkingPhotoId;
+      if (inputs.talking_style) character.talking_style = inputs.talking_style;
+      if (inputs.matting) character.matting = inputs.matting;
     }
 
-    console.log(
-      `[heygen] submitting via ${useStudioV2 ? "Studio V2" : "Avatar IV"}...`,
-    );
+    // Build voice
+    const voice: Record<string, unknown> = {};
+    if (script && voiceId) {
+      voice.type = "text";
+      voice.input_text = script;
+      voice.voice_id = voiceId;
+      if (inputs.speed) voice.speed = inputs.speed;
+      if (inputs.emotion) voice.emotion = inputs.emotion;
+    } else if (audioUrl) {
+      voice.type = "audio";
+      voice.audio_url = audioUrl;
+    } else if (audioAssetId) {
+      voice.type = "audio";
+      voice.audio_asset_id = audioAssetId;
+    }
 
-    const response = await fetch(fetchUrl, {
+    // Build background
+    let bg: Record<string, unknown> | undefined;
+    if (typeof background === "string") {
+      bg = background.startsWith("#")
+        ? { type: "color", value: background }
+        : { type: "image", url: background, fit: "cover" };
+    } else if (background) {
+      bg = background;
+    }
+
+    // Build scene
+    const scene: Record<string, unknown> = { character, voice };
+    if (bg) scene.background = bg;
+
+    // Dimension from aspect ratio
+    const dim =
+      aspectRatio === "9:16"
+        ? { width: 720, height: 1280 }
+        : { width: 1280, height: 720 };
+
+    const payload: Record<string, unknown> = {
+      video_inputs: [scene],
+      dimension: dim,
+    };
+    if (callbackUrl) payload.callback_url = callbackUrl;
+    if (title) payload.title = title;
+
+    console.log("[heygen] submitting via Studio V2...");
+
+    const response = await fetch(`${HEYGEN_API_BASE}/v2/video/generate`, {
       method: "POST",
       headers: {
         "X-Api-Key": this.apiKey,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: fetchBody,
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -383,6 +371,47 @@ export class HeyGenProvider extends BaseProvider {
       `[heygen] found ${avatars.length} avatars, ${talkingPhotos.length} talking photos`,
     );
     return { avatars, talkingPhotos };
+  }
+
+  /**
+   * Upload an image as a talking photo to HeyGen.
+   * Returns a talking_photo_id that can be used in Studio V2 video generation.
+   */
+  async uploadTalkingPhoto(
+    file: Uint8Array | ArrayBuffer,
+    contentType = "image/jpeg",
+  ): Promise<string> {
+    console.log("[heygen] uploading talking photo...");
+
+    const body = file instanceof Uint8Array ? file : new Uint8Array(file);
+
+    const res = await fetch(`${HEYGEN_UPLOAD_BASE}/v1/talking_photo`, {
+      method: "POST",
+      headers: {
+        "X-Api-Key": this.apiKey,
+        "Content-Type": contentType,
+      },
+      body,
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(
+        `heygen talking photo upload failed (${res.status}): ${errorText}`,
+      );
+    }
+
+    const data = (await res.json()) as {
+      data?: { talking_photo_id?: string };
+    };
+    const talkingPhotoId = data.data?.talking_photo_id;
+
+    if (!talkingPhotoId) {
+      throw new Error("no talking_photo_id in heygen upload response");
+    }
+
+    console.log(`[heygen] uploaded talking photo: ${talkingPhotoId}`);
+    return talkingPhotoId;
   }
 
   /**

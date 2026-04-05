@@ -64,7 +64,7 @@ async function fileToBytes(file: VideoModelV3File): Promise<Uint8Array> {
 /**
  * Upload a file to HeyGen's asset endpoint and return the asset_id.
  */
-async function uploadToHeyGen(
+async function uploadAssetToHeyGen(
   apiKey: string,
   data: Uint8Array,
   contentType: string,
@@ -89,6 +89,54 @@ async function uploadToHeyGen(
   const assetId = json.data?.id;
   if (!assetId) throw new Error("HeyGen asset upload returned no asset id");
   return assetId;
+}
+
+/**
+ * Upload an image as a HeyGen talking photo and return the talking_photo_id.
+ * This allows any image to be used as a character in Studio V2 videos.
+ */
+async function uploadTalkingPhoto(
+  apiKey: string,
+  data: Uint8Array,
+  contentType: string,
+): Promise<string> {
+  const res = await fetch(`${HEYGEN_UPLOAD_BASE}/v1/talking_photo`, {
+    method: "POST",
+    headers: {
+      "X-Api-Key": apiKey,
+      "Content-Type": contentType,
+    },
+    body: data,
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(
+      `HeyGen talking photo upload failed (${res.status}): ${errorText}`,
+    );
+  }
+
+  const json = (await res.json()) as {
+    data?: { talking_photo_id?: string };
+  };
+  const talkingPhotoId = json.data?.talking_photo_id;
+  if (!talkingPhotoId)
+    throw new Error("HeyGen talking photo upload returned no talking_photo_id");
+  return talkingPhotoId;
+}
+
+/**
+ * Build the `background` object for a Studio V2 scene.
+ * Accepts a URL string (image), a hex color, or a structured object.
+ */
+function buildBackground(bg: unknown): Record<string, unknown> | undefined {
+  if (!bg) return undefined;
+  if (typeof bg === "string") {
+    if (bg.startsWith("#")) return { type: "color", value: bg };
+    return { type: "image", url: bg, fit: "cover" };
+  }
+  if (typeof bg === "object") return bg as Record<string, unknown>;
+  return undefined;
 }
 
 /**
@@ -171,20 +219,26 @@ class HeyGenVideoModel implements VideoModelV3 {
       unknown
     >;
 
-    // ---- Resolve inputs ----
+    // ---- Resolve character source ----
     const avatarId = heygenOpts.avatar_id as string | undefined;
+    const talkingPhotoId = heygenOpts.talking_photo_id as string | undefined;
     const voiceId = heygenOpts.voice_id as string | undefined;
 
-    // Upload image file to HeyGen if present (for photo-to-video)
-    let imageAssetId: string | undefined;
-    if (!avatarId) {
+    // If an image file is provided and no avatar/talking_photo specified,
+    // upload it as a talking photo for use in Studio V2
+    let resolvedTalkingPhotoId = talkingPhotoId;
+    if (!avatarId && !talkingPhotoId) {
       const imageFile = files?.find((f) =>
         getMediaType(f)?.startsWith("image/"),
       );
       if (imageFile) {
         const bytes = await fileToBytes(imageFile);
         const contentType = getMediaType(imageFile) ?? "image/jpeg";
-        imageAssetId = await uploadToHeyGen(this.apiKey, bytes, contentType);
+        resolvedTalkingPhotoId = await uploadTalkingPhoto(
+          this.apiKey,
+          bytes,
+          contentType,
+        );
       }
     }
 
@@ -194,7 +248,7 @@ class HeyGenVideoModel implements VideoModelV3 {
     if (audioFile) {
       const audioBytes = await fileToBytes(audioFile);
       const audioContentType = getMediaType(audioFile) ?? "audio/mpeg";
-      audioAssetId = await uploadToHeyGen(
+      audioAssetId = await uploadAssetToHeyGen(
         this.apiKey,
         audioBytes,
         audioContentType,
@@ -209,82 +263,64 @@ class HeyGenVideoModel implements VideoModelV3 {
       });
     }
 
-    // Aspect ratio from VideoModelV3 options or HeyGen-specific
+    // ---- Always use Studio V2 (POST /v2/video/generate) ----
+    // Works for both pre-registered avatars and uploaded talking photos.
+
+    // Build character object
+    const character: Record<string, unknown> = {};
+    if (avatarId) {
+      character.type = "avatar";
+      character.avatar_id = avatarId;
+      character.avatar_style = (heygenOpts.avatar_style as string) ?? "normal";
+    } else if (resolvedTalkingPhotoId) {
+      character.type = "talking_photo";
+      character.talking_photo_id = resolvedTalkingPhotoId;
+      if (heygenOpts.talking_style)
+        character.talking_style = heygenOpts.talking_style;
+      if (heygenOpts.use_avatar_iv_model)
+        character.use_avatar_iv_model = heygenOpts.use_avatar_iv_model;
+      if (heygenOpts.matting) character.matting = heygenOpts.matting;
+    }
+
+    // Build voice object
+    const voice: Record<string, unknown> = {};
+    if (audioAssetId) {
+      voice.type = "audio";
+      voice.audio_asset_id = audioAssetId;
+    } else if (prompt && voiceId) {
+      voice.type = "text";
+      voice.input_text = prompt;
+      voice.voice_id = voiceId;
+      if (heygenOpts.speed) voice.speed = heygenOpts.speed;
+      if (heygenOpts.emotion) voice.emotion = heygenOpts.emotion;
+    }
+
+    // Build background object
+    const background = buildBackground(heygenOpts.background);
+
+    // Build scene
+    const scene: Record<string, unknown> = { character, voice };
+    if (background) scene.background = background;
+
+    // Aspect ratio → dimension
     const aspectRatio =
       (heygenOpts.aspect_ratio as string | undefined) ?? options.aspectRatio;
+    const dim =
+      aspectRatio === "9:16"
+        ? { width: 720, height: 1280 }
+        : { width: 1280, height: 720 };
 
-    // ---- Dual-endpoint strategy ----
-    // Pre-registered avatars → Studio V2 (POST /v2/video/generate) nested payload
-    // Custom image (photo-to-video) → Avatar IV (POST /v2/videos) flat payload
-    const useStudioV2 = !!avatarId;
+    const studioPayload: Record<string, unknown> = {
+      video_inputs: [scene],
+      dimension: dim,
+    };
+    if (heygenOpts.callback_url)
+      studioPayload.callback_url = heygenOpts.callback_url;
+    if (heygenOpts.title) studioPayload.title = heygenOpts.title;
+    if (heygenOpts.caption) studioPayload.caption = heygenOpts.caption;
 
-    let submitUrl: string;
-    let submitBody: string;
-
-    if (useStudioV2) {
-      // --- Studio V2 ---
-      const character: Record<string, unknown> = {
-        type: "avatar",
-        avatar_id: avatarId,
-        avatar_style: "normal",
-      };
-
-      const voice: Record<string, unknown> = {};
-      if (audioAssetId) {
-        voice.type = "audio";
-        voice.audio_asset_id = audioAssetId;
-      } else if (prompt && voiceId) {
-        voice.type = "text";
-        voice.input_text = prompt;
-        voice.voice_id = voiceId;
-      }
-
-      const dim =
-        aspectRatio === "9:16"
-          ? { width: 720, height: 1280 }
-          : { width: 1280, height: 720 };
-
-      const studioPayload: Record<string, unknown> = {
-        video_inputs: [{ character, voice }],
-        dimension: dim,
-      };
-      if (heygenOpts.callback_url)
-        studioPayload.callback_url = heygenOpts.callback_url;
-      if (heygenOpts.title) studioPayload.title = heygenOpts.title;
-
-      submitUrl = `${HEYGEN_API_BASE}/v2/video/generate`;
-      submitBody = JSON.stringify(studioPayload);
-    } else {
-      // --- Avatar IV ---
-      const av4Payload: Record<string, unknown> = {};
-
-      if (imageAssetId) av4Payload.image_asset_id = imageAssetId;
-
-      if (audioAssetId) {
-        av4Payload.audio_asset_id = audioAssetId;
-      } else if (prompt && voiceId) {
-        av4Payload.script = prompt;
-        av4Payload.voice_id = voiceId;
-      }
-
-      if (heygenOpts.motion_prompt)
-        av4Payload.motion_prompt = heygenOpts.motion_prompt;
-      if (heygenOpts.expressiveness)
-        av4Payload.expressiveness = heygenOpts.expressiveness;
-      if (heygenOpts.remove_background)
-        av4Payload.remove_background = heygenOpts.remove_background;
-      if (aspectRatio) av4Payload.aspect_ratio = aspectRatio;
-
-      const resolution = heygenOpts.resolution as string | undefined;
-      if (resolution) av4Payload.resolution = resolution;
-
-      if (heygenOpts.callback_url)
-        av4Payload.callback_url = heygenOpts.callback_url;
-      if (heygenOpts.title) av4Payload.title = heygenOpts.title;
-
-      submitUrl = `${HEYGEN_API_BASE}/v2/videos`;
-      submitBody = JSON.stringify(av4Payload);
-    }
+    const submitUrl = `${HEYGEN_API_BASE}/v2/video/generate`;
+    const submitBody = JSON.stringify(studioPayload);
 
     // ---- Submit ----
     const submitRes = await fetch(submitUrl, {
