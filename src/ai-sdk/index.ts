@@ -79,6 +79,12 @@ export {
   google,
 } from "./providers/google";
 export {
+  createHeyGen,
+  type HeyGenProvider,
+  type HeyGenProviderSettings,
+  heygen,
+} from "./providers/heygen";
+export {
   createHiggsfield,
   type HiggsfieldImageModelSettings,
   type HiggsfieldProvider,

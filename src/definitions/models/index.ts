@@ -4,6 +4,7 @@
 
 export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
+export { definition as heygenAvatar } from "./heygen";
 export { definition as kling } from "./kling";
 export { definition as llama } from "./llama";
 export { definition as ltxA2v } from "./ltx-a2v";
@@ -31,6 +32,7 @@ export { definition as whisper } from "./whisper";
 // All model definitions for auto-loading
 import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
+import { definition as heygenAvatarDefinition } from "./heygen";
 import { definition as klingDefinition } from "./kling";
 import { definition as llamaDefinition } from "./llama";
 import { definition as ltxA2vDefinition } from "./ltx-a2v";
@@ -77,4 +79,5 @@ export const allModels = [
   seedance2FastPreviewDefinition,
   sonautoDefinition,
   llamaDefinition,
+  heygenAvatarDefinition,
 ];
