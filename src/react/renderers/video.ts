@@ -170,6 +170,7 @@ export async function renderVideo(
       type: "video",
       model: modelId,
       prompt: promptText,
+      duration: props.duration,
     });
 
     if (!file.url && ctx.storage) {

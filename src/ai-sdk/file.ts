@@ -17,6 +17,8 @@ export interface FileMetadata {
   model?: string;
   /** Original prompt used */
   prompt?: string;
+  /** Duration in seconds (for video/audio files) */
+  duration?: number;
 }
 
 export class File {
@@ -158,9 +160,14 @@ export class File {
     return this._url;
   }
 
-  /** Get file metadata (type, model, prompt) */
+  /** Get file metadata (type, model, prompt, duration) */
   get metadata(): FileMetadata {
     return this._metadata;
+  }
+
+  /** Duration in seconds (for video/audio files) */
+  get duration(): number | undefined {
+    return this._metadata.duration;
   }
 
   /** Set metadata and return this for chaining */

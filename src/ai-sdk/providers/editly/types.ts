@@ -117,6 +117,8 @@ export interface VideoLayer extends BaseLayer {
   cropPosition?: CropPosition;
   cutFrom?: number;
   cutTo?: number;
+  /** Known source video duration in seconds (avoids ffprobe when set). */
+  sourceDuration?: number;
   width?: SizeValue;
   height?: SizeValue;
   left?: SizeValue;
