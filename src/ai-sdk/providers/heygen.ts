@@ -1,15 +1,38 @@
 /**
  * HeyGen AI SDK provider for avatar video generation.
  *
- * Exposes heygen.videoModel("avatar-iv") for use in JSX composition:
+ * Two endpoints supported:
  *
- *   import { heygen } from "vargai/ai-sdk";
+ * 1. POST /v2/videos (flat, preferred for image-to-lipsync)
+ *    - Accepts image_url/image_asset_id + audio_url/audio_asset_id (or script+voice_id)
+ *    - Supports motion_prompt, expressiveness, remove_background
+ *    - No talking photo upload limit
+ *    - Used when: image file provided + (audio file or script+voice_id)
  *
+ * 2. POST /v2/video/generate (Studio V2, nested video_inputs)
+ *    - Used for pre-registered avatars (avatar_id) or talking photos
+ *    - Used when: avatar_id or talking_photo_id specified, or no image provided
+ *
+ * Usage:
+ *
+ *   import { heygen, elevenlabs } from "vargai/ai-sdk";
+ *
+ *   // Image-to-lipsync with ElevenLabs audio (uses /v2/videos)
+ *   const speech = await Speech({ voice: "rachel", model: elevenlabs.speechModel("eleven_v3"), children: "Hello!" });
  *   const talking = Video({
- *     prompt: { text: "Hello world", images: [portrait] },
  *     model: heygen.videoModel("avatar-iv"),
+ *     prompt: { images: [portrait], audio: speech },
  *     providerOptions: {
- *       heygen: { voice_id: "abc123", expressiveness: "medium" }
+ *       heygen: { motion_prompt: "natural gestures", expressiveness: "medium" }
+ *     },
+ *   });
+ *
+ *   // Pre-registered avatar (uses Studio V2)
+ *   const avatar = Video({
+ *     model: heygen.videoModel("avatar-iv"),
+ *     prompt: { text: "Hello world" },
+ *     providerOptions: {
+ *       heygen: { avatar_id: "Annie_expressive10_public", voice_id: "abc123" }
  *     },
  *   });
  */
@@ -61,14 +84,21 @@ async function fileToBytes(file: VideoModelV3File): Promise<Uint8Array> {
   throw new Error("HeyGen: file has no data");
 }
 
+interface HeyGenAssetUploadResult {
+  id: string;
+  imageKey?: string;
+  url?: string;
+}
+
 /**
- * Upload a file to HeyGen's asset endpoint and return the asset_id.
+ * Upload a file to HeyGen's asset endpoint.
+ * Returns { id, imageKey, url } — imageKey is present for image uploads.
  */
 async function uploadAssetToHeyGen(
   apiKey: string,
   data: Uint8Array,
   contentType: string,
-): Promise<string> {
+): Promise<HeyGenAssetUploadResult> {
   const res = await fetch(`${HEYGEN_UPLOAD_BASE}/v1/asset`, {
     method: "POST",
     headers: {
@@ -84,11 +114,25 @@ async function uploadAssetToHeyGen(
   }
 
   const json = (await res.json()) as {
-    data?: { id?: string };
+    data?: { id?: string; image_key?: string; url?: string };
   };
   const assetId = json.data?.id;
   if (!assetId) throw new Error("HeyGen asset upload returned no asset id");
-  return assetId;
+  return {
+    id: assetId,
+    imageKey: json.data?.image_key,
+    url: json.data?.url,
+  };
+}
+
+/**
+ * Resolve a VideoModelV3File to a URL string.
+ * - type:"url" files return the URL directly
+ * - type:"file" files need to be fetched from data
+ */
+function getFileUrl(file: VideoModelV3File): string | undefined {
+  if (file.type === "url") return file.url;
+  return undefined;
 }
 
 /**
@@ -182,9 +226,14 @@ async function pollVideoStatus(
     }
 
     if (status === "failed") {
-      throw new Error(
-        `HeyGen video generation failed: ${body.data?.error ?? "unknown error"}`,
-      );
+      const errorDetail = body.data?.error;
+      const errorMsg =
+        typeof errorDetail === "string"
+          ? errorDetail
+          : errorDetail
+            ? JSON.stringify(errorDetail)
+            : "unknown error";
+      throw new Error(`HeyGen video generation failed: ${errorMsg}`);
     }
 
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
@@ -224,14 +273,129 @@ class HeyGenVideoModel implements VideoModelV3 {
     const talkingPhotoId = heygenOpts.talking_photo_id as string | undefined;
     const voiceId = heygenOpts.voice_id as string | undefined;
 
-    // If an image file is provided and no avatar/talking_photo specified,
-    // upload it as a talking photo for use in Studio V2
-    let resolvedTalkingPhotoId = talkingPhotoId;
-    if (!avatarId && !talkingPhotoId) {
-      const imageFile = files?.find((f) =>
-        getMediaType(f)?.startsWith("image/"),
-      );
-      if (imageFile) {
+    // ---- Detect files ----
+    const imageFile = files?.find((f) =>
+      getMediaType(f)?.startsWith("image/"),
+    );
+    const audioFile = files?.find((f) => getMediaType(f)?.startsWith("audio/"));
+
+    // Check if we should use the flat /v2/videos endpoint (image-to-lipsync)
+    // Conditions: image provided + no pre-registered avatar/talking_photo
+    const useV2Videos =
+      !avatarId && !talkingPhotoId && (imageFile || heygenOpts.image_url || heygenOpts.image_asset_id);
+
+    let videoId: string;
+
+    if (useV2Videos) {
+      // ================================================================
+      // Path A: POST /v2/videos (flat endpoint, image-to-lipsync)
+      // ================================================================
+      const payload: Record<string, unknown> = {};
+
+      // -- Image source --
+      if (heygenOpts.image_url) {
+        payload.image_url = heygenOpts.image_url;
+      } else if (heygenOpts.image_asset_id) {
+        payload.image_asset_id = heygenOpts.image_asset_id;
+      } else if (imageFile) {
+        const imageUrl = getFileUrl(imageFile);
+        if (imageUrl) {
+          // URL file — pass directly, no upload needed
+          payload.image_url = imageUrl;
+        } else {
+          // Binary file — upload as asset
+          const imageBytes = await fileToBytes(imageFile);
+          const imageContentType = getMediaType(imageFile) ?? "image/jpeg";
+          const imageAsset = await uploadAssetToHeyGen(
+            this.apiKey,
+            imageBytes,
+            imageContentType,
+          );
+          payload.image_asset_id = imageAsset.id;
+        }
+      }
+
+      // -- Audio/voice source --
+      if (heygenOpts.audio_url) {
+        payload.audio_url = heygenOpts.audio_url;
+      } else if (heygenOpts.audio_asset_id) {
+        payload.audio_asset_id = heygenOpts.audio_asset_id;
+      } else if (audioFile) {
+        const audioUrl = getFileUrl(audioFile);
+        if (audioUrl) {
+          payload.audio_url = audioUrl;
+        } else {
+          const audioBytes = await fileToBytes(audioFile);
+          const audioContentType = getMediaType(audioFile) ?? "audio/mpeg";
+          const audioAsset = await uploadAssetToHeyGen(
+            this.apiKey,
+            audioBytes,
+            audioContentType,
+          );
+          payload.audio_asset_id = audioAsset.id;
+        }
+      } else if (prompt && voiceId) {
+        // Text-to-speech mode
+        payload.script = prompt;
+        payload.voice_id = voiceId;
+        if (heygenOpts.speed || heygenOpts.emotion) {
+          const voiceSettings: Record<string, unknown> = {};
+          if (heygenOpts.speed) voiceSettings.speed = heygenOpts.speed;
+          payload.voice_settings = voiceSettings;
+        }
+      }
+
+      // -- Optional parameters --
+      const aspectRatio =
+        (heygenOpts.aspect_ratio as string | undefined) ?? options.aspectRatio;
+      if (aspectRatio) payload.aspect_ratio = aspectRatio;
+      if (heygenOpts.resolution) payload.resolution = heygenOpts.resolution;
+      if (heygenOpts.motion_prompt) payload.motion_prompt = heygenOpts.motion_prompt;
+      if (heygenOpts.expressiveness) payload.expressiveness = heygenOpts.expressiveness;
+      if (heygenOpts.remove_background) payload.remove_background = heygenOpts.remove_background;
+      if (heygenOpts.title) payload.title = heygenOpts.title;
+
+      // Background
+      const background = buildBackground(heygenOpts.background);
+      if (background) payload.background = background;
+
+      // -- Submit --
+      const submitRes = await fetch(`${HEYGEN_API_BASE}/v2/videos`, {
+        method: "POST",
+        headers: {
+          "X-Api-Key": this.apiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: abortSignal,
+      });
+
+      if (!submitRes.ok) {
+        const errorText = await submitRes.text();
+        throw new Error(
+          `HeyGen /v2/videos failed (${submitRes.status}): ${errorText}`,
+        );
+      }
+
+      // /v2/videos returns { video_id, status } at top level
+      const submitData = (await submitRes.json()) as {
+        video_id?: string;
+        data?: { video_id?: string };
+      };
+      videoId = submitData.video_id ?? submitData.data?.video_id ?? "";
+      if (!videoId) throw new Error("HeyGen /v2/videos returned no video_id");
+
+    } else {
+      // ================================================================
+      // Path B: POST /v2/video/generate (Studio V2, nested video_inputs)
+      // Used for pre-registered avatars and talking photos.
+      // ================================================================
+
+      // If an image file is provided and no avatar/talking_photo specified,
+      // upload it as a talking photo for use in Studio V2
+      let resolvedTalkingPhotoId = talkingPhotoId;
+      if (!avatarId && !talkingPhotoId && imageFile) {
         const bytes = await fileToBytes(imageFile);
         const contentType = getMediaType(imageFile) ?? "image/jpeg";
         resolvedTalkingPhotoId = await uploadTalkingPhoto(
@@ -240,113 +404,106 @@ class HeyGenVideoModel implements VideoModelV3 {
           contentType,
         );
       }
-    }
 
-    // Upload audio file if present (external audio mode)
-    let audioAssetId: string | undefined;
-    const audioFile = files?.find((f) => getMediaType(f)?.startsWith("audio/"));
-    if (audioFile) {
-      const audioBytes = await fileToBytes(audioFile);
-      const audioContentType = getMediaType(audioFile) ?? "audio/mpeg";
-      audioAssetId = await uploadAssetToHeyGen(
-        this.apiKey,
-        audioBytes,
-        audioContentType,
-      );
-    }
+      // Upload audio file if present (external audio mode)
+      let audioAssetId: string | undefined;
+      if (audioFile) {
+        const audioBytes = await fileToBytes(audioFile);
+        const audioContentType = getMediaType(audioFile) ?? "audio/mpeg";
+        const audioAsset = await uploadAssetToHeyGen(
+          this.apiKey,
+          audioBytes,
+          audioContentType,
+        );
+        audioAssetId = audioAsset.id;
+      }
 
-    if (prompt && voiceId === undefined && !audioFile) {
-      warnings.push({
-        type: "other",
-        message:
-          "HeyGen requires voice_id when using script mode. Pass it via providerOptions.heygen.voice_id",
+      if (prompt && voiceId === undefined && !audioFile) {
+        warnings.push({
+          type: "other",
+          message:
+            "HeyGen requires voice_id when using script mode. Pass it via providerOptions.heygen.voice_id",
+        });
+      }
+
+      // Build character object
+      const character: Record<string, unknown> = {};
+      if (avatarId) {
+        character.type = "avatar";
+        character.avatar_id = avatarId;
+        character.avatar_style = (heygenOpts.avatar_style as string) ?? "normal";
+      } else if (resolvedTalkingPhotoId) {
+        character.type = "talking_photo";
+        character.talking_photo_id = resolvedTalkingPhotoId;
+        if (heygenOpts.talking_style)
+          character.talking_style = heygenOpts.talking_style;
+        if (heygenOpts.use_avatar_iv_model)
+          character.use_avatar_iv_model = heygenOpts.use_avatar_iv_model;
+        if (heygenOpts.matting) character.matting = heygenOpts.matting;
+      }
+
+      // Build voice object
+      const voice: Record<string, unknown> = {};
+      if (audioAssetId) {
+        voice.type = "audio";
+        voice.audio_asset_id = audioAssetId;
+      } else if (prompt && voiceId) {
+        voice.type = "text";
+        voice.input_text = prompt;
+        voice.voice_id = voiceId;
+        if (heygenOpts.speed) voice.speed = heygenOpts.speed;
+        if (heygenOpts.emotion) voice.emotion = heygenOpts.emotion;
+      }
+
+      // Build background object
+      const background = buildBackground(heygenOpts.background);
+
+      // Build scene
+      const scene: Record<string, unknown> = { character, voice };
+      if (background) scene.background = background;
+
+      // Aspect ratio → dimension
+      const aspectRatio =
+        (heygenOpts.aspect_ratio as string | undefined) ?? options.aspectRatio;
+      const dim =
+        aspectRatio === "9:16"
+          ? { width: 720, height: 1280 }
+          : { width: 1280, height: 720 };
+
+      const studioPayload: Record<string, unknown> = {
+        video_inputs: [scene],
+        dimension: dim,
+      };
+      if (heygenOpts.callback_url)
+        studioPayload.callback_url = heygenOpts.callback_url;
+      if (heygenOpts.title) studioPayload.title = heygenOpts.title;
+      if (heygenOpts.caption) studioPayload.caption = heygenOpts.caption;
+
+      const submitRes = await fetch(`${HEYGEN_API_BASE}/v2/video/generate`, {
+        method: "POST",
+        headers: {
+          "X-Api-Key": this.apiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(studioPayload),
+        signal: abortSignal,
       });
+
+      if (!submitRes.ok) {
+        const errorText = await submitRes.text();
+        throw new Error(
+          `HeyGen video generation failed (${submitRes.status}): ${errorText}`,
+        );
+      }
+
+      const submitData = (await submitRes.json()) as {
+        data?: { video_id?: string };
+        video_id?: string;
+      };
+      videoId = submitData.data?.video_id ?? submitData.video_id ?? "";
+      if (!videoId) throw new Error("HeyGen returned no video_id");
     }
-
-    // ---- Always use Studio V2 (POST /v2/video/generate) ----
-    // Works for both pre-registered avatars and uploaded talking photos.
-
-    // Build character object
-    const character: Record<string, unknown> = {};
-    if (avatarId) {
-      character.type = "avatar";
-      character.avatar_id = avatarId;
-      character.avatar_style = (heygenOpts.avatar_style as string) ?? "normal";
-    } else if (resolvedTalkingPhotoId) {
-      character.type = "talking_photo";
-      character.talking_photo_id = resolvedTalkingPhotoId;
-      if (heygenOpts.talking_style)
-        character.talking_style = heygenOpts.talking_style;
-      if (heygenOpts.use_avatar_iv_model)
-        character.use_avatar_iv_model = heygenOpts.use_avatar_iv_model;
-      if (heygenOpts.matting) character.matting = heygenOpts.matting;
-    }
-
-    // Build voice object
-    const voice: Record<string, unknown> = {};
-    if (audioAssetId) {
-      voice.type = "audio";
-      voice.audio_asset_id = audioAssetId;
-    } else if (prompt && voiceId) {
-      voice.type = "text";
-      voice.input_text = prompt;
-      voice.voice_id = voiceId;
-      if (heygenOpts.speed) voice.speed = heygenOpts.speed;
-      if (heygenOpts.emotion) voice.emotion = heygenOpts.emotion;
-    }
-
-    // Build background object
-    const background = buildBackground(heygenOpts.background);
-
-    // Build scene
-    const scene: Record<string, unknown> = { character, voice };
-    if (background) scene.background = background;
-
-    // Aspect ratio → dimension
-    const aspectRatio =
-      (heygenOpts.aspect_ratio as string | undefined) ?? options.aspectRatio;
-    const dim =
-      aspectRatio === "9:16"
-        ? { width: 720, height: 1280 }
-        : { width: 1280, height: 720 };
-
-    const studioPayload: Record<string, unknown> = {
-      video_inputs: [scene],
-      dimension: dim,
-    };
-    if (heygenOpts.callback_url)
-      studioPayload.callback_url = heygenOpts.callback_url;
-    if (heygenOpts.title) studioPayload.title = heygenOpts.title;
-    if (heygenOpts.caption) studioPayload.caption = heygenOpts.caption;
-
-    const submitUrl = `${HEYGEN_API_BASE}/v2/video/generate`;
-    const submitBody = JSON.stringify(studioPayload);
-
-    // ---- Submit ----
-    const submitRes = await fetch(submitUrl, {
-      method: "POST",
-      headers: {
-        "X-Api-Key": this.apiKey,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: submitBody,
-      signal: abortSignal,
-    });
-
-    if (!submitRes.ok) {
-      const errorText = await submitRes.text();
-      throw new Error(
-        `HeyGen video generation failed (${submitRes.status}): ${errorText}`,
-      );
-    }
-
-    const submitData = (await submitRes.json()) as {
-      data?: { video_id?: string };
-      video_id?: string;
-    };
-    const videoId = submitData.data?.video_id ?? submitData.video_id;
-    if (!videoId) throw new Error("HeyGen returned no video_id");
 
     // ---- Poll for completion ----
     const statusData = await pollVideoStatus(this.apiKey, videoId, abortSignal);

@@ -104,6 +104,8 @@ export class HeyGenProvider extends BaseProvider {
     const voiceId = inputs.voice_id as string | undefined;
     const avatarId = inputs.avatar_id as string | undefined;
     const talkingPhotoId = inputs.talking_photo_id as string | undefined;
+    const imageUrl = inputs.image_url as string | undefined;
+    const imageAssetId = inputs.image_asset_id as string | undefined;
     const audioUrl = inputs.audio_url as string | undefined;
     const audioAssetId = inputs.audio_asset_id as string | undefined;
     const aspectRatio = inputs.aspect_ratio as string | undefined;
@@ -114,8 +116,87 @@ export class HeyGenProvider extends BaseProvider {
       | string
       | undefined;
 
-    // Always use Studio V2 (POST /v2/video/generate)
-    // Works for avatars, talking photos, and uploaded images
+    // Route to /v2/videos (flat endpoint) when image is provided without avatar/talking_photo
+    const useV2Videos = !avatarId && !talkingPhotoId && (imageUrl || imageAssetId);
+
+    if (useV2Videos) {
+      // ================================================================
+      // Path A: POST /v2/videos (flat endpoint, image-to-lipsync)
+      // ================================================================
+      const payload: Record<string, unknown> = {};
+
+      if (imageUrl) payload.image_url = imageUrl;
+      if (imageAssetId) payload.image_asset_id = imageAssetId;
+
+      // Audio/voice
+      if (audioUrl) {
+        payload.audio_url = audioUrl;
+      } else if (audioAssetId) {
+        payload.audio_asset_id = audioAssetId;
+      } else if (script && voiceId) {
+        payload.script = script;
+        payload.voice_id = voiceId;
+        if (inputs.speed) {
+          payload.voice_settings = { speed: inputs.speed };
+        }
+      }
+
+      // Optional parameters
+      if (aspectRatio) payload.aspect_ratio = aspectRatio;
+      if (inputs.resolution) payload.resolution = inputs.resolution;
+      if (inputs.motion_prompt) payload.motion_prompt = inputs.motion_prompt;
+      if (inputs.expressiveness) payload.expressiveness = inputs.expressiveness;
+      if (inputs.remove_background) payload.remove_background = inputs.remove_background;
+      if (title) payload.title = title;
+
+      // Background
+      if (typeof background === "string") {
+        payload.background = background.startsWith("#")
+          ? { type: "color", value: background }
+          : { type: "image", url: background };
+      } else if (background) {
+        payload.background = background;
+      }
+
+      console.log("[heygen] submitting via /v2/videos (image-to-lipsync)...");
+
+      const response = await fetch(`${HEYGEN_API_BASE}/v2/videos`, {
+        method: "POST",
+        headers: {
+          "X-Api-Key": this.apiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `heygen /v2/videos submit failed (${response.status}): ${errorText}`,
+        );
+      }
+
+      // /v2/videos returns { video_id, status } at top level
+      const data = (await response.json()) as {
+        video_id?: string;
+        data?: { video_id?: string };
+        error?: unknown;
+      };
+      const videoId = data.video_id ?? data.data?.video_id;
+
+      if (!videoId) {
+        throw new Error("no video_id in heygen /v2/videos response");
+      }
+
+      console.log(`[heygen] video submitted via /v2/videos: ${videoId}`);
+      return videoId;
+    }
+
+    // ================================================================
+    // Path B: POST /v2/video/generate (Studio V2, nested video_inputs)
+    // Used for pre-registered avatars and talking photos.
+    // ================================================================
 
     // Build character
     const character: Record<string, unknown> = {};
