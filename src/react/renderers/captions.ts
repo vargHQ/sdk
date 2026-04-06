@@ -201,6 +201,93 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   return assHeader + assDialogues;
 }
 
+/**
+ * Generates ASS subtitle content with grouped words and active-word highlighting.
+ *
+ * Groups words into chunks of `wordsPerLine`. For each group, generates one
+ * Dialogue event per word timing where the currently-spoken word is colored
+ * with `activeColor` and the rest use the base `primaryColor`.
+ *
+ * Example output for group ["Varg", "AI", "is"] with activeColor orange:
+ *   t=0.5-0.8: {\c&H428CFF&}Varg{\c&HFFFFFF&} AI is
+ *   t=0.8-1.0: Varg {\c&H428CFF&}AI{\c&HFFFFFF&} is
+ *   t=1.0-1.3: Varg AI {\c&H428CFF&}is{\c&HFFFFFF&}
+ */
+function convertSrtToAssGrouped(
+  srtContent: string,
+  style: SubtitleStyle,
+  width: number,
+  height: number,
+  wordsPerLine: number,
+  activeColor?: string,
+): string {
+  const assHeader = `[Script Info]
+Title: Generated Subtitles
+ScriptType: v4.00+
+PlayResX: ${width}
+PlayResY: ${height}
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.601
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,${style.fontName},${style.fontSize},${style.primaryColor},&H000000FF,${style.outlineColor},${style.backColor},${style.bold ? -1 : 0},0,0,0,100,100,0,0,1,${style.outline},${style.shadow},${style.alignment},10,10,${style.marginV},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+
+  const entries = parseSrt(srtContent);
+  const dialogues: string[] = [];
+  const baseColor = style.primaryColor;
+  const highlightColor = activeColor ?? baseColor;
+
+  // Group entries into chunks of wordsPerLine
+  for (let gi = 0; gi < entries.length; gi += wordsPerLine) {
+    const group = entries.slice(gi, gi + wordsPerLine);
+    const groupStart = group[0]!.start;
+    // Cap group end at next group's start to prevent two groups showing simultaneously
+    const nextGroupStart =
+      gi + wordsPerLine < entries.length
+        ? entries[gi + wordsPerLine]!.start
+        : undefined;
+    const groupEnd = nextGroupStart ?? group[group.length - 1]!.end;
+
+    if (!activeColor) {
+      // No highlight — show entire group as one event
+      const text = group.map((e) => e.text.replace(/\n/g, " ")).join(" ");
+      dialogues.push(
+        `Dialogue: 0,${formatAssTime(groupStart)},${formatAssTime(groupEnd)},Default,,0,0,0,,${text}`,
+      );
+    } else {
+      // Karaoke highlight — one dialogue event per word, shifting the highlight
+      for (let wi = 0; wi < group.length; wi++) {
+        const wordEntry = group[wi]!;
+        const wordStart = wordEntry.start;
+        // Word ends at next word's start (within group), or at group end
+        const wordEnd = wi < group.length - 1 ? group[wi + 1]!.start : groupEnd;
+
+        // Build the text line with ASS color overrides
+        const parts = group.map((entry, idx) => {
+          const word = entry.text.replace(/\n/g, " ").trim();
+          if (idx === wi) {
+            // Active word — use highlight color
+            return `{\\c${highlightColor}}${word}{\\c${baseColor}}`;
+          }
+          return word;
+        });
+
+        dialogues.push(
+          `Dialogue: 0,${formatAssTime(wordStart)},${formatAssTime(wordEnd)},Default,,0,0,0,,${parts.join(" ")}`,
+        );
+      }
+    }
+  }
+
+  return assHeader + dialogues.join("\n");
+}
+
 const POSITION_ALIGNMENT: Record<string, number> = {
   top: 8,
   center: 5,
@@ -363,7 +450,20 @@ export async function renderCaptions(
     marginV: props.position === "center" ? 0 : baseStyle.marginV,
   };
 
-  const assContent = convertSrtToAss(srtContent, style, ctx.width, ctx.height);
+  const activeColorAss = props.activeColor
+    ? colorToAss(props.activeColor)
+    : undefined;
+
+  const assContent = props.wordsPerLine
+    ? convertSrtToAssGrouped(
+        srtContent,
+        style,
+        ctx.width,
+        ctx.height,
+        props.wordsPerLine,
+        activeColorAss,
+      )
+    : convertSrtToAss(srtContent, style, ctx.width, ctx.height);
   const assPath = `/tmp/varg-captions-${Date.now()}.ass`;
   writeFileSync(assPath, assContent);
   ctx.tempFiles.push(assPath);

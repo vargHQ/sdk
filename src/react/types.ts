@@ -213,6 +213,10 @@ export interface TalkingHeadProps extends BaseProps {
 export interface TitleProps extends BaseProps {
   position?: Position;
   color?: string;
+  /** Path to a custom font file (.ttf, .otf) */
+  fontPath?: string;
+  /** System font family name (e.g. "Helvetica Neue", "Arial Black") */
+  fontFamily?: string;
   outline?: number;
   outlineColor?: string;
   start?: number;
@@ -245,6 +249,8 @@ export interface CaptionsProps extends BaseProps {
   color?: string;
   activeColor?: string;
   fontSize?: number;
+  /** Number of words to display per subtitle line. When set with activeColor, enables karaoke-style highlighting where the active word is colored differently. */
+  wordsPerLine?: number;
   /** When src is a Speech element, include its audio track in the video. Defaults to false. */
   withAudio?: boolean;
 }
