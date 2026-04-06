@@ -92,24 +92,25 @@ async function renderClipLayers(
         const props = element.props as VideoProps;
         pending.push({
           type: "async",
-          promise: renderVideo(element as VargElement<"video">, ctx)
-            .then((file) => ctx.backend.resolvePath(file))
-            .then(
-              (path) =>
-                ({
-                  type: "video",
-                  path,
-                  resizeMode: props.resize,
-                  cropPosition: props.cropPosition,
-                  cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
-                  cutTo: props.cutTo ?? clipOptions?.cutTo,
-                  mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
-                  left: props.left,
-                  top: props.top,
-                  width: props.width,
-                  height: props.height,
-                }) as VideoLayer,
-            ),
+          promise: renderVideo(element as VargElement<"video">, ctx).then(
+            async (file) => {
+              const path = await ctx.backend.resolvePath(file);
+              return {
+                type: "video",
+                path,
+                sourceDuration: file.duration,
+                resizeMode: props.resize,
+                cropPosition: props.cropPosition,
+                cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
+                cutTo: props.cutTo ?? clipOptions?.cutTo,
+                mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
+                left: props.left,
+                top: props.top,
+                width: props.width,
+                height: props.height,
+              } as VideoLayer;
+            },
+          ),
         });
         break;
       }
@@ -158,17 +159,16 @@ async function renderClipLayers(
           promise: renderTalkingHead(
             element as VargElement<"talking-head">,
             ctx,
-          )
-            .then((file) => ctx.backend.resolvePath(file))
-            .then(
-              (path) =>
-                ({
-                  type: "video",
-                  path,
-                  resizeMode: "cover",
-                  mixVolume: 1,
-                }) as VideoLayer,
-            ),
+          ).then(async (file) => {
+            const path = await ctx.backend.resolvePath(file);
+            return {
+              type: "video",
+              path,
+              sourceDuration: file.duration,
+              resizeMode: "cover",
+              mixVolume: 1,
+            } as VideoLayer;
+          }),
         });
         break;
       }

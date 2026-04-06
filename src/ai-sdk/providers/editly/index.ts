@@ -101,7 +101,13 @@ async function processClips(
     for (const layer of layers) {
       if (layer.type === "video") {
         const videoLayer = layer as VideoLayer;
-        const videoDuration = await getVideoDuration(videoLayer.path, backend);
+
+        // Use pre-propagated duration when available (avoids ffprobe HTTP
+        // round-trip for remote URLs). Fall back to ffprobe otherwise.
+        const videoDuration =
+          videoLayer.sourceDuration ??
+          (await getVideoDuration(videoLayer.path, backend));
+
         const cutFrom = videoLayer.cutFrom ?? 0;
         const cutTo = Math.min(
           videoLayer.cutTo ?? videoDuration,
