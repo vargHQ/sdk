@@ -253,6 +253,8 @@ export interface CaptionsProps extends BaseProps {
   color?: string;
   activeColor?: string;
   fontSize?: number;
+  /** Number of words to display per subtitle line. When set with activeColor, enables karaoke-style highlighting where the active word is colored differently. */
+  wordsPerLine?: number;
   /** When src is a Speech element, include its audio track in the video. Defaults to false. */
   withAudio?: boolean;
 }
