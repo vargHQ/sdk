@@ -99,12 +99,28 @@ async function processClips(
     let duration = clip.duration ?? defaultDuration;
 
     for (const layer of layers) {
-      if (layer.type === "video" && !clip.duration) {
+      if (layer.type === "video") {
         const videoLayer = layer as VideoLayer;
         const videoDuration = await getVideoDuration(videoLayer.path, backend);
         const cutFrom = videoLayer.cutFrom ?? 0;
-        const cutTo = videoLayer.cutTo ?? videoDuration;
-        duration = cutTo - cutFrom;
+        const cutTo = Math.min(
+          videoLayer.cutTo ?? videoDuration,
+          videoDuration,
+        );
+
+        // Clamp the layer's cutTo so the FFmpeg trim filter also respects
+        // the actual source duration (prevents freeze frames at the tail)
+        videoLayer.cutTo = cutTo;
+
+        const effectiveDuration = cutTo - cutFrom;
+        if (!clip.duration) {
+          // No explicit duration — derive from the video layer
+          duration = effectiveDuration;
+        } else if (effectiveDuration < duration) {
+          // Explicit duration exceeds actual video length — clamp to avoid
+          // freeze frames and xfade offset misalignment
+          duration = effectiveDuration;
+        }
         break;
       }
     }
