@@ -14,6 +14,7 @@ import { renderVideo } from "./video";
 const VIDEO_ONLY_LIPSYNC_MODELS = new Set([
   "sync-v2",
   "sync-v2-pro",
+  "sync-v3",
   "lipsync",
 ]);
 
