@@ -63,6 +63,8 @@ function createVideoModel(): VideoModelV3 {
 
 type GenerateImageOptions = Parameters<RenderContext["generateImage"]>[0];
 type GenerateVideoOptions = Parameters<RenderContext["generateVideo"]>[0];
+type GenerateSpeechOptions = Parameters<RenderContext["generateSpeech"]>[0];
+type GenerateMusicOptions = Parameters<RenderContext["generateMusic"]>[0];
 
 function createContext(
   cacheDir: string,
@@ -93,6 +95,27 @@ function createContext(
     };
   });
 
+  const generateSpeech = withCache(async (_opts: GenerateSpeechOptions) => {
+    return {
+      audio: { uint8Array: new Uint8Array([0xff, 0xfb, 0x90, 4, 5, 6]) },
+      warnings: [],
+      responses: [],
+      providerMetadata: {},
+    };
+  });
+
+  const generateMusic = withCache(async (_opts: GenerateMusicOptions) => {
+    return {
+      audio: { uint8Array: new Uint8Array([0xff, 0xfb, 0x90, 7, 8, 9]) },
+      warnings: [],
+      response: {
+        timestamp: new Date(),
+        modelId: "test-music",
+        headers: undefined,
+      },
+    };
+  });
+
   return {
     width: 1080,
     height: 1920,
@@ -100,12 +123,9 @@ function createContext(
     cache: storage,
     generateImage: generateImage as unknown as RenderContext["generateImage"],
     generateVideo: generateVideo as unknown as RenderContext["generateVideo"],
-    generateSpeech: (async () => {
-      throw new Error("generateSpeech not implemented in test");
-    }) as unknown as RenderContext["generateSpeech"],
-    generateMusic: (async () => {
-      throw new Error("generateMusic not implemented in test");
-    }) as unknown as RenderContext["generateMusic"],
+    generateSpeech:
+      generateSpeech as unknown as RenderContext["generateSpeech"],
+    generateMusic: generateMusic as unknown as RenderContext["generateMusic"],
     tempFiles: [],
     pendingFiles: new Map<string, Promise<File>>(),
     backend: localBackend,
