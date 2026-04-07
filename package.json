@@ -104,7 +104,7 @@
   "license": "Apache-2.0",
   "author": "varg.ai <hello@varg.ai> (https://varg.ai)",
   "sideEffects": false,
-  "version": "0.4.0-alpha103",
+  "version": "0.4.0-alpha104",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",
