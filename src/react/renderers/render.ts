@@ -1,9 +1,14 @@
 import type { ImageModelV3 } from "@ai-sdk/provider";
-import { generateImage, wrapImageModel } from "ai";
+import {
+  generateImage,
+  experimental_generateSpeech as generateSpeech,
+  wrapImageModel,
+} from "ai";
 import pMap from "p-map";
 import { type CacheStorage, withCache } from "../../ai-sdk/cache";
 import type { File, File as VargFile } from "../../ai-sdk/file";
 import { fileCache } from "../../ai-sdk/file-cache";
+import { generateMusic } from "../../ai-sdk/generate-music";
 import { generateVideo } from "../../ai-sdk/generate-video";
 import {
   imagePlaceholderFallbackMiddleware,
@@ -109,6 +114,14 @@ export async function renderRoot(
     ? withCache(generateVideo, { storage: cacheStorage })
     : generateVideo;
 
+  const cachedGenerateSpeech = cacheStorage
+    ? withCache(generateSpeech, { storage: cacheStorage })
+    : generateSpeech;
+
+  const cachedGenerateMusic = cacheStorage
+    ? withCache(generateMusic, { storage: cacheStorage })
+    : generateMusic;
+
   const wrapGenerateImage: typeof generateImage = async (opts) => {
     if (mode === "preview") {
       trackPlaceholder("image");
@@ -158,6 +171,8 @@ export async function renderRoot(
     storage: options.storage,
     generateImage: wrapGenerateImage,
     generateVideo: wrapGenerateVideo,
+    generateSpeech: cachedGenerateSpeech,
+    generateMusic: cachedGenerateMusic,
     tempFiles,
     progress,
     pendingFiles: new Map<string, Promise<File>>(),

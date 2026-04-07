@@ -100,6 +100,12 @@ function createContext(
     cache: storage,
     generateImage: generateImage as unknown as RenderContext["generateImage"],
     generateVideo: generateVideo as unknown as RenderContext["generateVideo"],
+    generateSpeech: (async () => {
+      throw new Error("generateSpeech not implemented in test");
+    }) as unknown as RenderContext["generateSpeech"],
+    generateMusic: (async () => {
+      throw new Error("generateMusic not implemented in test");
+    }) as unknown as RenderContext["generateMusic"],
     tempFiles: [],
     pendingFiles: new Map<string, Promise<File>>(),
     backend: localBackend,

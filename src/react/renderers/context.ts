@@ -1,6 +1,7 @@
-import type { generateImage } from "ai";
+import type { experimental_generateSpeech, generateImage } from "ai";
 import type { CacheStorage } from "../../ai-sdk/cache";
 import type { File } from "../../ai-sdk/file";
+import type { generateMusic } from "../../ai-sdk/generate-music";
 import type { generateVideo } from "../../ai-sdk/generate-video";
 import type { FFmpegBackend } from "../../ai-sdk/providers/editly/backends";
 import type { StorageProvider } from "../../ai-sdk/storage/types";
@@ -15,6 +16,8 @@ export interface RenderContext {
   storage?: StorageProvider;
   generateImage: typeof generateImage;
   generateVideo: typeof generateVideo;
+  generateSpeech: typeof experimental_generateSpeech;
+  generateMusic: typeof generateMusic;
   tempFiles: string[];
   progress?: ProgressTracker;
   pendingFiles: Map<string, Promise<File>>;
