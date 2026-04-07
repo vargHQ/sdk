@@ -60,3 +60,7 @@ src/react/examples/omnihuman15-react-test.tsx
 
 .cache/
 output/
+
+# temporary / scratch files
+tmp/
+hello.tsx

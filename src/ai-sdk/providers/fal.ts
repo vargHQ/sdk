@@ -174,6 +174,7 @@ const MOTION_CONTROL_MODELS: Record<string, string> = {
 const LIPSYNC_MODELS: Record<string, string> = {
   "sync-v2": "fal-ai/sync-lipsync",
   "sync-v2-pro": "fal-ai/sync-lipsync/v2",
+  "sync-v3": "fal-ai/sync-lipsync/v3",
   lipsync: "fal-ai/sync-lipsync",
   "omnihuman-v1.5": "fal-ai/bytedance/omnihuman/v1.5",
   "veed-fabric-1.0": "veed/fabric-1.0",
