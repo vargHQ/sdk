@@ -93,13 +93,14 @@ function serializeValue(v: unknown): string {
   }
   // ResolvedElement (e.g. a speech segment used as Video audio input):
   // serialize by content identity (type + text + duration), not binary data.
+  // Deliberately excludes file.url — upload URLs contain Date.now() + Math.random()
+  // and would make downstream cache keys (e.g. VEED video) non-deterministic.
   if (v instanceof ResolvedElement) {
     const parts = [v.type];
     for (const child of v.children) {
       if (typeof child === "string") parts.push(child);
     }
     if (v.meta.duration) parts.push(String(v.meta.duration));
-    if (v.meta.file?.url) parts.push(v.meta.file.url);
     return `resolved(${parts.join(",")})`;
   }
   if (isVargElement(v)) {

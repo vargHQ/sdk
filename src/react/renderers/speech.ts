@@ -1,4 +1,4 @@
-import { experimental_generateSpeech as generateSpeech } from "ai";
+import type { experimental_generateSpeech } from "ai";
 import { File } from "../../ai-sdk/file";
 import { ResolvedElement } from "../resolved-element";
 import type { SpeechProps, VargElement } from "../types";
@@ -29,33 +29,49 @@ export async function renderSpeech(
   }
 
   const cacheKey = computeCacheKey(element);
+  const cacheKeyStr = JSON.stringify(cacheKey);
 
-  const modelId = typeof model === "string" ? model : model.modelId;
-  const taskId = ctx.progress ? addTask(ctx.progress, "speech", modelId) : null;
-  if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+  // Deduplicate concurrent renders of the same speech element
+  const pendingRender = ctx.pendingFiles.get(cacheKeyStr);
+  if (pendingRender) {
+    return pendingRender;
+  }
 
-  const { audio } = await generateSpeech({
-    model,
-    text,
-    voice: props.voice ?? "rachel",
-    cacheKey,
-  } as Parameters<typeof generateSpeech>[0]);
+  const renderPromise = (async () => {
+    const modelId = typeof model === "string" ? model : model.modelId;
+    const taskId = ctx.progress
+      ? addTask(ctx.progress, "speech", modelId)
+      : null;
+    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
 
-  if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+    const { audio } = await ctx.generateSpeech({
+      model,
+      text,
+      voice: props.voice ?? "rachel",
+      cacheKey,
+    } as Parameters<typeof experimental_generateSpeech>[0]);
 
-  const mediaType = (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
+    if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
-  const file = File.fromGenerated({
-    uint8Array: audio.uint8Array,
-    mediaType,
-    url: (audio as { url?: string }).url,
-  }).withMetadata({
-    type: "speech",
-    model: modelId,
-    prompt: text,
-  });
+    const mediaType =
+      (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
 
-  ctx.generatedFiles.push(file);
+    const file = File.fromGenerated({
+      uint8Array: audio.uint8Array,
+      mediaType,
+      url: (audio as { url?: string }).url,
+    }).withMetadata({
+      type: "speech",
+      model: modelId,
+      prompt: text,
+    });
 
-  return file;
+    ctx.generatedFiles.push(file);
+
+    return file;
+  })();
+
+  ctx.pendingFiles.set(cacheKeyStr, renderPromise);
+
+  return renderPromise;
 }

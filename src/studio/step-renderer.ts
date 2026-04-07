@@ -1,6 +1,10 @@
-import { generateImage } from "ai";
+import {
+  generateImage,
+  experimental_generateSpeech as generateSpeech,
+} from "ai";
 import { type CacheStorage, withCache } from "../ai-sdk/cache";
 import { fileCache } from "../ai-sdk/file-cache";
+import { generateMusic } from "../ai-sdk/generate-music";
 import { generateVideo } from "../ai-sdk/generate-video";
 import { localBackend } from "../ai-sdk/providers/editly";
 import type { RenderContext } from "../react/renderers/context";
@@ -49,6 +53,12 @@ export function createStepSession(
     generateVideo: cacheStorage
       ? withCache(generateVideo, { storage: cacheStorage })
       : generateVideo,
+    generateSpeech: cacheStorage
+      ? withCache(generateSpeech, { storage: cacheStorage })
+      : generateSpeech,
+    generateMusic: cacheStorage
+      ? withCache(generateMusic, { storage: cacheStorage })
+      : generateMusic,
     tempFiles: [],
     progress: createProgressTracker(false),
     pendingFiles: new Map(),

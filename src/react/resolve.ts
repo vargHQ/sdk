@@ -15,7 +15,7 @@ import {
   experimental_generateSpeech as generateSpeechAI,
 } from "ai";
 import { $ } from "bun";
-import { type CacheStorage, withCache } from "../ai-sdk/cache";
+import { type CacheStorage, depsToKey, withCache } from "../ai-sdk/cache";
 import { File } from "../ai-sdk/file";
 import { fileCache } from "../ai-sdk/file-cache";
 import { generateMusic as generateMusicRaw } from "../ai-sdk/generate-music";
@@ -114,6 +114,12 @@ function getCachedGenerateMusic() {
   const ctx = getResolveContext();
   const storage = ctx?.cache ?? getLocalCache();
   return withCache(generateMusicRaw, { storage });
+}
+
+/** Get a cached generateSpeech wrapper using the active cache storage. */
+function getCachedGenerateSpeech() {
+  const storage = getActiveCache();
+  return withCache(generateSpeechAI, { storage });
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +303,77 @@ async function sliceAudio(
   return new Uint8Array(sliced);
 }
 
+// ---------------------------------------------------------------------------
+// Speech resolve-level cache: serialization helpers
+// ---------------------------------------------------------------------------
+
+/** Serializable representation of a speech segment for caching. */
+interface CachedSegment {
+  text: string;
+  start: number;
+  end: number;
+  duration: number;
+  props: Record<string, unknown>;
+  children: string[];
+  file: { uint8Array: Uint8Array; mediaType: string };
+  words?: WordTiming[];
+}
+
+/** Serializable representation of a full resolved speech for caching. */
+interface CachedSpeechResult {
+  file: { uint8Array: Uint8Array; mediaType: string };
+  duration: number;
+  words?: WordTiming[];
+  segments?: CachedSegment[];
+}
+
+/** Reconstruct a Segment (ResolvedElement<"speech"> + timing props) from cached data. */
+function reconstructSegment(
+  cached: CachedSegment,
+  storage?: import("../ai-sdk/storage/types").StorageProvider,
+): Segment {
+  const segmentFile = File.fromBuffer(
+    cached.file.uint8Array,
+    cached.file.mediaType,
+  );
+  const resolved = new ResolvedElement<"speech">(
+    { type: "speech", props: cached.props, children: cached.children },
+    {
+      file: segmentFile,
+      duration: cached.duration,
+      segments: [],
+      words: cached.words,
+    },
+  );
+  Object.defineProperties(resolved, {
+    text: { value: cached.text, enumerable: true },
+    start: { value: cached.start, enumerable: true },
+    end: { value: cached.end, enumerable: true },
+  });
+  return resolved as Segment;
+}
+
+/** Serialize a Segment into a cacheable plain object. */
+function serializeSegment(seg: Segment): CachedSegment {
+  return {
+    text: seg.text,
+    start: seg.start,
+    end: seg.end,
+    duration: seg.duration,
+    props: { ...seg.props },
+    children: seg.children.filter((c): c is string => typeof c === "string"),
+    file: {
+      uint8Array: (seg.meta.file as any)._data as Uint8Array,
+      mediaType: "audio/mpeg",
+    },
+    words: seg.meta.words,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// resolveSpeechElement — cached at the full-result level
+// ---------------------------------------------------------------------------
+
 /** Generate speech audio via the AI SDK and return a ResolvedElement with duration metadata. */
 export async function resolveSpeechElement(
   element: VargElement<"speech">,
@@ -324,12 +401,52 @@ export async function resolveSpeechElement(
 
   const cacheKey = computeCacheKey(element);
 
-  const { audio, ...rest } = await generateSpeechAI({
+  // ---- Check full-result cache (includes segments, words, duration) ----
+  const cache = getActiveCache();
+  const resolveKey = depsToKey("resolveSpeech", cacheKey);
+  const cached = (await cache.get(resolveKey)) as
+    | CachedSpeechResult
+    | undefined;
+
+  if (cached) {
+    const ctx = getResolveContext();
+    const file = File.fromGenerated({
+      uint8Array: cached.file.uint8Array,
+      mediaType: cached.file.mediaType,
+    }).withMetadata({
+      type: "speech",
+      model: typeof model === "string" ? model : model.modelId,
+      prompt: text,
+    });
+
+    // Upload reconstructed segment files to storage so downstream cache keys
+    // get stable URLs (instead of no URL at all).
+    const segments = cached.segments?.map((s) =>
+      reconstructSegment(s, ctx?.storage),
+    );
+    if (segments && ctx?.storage) {
+      await Promise.all(
+        segments.map((seg) => seg.meta.file.upload(ctx.storage!)),
+      );
+    }
+
+    return new ResolvedElement(element, {
+      file,
+      duration: cached.duration,
+      words: cached.words,
+      segments,
+    });
+  }
+
+  // ---- Cache miss: generate, probe, slice, then cache ----
+
+  const generateSpeech = getCachedGenerateSpeech();
+  const { audio, ...rest } = await generateSpeech({
     model,
     text,
     voice: props.voice ?? "rachel",
     cacheKey,
-  } as Parameters<typeof generateSpeechAI>[0]);
+  });
 
   const mediaType = (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
 
@@ -376,6 +493,15 @@ export async function resolveSpeechElement(
       );
     }
   }
+
+  // ---- Write full result to cache ----
+  const toCache: CachedSpeechResult = {
+    file: { uint8Array: audio.uint8Array, mediaType },
+    duration,
+    words,
+    segments: segments?.map(serializeSegment),
+  };
+  await cache.set(resolveKey, toCache);
 
   return new ResolvedElement(element, {
     file,

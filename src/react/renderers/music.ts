@@ -1,9 +1,10 @@
 import { File } from "../../ai-sdk/file";
-import { generateMusic } from "../../ai-sdk/generate-music";
+import type { generateMusic } from "../../ai-sdk/generate-music";
 import { ResolvedElement } from "../resolved-element";
 import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
 import { addTask, completeTask, startTask } from "./progress";
+import { computeCacheKey } from "./utils";
 
 export async function renderMusic(
   element: VargElement<"music">,
@@ -23,73 +24,50 @@ export async function renderMusic(
     throw new Error("Music requires prompt and model (or set defaults.music)");
   }
 
-  const cacheKey = JSON.stringify({
-    type: "music",
-    prompt,
-    model: model.modelId,
-    duration: props.duration,
-  });
+  const cacheKey = computeCacheKey(element);
+  const cacheKeyStr = JSON.stringify(cacheKey);
 
-  const modelId = model.modelId ?? "music";
-  const taskId = ctx.progress ? addTask(ctx.progress, "music", modelId) : null;
+  // Deduplicate concurrent renders of the same music element
+  const pendingRender = ctx.pendingFiles.get(cacheKeyStr);
+  if (pendingRender) {
+    return pendingRender;
+  }
 
-  const generateFn = async () => {
-    const result = await generateMusic({
+  const renderPromise = (async () => {
+    const modelId = model.modelId ?? "music";
+    const taskId = ctx.progress
+      ? addTask(ctx.progress, "music", modelId)
+      : null;
+    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+
+    const { audio } = await ctx.generateMusic({
       model,
       prompt,
       duration: props.duration,
-    });
-    return result.audio;
-  };
+      cacheKey,
+    } as Parameters<typeof generateMusic>[0]);
 
-  let audio: { uint8Array: Uint8Array; url?: string; mediaType?: string };
-
-  if (ctx.cache) {
-    const cached = await ctx.cache.get(cacheKey);
-    if (cached) {
-      const cachedAudio = cached as {
-        uint8Array: Uint8Array;
-        url?: string;
-        mediaType?: string;
-      };
-      audio = {
-        uint8Array: cachedAudio.uint8Array,
-        url: cachedAudio.url,
-        mediaType: cachedAudio.mediaType,
-      };
-      if (taskId && ctx.progress) {
-        startTask(ctx.progress, taskId);
-        completeTask(ctx.progress, taskId);
-      }
-    } else {
-      if (taskId && ctx.progress) startTask(ctx.progress, taskId);
-      audio = await generateFn();
-      if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
-      await ctx.cache.set(cacheKey, {
-        uint8Array: audio.uint8Array,
-        url: audio.url,
-        mediaType: audio.mediaType,
-      });
-    }
-  } else {
-    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
-    audio = await generateFn();
     if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
-  }
 
-  const mediaType = audio.mediaType ?? "audio/mpeg";
+    const mediaType =
+      (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
 
-  const file = File.fromGenerated({
-    uint8Array: audio.uint8Array,
-    mediaType,
-    url: audio.url,
-  }).withMetadata({
-    type: "music",
-    model: modelId,
-    prompt,
-  });
+    const file = File.fromGenerated({
+      uint8Array: audio.uint8Array,
+      mediaType,
+      url: (audio as { url?: string }).url,
+    }).withMetadata({
+      type: "music",
+      model: modelId,
+      prompt,
+    });
 
-  ctx.generatedFiles.push(file);
+    ctx.generatedFiles.push(file);
 
-  return file;
+    return file;
+  })();
+
+  ctx.pendingFiles.set(cacheKeyStr, renderPromise);
+
+  return renderPromise;
 }
