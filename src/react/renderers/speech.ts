@@ -28,20 +28,59 @@ export async function renderSpeech(
     throw new Error("Speech requires 'model' prop (or set defaults.speech)");
   }
 
-  const cacheKey = computeCacheKey(element);
+  const cacheKey = JSON.stringify({
+    type: "speech",
+    text,
+    model: typeof model === "string" ? model : model.modelId,
+    voice: props.voice ?? "rachel",
+  });
 
   const modelId = typeof model === "string" ? model : model.modelId;
   const taskId = ctx.progress ? addTask(ctx.progress, "speech", modelId) : null;
-  if (taskId && ctx.progress) startTask(ctx.progress, taskId);
 
-  const { audio } = await generateSpeech({
-    model,
-    text,
-    voice: props.voice ?? "rachel",
-    cacheKey,
-  } as Parameters<typeof generateSpeech>[0]);
+  const generateFn = async () => {
+    const result = await generateSpeech({
+      model,
+      text,
+      voice: props.voice ?? "rachel",
+    } as Parameters<typeof generateSpeech>[0]);
+    return result.audio;
+  };
 
-  if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+  let audio: { uint8Array: Uint8Array; url?: string; mediaType?: string };
+
+  if (ctx.cache) {
+    const cached = await ctx.cache.get(cacheKey);
+    if (cached) {
+      const cachedAudio = cached as {
+        uint8Array: Uint8Array;
+        url?: string;
+        mediaType?: string;
+      };
+      audio = {
+        uint8Array: cachedAudio.uint8Array,
+        url: cachedAudio.url,
+        mediaType: cachedAudio.mediaType,
+      };
+      if (taskId && ctx.progress) {
+        startTask(ctx.progress, taskId);
+        completeTask(ctx.progress, taskId);
+      }
+    } else {
+      if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+      audio = await generateFn();
+      if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+      await ctx.cache.set(cacheKey, {
+        uint8Array: audio.uint8Array,
+        url: (audio as { url?: string }).url,
+        mediaType: (audio as { mediaType?: string }).mediaType,
+      });
+    }
+  } else {
+    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
+    audio = await generateFn();
+    if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+  }
 
   const mediaType = (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
 

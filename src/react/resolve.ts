@@ -116,6 +116,12 @@ function getCachedGenerateMusic() {
   return withCache(generateMusicRaw, { storage });
 }
 
+/** Get a cached generateSpeech wrapper using the active cache storage. */
+function getCachedGenerateSpeech() {
+  const storage = getActiveCache();
+  return withCache(generateSpeechAI, { storage });
+}
+
 // ---------------------------------------------------------------------------
 // Speech
 // ---------------------------------------------------------------------------
@@ -324,12 +330,13 @@ export async function resolveSpeechElement(
 
   const cacheKey = computeCacheKey(element);
 
-  const { audio, ...rest } = await generateSpeechAI({
+  const generateSpeech = getCachedGenerateSpeech();
+  const { audio, ...rest } = await generateSpeech({
     model,
     text,
     voice: props.voice ?? "rachel",
     cacheKey,
-  } as Parameters<typeof generateSpeechAI>[0]);
+  });
 
   const mediaType = (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
 
