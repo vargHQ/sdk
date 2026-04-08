@@ -13,6 +13,7 @@ import { generateVideo } from "../../ai-sdk/generate-video";
 import {
   imagePlaceholderFallbackMiddleware,
   placeholderFallbackMiddleware,
+  prerenderFallbackMiddleware,
   wrapVideoModel,
 } from "../../ai-sdk/middleware";
 import { editly, localBackend } from "../../ai-sdk/providers/editly";
@@ -142,6 +143,28 @@ export async function renderRoot(
   };
 
   const wrapGenerateVideo: typeof generateVideo = async (opts) => {
+    if (mode === "prerender") {
+      const prerenderImageModel = options.defaults?.prerenderImage;
+      if (!prerenderImageModel) {
+        throw new Error(
+          "prerender mode requires defaults.prerenderImage model (e.g., varg.imageModel('nano-banana-2'))",
+        );
+      }
+      // Use uncached generateVideo so we bypass any cached Kling/Wan results
+      // and always run the prerender middleware (which generates still frames).
+      // Image generation inside the middleware still uses cachedGenerateImage.
+      return generateVideo({
+        ...opts,
+        model: wrapVideoModel({
+          model: opts.model,
+          middleware: prerenderFallbackMiddleware({
+            imageModel: prerenderImageModel,
+            generateImageFn: cachedGenerateImage,
+          }),
+        }),
+      } as Parameters<typeof generateVideo>[0]);
+    }
+
     if (mode === "preview") {
       trackPlaceholder("video");
       return cachedGenerateVideo({
@@ -642,6 +665,13 @@ export async function renderRoot(
   if (!options.quiet && mode === "preview" && placeholderCount.total > 0) {
     console.log(
       `\x1b[36mℹ preview mode: ${placeholderCount.total} placeholders used (${placeholderCount.images} images, ${placeholderCount.videos} videos)\x1b[0m`,
+    );
+  }
+
+  if (!options.quiet && mode === "prerender") {
+    const modelId = options.defaults?.prerenderImage?.modelId ?? "unknown";
+    console.log(
+      `\x1b[36mℹ prerender mode: videos replaced with still frames (image model: ${modelId})\x1b[0m`,
     );
   }
 
