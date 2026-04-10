@@ -196,7 +196,7 @@ const IMAGE_MODELS: Record<string, string> = {
   "recraft-v3": "fal-ai/recraft/v3/text-to-image",
   "nano-banana-pro": "fal-ai/nano-banana-pro",
   "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
-  "nano-banana-2": "fal-ai/nano-banana-2/edit",
+  "nano-banana-2": "fal-ai/nano-banana-2",
   "nano-banana-2/edit": "fal-ai/nano-banana-2/edit",
   "seedream-v4.5/edit": "fal-ai/bytedance/seedream/v4.5/edit",
   // Qwen Image 2 - text-to-image and image-to-image editing (standard + pro)
@@ -924,13 +924,21 @@ class FalImageModel implements ImageModelV3 {
     }
 
     const hasFiles = files && files.length > 0;
-    const finalEndpoint = this.resolveEndpoint();
 
     let stableKey: string | undefined;
     if (hasFiles && files) {
       const fileHashes = await computeFileHashes(files);
+      const imageUrls = await pMap(files, fileToUrl, { concurrency: 2 });
+      // Reve uses singular image_url instead of image_urls array
+      if (SINGULAR_IMAGE_URL_MODELS.has(this.modelId)) {
+        input.image_url = imageUrls[0];
+      } else {
+        input.image_urls = imageUrls;
+      }
+      // Compute stable key after files are resolved
+      const finalEndpointForKey = this.resolveEndpoint(hasFiles);
       stableKey = JSON.stringify({
-        endpoint: finalEndpoint,
+        endpoint: finalEndpointForKey,
         prompt,
         n,
         size,
@@ -940,13 +948,6 @@ class FalImageModel implements ImageModelV3 {
         modelId: this.modelId,
         fileHashes,
       });
-      const imageUrls = await pMap(files, fileToUrl, { concurrency: 2 });
-      // Reve uses singular image_url instead of image_urls array
-      if (SINGULAR_IMAGE_URL_MODELS.has(this.modelId)) {
-        input.image_url = imageUrls[0];
-      } else {
-        input.image_urls = imageUrls;
-      }
     }
 
     if (isQwenAngles && !input.image_urls) {
@@ -961,6 +962,10 @@ class FalImageModel implements ImageModelV3 {
         throw new Error("No files provided");
       }
     }
+
+    // Resolve endpoint after file processing so dual-endpoint models
+    // (e.g. nano-banana-2 vs nano-banana-2/edit) route correctly
+    const finalEndpoint = this.resolveEndpoint(hasFiles);
 
     const result = await executeWithQueueRecovery<{ data: unknown }>(
       finalEndpoint,
@@ -998,9 +1003,14 @@ class FalImageModel implements ImageModelV3 {
     };
   }
 
-  private resolveEndpoint(): string {
+  private resolveEndpoint(hasFiles?: boolean): string {
     if (this.modelId.startsWith("raw:")) {
       return this.modelId.slice(4);
+    }
+
+    // Nano Banana 2: route to /edit when images are provided, base endpoint for t2i
+    if (this.modelId === "nano-banana-2" && hasFiles) {
+      return "fal-ai/nano-banana-2/edit";
     }
 
     return IMAGE_MODELS[this.modelId] ?? this.modelId;

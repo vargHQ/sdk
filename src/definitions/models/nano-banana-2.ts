@@ -1,6 +1,6 @@
 /**
- * Nano Banana 2 image editing model (Google's next-gen image generation/editing)
- * Edit-only model requiring image_urls input
+ * Nano Banana 2 image model (Google's next-gen image generation/editing)
+ * Supports both text-to-image (no images) and image editing (with image_urls)
  */
 
 import { z } from "zod";
@@ -35,8 +35,9 @@ const nanoBanana2InputSchema = z.object({
   prompt: z.string().describe("Text description for image editing"),
   image_urls: z
     .array(z.string().url())
+    .optional()
     .describe(
-      "Input image URLs for image-to-image editing. Required for this model.",
+      "Input image URLs for image editing. When provided, routes to the /edit endpoint. Omit for text-to-image generation.",
     ),
   resolution: nanoBanana2ResolutionSchema
     .default("1K")
@@ -103,11 +104,11 @@ export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "nano-banana-2",
   description:
-    "Google Nano Banana 2 - next-gen image editing model. Requires image_urls for all operations.",
+    "Google Nano Banana 2 - next-gen image generation and editing model. Supports text-to-image and image editing (with image_urls).",
   providers: ["fal"],
   defaultProvider: "fal",
   providerModels: {
-    fal: "fal-ai/nano-banana-2/edit",
+    fal: "fal-ai/nano-banana-2",
   },
   schema,
 };
