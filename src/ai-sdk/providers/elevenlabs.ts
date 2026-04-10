@@ -89,7 +89,7 @@ class ElevenLabsMusicModel implements MusicModelV3 {
     const elevenLabsOptions = providerOptions?.elevenlabs ?? {};
     const audio = await this.client.music.compose({
       prompt,
-      musicLengthMs: duration ? duration * 1000 : undefined,
+      musicLengthMs: duration ? Math.round(duration * 1000) : undefined,
       modelId: this.modelId,
       ...elevenLabsOptions,
     } as Parameters<typeof this.client.music.compose>[0]);

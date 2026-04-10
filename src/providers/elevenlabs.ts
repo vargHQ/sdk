@@ -117,7 +117,8 @@ export class ElevenLabsProvider extends BaseProvider {
 
     const audio = await this.client.music.compose({
       prompt,
-      musicLengthMs,
+      musicLengthMs:
+        musicLengthMs != null ? Math.round(musicLengthMs) : undefined,
       modelId: "music_v1",
     });
 
