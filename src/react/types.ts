@@ -129,7 +129,7 @@ export interface OverlayProps extends BaseProps, PositionProps, AudioProps {
 }
 
 export type ImageInput = Uint8Array | string | VargElement<"image">;
-export type ImagePrompt = string | { text?: string; images: ImageInput[] };
+export type ImagePrompt = string | { text?: string; images?: ImageInput[] };
 
 export interface ImageProps extends BaseProps, PositionProps {
   prompt?: ImagePrompt;

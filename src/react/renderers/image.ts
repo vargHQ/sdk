@@ -37,9 +37,9 @@ async function resolvePrompt(
   if (typeof prompt === "string") {
     return prompt;
   }
-  const resolvedImages = await Promise.all(
-    prompt.images.map((img) => resolveImageInput(img, ctx)),
-  );
+  const resolvedImages = prompt.images
+    ? await Promise.all(prompt.images.map((img) => resolveImageInput(img, ctx)))
+    : [];
   return { text: prompt.text, images: resolvedImages };
 }
 

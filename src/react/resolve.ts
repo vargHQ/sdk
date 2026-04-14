@@ -577,9 +577,11 @@ async function resolveImagePrompt(
   prompt: ImagePrompt,
 ): Promise<string | { text?: string; images: Uint8Array[] }> {
   if (typeof prompt === "string") return prompt;
-  const resolvedImages = await Promise.all(
-    prompt.images.map((img) => resolveImageInputForStandalone(img)),
-  );
+  const resolvedImages = prompt.images
+    ? await Promise.all(
+        prompt.images.map((img) => resolveImageInputForStandalone(img)),
+      )
+    : [];
   return { text: prompt.text, images: resolvedImages };
 }
 
