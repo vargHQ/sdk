@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ResolvedElement } from "../resolved-element";
 import type { CaptionsProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
+import { type FontResolution, getDefaultFontId, resolveFonts } from "./fonts";
 import { addTask, completeTask, startTask } from "./progress";
 import { renderSpeech } from "./speech";
 
@@ -156,12 +157,17 @@ function parseSrt(content: string): SrtEntry[] {
   return entries;
 }
 
+/**
+ * Format seconds to ASS timestamp `H:MM:SS.CC`.
+ * Computes from total centiseconds to avoid overflow when rounding
+ * lands on 100 cs (e.g. 1.999s would otherwise produce `0:00:01.100`).
+ */
 function formatAssTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const cs = Math.floor((seconds % 1) * 100);
-
+  const totalCs = Math.max(0, Math.round(seconds * 100));
+  const h = Math.floor(totalCs / 360000);
+  const m = Math.floor((totalCs % 360000) / 6000);
+  const s = Math.floor((totalCs % 6000) / 100);
+  const cs = totalCs % 100;
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
@@ -170,6 +176,7 @@ function convertSrtToAss(
   style: SubtitleStyle,
   width: number,
   height: number,
+  tagText?: (text: string) => string,
 ): string {
   const assHeader = `[Script Info]
 Title: Generated Subtitles
@@ -190,10 +197,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
   const entries = parseSrt(srtContent);
   const assDialogues = entries
-    .map((entry) => {
+    .map((entry, i) => {
       const start = formatAssTime(entry.start);
-      const end = formatAssTime(entry.end);
-      const text = entry.text.replace(/\n/g, "\\N");
+      // Clamp end to next entry's start to prevent overlapping subtitles
+      // (transcription engines often produce overlapping word timestamps)
+      const nextStart =
+        i < entries.length - 1 ? entries[i + 1]!.start : undefined;
+      const clampedEnd =
+        nextStart !== undefined ? Math.min(entry.end, nextStart) : entry.end;
+      const end = formatAssTime(clampedEnd);
+      const rawText = entry.text.replace(/\n/g, "\\N");
+      const text = tagText ? tagText(rawText) : rawText;
       return `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
     })
     .join("\n");
@@ -220,6 +234,7 @@ function convertSrtToAssGrouped(
   height: number,
   wordsPerLine: number,
   activeColor?: string,
+  tagText?: (text: string) => string,
 ): string {
   const assHeader = `[Script Info]
 Title: Generated Subtitles
@@ -256,7 +271,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     if (!activeColor) {
       // No highlight — show entire group as one event
-      const text = group.map((e) => e.text.replace(/\n/g, " ")).join(" ");
+      const rawText = group.map((e) => e.text.replace(/\n/g, " ")).join(" ");
+      const text = tagText ? tagText(rawText) : rawText;
       dialogues.push(
         `Dialogue: 0,${formatAssTime(groupStart)},${formatAssTime(groupEnd)},Default,,0,0,0,,${text}`,
       );
@@ -268,9 +284,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // Word ends at next word's start (within group), or at group end
         const wordEnd = wi < group.length - 1 ? group[wi + 1]!.start : groupEnd;
 
-        // Build the text line with ASS color overrides
+        // Build the text line with ASS color overrides (and optional font tags)
         const parts = group.map((entry, idx) => {
-          const word = entry.text.replace(/\n/g, " ").trim();
+          const rawWord = entry.text.replace(/\n/g, " ").trim();
+          const word = tagText ? tagText(rawWord) : rawWord;
           if (idx === wi) {
             // Active word — use highlight color
             return `{\\c${highlightColor}}${word}{\\c${baseColor}}`;
@@ -311,6 +328,8 @@ export interface CaptionsResult {
   assPath: string;
   srtPath?: string;
   audioPath?: string;
+  /** Font files needed for rendering (primary + any fallbacks for non-Latin scripts). */
+  fontFiles?: { url: string; fileName: string }[];
 }
 
 export async function renderCaptions(
@@ -436,12 +455,17 @@ export async function renderCaptions(
   };
   const baseStyle = STYLE_PRESETS[styleName] ?? defaultStyle;
 
+  // Resolve fonts: primary font from props.font or style default, plus fallbacks
+  const primaryFontId = props.font ?? getDefaultFontId(styleName);
+  const fontResolution = resolveFonts(srtContent, primaryFontId);
+
   const alignment = props.position
     ? (POSITION_ALIGNMENT[props.position] ?? baseStyle.alignment)
     : baseStyle.alignment;
 
   const style: SubtitleStyle = {
     ...baseStyle,
+    fontName: fontResolution.primary.fontName,
     fontSize: props.fontSize ?? baseStyle.fontSize,
     primaryColor: props.color
       ? colorToAss(props.color)
@@ -462,8 +486,15 @@ export async function renderCaptions(
         ctx.height,
         props.wordsPerLine,
         activeColorAss,
+        fontResolution.tagText,
       )
-    : convertSrtToAss(srtContent, style, ctx.width, ctx.height);
+    : convertSrtToAss(
+        srtContent,
+        style,
+        ctx.width,
+        ctx.height,
+        fontResolution.tagText,
+      );
   const assPath = `/tmp/varg-captions-${Date.now()}.ass`;
   writeFileSync(assPath, assContent);
   ctx.tempFiles.push(assPath);
@@ -472,5 +503,9 @@ export async function renderCaptions(
     assPath,
     srtPath,
     audioPath: props.withAudio ? audioPath : undefined,
+    fontFiles: fontResolution.fontFiles.map((f) => ({
+      url: f.url,
+      fileName: f.fileName,
+    })),
   };
 }

@@ -1,3 +1,4 @@
+import { zipSync } from "fflate";
 import sharp from "sharp";
 import { File } from "../../../file";
 import type { StorageProvider } from "../../../storage/types";
@@ -128,6 +129,11 @@ export class RendiBackend implements FFmpegBackend {
   }
 
   async run(options: FFmpegRunOptions): Promise<FFmpegRunResult> {
+    // When auxiliary files (e.g. fonts) are present, use compressed folder mode
+    if (options.auxiliaryFiles && options.auxiliaryFiles.length > 0) {
+      return this.runWithCompressedFolder(options);
+    }
+
     let {
       inputs,
       filterComplex,
@@ -277,6 +283,194 @@ export class RendiBackend implements FFmpegBackend {
       if (status.status === "FAILED") {
         throw new Error(
           `Rendi command failed: ${status.error_message ?? "Unknown error"}`,
+        );
+      }
+
+      await this.sleep(POLL_INTERVAL_MS);
+      attempts++;
+    }
+
+    throw new Error("Rendi command timed out");
+  }
+
+  /**
+   * Run an FFmpeg command using Rendi's input_compressed_folder mode.
+   *
+   * Used when auxiliary files (e.g. fonts for subtitle rendering) need to be
+   * bundled alongside regular inputs. Creates a ZIP containing all input files
+   * and auxiliary files, uploads it to storage, and submits to Rendi with
+   * `input_compressed_folder` instead of `input_files`.
+   *
+   * Inside the ZIP, all files are at the root level. The ffmpeg command
+   * references files by their bare filenames (not placeholders).
+   */
+  private async runWithCompressedFolder(
+    options: FFmpegRunOptions,
+  ): Promise<FFmpegRunResult> {
+    const {
+      inputs,
+      videoFilter,
+      filterComplex,
+      outputArgs = [],
+      outputPath,
+      verbose,
+      auxiliaryFiles = [],
+    } = options;
+
+    // 1. Resolve all input files to URLs
+    const inputEntries: { fileName: string; url: string }[] = [];
+    for (const input of inputs ?? []) {
+      const path = this.getInputPath(input);
+      const url = await this.resolvePath(path);
+      // Extract filename from URL or path
+      const fileName =
+        url.split("/").pop()?.split("?")[0] ?? `input_${inputEntries.length}`;
+      inputEntries.push({ fileName, url });
+    }
+
+    // 2. Download all files (inputs + auxiliary) into memory
+    const zipContents: Record<string, Uint8Array> = {};
+
+    const downloadTasks = [
+      ...inputEntries.map(async (entry) => {
+        const res = await fetch(entry.url);
+        if (!res.ok)
+          throw new Error(
+            `Failed to download input ${entry.fileName}: ${res.status}`,
+          );
+        zipContents[entry.fileName] = new Uint8Array(await res.arrayBuffer());
+      }),
+      ...auxiliaryFiles.map(async (file) => {
+        const res = await fetch(file.url);
+        if (!res.ok)
+          throw new Error(
+            `Failed to download auxiliary file ${file.fileName}: ${res.status}`,
+          );
+        zipContents[file.fileName] = new Uint8Array(await res.arrayBuffer());
+      }),
+    ];
+
+    await Promise.all(downloadTasks);
+
+    if (verbose) {
+      const totalSize = Object.values(zipContents).reduce(
+        (sum, buf) => sum + buf.length,
+        0,
+      );
+      console.log(
+        `[rendi] creating ZIP with ${Object.keys(zipContents).length} files (${(totalSize / 1024 / 1024).toFixed(1)} MB)`,
+      );
+    }
+
+    // 3. Create ZIP
+    const zipData = zipSync(zipContents, { level: 1 }); // fast compression
+
+    // 4. Upload ZIP to storage
+    const zipKey = `internal/rendi-compressed-${Date.now()}.zip`;
+    const zipUrl = await this.storage.upload(
+      zipData,
+      zipKey,
+      "application/zip",
+    );
+
+    if (verbose) {
+      console.log(
+        `[rendi] uploaded ZIP (${(zipData.length / 1024 / 1024).toFixed(1)} MB) -> ${zipUrl}`,
+      );
+    }
+
+    // 5. Build ffmpeg command using bare filenames (not {{in_X}} placeholders)
+    const inputArgs: string[] = [];
+    for (const [i, input] of (inputs ?? []).entries()) {
+      if (typeof input !== "string" && "options" in input && input.options) {
+        inputArgs.push(...input.options);
+      }
+      inputArgs.push("-i", inputEntries[i]!.fileName);
+    }
+
+    const filterArgs: string[] = [];
+    if (filterComplex) {
+      filterArgs.push("-filter_complex", filterComplex);
+    }
+    if (videoFilter) {
+      // For compressed folder mode, the video filter references files by
+      // their bare filenames (already resolved in the working directory)
+      filterArgs.push("-vf", videoFilter);
+    }
+
+    const processedOutputArgs = outputArgs.filter((arg) => arg !== "-y");
+
+    const commandParts = [
+      ...inputArgs,
+      ...filterArgs,
+      ...processedOutputArgs,
+      "{{out_1}}",
+    ];
+    const ffmpegCommand = this.buildCommandString(commandParts);
+    const outputFilename = outputPath?.split("/").pop() ?? "output.mp4";
+
+    if (verbose) {
+      console.log("[rendi] input_compressed_folder:", zipUrl);
+      console.log("[rendi] ffmpeg_command:", ffmpegCommand);
+    }
+
+    // 6. Submit to Rendi with input_compressed_folder
+    const submitResponse = await fetch(`${RENDI_API_BASE}/run-ffmpeg-command`, {
+      method: "POST",
+      headers: {
+        "X-API-KEY": this.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        input_compressed_folder: zipUrl,
+        output_files: { out_1: outputFilename },
+        ffmpeg_command: ffmpegCommand,
+        max_command_run_seconds:
+          options.timeoutSeconds ?? this.maxCommandRunSeconds,
+      }),
+    });
+
+    if (!submitResponse.ok) {
+      const errorText = await submitResponse.text();
+      throw new Error(
+        `Rendi submit failed: ${submitResponse.status} - ${errorText}`,
+      );
+    }
+
+    const { command_id } =
+      (await submitResponse.json()) as RendiCommandResponse;
+
+    if (verbose) {
+      console.log("[rendi] command_id:", command_id);
+    }
+
+    // 7. Poll for completion (same as standard run)
+    let attempts = 0;
+    while (attempts < MAX_POLL_ATTEMPTS) {
+      const statusResponse = await fetch(
+        `${RENDI_API_BASE}/commands/${command_id}`,
+        {
+          headers: { "X-API-KEY": this.apiKey },
+        },
+      );
+
+      if (!statusResponse.ok) {
+        throw new Error(`Rendi poll failed: ${statusResponse.status}`);
+      }
+
+      const status = (await statusResponse.json()) as RendiStatusResponse;
+
+      if (status.status === "SUCCESS") {
+        const outputFile = status.output_files?.out_1;
+        if (!outputFile?.storage_url) {
+          throw new Error("Rendi completed but no output URL");
+        }
+        return { output: { type: "url", url: outputFile.storage_url } };
+      }
+
+      if (status.status === "FAILED") {
+        throw new Error(
+          `Rendi command failed: ${status.error_message ?? "unknown error"}`,
         );
       }
 

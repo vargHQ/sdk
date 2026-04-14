@@ -257,6 +257,9 @@ export interface CaptionsProps extends BaseProps {
   wordsPerLine?: number;
   /** When src is a Speech element, include its audio track in the video. Defaults to false. */
   withAudio?: boolean;
+  /** Font to use for captions. Overrides the style preset's default font.
+   *  Available: "montserrat" | "roboto" | "poppins" | "inter" | "bebas-neue" | "rock-salt" | "oswald" | "space-grotesk" | "dm-sans" */
+  font?: string;
 }
 
 export interface SplitProps extends BaseProps {

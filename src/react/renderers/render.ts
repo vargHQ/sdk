@@ -611,12 +611,22 @@ export async function renderRoot(
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
 
+    // Collect font files from all caption results (deduplicated by URL)
+    const fontFileMap = new Map<string, { url: string; fileName: string }>();
+    for (const result of hoistedCaptionsResults) {
+      for (const font of result.fontFiles ?? []) {
+        fontFileMap.set(font.url, font);
+      }
+    }
+    const allFontFiles = [...fontFileMap.values()];
+
     output = await burnCaptions({
       video: output,
       assPath: finalAssPath,
       outputPath: finalOutPath,
       backend: options.backend,
       verbose: options.verbose,
+      fontFiles: allFontFiles.length > 0 ? allFontFiles : undefined,
     });
 
     if (!options.backend) {
