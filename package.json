@@ -28,6 +28,7 @@
     "@commitlint/config-conventional": "^20.0.0",
     "@size-limit/preset-small-lib": "^11.2.0",
     "@types/bun": "latest",
+    "@types/opentype.js": "^1.3.9",
     "@types/react": "^19.2.7",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7"
@@ -62,6 +63,7 @@
     "fluent-ffmpeg": "^2.1.3",
     "groq-sdk": "^0.36.0",
     "ink": "^6.5.1",
+    "opentype.js": "^1.3.4",
     "p-limit": "^6.2.0",
     "p-map": "^7.0.4",
     "react": "^19.2.0",
@@ -105,7 +107,7 @@
   "license": "Apache-2.0",
   "author": "varg.ai <hello@varg.ai> (https://varg.ai)",
   "sideEffects": false,
-  "version": "0.4.0-alpha105",
+  "version": "0.4.0-alpha107",
   "exports": {
     ".": "./src/index.ts",
     "./ai": "./src/ai-sdk/index.ts",

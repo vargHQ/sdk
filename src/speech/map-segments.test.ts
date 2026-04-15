@@ -175,4 +175,52 @@ describe("mapWordsToSegments", () => {
     expect(result[1]!.start).toBe(1.0);
     expect(result[1]!.end).toBe(1.6);
   });
+
+  // -----------------------------------------------------------------------
+  // CJK text (Japanese, Chinese) — uses countWords() with Intl.Segmenter
+  // -----------------------------------------------------------------------
+
+  test("maps Japanese segments correctly", () => {
+    // Simulates word timing from parseElevenLabsAlignment with Intl.Segmenter.
+    // Japanese text: "これはテストです。さようなら。"
+    // Segmented by Intl.Segmenter into individual morphological words.
+    // For this test, we provide the words that Intl.Segmenter would produce
+    // for each segment and verify alignment works.
+
+    // Sentence 1: "これはテストです。" — countWords will return >1
+    // Sentence 2: "さようなら。" — countWords will return >1
+    // We need the word timings to match what countWords returns.
+
+    // Use countWords to know how many words each segment has
+    const { countWords } = require("./word-segmenter");
+    const seg1 = "これはテストです。";
+    const seg2 = "さようなら。";
+    const count1 = countWords(seg1) as number;
+    const count2 = countWords(seg2) as number;
+
+    // Build word timings — one per word across both segments
+    const totalWords = count1 + count2;
+    const words: WordTiming[] = [];
+    for (let i = 0; i < totalWords; i++) {
+      words.push({
+        word: `w${i}`,
+        start: i * 0.3,
+        end: (i + 1) * 0.3,
+      });
+    }
+
+    const result = mapWordsToSegments(
+      words,
+      [seg1, seg2],
+      totalWords * 0.3 + 0.2,
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0]!.text).toBe(seg1);
+    expect(result[1]!.text).toBe(seg2);
+    // First segment starts at 0
+    expect(result[0]!.start).toBe(0);
+    // Last segment ends at audioDuration
+    expect(result[1]!.end).toBe(totalWords * 0.3 + 0.2);
+  });
 });

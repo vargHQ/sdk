@@ -2,12 +2,30 @@ import { writeFileSync } from "node:fs";
 import { groq } from "@ai-sdk/groq";
 import { experimental_transcribe as transcribe } from "ai";
 import { z } from "zod";
+import { smartJoin } from "../../speech/word-segmenter";
 import { ResolvedElement } from "../resolved-element";
 import type { CaptionsProps, VargElement } from "../types";
+import { ensureLocalFonts } from "./burn-captions";
 import type { RenderContext } from "./context";
+import {
+  calculateEmojiSize,
+  calculateEmojiY,
+  type EmojiInstance,
+  type EmojiOverlay,
+  extractEmoji,
+  hasEmoji,
+  stripEmoji,
+} from "./emoji";
 import { type FontResolution, getDefaultFontId, resolveFonts } from "./fonts";
 import { addTask, completeTask, startTask } from "./progress";
 import { renderSpeech } from "./speech";
+import {
+  type FontPathMap,
+  getCharXPositions,
+  getFontMetrics,
+  getSpaceWidth,
+  parseASSSegments,
+} from "./text-measure";
 
 const groqWordSchema = z.object({
   word: z.string(),
@@ -177,7 +195,9 @@ function convertSrtToAss(
   width: number,
   height: number,
   tagText?: (text: string) => string,
-): string {
+  collectEmoji?: boolean,
+  spacesPerEmoji?: number,
+): { ass: string; emojiData: EntryEmojiData[] } {
   const assHeader = `[Script Info]
 Title: Generated Subtitles
 ScriptType: v4.00+
@@ -195,24 +215,49 @@ Style: Default,${style.fontName},${style.fontSize},${style.primaryColor},&H00000
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
+  const nSpaces = spacesPerEmoji ?? 1;
   const entries = parseSrt(srtContent);
+  const emojiData: EntryEmojiData[] = [];
+
   const assDialogues = entries
     .map((entry, i) => {
-      const start = formatAssTime(entry.start);
+      const startTime = entry.start;
       // Clamp end to next entry's start to prevent overlapping subtitles
       // (transcription engines often produce overlapping word timestamps)
       const nextStart =
         i < entries.length - 1 ? entries[i + 1]!.start : undefined;
       const clampedEnd =
         nextStart !== undefined ? Math.min(entry.end, nextStart) : entry.end;
+
+      const start = formatAssTime(startTime);
       const end = formatAssTime(clampedEnd);
-      const rawText = entry.text.replace(/\n/g, "\\N");
+
+      let rawText = entry.text.replace(/\n/g, "\\N");
+
+      // Strip emoji from text and collect overlay data
+      let entryEmojiInstances: EmojiInstance[] | undefined;
+      if (collectEmoji && hasEmoji(rawText)) {
+        entryEmojiInstances = extractEmoji(rawText, nSpaces);
+        rawText = stripEmoji(rawText, nSpaces);
+      }
+
       const text = tagText ? tagText(rawText) : rawText;
+
+      // Collect emoji data with the tagged text for precise measurement
+      if (entryEmojiInstances) {
+        emojiData.push({
+          instances: entryEmojiInstances,
+          taggedStrippedText: text,
+          startTime,
+          endTime: clampedEnd,
+        });
+      }
+
       return `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
     })
     .join("\n");
 
-  return assHeader + assDialogues;
+  return { ass: assHeader + assDialogues, emojiData };
 }
 
 /**
@@ -235,7 +280,9 @@ function convertSrtToAssGrouped(
   wordsPerLine: number,
   activeColor?: string,
   tagText?: (text: string) => string,
-): string {
+  collectEmoji?: boolean,
+  spacesPerEmoji?: number,
+): { ass: string; emojiData: EntryEmojiData[] } {
   const assHeader = `[Script Info]
 Title: Generated Subtitles
 ScriptType: v4.00+
@@ -253,8 +300,10 @@ Style: Default,${style.fontName},${style.fontSize},${style.primaryColor},&H00000
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
+  const nSpaces = spacesPerEmoji ?? 1;
   const entries = parseSrt(srtContent);
   const dialogues: string[] = [];
+  const emojiData: EntryEmojiData[] = [];
   const baseColor = style.primaryColor;
   const highlightColor = activeColor ?? baseColor;
 
@@ -271,38 +320,100 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     if (!activeColor) {
       // No highlight — show entire group as one event
-      const rawText = group.map((e) => e.text.replace(/\n/g, " ")).join(" ");
+      let rawText = smartJoin(group.map((e) => e.text.replace(/\n/g, " ")));
+
+      // Strip emoji from the grouped text line
+      let groupEmojiInstances: EmojiInstance[] | undefined;
+      if (collectEmoji && hasEmoji(rawText)) {
+        groupEmojiInstances = extractEmoji(rawText, nSpaces);
+        rawText = stripEmoji(rawText, nSpaces);
+      }
+
       const text = tagText ? tagText(rawText) : rawText;
+
+      if (groupEmojiInstances) {
+        emojiData.push({
+          instances: groupEmojiInstances,
+          taggedStrippedText: text,
+          startTime: groupStart,
+          endTime: groupEnd,
+        });
+      }
+
       dialogues.push(
         `Dialogue: 0,${formatAssTime(groupStart)},${formatAssTime(groupEnd)},Default,,0,0,0,,${text}`,
       );
     } else {
       // Karaoke highlight — one dialogue event per word, shifting the highlight
+      // For emoji in karaoke mode, we strip emoji from the full group line
+      // and collect overlay data once (for the full group duration).
+      const allGroupWords: string[] = [];
+      for (const entry of group) {
+        allGroupWords.push(entry.text.replace(/\n/g, " ").trim());
+      }
+      const fullLineRaw = smartJoin(allGroupWords);
+
+      let lineEmojiInstances: EmojiInstance[] | undefined;
+      let strippedFullLine: string | undefined;
+      if (collectEmoji && hasEmoji(fullLineRaw)) {
+        lineEmojiInstances = extractEmoji(fullLineRaw, nSpaces);
+        strippedFullLine = stripEmoji(fullLineRaw, nSpaces);
+      }
+
+      // Build per-word stripped words for highlight assembly
+      const strippedWords = lineEmojiInstances
+        ? allGroupWords.map((w) => (hasEmoji(w) ? stripEmoji(w, nSpaces) : w))
+        : allGroupWords;
+
       for (let wi = 0; wi < group.length; wi++) {
         const wordEntry = group[wi]!;
         const wordStart = wordEntry.start;
-        // Word ends at next word's start (within group), or at group end
         const wordEnd = wi < group.length - 1 ? group[wi + 1]!.start : groupEnd;
 
-        // Build the text line with ASS color overrides (and optional font tags)
-        const parts = group.map((entry, idx) => {
-          const rawWord = entry.text.replace(/\n/g, " ").trim();
+        const parts: string[] = [];
+        for (let idx = 0; idx < group.length; idx++) {
+          const rawWord = strippedWords[idx]?.trim() ?? "";
           const word = tagText ? tagText(rawWord) : rawWord;
           if (idx === wi) {
-            // Active word — use highlight color
-            return `{\\c${highlightColor}}${word}{\\c${baseColor}}`;
+            parts.push(`{\\c${highlightColor}}${word}{\\c${baseColor}}`);
+          } else {
+            parts.push(word);
           }
-          return word;
-        });
+        }
+
+        const lineText = smartJoin(parts);
+
+        // Collect emoji data once for the first word's dialogue
+        // (all words in the group show the same line text, just with different highlight)
+        if (wi === 0 && lineEmojiInstances) {
+          emojiData.push({
+            instances: lineEmojiInstances,
+            taggedStrippedText: lineText,
+            startTime: groupStart,
+            endTime: groupEnd,
+          });
+        }
 
         dialogues.push(
-          `Dialogue: 0,${formatAssTime(wordStart)},${formatAssTime(wordEnd)},Default,,0,0,0,,${parts.join(" ")}`,
+          `Dialogue: 0,${formatAssTime(wordStart)},${formatAssTime(wordEnd)},Default,,0,0,0,,${lineText}`,
         );
       }
     }
   }
 
-  return assHeader + dialogues.join("\n");
+  return { ass: assHeader + dialogues.join("\n"), emojiData };
+}
+
+/** Emoji data collected from a single ASS dialogue line. */
+interface EntryEmojiData {
+  /** Emoji instances found in this entry's text. */
+  instances: EmojiInstance[];
+  /** The stripped text (emoji replaced with spaces) AFTER {\fn} tagging by tagText(). */
+  taggedStrippedText: string;
+  /** Start time in seconds. */
+  startTime: number;
+  /** End time in seconds. */
+  endTime: number;
 }
 
 const POSITION_ALIGNMENT: Record<string, number> = {
@@ -330,6 +441,8 @@ export interface CaptionsResult {
   audioPath?: string;
   /** Font files needed for rendering (primary + any fallbacks for non-Latin scripts). */
   fontFiles?: { url: string; fileName: string }[];
+  /** Emoji overlay data for color emoji rendering via image overlay. */
+  emojiOverlays?: EmojiOverlay[];
 }
 
 export async function renderCaptions(
@@ -478,7 +591,45 @@ export async function renderCaptions(
     ? colorToAss(props.activeColor)
     : undefined;
 
-  const assContent = props.wordsPerLine
+  // Check if the SRT content has emoji — if so, we'll strip them from ASS
+  // text and build overlay data for color PNG rendering
+  const srtHasEmoji = hasEmoji(srtContent);
+
+  // When emoji are present, compute how many spaces to reserve per emoji
+  // using precise font metrics from the primary font
+  let spacesPerEmoji: number | undefined;
+  let fontPathMap: FontPathMap | undefined;
+  if (srtHasEmoji) {
+    // Download fonts locally for measurement
+    const localFontsDir = await ensureLocalFonts(
+      fontResolution.fontFiles.map((f) => ({
+        url: f.url,
+        fileName: f.fileName,
+      })),
+    );
+
+    // Build font name → local path mapping
+    fontPathMap = new Map();
+    for (const f of fontResolution.fontFiles) {
+      fontPathMap.set(f.fontName, `${localFontsDir}/${f.fileName}`);
+    }
+
+    // Compute spacesPerEmoji using real font metrics
+    const primaryFontPath = fontPathMap.get(fontResolution.primary.fontName);
+    if (primaryFontPath) {
+      const metrics = getFontMetrics(primaryFontPath, style.fontSize);
+      const emojiSize = calculateEmojiSize(
+        metrics.winAscent,
+        ctx.height,
+        ctx.height,
+      );
+      const spaceWidth = getSpaceWidth(primaryFontPath, style.fontSize);
+      // +1 buffer space for visual breathing room between emoji and adjacent text
+      spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
+    }
+  }
+
+  const { ass: assContent, emojiData } = props.wordsPerLine
     ? convertSrtToAssGrouped(
         srtContent,
         style,
@@ -487,6 +638,8 @@ export async function renderCaptions(
         props.wordsPerLine,
         activeColorAss,
         fontResolution.tagText,
+        srtHasEmoji,
+        spacesPerEmoji,
       )
     : convertSrtToAss(
         srtContent,
@@ -494,18 +647,97 @@ export async function renderCaptions(
         ctx.width,
         ctx.height,
         fontResolution.tagText,
+        srtHasEmoji,
+        spacesPerEmoji,
       );
   const assPath = `/tmp/varg-captions-${Date.now()}.ass`;
   writeFileSync(assPath, assContent);
   ctx.tempFiles.push(assPath);
 
+  // Build emoji overlay descriptors with precise pixel positions from font metrics
+  let emojiOverlays: EmojiOverlay[] | undefined;
+  if (emojiData.length > 0 && fontPathMap) {
+    const primaryFontPath = fontPathMap.get(style.fontName);
+    const metrics = primaryFontPath
+      ? getFontMetrics(primaryFontPath, style.fontSize)
+      : {
+          ppem: style.fontSize * 0.64,
+          capHeight: style.fontSize * 0.45,
+          winAscent: style.fontSize * 0.7,
+          winDescent: style.fontSize * 0.3,
+        };
+    const emojiSize = calculateEmojiSize(
+      metrics.winAscent,
+      ctx.height,
+      ctx.height,
+    );
+    const nSpaces = spacesPerEmoji ?? 1;
+    const spaceW = primaryFontPath
+      ? getSpaceWidth(primaryFontPath, style.fontSize)
+      : metrics.ppem * 0.28;
+    emojiOverlays = [];
+    for (const entry of emojiData) {
+      const segments = parseASSSegments(
+        entry.taggedStrippedText,
+        style.fontName,
+      );
+      const charPositions = getCharXPositions(
+        segments,
+        fontPathMap,
+        style.fontSize,
+        ctx.width,
+        style.alignment,
+      );
+
+      for (const instance of entry.instances) {
+        // charIndex points to the first space in the reserved block.
+        // Center the emoji within the reserved space block.
+        const firstSpaceX = charPositions[instance.charIndex] ?? 0;
+        const lastSpaceIdx = Math.min(
+          instance.charIndex + nSpaces - 1,
+          charPositions.length - 1,
+        );
+        const lastSpaceX = charPositions[lastSpaceIdx] ?? firstSpaceX;
+        const blockEndX = lastSpaceX + spaceW;
+        const blockWidth = blockEndX - firstSpaceX;
+        const x = Math.round(firstSpaceX + blockWidth / 2 - emojiSize / 2);
+
+        const y = calculateEmojiY(
+          style.alignment,
+          style.marginV,
+          metrics.winDescent,
+          metrics.winAscent,
+          metrics.capHeight,
+          ctx.height,
+          ctx.height,
+        );
+        emojiOverlays.push({
+          url: instance.url,
+          fileName: `${instance.codepoints}.png`,
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+          x,
+          y,
+          size: emojiSize,
+        });
+      }
+    }
+  }
+
+  // When emoji are overlaid as color PNGs, exclude Noto Emoji from font files
+  // (emoji chars are spaces in the ASS text, so the monochrome font is unused)
+  const fontFiles = fontResolution.fontFiles
+    .filter(
+      (f) =>
+        !(emojiOverlays && emojiOverlays.length > 0 && f.id === "noto-emoji"),
+    )
+    .map((f) => ({ url: f.url, fileName: f.fileName }));
+
   return {
     assPath,
     srtPath,
     audioPath: props.withAudio ? audioPath : undefined,
-    fontFiles: fontResolution.fontFiles.map((f) => ({
-      url: f.url,
-      fileName: f.fileName,
-    })),
+    fontFiles,
+    emojiOverlays,
   };
 }
