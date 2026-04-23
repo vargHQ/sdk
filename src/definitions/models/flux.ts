@@ -64,7 +64,7 @@ export const definition: ModelDefinition<typeof schema> = {
         return 0.04 * megapixels * numImages;
       },
       minUsd: 0.04, // 1 image at 1MP
-      maxUsd: 0.16, // 4 images at 1MP
+      maxUsd: 0.64, // 4 images at 4MP (2048x2048)
     },
   },
 };

@@ -66,10 +66,10 @@ export const definition: ModelDefinition<typeof schema> = {
   schema,
   pricing: {
     higgsfield: {
-      description: "Flat ~$0.05 per image via Higgsfield",
-      calculate: () => 0.05,
-      minUsd: 0.05,
-      maxUsd: 0.05,
+      description: "$0.05 per image via Higgsfield (batch_size 1-4)",
+      calculate: ({ numImages = 1 }) => 0.05 * numImages,
+      minUsd: 0.05, // 1 image
+      maxUsd: 0.2, // 4 images
     },
   },
 };

@@ -69,10 +69,10 @@ export const definition: ModelDefinition<typeof schema> = {
   schema,
   pricing: {
     fal: {
-      description: "Flat ~$0.25 per track via fal",
-      calculate: () => 0.25,
-      minUsd: 0.25,
-      maxUsd: 0.25,
+      description: "$0.25 per track via fal (num_songs 1-2)",
+      calculate: ({ numImages = 1 }) => 0.25 * numImages,
+      minUsd: 0.25, // 1 song
+      maxUsd: 0.5, // 2 songs
     },
   },
 };

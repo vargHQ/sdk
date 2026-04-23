@@ -55,7 +55,7 @@ export const definition: ModelDefinition<typeof schema> = {
         "$0.10 per 1,000 characters via ElevenLabs (Multilingual v2/v3). Flash/Turbo: $0.05/1K.",
       calculate: ({ characters = 500 }) => 0.0001 * characters,
       minUsd: 0.01, // ~100 chars
-      maxUsd: 0.4, // ~4000 chars
+      maxUsd: 1.0, // ~10,000 chars (long-form narration)
     },
   },
 };

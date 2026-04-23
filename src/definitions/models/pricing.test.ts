@@ -158,6 +158,30 @@ describe("SDK pricing formulas", () => {
     expect(cost1000).toBe(cost500! * 2);
   });
 
+  // --- Soul: batch_size pricing ---
+
+  test("soul: 1 image = $0.05", () => {
+    const cost = calculateProviderCost("soul", "higgsfield", { numImages: 1 });
+    expect(cost).toBe(0.05);
+  });
+
+  test("soul: 4 images = $0.20", () => {
+    const cost = calculateProviderCost("soul", "higgsfield", { numImages: 4 });
+    expect(cost).toBe(0.2);
+  });
+
+  // --- Sonauto: num_songs pricing ---
+
+  test("sonauto: 1 song = $0.25", () => {
+    const cost = calculateProviderCost("sonauto", "fal", { numImages: 1 });
+    expect(cost).toBe(0.25);
+  });
+
+  test("sonauto: 2 songs = $0.50", () => {
+    const cost = calculateProviderCost("sonauto", "fal", { numImages: 2 });
+    expect(cost).toBe(0.5);
+  });
+
   // --- Lookup utilities ---
 
   test("getModelPricing returns null for unknown model", () => {
