@@ -215,6 +215,8 @@ export interface TalkingHeadProps extends BaseProps {
 }
 
 export interface TitleProps extends BaseProps {
+  /** Title text. Alias for children — if both are provided, children takes precedence. */
+  text?: string;
   position?: Position;
   color?: string;
   /** Path to a custom font file (.ttf, .otf) */
@@ -229,6 +231,8 @@ export interface TitleProps extends BaseProps {
 }
 
 export interface SubtitleProps extends BaseProps {
+  /** Subtitle text. Alias for children — if both are provided, children takes precedence. */
+  text?: string;
   backgroundColor?: string;
   children?: string;
 }

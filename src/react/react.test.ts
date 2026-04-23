@@ -10,6 +10,7 @@ import {
   render,
   Slider,
   Split,
+  Subtitle,
   Swipe,
   Title,
   Video,
@@ -78,6 +79,36 @@ describe("varg-react elements", () => {
     expect(element.props.position).toBe("bottom");
     expect(element.props.color).toBe("#ffffff");
     expect(element.children).toContain("I'M IN DANGER");
+  });
+
+  test("Title supports text prop as alias for children", () => {
+    const element = Title({
+      position: "top",
+      color: "#FFFFFF",
+      text: "POV: your brain has 47 tabs open",
+    });
+
+    expect(element.type).toBe("title");
+    expect(element.children).toContain("POV: your brain has 47 tabs open");
+  });
+
+  test("Title children takes precedence over text prop", () => {
+    const element = Title({
+      text: "from text prop",
+      children: "from children",
+    });
+
+    expect(element.children).toContain("from children");
+    expect(element.children).not.toContain("from text prop");
+  });
+
+  test("Subtitle supports text prop as alias for children", () => {
+    const element = Subtitle({
+      text: "This is a subtitle via text prop",
+    });
+
+    expect(element.type).toBe("subtitle");
+    expect(element.children).toContain("This is a subtitle via text prop");
   });
 
   test("Video creates correct element with nested image", () => {

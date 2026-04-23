@@ -6,7 +6,7 @@ export function renderSubtitle(
   element: VargElement<"subtitle">,
 ): SubtitleLayer {
   const props = element.props as SubtitleProps;
-  const text = getTextContent(element.children);
+  const text = getTextContent(element.children) || props.text || "";
 
   return {
     type: "subtitle",

@@ -4,7 +4,7 @@ import { getTextContent } from "./utils";
 
 export function renderTitle(element: VargElement<"title">): TitleLayer {
   const props = element.props as TitleProps;
-  const text = getTextContent(element.children);
+  const text = getTextContent(element.children) || props.text || "";
 
   return {
     type: "title",

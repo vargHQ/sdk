@@ -157,7 +157,7 @@ export function Title(props: TitleProps): VargElement<"title"> {
   return createElement(
     "title",
     props as Record<string, unknown>,
-    props.children,
+    props.children ?? props.text,
   );
 }
 
@@ -165,7 +165,7 @@ export function Subtitle(props: SubtitleProps): VargElement<"subtitle"> {
   return createElement(
     "subtitle",
     props as Record<string, unknown>,
-    props.children,
+    props.children ?? props.text,
   );
 }
 
