@@ -101,13 +101,30 @@ describe("SDK pricing formulas", () => {
 
   // --- Duration-based video models ---
 
-  test("kling: per-second pricing — longer duration costs more", () => {
-    const cost5 = calculateProviderCost("kling", "fal", { duration: 5 });
-    const cost10 = calculateProviderCost("kling", "fal", { duration: 10 });
-    expect(cost5).toBeGreaterThan(0);
-    expect(cost10).toBeGreaterThan(cost5!);
-    // 10s should be exactly 2x of 5s (linear per-second)
-    expect(cost10).toBe(cost5! * 2);
+  test("kling: 5s audio off = $0.56", () => {
+    const cost = calculateProviderCost("kling", "fal", { duration: 5 });
+    expect(cost).toBe(0.56);
+  });
+
+  test("kling: 5s audio on = $0.70", () => {
+    const cost = calculateProviderCost("kling", "fal", {
+      duration: 5,
+      generateAudio: true,
+    });
+    expect(cost).toBeCloseTo(0.7);
+  });
+
+  test("kling: 10s audio off = $1.12", () => {
+    const cost = calculateProviderCost("kling", "fal", { duration: 10 });
+    expect(cost).toBeCloseTo(1.12);
+  });
+
+  test("kling: 10s audio on = $1.40", () => {
+    const cost = calculateProviderCost("kling", "fal", {
+      duration: 10,
+      generateAudio: true,
+    });
+    expect(cost).toBeCloseTo(1.4);
   });
 
   // --- Image models: per-image ---

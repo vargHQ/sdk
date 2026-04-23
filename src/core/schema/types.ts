@@ -237,6 +237,8 @@ export interface PricingParams {
   numImages?: number;
   /** Text length for speech models */
   characters?: number;
+  /** Whether to generate native audio (e.g. Kling video with audio) */
+  generateAudio?: boolean;
 
   // Input params (for v2v, upscaling, etc.)
   /** Duration of input video in seconds (for v2v models) */
