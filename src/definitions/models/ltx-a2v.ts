@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { urlSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 const cameraLoraSchema = z
   .enum([
@@ -190,6 +194,18 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "fal-ai/ltx-2-19b/audio-to-video",
   },
   schema,
+  pricing: {
+    fal: {
+      description:
+        "$0.0018 per megapixel of video data (width x height x frames) via fal. E.g. 121 frames at 1280x720 = ~112 MP = $0.20",
+      calculate: ({ width = 1024, height = 768, numFrames = 121 }) => {
+        const megapixels = (width * height * numFrames) / 1_000_000;
+        return Math.ceil(megapixels) * 0.0018;
+      },
+      minUsd: 0.05, // small video ~28 MP
+      maxUsd: 0.8, // 481 frames at 1280x720 ~443 MP
+    },
+  },
 };
 
 export default definition;

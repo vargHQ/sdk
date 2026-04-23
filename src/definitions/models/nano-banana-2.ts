@@ -4,7 +4,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Nano Banana 2 resolution options (includes 0.5K unlike nano-banana-pro)
 const nanoBanana2ResolutionSchema = z.enum(["0.5K", "1K", "2K", "4K"]);
@@ -111,6 +115,24 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "fal-ai/nano-banana-2",
   },
   schema,
+  pricing: {
+    fal: {
+      description:
+        "$0.08/image (1K), $0.06 (0.5K), $0.12 (2K), $0.16 (4K) via fal. Web search +$0.015, high thinking +$0.002.",
+      calculate: ({ numImages = 1, resolution }) => {
+        const rateMap: Record<string, number> = {
+          "0.5K": 0.06,
+          "1K": 0.08,
+          "2K": 0.12,
+          "4K": 0.16,
+        };
+        const rate = rateMap[resolution ?? "1K"] ?? 0.08;
+        return rate * numImages;
+      },
+      minUsd: 0.06, // 1 image at 0.5K
+      maxUsd: 0.64, // 4 images at 4K
+    },
+  },
 };
 
 export default definition;

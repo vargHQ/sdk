@@ -4,7 +4,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Nano Banana Pro resolution options
 const nanoBananaResolutionSchema = z.enum(["1K", "2K", "4K"]);
@@ -97,6 +101,18 @@ export const definition: ModelDefinition<typeof schema> = {
     replicate: "google/nano-banana-pro",
   },
   schema,
+  pricing: {
+    fal: {
+      description:
+        "$0.15 per 1K image, $0.30 per 4K image via fal. Web search adds $0.015.",
+      calculate: ({ numImages = 1, resolution }) => {
+        const rate = resolution === "4K" ? 0.3 : 0.15;
+        return rate * numImages;
+      },
+      minUsd: 0.15, // 1 image at 1K
+      maxUsd: 1.2, // 4 images at 4K
+    },
+  },
 };
 
 export default definition;

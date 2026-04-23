@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { audioFormatSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Input schema with Zod
 const sonautoInputSchema = z.object({
@@ -63,6 +67,14 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "fal-ai/sonauto/bark",
   },
   schema,
+  pricing: {
+    fal: {
+      description: "Flat ~$0.25 per track via fal",
+      calculate: () => 0.25,
+      minUsd: 0.25,
+      maxUsd: 0.25,
+    },
+  },
 };
 
 export default definition;

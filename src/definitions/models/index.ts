@@ -2,6 +2,12 @@
  * Model definitions index
  */
 
+import type {
+  ModelDefinition,
+  PricingParams,
+  ProviderPricing,
+} from "../../core/schema/types";
+
 export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
 export { definition as heygenAvatar } from "./heygen";
@@ -81,3 +87,41 @@ export const allModels = [
   llamaDefinition,
   heygenAvatarDefinition,
 ];
+
+// ---------------------------------------------------------------------------
+// Pricing utilities
+// ---------------------------------------------------------------------------
+
+/** Look up the ProviderPricing formula for a model+provider pair. */
+export function getModelPricing(
+  modelName: string,
+  provider: string,
+): ProviderPricing | null {
+  const model = allModels.find((m) => m.name === modelName);
+  return model?.pricing?.[provider] ?? null;
+}
+
+/**
+ * Calculate the raw provider cost (USD) for a model+provider given params.
+ * Returns null if the model has no pricing formula for the given provider.
+ */
+export function calculateProviderCost(
+  modelName: string,
+  provider: string,
+  params: PricingParams,
+): number | null {
+  const pricing = getModelPricing(modelName, provider);
+  return pricing ? pricing.calculate(params) : null;
+}
+
+/**
+ * Get the pricing bounds (min/max USD) for a model+provider.
+ * Useful for UI estimation and x402 payment headers.
+ */
+export function getModelPricingBounds(
+  modelName: string,
+  provider: string,
+): { minUsd: number; maxUsd: number } | null {
+  const pricing = getModelPricing(modelName, provider);
+  return pricing ? { minUsd: pricing.minUsd, maxUsd: pricing.maxUsd } : null;
+}

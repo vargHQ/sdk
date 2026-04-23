@@ -354,6 +354,24 @@ export interface DefaultModels {
   transcription?: TranscriptionModelV3;
 }
 
+/** Pricing metadata for a single generation call, emitted via onGeneration. */
+export interface GenerationPricingEntry {
+  /** Generation type */
+  type: "image" | "video" | "speech" | "music" | "transcription";
+  /** Model ID used */
+  model: string;
+  /** Estimated cost in credits (before generation) */
+  estimated?: number;
+  /** Actual cost in credits (after generation) */
+  actual?: number;
+  /** Billing mode */
+  billing?: "metered" | "byok" | "x402";
+  /** Whether result was served from cache */
+  cached?: boolean;
+  /** Gateway job ID for this generation */
+  jobId?: string;
+}
+
 export interface RenderOptions {
   output?: string;
   cache?: string | CacheStorage;
@@ -365,6 +383,8 @@ export interface RenderOptions {
   storage?: StorageProvider;
   /** Max concurrent clip renders. Defaults to 3. */
   concurrency?: number;
+  /** Callback invoked after each AI generation completes. Used to accumulate per-model costs. */
+  onGeneration?: (entry: GenerationPricingEntry) => void;
 }
 
 // Re-export from file module for convenience

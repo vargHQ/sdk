@@ -5,7 +5,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Image size can be an enum string or an object with width/height
 const recraftV4ImageSizeSchema = z.union([
@@ -89,6 +93,14 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "fal-ai/recraft/v4/pro/text-to-image",
   },
   schema,
+  pricing: {
+    fal: {
+      description: "$0.25 per image via fal",
+      calculate: () => 0.25,
+      minUsd: 0.25,
+      maxUsd: 0.25,
+    },
+  },
 };
 
 export default definition;

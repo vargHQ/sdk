@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { soulQualitySchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Soul-specific dimension schema
 const soulDimensionSchema = z.enum([
@@ -60,6 +64,14 @@ export const definition: ModelDefinition<typeof schema> = {
     higgsfield: "/v1/text2image/soul",
   },
   schema,
+  pricing: {
+    higgsfield: {
+      description: "Flat ~$0.05 per image via Higgsfield",
+      calculate: () => 0.05,
+      minUsd: 0.05,
+      maxUsd: 0.05,
+    },
+  },
 };
 
 export default definition;

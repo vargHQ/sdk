@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { imageSizeSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Input schema with Zod
 const fluxInputSchema = z.object({
@@ -51,6 +55,18 @@ export const definition: ModelDefinition<typeof schema> = {
     replicate: "black-forest-labs/flux-1.1-pro",
   },
   schema,
+  pricing: {
+    fal: {
+      description:
+        "$0.04 per megapixel via fal (rounded up). Standard 1MP image = $0.04.",
+      calculate: ({ numImages = 1, width = 1024, height = 768 }) => {
+        const megapixels = Math.ceil((width * height) / 1_000_000);
+        return 0.04 * megapixels * numImages;
+      },
+      minUsd: 0.04, // 1 image at 1MP
+      maxUsd: 0.16, // 4 images at 1MP
+    },
+  },
 };
 
 export default definition;

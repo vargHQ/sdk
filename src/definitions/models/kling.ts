@@ -8,7 +8,11 @@ import {
   aspectRatioSchema,
   videoDurationSchema,
 } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Input schema with Zod
 const klingInputSchema = z.object({
@@ -51,6 +55,15 @@ export const definition: ModelDefinition<typeof schema> = {
     replicate: "fofr/kling-v1.5",
   },
   schema,
+  pricing: {
+    fal: {
+      description:
+        "Kling O3 Pro: $0.112/sec (audio off), $0.14/sec (audio on). 5s video = $0.56-$0.70",
+      calculate: ({ duration = 5 }) => 0.112 * duration,
+      minUsd: 0.34, // 3s * $0.112
+      maxUsd: 2.1, // 15s * $0.14 (with audio)
+    },
+  },
 };
 
 export default definition;

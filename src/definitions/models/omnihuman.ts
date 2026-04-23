@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { urlSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 const omnihumanResolutionSchema = z
   .enum(["720p", "1080p"])
@@ -66,6 +70,14 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "fal-ai/bytedance/omnihuman/v1.5",
   },
   schema,
+  pricing: {
+    fal: {
+      description: "$0.16 per second of output video via fal",
+      calculate: ({ duration = 5 }) => 0.16 * duration,
+      minUsd: 0.48, // ~3s minimum
+      maxUsd: 9.6, // 60s at 720p max
+    },
+  },
 };
 
 export default definition;

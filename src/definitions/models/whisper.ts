@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { filePathSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Input schema with Zod
 const whisperInputSchema = z.object({
@@ -39,6 +43,26 @@ export const definition: ModelDefinition<typeof schema> = {
     fireworks: "whisper-v3-large",
   },
   schema,
+  pricing: {
+    groq: {
+      description:
+        "$0.111 per hour of audio via Groq (min 10s billing per request)",
+      calculate: ({ duration = 60 }) => {
+        const billableSeconds = Math.max(duration, 10);
+        return (billableSeconds / 3600) * 0.111;
+      },
+      minUsd: 0.0003, // 10s minimum
+      maxUsd: 0.111, // 1 hour
+    },
+    fireworks: {
+      description: "$0.0015 per audio minute via Fireworks (billed per second)",
+      calculate: ({ duration = 60 }) => {
+        return (duration / 60) * 0.0015;
+      },
+      minUsd: 0.0001, // few seconds
+      maxUsd: 0.09, // 1 hour
+    },
+  },
 };
 
 export default definition;
