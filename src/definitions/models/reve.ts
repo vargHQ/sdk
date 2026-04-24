@@ -5,7 +5,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Output format options
 const reveOutputFormatSchema = z.enum(["png", "jpeg", "webp"]);
@@ -61,6 +65,14 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "fal-ai/reve/edit",
   },
   schema,
+  pricing: {
+    fal: {
+      description: "Flat ~$0.04 per image via fal",
+      calculate: ({ numImages = 1 }) => 0.04 * numImages,
+      minUsd: 0.04,
+      maxUsd: 0.16,
+    },
+  },
 };
 
 export default definition;

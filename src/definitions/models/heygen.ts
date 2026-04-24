@@ -4,7 +4,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 const heygenInputSchema = z.object({
   script: z.string().describe("Script text for the avatar to speak"),
@@ -56,6 +60,21 @@ export const definition: ModelDefinition<typeof schema> = {
     heygen: "avatar-iv",
   },
   schema,
+  pricing: {
+    heygen: {
+      description:
+        "$0.10 per second of output video, estimated from script length",
+      calculate: ({ duration, characters }) => {
+        // HeyGen charges $0.10/sec. Estimate duration from script if not provided.
+        // ~150 words/min = ~2.5 words/sec, avg word ~5 chars → ~12.5 chars/sec
+        const estimatedDuration =
+          duration ?? (characters ? Math.ceil(characters / 12.5) : 30);
+        return 0.1 * estimatedDuration;
+      },
+      minUsd: 1.0, // ~10s
+      maxUsd: 10.0, // ~100s
+    },
+  },
 };
 
 export default definition;

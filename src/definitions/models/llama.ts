@@ -4,7 +4,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Llama model variants schema
 const llamaModelSchema = z.enum([
@@ -49,6 +53,14 @@ export const definition: ModelDefinition<typeof schema> = {
     groq: "llama-3.3-70b-versatile",
   },
   schema,
+  pricing: {
+    groq: {
+      description: "~$0.001 per 1K tokens via Groq",
+      calculate: () => 0.005, // typical request ~5K tokens
+      minUsd: 0.001,
+      maxUsd: 0.01,
+    },
+  },
 };
 
 export default definition;

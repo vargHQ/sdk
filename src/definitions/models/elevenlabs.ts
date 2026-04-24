@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { elevenLabsModelSchema, percentSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Input schema with Zod
 const elevenlabsInputSchema = z.object({
@@ -45,6 +49,15 @@ export const definition: ModelDefinition<typeof schema> = {
     elevenlabs: "eleven_multilingual_v2",
   },
   schema,
+  pricing: {
+    elevenlabs: {
+      description:
+        "$0.10 per 1,000 characters via ElevenLabs (Multilingual v2/v3). Flash/Turbo: $0.05/1K.",
+      calculate: ({ characters = 500 }) => 0.0001 * characters,
+      minUsd: 0.01, // ~100 chars
+      maxUsd: 1.0, // ~10,000 chars (long-form narration)
+    },
+  },
 };
 
 export default definition;

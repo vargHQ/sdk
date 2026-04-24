@@ -9,7 +9,11 @@
 
 import { z } from "zod";
 import { aspectRatioSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Seedance supports 5, 10, or 15 second durations
 const seedanceDurationSchema = z.union([
@@ -78,6 +82,14 @@ export const definition: ModelDefinition<typeof schema> = {
     piapi: "seedance-2-preview",
   },
   schema,
+  pricing: {
+    piapi: {
+      description: "$0.25 per second of output video",
+      calculate: ({ duration = 5 }) => 0.25 * duration,
+      minUsd: 1.25, // 5s
+      maxUsd: 3.75, // 15s
+    },
+  },
 };
 
 export const fastDefinition: ModelDefinition<typeof schema> = {
@@ -91,6 +103,14 @@ export const fastDefinition: ModelDefinition<typeof schema> = {
     piapi: "seedance-2-fast-preview",
   },
   schema,
+  pricing: {
+    piapi: {
+      description: "$0.15 per second of output video",
+      calculate: ({ duration = 5 }) => 0.15 * duration,
+      minUsd: 0.75, // 5s
+      maxUsd: 2.25, // 15s
+    },
+  },
 };
 
 export default definition;

@@ -47,6 +47,10 @@ export interface FFmpegRunOptions {
   verbose?: boolean;
   /** Max execution time in seconds (used by cloud backends like Rendi, ignored by local) */
   timeoutSeconds?: number;
+  /** Extra files (e.g. fonts) to include alongside inputs.
+   *  When present, cloud backends like Rendi use compressed folder mode
+   *  (input_compressed_folder) to bundle all files together. */
+  auxiliaryFiles?: { url: string; fileName: string }[];
 }
 
 export type FFmpegOutput =

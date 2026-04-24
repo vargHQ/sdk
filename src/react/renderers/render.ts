@@ -38,6 +38,7 @@ import { burnCaptions } from "./burn-captions";
 import { type CaptionsResult, renderCaptions } from "./captions";
 import { renderClip } from "./clip";
 import type { RenderContext } from "./context";
+import type { EmojiOverlay } from "./emoji";
 import { renderImage } from "./image";
 import { mergeAssFiles, shiftAssTimestamps } from "./merge-ass";
 import { renderMusic } from "./music";
@@ -122,6 +123,33 @@ export async function renderRoot(
     ? withCache(generateMusic, { storage: cacheStorage })
     : generateMusic;
 
+  const onGeneration = options.onGeneration;
+
+  /** Extract pricing metadata from provider response and emit via callback. */
+  // biome-ignore lint/suspicious/noExplicitAny: result shapes vary across AI SDK model types
+  const emitPricing = (
+    type: "image" | "video" | "speech" | "music",
+    modelId: string,
+    result: any,
+  ) => {
+    if (!onGeneration) return;
+    const vargMeta = result?.providerMetadata?.varg as
+      | { pricing?: Record<string, unknown>; jobId?: string }
+      | undefined;
+    if (vargMeta?.pricing) {
+      const p = vargMeta.pricing;
+      onGeneration({
+        type,
+        model: modelId,
+        estimated: p.estimated as number | undefined,
+        actual: p.actual as number | undefined,
+        billing: p.billing as "metered" | "byok" | "x402" | undefined,
+        cached: p.cached as boolean | undefined,
+        jobId: vargMeta.jobId,
+      });
+    }
+  };
+
   const wrapGenerateImage: typeof generateImage = async (opts) => {
     if (mode === "preview") {
       trackPlaceholder("image");
@@ -138,7 +166,11 @@ export async function renderRoot(
       } as Parameters<typeof cachedGenerateImage>[0]);
     }
 
-    return cachedGenerateImage(opts);
+    const result = await cachedGenerateImage(opts);
+    const imgModelId =
+      typeof opts.model === "string" ? opts.model : opts.model.modelId;
+    emitPricing("image", imgModelId, result);
+    return result;
   };
 
   const wrapGenerateVideo: typeof generateVideo = async (opts) => {
@@ -157,7 +189,25 @@ export async function renderRoot(
       } as Parameters<typeof cachedGenerateVideo>[0]);
     }
 
-    return cachedGenerateVideo(opts);
+    const result = await cachedGenerateVideo(opts);
+    emitPricing("video", opts.model.modelId, result);
+    return result;
+  };
+
+  const wrapGenerateSpeech: typeof generateSpeech = async (opts) => {
+    const result = await cachedGenerateSpeech(opts);
+    const speechModelId =
+      typeof opts.model === "string" ? opts.model : opts.model.modelId;
+    emitPricing("speech", speechModelId, result);
+    return result;
+  };
+
+  const wrapGenerateMusic: typeof generateMusic = async (opts) => {
+    const result = await cachedGenerateMusic(opts);
+    const musicModelId =
+      typeof opts.model === "string" ? opts.model : opts.model.modelId;
+    emitPricing("music", musicModelId, result);
+    return result;
   };
 
   const backend = options.backend ?? localBackend;
@@ -171,8 +221,8 @@ export async function renderRoot(
     storage: options.storage,
     generateImage: wrapGenerateImage,
     generateVideo: wrapGenerateVideo,
-    generateSpeech: cachedGenerateSpeech,
-    generateMusic: cachedGenerateMusic,
+    generateSpeech: onGeneration ? wrapGenerateSpeech : cachedGenerateSpeech,
+    generateMusic: onGeneration ? wrapGenerateMusic : cachedGenerateMusic,
     tempFiles,
     progress,
     pendingFiles: new Map<string, Promise<File>>(),
@@ -611,12 +661,41 @@ export async function renderRoot(
     const captionsTaskId = addTask(progress, "captions", "ffmpeg");
     startTask(progress, captionsTaskId);
 
+    // Collect font files from all caption results (deduplicated by URL)
+    const fontFileMap = new Map<string, { url: string; fileName: string }>();
+    for (const result of hoistedCaptionsResults) {
+      for (const font of result.fontFiles ?? []) {
+        fontFileMap.set(font.url, font);
+      }
+    }
+    const allFontFiles = [...fontFileMap.values()];
+
+    // Collect emoji overlays from all caption results, shifting timing by clip offsets
+    const allEmojiOverlays: EmojiOverlay[] = [];
+    for (let i = 0; i < hoistedCaptionsResults.length; i++) {
+      const result = hoistedCaptionsResults[i]!;
+      const offset = clipStartOffsets[hoistedCaptions[i]!.clipIndex] ?? 0;
+      for (const overlay of result.emojiOverlays ?? []) {
+        allEmojiOverlays.push(
+          offset > 0
+            ? {
+                ...overlay,
+                startTime: overlay.startTime + offset,
+                endTime: overlay.endTime + offset,
+              }
+            : overlay,
+        );
+      }
+    }
+
     output = await burnCaptions({
       video: output,
       assPath: finalAssPath,
       outputPath: finalOutPath,
       backend: options.backend,
       verbose: options.verbose,
+      fontFiles: allFontFiles.length > 0 ? allFontFiles : undefined,
+      emojiOverlays: allEmojiOverlays.length > 0 ? allEmojiOverlays : undefined,
     });
 
     if (!options.backend) {

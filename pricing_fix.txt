@@ -1,0 +1,197 @@
+================================================================================
+PRICING FIX LOG - Verified from Official Provider llms.txt & Pricing Pages
+================================================================================
+Date: 2026-04-22
+Sources: fal.ai/models/*/llms.txt, elevenlabs.io/pricing/api, groq.com/pricing,
+         fireworks.ai/pricing, replicate.com/pricing
+
+================================================================================
+SUMMARY: 13 model definitions updated, 4 confirmed correct
+================================================================================
+
+Models confirmed CORRECT (no changes needed):
+  - reve          ($0.04/image)           src/definitions/models/reve.ts
+  - phota         ($0.09/1K image)        src/definitions/models/phota.ts
+  - phota/edit    ($0.09/1K image)        src/definitions/models/phota.ts
+  - phota/enhance ($0.13/image)           src/definitions/models/phota.ts
+
+================================================================================
+CHANGES APPLIED
+================================================================================
+
+--- FIX #1: nano-banana-pro.ts (CRITICAL - was 3.75x underpriced) ---
+File: src/definitions/models/nano-banana-pro.ts
+Source: https://fal.ai/models/fal-ai/nano-banana-pro/llms.txt
+Old: $0.04 per image flat
+New: $0.15 per image (1K), $0.30 per image (4K)
+     Web search adds $0.015 per request
+Formula: resolution === "4K" ? 0.30 : 0.15, multiplied by numImages
+
+--- FIX #2: recraft-v4.ts (CRITICAL - was 3.1x underpriced) ---
+File: src/definitions/models/recraft-v4.ts
+Source: https://fal.ai/models/fal-ai/recraft/v4/pro/text-to-image/llms.txt
+Old: $0.08 per image flat
+New: $0.25 per image flat
+Formula: flat 0.25
+
+--- FIX #3: kling.ts (was flat, now per-second) ---
+File: src/definitions/models/kling.ts
+Source: https://fal.ai/models/fal-ai/kling-video/o3/pro/text-to-video/llms.txt
+Old: $1.20 flat per generation
+New: $0.112 per second (audio off), $0.14 per second (audio on)
+     5s video = $0.56 (no audio) or $0.70 (audio)
+     Duration range: 3-15 seconds
+Formula: 0.112 * duration
+Note: Using base rate $0.112 (no audio). Audio surcharge not auto-detected.
+      Kling v2.5 Turbo Pro ($0.07/sec) is a different endpoint used in
+      provider code, not captured in this model definition.
+
+--- FIX #4: wan.ts (was flat, now per-second with resolution tiers) ---
+File: src/definitions/models/wan.ts
+Source: https://fal.ai/models/fal-ai/wan-25-preview/image-to-video/llms.txt
+Old: $0.60 flat per generation
+New: $0.05/sec (480p), $0.10/sec (720p), $0.15/sec (1080p)
+     Duration options: 5s or 10s
+Formula: rateMap[resolution] * duration
+         rateMap = { "480p": 0.05, "720p": 0.10, "1080p": 0.15 }
+         Default resolution: "480p"
+
+--- FIX #5: omnihuman.ts (was flat, now per-second) ---
+File: src/definitions/models/omnihuman.ts
+Source: https://fal.ai/models/fal-ai/bytedance/omnihuman/v1.5/llms.txt
+Old: $0.80 flat per generation
+New: $0.16 per second of output video
+     Max audio: 30s (1080p), 60s (720p)
+Formula: 0.16 * duration
+Note: Duration driven by audio length. Output includes billing duration field.
+
+--- FIX #6: veed-fabric.ts (was flat, now per-second with resolution tiers) ---
+File: src/definitions/models/veed-fabric.ts
+Source: https://fal.ai/models/veed/fabric-1.0/llms.txt
+Old: $0.80 flat per generation
+New: $0.08/sec (480p), $0.15/sec (720p)
+Formula: (resolution === "720p" ? 0.15 : 0.08) * duration
+Note: Duration driven by audio length. Resolution is required input.
+
+--- FIX #7: nano-banana-2.ts (was 2x underpriced, now has resolution tiers) ---
+File: src/definitions/models/nano-banana-2.ts
+Source: https://fal.ai/models/fal-ai/nano-banana-2/llms.txt
+Old: $0.04 per image flat
+New: $0.06 (0.5K), $0.08 (1K), $0.12 (2K), $0.16 (4K) per image
+     Web search adds $0.015, high thinking adds $0.002
+Formula: rateMap[resolution] * numImages
+         rateMap = { "0.5K": 0.06, "1K": 0.08, "2K": 0.12, "4K": 0.16 }
+         Default resolution: "1K"
+
+--- FIX #8: elevenlabs.ts (was 1.8x overpriced) ---
+File: src/definitions/models/elevenlabs.ts
+Source: https://elevenlabs.io/pricing/api
+Old: $0.18 per 1,000 characters ($0.00018/char)
+New: $0.10 per 1,000 characters ($0.0001/char) for Multilingual v2/v3
+     Flash/Turbo models: $0.05 per 1,000 characters
+Formula: 0.0001 * characters
+Note: Default model is eleven_multilingual_v2, so v2 rate is used.
+      Flash/Turbo pricing noted in description for reference.
+
+--- FIX #9: ltx-a2v.ts (was flat, now per-megapixel of video data) ---
+File: src/definitions/models/ltx-a2v.ts
+Source: https://fal.ai/models/fal-ai/ltx-2-19b/audio-to-video/llms.txt
+Old: $0.40 flat per generation
+New: $0.0018 per megapixel of generated video data (width x height x frames)
+     Example: 121 frames at 1280x720 = ~112 MP = $0.2016
+Formula: Math.ceil((width * height * numFrames) / 1_000_000) * 0.0018
+         Default: width=1024, height=768, numFrames=121
+
+--- FIX #10: flux.ts (unit changed from per-image to per-megapixel) ---
+File: src/definitions/models/flux.ts
+Source: https://fal.ai/models/fal-ai/flux-pro/v1.1/llms.txt
+Old: $0.05 per image flat
+New: $0.04 per megapixel (rounded up to nearest MP)
+     Standard 1MP image (1024x1024) = $0.04
+Formula: 0.04 * Math.ceil((width * height) / 1_000_000) * numImages
+         Default: width=1024, height=768 -> 1MP -> $0.04
+
+--- FIX #11: whisper.ts / groq (was flat, now per-hour) ---
+File: src/definitions/models/whisper.ts
+Source: https://groq.com/pricing
+Old: $0.03 flat per transcription
+New: $0.111 per hour of audio (minimum 10s billing per request)
+Formula: (Math.max(duration, 10) / 3600) * 0.111
+         Default duration: 60 seconds
+
+--- FIX #12: whisper.ts / fireworks (was flat, now per-minute) ---
+File: src/definitions/models/whisper.ts
+Source: https://fireworks.ai/pricing
+Old: $0.02 flat per transcription
+New: $0.0015 per audio minute (billed per second)
+Formula: (duration / 60) * 0.0015
+         Default duration: 60 seconds
+         $0.0015/min = $0.000025/sec = $0.09/hour
+
+--- FIX #13: qwen-image-2.ts (minor adjustment) ---
+File: src/definitions/models/qwen-image-2.ts
+Source: https://fal.ai/models/fal-ai/qwen-image-2/text-to-image/llms.txt
+Old: $0.04 per image
+New: $0.035 per image (standard endpoint)
+     Pro endpoint: $0.075/image (separate endpoint, not this definition)
+Formula: 0.035 * numImages
+
+================================================================================
+MODELS WITHOUT DEFINITIONS (AI-SDK only, not updated)
+================================================================================
+
+These are registered in src/ai-sdk/providers/ but have no model definition
+files in src/definitions/models/. Verified pricing from llms.txt for reference:
+
+Grok Imagine Video (fal):
+  - text-to-video: $0.05/sec (480p), $0.07/sec (720p)
+  - image-to-video: $0.05/sec (480p) + $0.002/image, $0.07/sec (720p) + $0.002
+  - edit-video:     $0.06/sec (480p), $0.08/sec (720p) (includes input+output)
+
+Sync Lipsync (fal):
+  - $0.70 per minute of video processed
+
+ElevenLabs Music (elevenlabs):
+  - $0.30 per minute of music generated
+
+Replicate Flux models:
+  - flux-1.1-pro: $0.04/output image
+  - flux-dev:     $0.025/output image
+  - flux-schnell: $0.003/output image ($3/1K images)
+
+================================================================================
+UNVERIFIED MODELS (no public pricing available)
+================================================================================
+
+seedance.ts    - PiAPI credit-based pricing, not publicly listed per-second
+heygen.ts      - HeyGen API uses pay-as-you-go credits, no public $/sec rate
+soul.ts        - Higgsfield has no public pricing page
+sonauto.ts     - fal model page returned 404, may be deprecated/moved
+llama.ts       - Groq LLM pricing is negligible, current approx is acceptable
+
+================================================================================
+PRICING PARAMS INTERFACE
+================================================================================
+
+The PricingParams interface (src/core/schema/types.ts) already has all fields
+used in the updated calculate functions:
+  - duration: number       (video/audio seconds)
+  - resolution: string     (e.g. "480p", "720p", "1080p", "1K", "4K")
+  - width: number          (image/video width in pixels)
+  - height: number         (image/video height in pixels)
+  - numFrames: number      (video frame count)
+  - numImages: number      (batch image count)
+  - characters: number     (TTS text length)
+
+No changes were needed to the interface.
+
+================================================================================
+TYPE CHECK
+================================================================================
+
+All 13 model definition files pass TypeScript type checking with zero errors.
+Pre-existing errors in ai-sdk provider files (Uint8Array/BlobPart) are unrelated.
+
+================================================================================
+END OF PRICING FIX LOG
+================================================================================

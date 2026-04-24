@@ -30,6 +30,7 @@ export type {
   ElementMeta,
   FileMetadata,
   GeneratedFileType,
+  GenerationPricingEntry,
   ImageProps,
   MusicProps,
   OverlayProps,

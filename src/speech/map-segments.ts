@@ -1,4 +1,5 @@
 import type { SegmentDescriptor, WordTiming } from "./types";
+import { countWords } from "./word-segmenter";
 
 /**
  * Map word-level timings back to the original string array to produce segments.
@@ -67,7 +68,7 @@ export function mapWordsToSegments(
   let wordIndex = 0;
 
   for (const text of children) {
-    const segmentWordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    const segmentWordCount = countWords(text);
 
     if (segmentWordCount === 0) {
       const pos =

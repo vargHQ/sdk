@@ -5,7 +5,11 @@
 
 import { z } from "zod";
 import { urlSchema } from "../../core/schema/shared";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 const fabricResolutionSchema = z
   .enum(["480p", "720p"])
@@ -44,6 +48,17 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "veed/fabric-1.0",
   },
   schema,
+  pricing: {
+    fal: {
+      description: "$0.08/sec (480p), $0.15/sec (720p) via fal",
+      calculate: ({ duration = 5, resolution }) => {
+        const rate = resolution === "720p" ? 0.15 : 0.08;
+        return rate * duration;
+      },
+      minUsd: 0.24, // ~3s * $0.08 (480p)
+      maxUsd: 4.5, // ~30s * $0.15 (720p)
+    },
+  },
 };
 
 export default definition;

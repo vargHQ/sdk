@@ -154,6 +154,12 @@ export interface ModelDefinition<S extends ZodSchema = ZodSchema> {
    * e.g., { fal: "fal-ai/kling-video/v2.5", replicate: "..." }
    */
   providerModels?: Record<string, string>;
+  /**
+   * Raw provider cost formulas, keyed by provider name.
+   * Each formula calculates the estimated provider cost in USD for a given
+   * set of generation parameters. The gateway applies markup on top of this.
+   */
+  pricing?: Record<string, ProviderPricing>;
 }
 
 export interface ActionRoute {
@@ -201,6 +207,65 @@ export type Definition =
   | ModelDefinition<ZodSchema>
   | ActionDefinition<ZodSchema>
   | SkillDefinition<ZodSchema>;
+
+// ============================================================================
+// Pricing Types
+// ============================================================================
+
+/**
+ * Standard inputs for pricing calculation.
+ * Every model's pricing function receives this — unused fields are undefined.
+ * This is the raw provider cost calculation — the gateway adds markup on top.
+ */
+export interface PricingParams {
+  // Output params (from the generation request)
+  /** Output video/audio duration in seconds */
+  duration?: number;
+  /** Output resolution preset, e.g. "480p" | "720p" | "1080p" | "2K" | "4K" */
+  resolution?: string;
+  /** Output aspect ratio, e.g. "16:9" | "9:16" | "1:1" */
+  aspectRatio?: string;
+  /** Output width in pixels */
+  width?: number;
+  /** Output height in pixels */
+  height?: number;
+  /** Frames per second */
+  fps?: number;
+  /** Explicit frame count (for frame-based models) */
+  numFrames?: number;
+  /** Number of images to generate (batch) */
+  numImages?: number;
+  /** Text length for speech models */
+  characters?: number;
+  /** Whether to generate native audio (e.g. Kling video with audio) */
+  generateAudio?: boolean;
+
+  // Input params (for v2v, upscaling, etc.)
+  /** Duration of input video in seconds (for v2v models) */
+  inputDuration?: number;
+  /** Input video/image width in pixels */
+  inputWidth?: number;
+  /** Input video/image height in pixels */
+  inputHeight?: number;
+
+  /** Catch-all for model-specific params that affect pricing */
+  providerOptions?: Record<string, unknown>;
+}
+
+/**
+ * Raw provider cost formula for a specific model+provider combination.
+ * The `calculate` function returns the estimated provider cost in USD.
+ */
+export interface ProviderPricing {
+  /** Human-readable description, e.g. "$0.25 per second of output video" */
+  description: string;
+  /** Calculate raw provider cost in USD given resolved params */
+  calculate: (params: PricingParams) => number;
+  /** Minimum possible provider cost in USD (for UI bounds / x402 headers) */
+  minUsd: number;
+  /** Maximum possible provider cost in USD (for UI bounds / x402 headers) */
+  maxUsd: number;
+}
 
 // ============================================================================
 // Execution Types

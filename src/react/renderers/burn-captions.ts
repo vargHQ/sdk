@@ -1,3 +1,4 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { localBackend } from "@/ai-sdk/providers/editly";
 import type {
   FFmpegBackend,
@@ -16,12 +17,48 @@ async function resolveInputPathMaybeUpload(
   return backend.resolvePath(input.path);
 }
 
+/** Font file descriptor for caption rendering. */
+export interface CaptionFontFile {
+  /** Public URL of the font file (e.g. https://s3.varg.ai/fonts/Montserrat-Bold.ttf) */
+  url: string;
+  /** Filename (e.g. "Montserrat-Bold.ttf") */
+  fileName: string;
+}
+
 export interface CaptionOverlayOptions {
   video: FFmpegOutput;
   assPath: string;
   outputPath: string;
   backend?: FFmpegBackend;
   verbose?: boolean;
+  /** Font files to include for subtitle rendering. When provided, fontsdir is set. */
+  fontFiles?: CaptionFontFile[];
+}
+
+/** Local font cache directory. */
+const LOCAL_FONTS_DIR = "/tmp/varg-caption-fonts";
+
+/**
+ * Download font files to a local directory for the local FFmpeg backend.
+ * Fonts are cached by filename — only downloaded once per process lifetime.
+ */
+async function ensureLocalFonts(fontFiles: CaptionFontFile[]): Promise<string> {
+  if (!existsSync(LOCAL_FONTS_DIR)) {
+    mkdirSync(LOCAL_FONTS_DIR, { recursive: true });
+  }
+  await Promise.all(
+    fontFiles.map(async (font) => {
+      const localPath = `${LOCAL_FONTS_DIR}/${font.fileName}`;
+      if (existsSync(localPath)) return;
+      const res = await fetch(font.url);
+      if (!res.ok)
+        throw new Error(
+          `Failed to download font ${font.fileName}: ${res.status}`,
+        );
+      writeFileSync(localPath, new Uint8Array(await res.arrayBuffer()));
+    }),
+  );
+  return LOCAL_FONTS_DIR;
 }
 
 /**
@@ -32,30 +69,26 @@ export interface CaptionOverlayOptions {
  * FFmpeg backends - when using a cloud backend, input files are automatically
  * uploaded to storage.
  *
+ * When `fontFiles` are provided:
+ * - **Local backend**: fonts are downloaded to a temp directory, and `fontsdir=`
+ *   is appended to the subtitles filter so FFmpeg/libass can find them.
+ * - **Cloud backend (Rendi)**: font files are passed as `auxiliaryFiles` in the
+ *   run options. The backend bundles them into a compressed input folder and
+ *   uses `fontsdir=.` so FFmpeg finds them in the working directory.
+ *
  * @param options - Configuration for the caption burn operation
- * @param options.video - Source video as {@link FFmpegOutput} (file path or URL)
- * @param options.assPath - Path to the ASS subtitle file to burn
- * @param options.outputPath - Destination path for the output video (defaults to "output.mp4")
- * @param options.backend - Optional {@link FFmpegBackend} for cloud processing; uses local FFmpeg if omitted
- * @param options.verbose - Enable verbose FFmpeg logging
- *
  * @returns Promise resolving to {@link FFmpegOutput} containing the path or URL of the captioned video
- *
- * @throws May throw if FFmpeg execution fails, input files are missing, or upload fails for cloud backends
- *
- * @example
- * ```ts
- * const result = await burnCaptions({
- *   video: { type: "file", path: "input.mp4" },
- *   assPath: "captions.ass",
- *   outputPath: "output-with-captions.mp4",
- * });
- * ```
  */
 export async function burnCaptions(
   options: CaptionOverlayOptions,
 ): Promise<FFmpegOutput> {
-  const { video, assPath, outputPath = "output.mp4", verbose } = options;
+  const {
+    video,
+    assPath,
+    outputPath = "output.mp4",
+    verbose,
+    fontFiles,
+  } = options;
   const captions: FFmpegOutput = { type: "file", path: assPath };
 
   const backend = options.backend ?? localBackend;
@@ -71,12 +104,41 @@ export async function burnCaptions(
     ? assInput
     : assInput.replace(/\\/g, "\\\\").replace(/:/g, "\\:");
 
+  // Build the video filter with optional fontsdir
+  let videoFilter: string;
+  const useCompressedFolder = isCloud && fontFiles && fontFiles.length > 0;
+  if (fontFiles && fontFiles.length > 0) {
+    if (isCloud) {
+      // For Rendi compressed folder: use the bare filename of the ASS file
+      // (all files are in the same working directory after ZIP extraction)
+      const assFileName =
+        assInput.split("/").pop()?.split("?")[0] ?? "captions.ass";
+      videoFilter = `subtitles=${assFileName}:fontsdir=.`;
+    } else {
+      // For local: download fonts and point fontsdir to the local cache
+      const fontsDir = await ensureLocalFonts(fontFiles);
+      const escapedFontsDir = fontsDir
+        .replace(/\\/g, "\\\\")
+        .replace(/:/g, "\\:");
+      videoFilter = `subtitles=${subtitlesPath}:fontsdir=${escapedFontsDir}`;
+    }
+  } else {
+    videoFilter = `subtitles=${subtitlesPath}`;
+  }
+
+  // Build auxiliary files for cloud backends (fonts to bundle in compressed folder)
+  const auxiliaryFiles =
+    isCloud && fontFiles && fontFiles.length > 0
+      ? fontFiles.map((f) => ({ url: f.url, fileName: f.fileName }))
+      : undefined;
+
   const result = await backend.run({
     inputs: [videoInput, assInput],
-    videoFilter: `subtitles=${subtitlesPath}`,
+    videoFilter,
     outputArgs: ["-crf", "18", "-preset", "fast", "-c:a", "copy"],
     outputPath,
     verbose,
+    auxiliaryFiles,
   });
 
   return result.output;

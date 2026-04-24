@@ -7,7 +7,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Shared enums
 const photaOutputFormatSchema = z.enum(["jpeg", "png", "webp"]);
@@ -85,6 +89,14 @@ export const photaDefinition: ModelDefinition<typeof photaSchema> = {
     fal: "fal-ai/phota",
   },
   schema: photaSchema,
+  pricing: {
+    fal: {
+      description: "$0.09 per 1K image via fal",
+      calculate: ({ numImages = 1 }) => 0.09 * numImages,
+      minUsd: 0.09,
+      maxUsd: 0.36, // 4 images
+    },
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -144,6 +156,14 @@ export const photaEditDefinition: ModelDefinition<typeof photaEditSchema> = {
     fal: "fal-ai/phota/edit",
   },
   schema: photaEditSchema,
+  pricing: {
+    fal: {
+      description: "$0.09 per 1K image via fal",
+      calculate: ({ numImages = 1 }) => 0.09 * numImages,
+      minUsd: 0.09,
+      maxUsd: 0.36,
+    },
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -193,6 +213,14 @@ export const photaEnhanceDefinition: ModelDefinition<
     fal: "fal-ai/phota/enhance",
   },
   schema: photaEnhanceSchema,
+  pricing: {
+    fal: {
+      description: "$0.13 per image via fal",
+      calculate: ({ numImages = 1 }) => 0.13 * numImages,
+      minUsd: 0.13,
+      maxUsd: 0.52,
+    },
+  },
 };
 
 // Default export for the primary text-to-image model

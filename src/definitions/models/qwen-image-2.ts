@@ -6,7 +6,11 @@
  */
 
 import { z } from "zod";
-import type { ModelDefinition, ZodSchema } from "../../core/schema/types";
+import type {
+  ModelDefinition,
+  ProviderPricing,
+  ZodSchema,
+} from "../../core/schema/types";
 
 // Image size can be an enum string or an object with width/height
 const qwenImage2ImageSizeSchema = z.union([
@@ -108,6 +112,15 @@ export const definition: ModelDefinition<typeof schema> = {
     fal: "fal-ai/qwen-image-2/text-to-image",
   },
   schema,
+  pricing: {
+    fal: {
+      description:
+        "$0.035 per image via fal (standard). Pro endpoint: $0.075/image.",
+      calculate: ({ numImages = 1 }) => 0.035 * numImages,
+      minUsd: 0.035, // 1 image
+      maxUsd: 0.21, // 6 images
+    },
+  },
 };
 
 export default definition;
