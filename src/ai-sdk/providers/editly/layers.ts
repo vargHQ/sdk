@@ -161,11 +161,15 @@ export function getVideoFilter(
     };
   }
 
-  let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
-  if (layer.resizeMode === "cover") {
-    scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+  let scaleFilter: string;
+  if (layer.resizeMode === "contain") {
+    scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
   } else if (layer.resizeMode === "stretch") {
     scaleFilter = `scale=${width}:${height}`;
+  } else {
+    // Default ("cover" or undefined): scale up to fill canvas, crop excess
+    const { x, y } = getCropPositionExpr(layer.cropPosition);
+    scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:${x}:${y}`;
   }
 
   filters.push(scaleFilter);
@@ -219,11 +223,15 @@ export function getVideoFilterWithTrim(
     filters.push("fps=30");
     filters.push("settb=1/30");
   } else {
-    let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
-    if (layer.resizeMode === "cover") {
-      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+    let scaleFilter: string;
+    if (layer.resizeMode === "contain") {
+      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
     } else if (layer.resizeMode === "stretch") {
       scaleFilter = `scale=${width}:${height}`;
+    } else {
+      // Default ("cover" or undefined): scale up to fill canvas, crop excess
+      const { x, y } = getCropPositionExpr(layer.cropPosition);
+      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:${x}:${y}`;
     }
 
     filters.push(scaleFilter);
@@ -386,11 +394,14 @@ export function getImageFilter(
       };
     }
 
-    let scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
-    if (layer.resizeMode === "cover") {
-      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+    let scaleFilter: string;
+    if (layer.resizeMode === "contain") {
+      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`;
     } else if (layer.resizeMode === "stretch") {
       scaleFilter = `scale=${width}:${height}`;
+    } else {
+      // Default ("cover" or undefined): scale up to fill canvas, crop excess
+      scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
     }
     filters.push(scaleFilter);
     filters.push(`pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`);
@@ -532,13 +543,14 @@ export function getImageOverlayFilter(
   let scaleExpr: string;
   if (!hasExplicitHeight) {
     scaleExpr = `scale=${targetWidth}:-2`;
-  } else if (layer.resizeMode === "cover") {
-    const { x, y } = getCropPositionExpr(layer.cropPosition);
-    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight}:${x}:${y}`;
+  } else if (layer.resizeMode === "contain") {
+    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black`;
   } else if (layer.resizeMode === "stretch") {
     scaleExpr = `scale=${targetWidth}:${targetHeight}`;
   } else {
-    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black`;
+    // Default ("cover" or undefined): scale up to fill, crop excess
+    const { x, y } = getCropPositionExpr(layer.cropPosition);
+    scaleExpr = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight}:${x}:${y}`;
   }
 
   const zoomDir = layer.zoomDirection ?? null;

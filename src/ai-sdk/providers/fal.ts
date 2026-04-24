@@ -630,6 +630,11 @@ class FalVideoModel implements VideoModelV3 {
       if (input.keep_original_sound === undefined) {
         input.keep_original_sound = true;
       }
+
+      // Pass aspect ratio so the provider returns the correct output dimensions
+      if (aspectRatio && !input.aspect_ratio) {
+        input.aspect_ratio = aspectRatio;
+      }
     } else if (isVideoEdit) {
       // Video edit: video input + prompt for editing instruction
       input.prompt = prompt;
