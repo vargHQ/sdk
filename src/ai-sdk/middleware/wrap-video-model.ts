@@ -1,7 +1,7 @@
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 import { generatePlaceholder } from "./placeholder";
 
-export type RenderMode = "strict" | "preview";
+export type RenderMode = "strict" | "preview" | "prerender";
 
 export interface VideoModelMiddleware {
   transformParams?: (options: {
