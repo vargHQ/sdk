@@ -10,9 +10,9 @@ export type GenerateVideoPrompt =
   | string
   | {
       text?: string;
-      images?: Array<DataContent>;
-      audio?: DataContent;
-      video?: DataContent;
+      images?: DataContent | Array<DataContent>;
+      audio?: DataContent | Array<DataContent>;
+      video?: DataContent | Array<DataContent>;
     };
 
 export interface GenerateVideoOptions {
@@ -76,6 +76,12 @@ function toUint8Array(data: DataContent): Uint8Array {
   return data;
 }
 
+/** Normalize singular or array to array */
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 function normalizePrompt(prompt: GenerateVideoPrompt): {
   prompt: string | undefined;
   files: ImageModelV3File[] | undefined;
@@ -86,7 +92,7 @@ function normalizePrompt(prompt: GenerateVideoPrompt): {
 
   const files: ImageModelV3File[] = [];
 
-  for (const img of prompt.images ?? []) {
+  for (const img of toArray(prompt.images)) {
     files.push({
       type: "file",
       mediaType: "image/png",
@@ -94,19 +100,19 @@ function normalizePrompt(prompt: GenerateVideoPrompt): {
     });
   }
 
-  if (prompt.audio) {
+  for (const aud of toArray(prompt.audio)) {
     files.push({
       type: "file",
       mediaType: "audio/mpeg",
-      data: toUint8Array(prompt.audio),
+      data: toUint8Array(aud),
     });
   }
 
-  if (prompt.video) {
+  for (const vid of toArray(prompt.video)) {
     files.push({
       type: "file",
       mediaType: "video/mp4",
-      data: toUint8Array(prompt.video),
+      data: toUint8Array(vid),
     });
   }
 

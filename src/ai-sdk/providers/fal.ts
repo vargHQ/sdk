@@ -107,6 +107,11 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     t2v: "fal-ai/kling-video/o3/standard/text-to-video",
     i2v: "fal-ai/kling-video/o3/standard/image-to-video",
   },
+  // Kling O3 4K - native 4K output (i2v only, t2v falls back to pro)
+  "kling-v3-4k": {
+    t2v: "fal-ai/kling-video/o3/pro/text-to-video",
+    i2v: "fal-ai/kling-video/o3/4k/image-to-video",
+  },
   // Kling v2.6 - with native audio generation
   "kling-v2.6": {
     t2v: "fal-ai/kling-video/v2.6/pro/text-to-video",
@@ -163,8 +168,21 @@ const VIDEO_EDIT_MODELS: Record<string, string> = {
   "sora-2-remix": "fal-ai/sora-2/video-to-video/remix",
 };
 
+// Reference-to-video models - images/elements + prompt → video with character consistency
+const REFERENCE_VIDEO_MODELS: Record<string, string> = {
+  "kling-v3-ref": "fal-ai/kling-video/o3/pro/reference-to-video",
+  "kling-v3-4k-ref": "fal-ai/kling-video/o3/4k/reference-to-video",
+};
+
+// Video-to-video reference models - reference video + prompt → new video preserving motion/camera
+const V2V_REFERENCE_MODELS: Record<string, string> = {
+  "kling-v3-v2v-ref": "fal-ai/kling-video/o3/standard/video-to-video/reference",
+};
+
 // Motion control models - video-to-video with motion transfer
 const MOTION_CONTROL_MODELS: Record<string, string> = {
+  "kling-v3-motion": "fal-ai/kling-video/v3/pro/motion-control",
+  "kling-v3-motion-standard": "fal-ai/kling-video/v3/standard/motion-control",
   "kling-v2.6-motion": "fal-ai/kling-video/v2.6/pro/motion-control",
   "kling-v2.6-motion-standard":
     "fal-ai/kling-video/v2.6/standard/motion-control",
@@ -520,8 +538,12 @@ class FalVideoModel implements VideoModelV3 {
     const isMotionControl = MOTION_CONTROL_MODELS[this.modelId] !== undefined;
     const isVideoEdit = VIDEO_EDIT_MODELS[this.modelId] !== undefined;
     const isVideoUpscale = VIDEO_UPSCALE_MODELS[this.modelId] !== undefined;
+    const isReferenceVideo = REFERENCE_VIDEO_MODELS[this.modelId] !== undefined;
+    const isV2VReference = V2V_REFERENCE_MODELS[this.modelId] !== undefined;
     const isKlingV3 =
-      this.modelId === "kling-v3" || this.modelId === "kling-v3-standard";
+      this.modelId === "kling-v3" ||
+      this.modelId === "kling-v3-standard" ||
+      this.modelId === "kling-v3-4k";
     const isKlingV26 = this.modelId === "kling-v2.6";
     const isLtx2 = this.modelId === "ltx-2-19b-distilled";
     const isGrokImagine = this.modelId === "grok-imagine";
@@ -537,7 +559,11 @@ class FalVideoModel implements VideoModelV3 {
           ? this.resolveVideoEditEndpoint()
           : isVideoUpscale
             ? this.resolveVideoUpscaleEndpoint()
-            : this.resolveEndpoint(hasImageInput ?? false);
+            : isReferenceVideo
+              ? this.resolveReferenceVideoEndpoint()
+              : isV2VReference
+                ? this.resolveV2VReferenceEndpoint()
+                : this.resolveEndpoint(hasImageInput ?? false);
 
     const input: Record<string, unknown> = {
       ...(providerOptions?.fal ?? {}),
@@ -624,6 +650,86 @@ class FalVideoModel implements VideoModelV3 {
 
       if (videoFile) {
         input.video_url = await fileToUrl(videoFile);
+      }
+    } else if (isReferenceVideo) {
+      // Reference-to-video: prompt + optional start/end images + reference images
+      // Elements and multi_prompt are passed via providerOptions.fal
+      if (prompt) {
+        input.prompt = prompt;
+      }
+
+      if (files) {
+        const imageFiles = files.filter((f) =>
+          getMediaType(f)?.startsWith("image/"),
+        );
+        // First image → start_image_url, second → end_image_url
+        if (imageFiles[0]) {
+          input.start_image_url = await fileToUrl(imageFiles[0]);
+        }
+        if (imageFiles[1]) {
+          input.end_image_url = await fileToUrl(imageFiles[1]);
+        }
+        // Additional images (3+) → image_urls for style/appearance reference
+        if (imageFiles.length > 2) {
+          const additionalUrls: string[] = [];
+          for (let i = 2; i < imageFiles.length; i++) {
+            additionalUrls.push(await fileToUrl(imageFiles[i]!));
+          }
+          input.image_urls = additionalUrls;
+        }
+      }
+
+      // Duration as string integer for Kling O3
+      const normalized = normalizeProviderInput(this.modelId, { duration });
+      input.duration = normalized.duration;
+
+      if (!input.aspect_ratio) {
+        input.aspect_ratio = aspectRatio ?? "16:9";
+      }
+
+      // Default to generating audio
+      if (input.generate_audio === undefined) {
+        input.generate_audio = true;
+      }
+    } else if (isV2VReference) {
+      // Video-to-video reference: reference video + prompt → new video preserving motion/camera
+      // Elements and image_urls are passed via providerOptions.fal
+      if (prompt) {
+        input.prompt = prompt;
+      }
+
+      const videoFile = files?.find((f) =>
+        getMediaType(f)?.startsWith("video/"),
+      );
+      if (videoFile) {
+        input.video_url = await fileToUrl(videoFile);
+      }
+
+      // Reference images from file inputs (for style/appearance)
+      if (files) {
+        const imageFiles = files.filter((f) =>
+          getMediaType(f)?.startsWith("image/"),
+        );
+        if (imageFiles.length > 0) {
+          const imageUrls: string[] = [];
+          for (const imgFile of imageFiles) {
+            imageUrls.push(await fileToUrl(imgFile));
+          }
+          input.image_urls = imageUrls;
+        }
+      }
+
+      // Duration as string integer for Kling O3
+      const normalized = normalizeProviderInput(this.modelId, { duration });
+      input.duration = normalized.duration;
+
+      if (!input.aspect_ratio) {
+        input.aspect_ratio = aspectRatio ?? "auto";
+      }
+
+      // Default to keeping original audio from reference video
+      if (input.keep_audio === undefined) {
+        input.keep_audio = true;
       }
     } else {
       // Standard video generation
@@ -824,6 +930,22 @@ class FalVideoModel implements VideoModelV3 {
     }
 
     return VIDEO_UPSCALE_MODELS[this.modelId] ?? this.modelId;
+  }
+
+  private resolveReferenceVideoEndpoint(): string {
+    if (this.modelId.startsWith("raw:")) {
+      return this.modelId.slice(4);
+    }
+
+    return REFERENCE_VIDEO_MODELS[this.modelId] ?? this.modelId;
+  }
+
+  private resolveV2VReferenceEndpoint(): string {
+    if (this.modelId.startsWith("raw:")) {
+      return this.modelId.slice(4);
+    }
+
+    return V2V_REFERENCE_MODELS[this.modelId] ?? this.modelId;
   }
 }
 

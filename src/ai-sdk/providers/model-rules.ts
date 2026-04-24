@@ -70,6 +70,16 @@ const ModelDurationRules: Record<string, z.ZodType> = {
   "kling-v3": z.object({ duration: stringIntDuration(3, 15, 5) }),
   "kling-v3-standard": z.object({ duration: stringIntDuration(3, 15, 5) }),
 
+  // Kling O3 4K: same rules as v3
+  "kling-v3-4k": z.object({ duration: stringIntDuration(3, 15, 5) }),
+
+  // Kling O3 reference-to-video: same duration range
+  "kling-v3-ref": z.object({ duration: stringIntDuration(3, 15, 5) }),
+  "kling-v3-4k-ref": z.object({ duration: stringIntDuration(3, 15, 5) }),
+
+  // Kling O3 video-to-video reference: same duration range
+  "kling-v3-v2v-ref": z.object({ duration: stringIntDuration(3, 15, 5) }),
+
   // Kling v2.6: same rules as v3
   "kling-v2.6": z.object({ duration: stringIntDuration(3, 15, 5) }),
 

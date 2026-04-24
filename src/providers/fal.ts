@@ -632,6 +632,97 @@ export class FalProvider extends BaseProvider {
     return result;
   }
 
+  // ============================================================================
+  // Video-to-Video
+  // ============================================================================
+
+  /**
+   * Motion control — transfer motion from reference video to character image
+   * Uses Kling V3 Pro motion control endpoint
+   */
+  async motionControl(args: {
+    prompt: string;
+    imageUrl: string;
+    videoUrl: string;
+    characterOrientation?: "image" | "video";
+    keepOriginalSound?: boolean;
+  }) {
+    const modelId = "fal-ai/kling-video/v3/pro/motion-control";
+
+    console.log(`[fal] starting motion control: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+    const videoUrl = await ensureUrl(args.videoUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        image_url: imageUrl,
+        video_url: videoUrl,
+        character_orientation: args.characterOrientation ?? "video",
+        keep_original_sound: args.keepOriginalSound ?? true,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  /**
+   * Video-to-video reference — generate new video guided by reference video,
+   * preserving motion and camera style (Kling O3 Standard)
+   */
+  async videoToVideoReference(args: {
+    prompt: string;
+    videoUrl: string;
+    duration?: number;
+    aspectRatio?: "auto" | "16:9" | "9:16" | "1:1";
+    keepAudio?: boolean;
+  }) {
+    const modelId = "fal-ai/kling-video/o3/standard/video-to-video/reference";
+
+    console.log(`[fal] starting v2v reference: ${modelId}`);
+    console.log(`[fal] prompt: ${args.prompt}`);
+
+    const videoUrl = await ensureUrl(args.videoUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const result = await fal.subscribe(modelId, {
+      input: {
+        prompt: args.prompt,
+        video_url: videoUrl,
+        duration: args.duration ? String(args.duration) : undefined,
+        aspect_ratio: args.aspectRatio ?? "auto",
+        keep_audio: args.keepAudio ?? true,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
   /**
    * Edit video using Grok Imagine Video
    * Video will be resized to max 854x480 and truncated to 8 seconds
@@ -761,3 +852,9 @@ export const ltx2AudioToVideo = (
 ) => falProvider.ltx2AudioToVideo(args);
 export const textToMusic = (args: Parameters<FalProvider["textToMusic"]>[0]) =>
   falProvider.textToMusic(args);
+export const motionControl = (
+  args: Parameters<FalProvider["motionControl"]>[0],
+) => falProvider.motionControl(args);
+export const videoToVideoReference = (
+  args: Parameters<FalProvider["videoToVideoReference"]>[0],
+) => falProvider.videoToVideoReference(args);
