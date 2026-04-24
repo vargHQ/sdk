@@ -108,7 +108,7 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     i2v: "fal-ai/kling-video/o3/standard/image-to-video",
   },
   // Kling O3 4K - native 4K output (i2v only, t2v falls back to pro)
-  "kling-v3-4k": {
+  "kling-v3-4k-image-to-video": {
     t2v: "fal-ai/kling-video/o3/pro/text-to-video",
     i2v: "fal-ai/kling-video/o3/4k/image-to-video",
   },
@@ -170,19 +170,23 @@ const VIDEO_EDIT_MODELS: Record<string, string> = {
 
 // Reference-to-video models - images/elements + prompt → video with character consistency
 const REFERENCE_VIDEO_MODELS: Record<string, string> = {
-  "kling-v3-ref": "fal-ai/kling-video/o3/pro/reference-to-video",
-  "kling-v3-4k-ref": "fal-ai/kling-video/o3/4k/reference-to-video",
+  "kling-v3-pro-reference-to-video":
+    "fal-ai/kling-video/o3/pro/reference-to-video",
+  "kling-v3-4k-reference-to-video":
+    "fal-ai/kling-video/o3/4k/reference-to-video",
 };
 
 // Video-to-video reference models - reference video + prompt → new video preserving motion/camera
 const V2V_REFERENCE_MODELS: Record<string, string> = {
-  "kling-v3-v2v-ref": "fal-ai/kling-video/o3/standard/video-to-video/reference",
+  "kling-v3-standard-v2v-reference":
+    "fal-ai/kling-video/o3/standard/video-to-video/reference",
 };
 
 // Motion control models - video-to-video with motion transfer
 const MOTION_CONTROL_MODELS: Record<string, string> = {
-  "kling-v3-motion": "fal-ai/kling-video/v3/pro/motion-control",
-  "kling-v3-motion-standard": "fal-ai/kling-video/v3/standard/motion-control",
+  "kling-v3-pro-motion-control": "fal-ai/kling-video/v3/pro/motion-control",
+  "kling-v3-standard-motion-control":
+    "fal-ai/kling-video/v3/standard/motion-control",
   "kling-v2.6-motion": "fal-ai/kling-video/v2.6/pro/motion-control",
   "kling-v2.6-motion-standard":
     "fal-ai/kling-video/v2.6/standard/motion-control",
@@ -543,7 +547,7 @@ class FalVideoModel implements VideoModelV3 {
     const isKlingV3 =
       this.modelId === "kling-v3" ||
       this.modelId === "kling-v3-standard" ||
-      this.modelId === "kling-v3-4k";
+      this.modelId === "kling-v3-4k-image-to-video";
     const isKlingV26 = this.modelId === "kling-v2.6";
     const isLtx2 = this.modelId === "ltx-2-19b-distilled";
     const isGrokImagine = this.modelId === "grok-imagine";

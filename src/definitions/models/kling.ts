@@ -103,7 +103,7 @@ const kling4kSchema: ZodSchema<
 
 export const kling4kDefinition: ModelDefinition<typeof kling4kSchema> = {
   type: "model",
-  name: "kling-v3-4k",
+  name: "kling-v3-4k-image-to-video",
   description:
     "Kling O3 4K — native 4K video output from image, no upscaling needed",
   providers: ["fal"],
@@ -176,7 +176,7 @@ const klingRefSchema: ZodSchema<
 
 export const klingRefDefinition: ModelDefinition<typeof klingRefSchema> = {
   type: "model",
-  name: "kling-v3-ref",
+  name: "kling-v3-pro-reference-to-video",
   description:
     "Kling O3 Pro reference-to-video — generate video with character/object consistency from reference images and elements",
   providers: ["fal"],
@@ -205,7 +205,7 @@ export const klingRefDefinition: ModelDefinition<typeof klingRefSchema> = {
 
 export const kling4kRefDefinition: ModelDefinition<typeof klingRefSchema> = {
   type: "model",
-  name: "kling-v3-4k-ref",
+  name: "kling-v3-4k-reference-to-video",
   description:
     "Kling O3 4K reference-to-video — native 4K video with character/object consistency from reference images and elements",
   providers: ["fal"],
@@ -275,7 +275,7 @@ const klingV2VRefSchema: ZodSchema<
 export const klingV2VRefDefinition: ModelDefinition<typeof klingV2VRefSchema> =
   {
     type: "model",
-    name: "kling-v3-v2v-ref",
+    name: "kling-v3-standard-v2v-reference",
     description:
       "Kling O3 video-to-video reference — generate new video guided by reference video, preserving motion and camera style",
     providers: ["fal"],
@@ -336,7 +336,7 @@ export const klingV3MotionDefinition: ModelDefinition<
   typeof klingV3MotionSchema
 > = {
   type: "model",
-  name: "kling-v3-motion",
+  name: "kling-v3-pro-motion-control",
   description:
     "Kling V3 Pro motion control — transfer movements from reference video to any character image. Supports up to 30s with video orientation",
   providers: ["fal"],
@@ -359,7 +359,7 @@ export const klingV3MotionStdDefinition: ModelDefinition<
   typeof klingV3MotionSchema
 > = {
   type: "model",
-  name: "kling-v3-motion-standard",
+  name: "kling-v3-standard-motion-control",
   description:
     "Kling V3 Standard motion control — cost-effective motion transfer from reference video to character image. Supports up to 30s with video orientation",
   providers: ["fal"],
