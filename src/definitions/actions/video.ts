@@ -19,6 +19,9 @@ const videoInputSchema = z.object({
   image: filePathSchema
     .optional()
     .describe("Input image (enables image-to-video)"),
+  video: filePathSchema
+    .optional()
+    .describe("Input video for video-to-video (preserves motion/camera style)"),
   duration: videoDurationSchema
     .default(5)
     .describe("Video duration in seconds"),
@@ -42,7 +45,7 @@ const schema: ZodSchema<typeof videoInputSchema, typeof videoOutputSchema> = {
 export const definition: ActionDefinition<typeof schema> = {
   type: "action",
   name: "video",
-  description: "Generate video from text or image",
+  description: "Generate video from text, image, or video",
   schema,
   routes: [
     {
@@ -51,12 +54,29 @@ export const definition: ActionDefinition<typeof schema> = {
     },
   ],
   execute: async (inputs) => {
-    // inputs is now fully typed as VideoInput - no more `as` cast!
-    const { prompt, image, duration, aspectRatio } = inputs;
+    const { prompt, image, video, duration, aspectRatio } = inputs;
 
     let result: { data?: { video?: { url?: string }; duration?: number } };
 
-    if (image) {
+    if (video && image) {
+      // Video + image → motion control (transfer motion to character)
+      console.log(
+        "[action/video] generating motion control video (image + video)",
+      );
+      result = await falProvider.motionControl({
+        prompt,
+        imageUrl: image,
+        videoUrl: video,
+      });
+    } else if (video) {
+      // Video only → video-to-video reference (preserve motion/camera)
+      console.log("[action/video] generating video-to-video reference");
+      result = await falProvider.videoToVideoReference({
+        prompt,
+        videoUrl: video,
+        duration,
+      });
+    } else if (image) {
       console.log("[action/video] generating video from image");
       result = await falProvider.imageToVideo({
         prompt,

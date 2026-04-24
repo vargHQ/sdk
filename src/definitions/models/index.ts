@@ -11,7 +11,15 @@ import type {
 export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
 export { definition as heygenAvatar } from "./heygen";
-export { definition as kling } from "./kling";
+export {
+  definition as kling,
+  kling4kDefinition as kling4k,
+  kling4kRefDefinition as kling4kRef,
+  klingRefDefinition as klingRef,
+  klingV2VRefDefinition as klingV2VRef,
+  klingV3MotionDefinition as klingV3Motion,
+  klingV3MotionStdDefinition as klingV3MotionStd,
+} from "./kling";
 export { definition as llama } from "./llama";
 export { definition as ltxA2v } from "./ltx-a2v";
 export { definition as nanoBanana2 } from "./nano-banana-2";
@@ -39,7 +47,15 @@ export { definition as whisper } from "./whisper";
 import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
 import { definition as heygenAvatarDefinition } from "./heygen";
-import { definition as klingDefinition } from "./kling";
+import {
+  kling4kDefinition,
+  kling4kRefDefinition,
+  definition as klingDefinition,
+  klingRefDefinition,
+  klingV2VRefDefinition,
+  klingV3MotionDefinition,
+  klingV3MotionStdDefinition,
+} from "./kling";
 import { definition as llamaDefinition } from "./llama";
 import { definition as ltxA2vDefinition } from "./ltx-a2v";
 import { definition as nanoBanana2Definition } from "./nano-banana-2";
@@ -65,6 +81,12 @@ import { definition as whisperDefinition } from "./whisper";
 
 export const allModels = [
   klingDefinition,
+  kling4kDefinition,
+  klingRefDefinition,
+  kling4kRefDefinition,
+  klingV2VRefDefinition,
+  klingV3MotionDefinition,
+  klingV3MotionStdDefinition,
   fluxDefinition,
   nanoBananaProDefinition,
   nanoBanana2Definition,

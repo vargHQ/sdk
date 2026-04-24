@@ -40,6 +40,10 @@ const ALIASES: Record<string, string> = {
   stt: "speech-to-text",
   voice: "text-to-speech",
 
+  // Video-to-video
+  v2v: "video-to-video",
+  vid2vid: "video-to-video",
+
   // Video editing
   concat: "merge",
   join: "merge",
