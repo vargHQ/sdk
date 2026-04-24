@@ -183,7 +183,7 @@ async function uploadFile(
   apiKey: string,
   blob: Blob,
   mediaType: string,
-): Promise<{ url: string }> {
+): Promise<{ url: string; media_type?: string }> {
   const res = await fetch(`${baseUrl}/files`, {
     method: "POST",
     headers: {
@@ -195,7 +195,7 @@ async function uploadFile(
   if (!res.ok) {
     throw new VargAPIError(`file upload failed: ${res.status}`, res.status);
   }
-  return (await res.json()) as { url: string };
+  return (await res.json()) as { url: string; media_type?: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ class VargVideoModel implements VideoModelV3 {
     if (options.aspectRatio) params.aspect_ratio = options.aspectRatio;
 
     if (options.files?.length) {
-      const fileUrls: { url: string }[] = [];
+      const fileUrls: { url: string; media_type?: string }[] = [];
       for (const f of options.files) {
         if (f.type === "url") {
           fileUrls.push({ url: (f as { type: "url"; url: string }).url });
@@ -238,7 +238,10 @@ class VargVideoModel implements VideoModelV3 {
             new Blob([fd.data], { type: fd.mediaType }),
             fd.mediaType,
           );
-          fileUrls.push({ url: uploaded.url });
+          fileUrls.push({
+            url: uploaded.url,
+            media_type: uploaded.media_type ?? fd.mediaType,
+          });
         }
       }
       if (fileUrls.length) params.files = fileUrls;

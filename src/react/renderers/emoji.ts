@@ -55,12 +55,21 @@ export interface EmojiOverlay {
 }
 
 /**
+ * Check whether text contains any emoji characters.
+ */
+export function hasEmoji(text: string): boolean {
+  EMOJI_REGEX.lastIndex = 0;
+  return EMOJI_REGEX.test(text);
+}
+
+/**
  * Strip emoji from text, replacing each emoji with a space character.
  * This reserves horizontal space in the rendered subtitle.
  */
-export function stripEmoji(text: string): string {
+export function stripEmoji(text: string, nSpaces = 1): string {
   EMOJI_REGEX.lastIndex = 0;
-  return text.replace(EMOJI_REGEX, " ");
+  const replacement = " ".repeat(nSpaces);
+  return text.replace(EMOJI_REGEX, replacement);
 }
 
 /**

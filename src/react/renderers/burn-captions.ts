@@ -42,7 +42,9 @@ const LOCAL_FONTS_DIR = "/tmp/varg-caption-fonts";
  * Download font files to a local directory for the local FFmpeg backend.
  * Fonts are cached by filename — only downloaded once per process lifetime.
  */
-async function ensureLocalFonts(fontFiles: CaptionFontFile[]): Promise<string> {
+export async function ensureLocalFonts(
+  fontFiles: CaptionFontFile[],
+): Promise<string> {
   if (!existsSync(LOCAL_FONTS_DIR)) {
     mkdirSync(LOCAL_FONTS_DIR, { recursive: true });
   }
