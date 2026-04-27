@@ -43,12 +43,20 @@ function getCropPositionExpr(position: CropPosition | undefined): {
 }
 
 function escapeDrawText(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "'\\''")
-    .replace(/:/g, "\\:")
-    .replace(/\[/g, "\\[")
-    .replace(/\]/g, "\\]");
+  return (
+    text
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "'\\''")
+      .replace(/:/g, "\\:")
+      .replace(/\[/g, "\\[")
+      .replace(/\]/g, "\\]")
+      // Replace straight double quotes with typographic curly quotes.
+      // Straight " breaks Rendi's command parser (the -filter_complex value is
+      // wrapped in double quotes, so an unescaped " inside it terminates the
+      // argument and causes ffmpeg to interpret the next word as a file path).
+      .replace(/\u201C|\u201D/g, "\u201C") // normalise any existing curly quotes
+      .replace(/"/g, "\u201C")
+  );
 }
 
 function parseSize(val: number | string | undefined, base: number): number {

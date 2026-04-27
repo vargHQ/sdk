@@ -520,13 +520,30 @@ export class RendiBackend implements FFmpegBackend {
   private buildCommandString(args: string[]): string {
     return args
       .map((arg) => {
+        // Flags (e.g. -i, -filter_complex) and output placeholders pass through
         if (arg.startsWith("-") || arg.startsWith("{{")) {
           return arg;
         }
-        if (arg.includes(" ") || arg.includes(":") || arg.includes("'")) {
-          return `"${arg.replace(/"/g, '\\"')}"`;
+        // For values that need quoting (spaces, colons, single-quotes etc.):
+        // Rendi's server-side parser splits the command string like a POSIX
+        // shell.  The old approach wrapped values in "..." and tried to escape
+        // inner " with \", but Rendi's parser does NOT reliably honour \"
+        // inside double-quoted strings — any literal " in user text (e.g.
+        // drawtext titles) would terminate the quoted arg and cause the next
+        // word to be treated as an output path.
+        //
+        // Defence-in-depth: replace any surviving straight " with the
+        // typographic curly-quote equivalent (the primary escaping happens in
+        // escapeDrawText, but filter strings can also come from other sources).
+        const sanitised = arg.replace(/"/g, "\u201C");
+        if (
+          sanitised.includes(" ") ||
+          sanitised.includes(":") ||
+          sanitised.includes("'")
+        ) {
+          return `"${sanitised}"`;
         }
-        return arg;
+        return sanitised;
       })
       .join(" ");
   }
