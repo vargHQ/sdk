@@ -113,7 +113,12 @@ export function completeTask(tracker: ProgressTracker, id: string): void {
 
 function getEstimate(task: ProgressTask): number {
   const modelLower = task.model?.toLowerCase() ?? "";
-  for (const [key, estimate] of Object.entries(MODEL_TIME_ESTIMATES)) {
+  // Sort by key length descending so specific models (e.g. "kling-v3-pro-motion-control")
+  // match before generic ones (e.g. "kling").
+  const sorted = Object.entries(MODEL_TIME_ESTIMATES).sort(
+    ([a], [b]) => b.length - a.length,
+  );
+  for (const [key, estimate] of sorted) {
     if (modelLower.includes(key.toLowerCase())) {
       return estimate;
     }
