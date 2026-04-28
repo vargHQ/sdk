@@ -35,7 +35,7 @@ export const MODEL_TIME_ESTIMATES: Record<string, number> = {
   "kling-v3-pro-reference-to-video": 180,
   "kling-v3-4k-reference-to-video": 240,
   "kling-v3-standard-v2v-reference": 180,
-  "kling-v3-pro-motion-control": 300,
+  "kling-v3-pro-motion-control": 600,
   "kling-v3-standard-motion-control": 240,
   "kling-v2.6-motion": 240,
   "kling-v2.6-motion-standard": 180,
