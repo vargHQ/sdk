@@ -904,100 +904,34 @@ async function resolveSourceUrl(
   throw new Error("cannot resolve source URL from input");
 }
 
-/** Get the varg gateway client settings. */
-function getGatewayConfig(): { apiKey: string; baseUrl: string } | null {
-  const apiKey = process.env.VARG_API_KEY;
-  if (!apiKey) return null;
-  return {
-    apiKey,
-    baseUrl: process.env.VARG_API_URL ?? "https://api.varg.ai",
-  };
-}
-
-/** Call gateway and wait for job completion. */
-async function gatewayJobRequest(
-  path: string,
-  body: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  const config = getGatewayConfig();
-  if (!config) throw new Error("VARG_API_KEY not set");
-
-  const submitRes = await fetch(`${config.baseUrl}/v1${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!submitRes.ok) {
-    const text = await submitRes.text().catch(() => "");
-    throw new Error(`gateway ${path} failed: ${submitRes.status} ${text}`);
-  }
-  const job = (await submitRes.json()) as {
-    job_id: string;
-    status: string;
-    output?: Record<string, unknown>;
-  };
-
-  if (job.status === "completed" && job.output) return job;
-
-  const maxAttempts = 300;
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise((r) => setTimeout(r, 2_000));
-    const pollRes = await fetch(`${config.baseUrl}/v1/jobs/${job.job_id}`, {
-      headers: { Authorization: `Bearer ${config.apiKey}` },
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!pollRes.ok) continue;
-    const result = (await pollRes.json()) as {
-      status: string;
-      output?: Record<string, unknown>;
-      error?: string;
-    };
-    if (result.status === "completed") return result;
-    if (result.status === "failed")
-      throw new Error(`gateway job failed: ${result.error ?? "unknown"}`);
-  }
-  throw new Error("gateway job timed out");
-}
-
 /**
- * Resolve a Slice element -- splits video into segments.
- * Returns a ResolvedElement with `.segments` populated (same pattern as Speech).
+ * Resolve a Slice element -- splits video into segments via gateway.
+ * Requires `gateway` prop (e.g., varg) for authenticated API access.
  */
 export async function resolveSliceElement(
   element: VargElement<"slice">,
   props: import("./types").SliceProps,
 ): Promise<ResolvedElement<"slice">> {
+  if (!props.gateway) {
+    throw new Error(
+      "await Slice() requires 'gateway' prop (e.g., Slice({ gateway: varg, src: video, every: 5 }))",
+    );
+  }
+
   const srcUrl = await resolveSourceUrl(props.src);
 
-  const body: Record<string, unknown> = {
+  const result = await props.gateway.slice({
     video_url: srcUrl,
     codec: props.codec ?? "copy",
-  };
-  if (props.every !== undefined) body.every = props.every;
-  if (props.at !== undefined) body.at = props.at;
-  if (props.count !== undefined) body.count = props.count;
-  if (props.ranges !== undefined) body.ranges = props.ranges;
-
-  const result = await gatewayJobRequest("/ffmpeg/slice", body);
-  const output = result.output as
-    | { url?: string; metadata?: Record<string, unknown> }
-    | undefined;
-  const metadata = output?.metadata as
-    | {
-        segments?: Array<{ url: string; index: number; filename: string }>;
-        total_segments?: number;
-      }
-    | undefined;
-
-  const segmentData = metadata?.segments ?? [];
+    every: props.every,
+    at: props.at,
+    count: props.count,
+    ranges: props.ranges,
+  });
 
   const segments: import("./types").SliceSegment[] = [];
   let cursor = 0;
-  for (const seg of segmentData) {
+  for (const seg of result.segments) {
     const segFile = File.fromUrl(seg.url);
     const segDuration = await probeDuration(segFile);
     const segElement = new ResolvedElement(
@@ -1015,8 +949,8 @@ export async function resolveSliceElement(
     cursor += segDuration;
   }
 
-  const firstFile = segmentData[0]
-    ? File.fromUrl(segmentData[0].url)
+  const firstFile = result.segments[0]
+    ? File.fromUrl(result.segments[0].url)
     : File.fromBuffer(new Uint8Array(0), "video/mp4");
 
   return new ResolvedElement(element, {
@@ -1028,11 +962,18 @@ export async function resolveSliceElement(
 
 /**
  * Resolve an FFmpeg element -- runs arbitrary FFmpeg command via gateway.
+ * Requires `gateway` prop (e.g., varg) for authenticated API access.
  */
 export async function resolveFFmpegElement(
   element: VargElement<"ffmpeg">,
   props: import("./types").FFmpegProps,
 ): Promise<ResolvedElement<"ffmpeg">> {
+  if (!props.gateway) {
+    throw new Error(
+      "await FFmpeg() requires 'gateway' prop (e.g., FFmpeg({ gateway: varg, command: '...' }))",
+    );
+  }
+
   const inputFiles: Record<string, string> = {};
   if (props.src) {
     inputFiles.in_1 = await resolveSourceUrl(props.src);
@@ -1049,64 +990,39 @@ export async function resolveFFmpegElement(
   }
 
   const outputFiles = command.includes("OUTPUT_FOLDER")
-    ? "OUTPUT_FOLDER"
+    ? ("OUTPUT_FOLDER" as const)
     : { out_1: "output.mp4" };
 
-  const result = await gatewayJobRequest("/ffmpeg", {
+  const result = await props.gateway.ffmpeg({
     command,
     input_files: inputFiles,
     output_files: outputFiles,
   });
 
-  const output = result.output as
-    | { url?: string; media_type?: string }
-    | undefined;
-  const url = output?.url ?? "";
-  const file = url
-    ? File.fromUrl(url)
+  const file = result.url
+    ? File.fromUrl(result.url)
     : File.fromBuffer(new Uint8Array(0), "video/mp4");
-  const duration = url ? await probeDuration(file) : 0;
+  const duration = result.url ? await probeDuration(file) : 0;
 
   return new ResolvedElement(element, { file, duration });
 }
 
 /**
  * Resolve a Probe element -- gets media metadata via gateway.
+ * Requires `gateway` prop (e.g., varg) for authenticated API access.
  */
 export async function resolveProbeElement(
   element: VargElement<"probe">,
   props: import("./types").ProbeProps,
 ): Promise<ResolvedElement<"probe">> {
-  const srcUrl = await resolveSourceUrl(props.src);
-
-  const config = getGatewayConfig();
-  if (!config) throw new Error("VARG_API_KEY not set");
-
-  const res = await fetch(`${config.baseUrl}/v1/ffmpeg/probe`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({ url: srcUrl }),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`probe failed: ${res.status} ${text}`);
+  if (!props.gateway) {
+    throw new Error(
+      "await Probe() requires 'gateway' prop (e.g., Probe({ gateway: varg, src: video }))",
+    );
   }
 
-  const probeData = (await res.json()) as {
-    duration?: number;
-    width?: number;
-    height?: number;
-    codec?: string;
-    audio_codec?: string;
-    format?: string;
-    bitrate?: number;
-    fps?: number;
-    size_bytes?: number;
-  };
+  const srcUrl = await resolveSourceUrl(props.src);
+  const probeData = await props.gateway.probe({ url: srcUrl });
 
   const file = File.fromUrl(srcUrl);
 
