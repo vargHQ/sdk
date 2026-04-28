@@ -86,17 +86,44 @@ async function probeDurationViaBackend(
   }
 }
 
-/** Probe duration via local ffprobe shell command (fallback for top-level await). */
+/** Probe duration via local ffprobe shell command (fallback for top-level await).
+ *  When the file has a URL, passes it directly to ffprobe which uses HTTP range
+ *  requests to read only the moov atom (~200KB) — no full video download. */
 async function probeDurationLocal(file: File): Promise<number> {
   try {
-    const tmpPath = await file.toTempFile();
+    const target = file.url ?? (await file.toTempFile());
     const result =
-      await $`ffprobe -v error -show_entries format=duration -of json ${tmpPath}`.json();
+      await $`ffprobe -v error -show_entries format=duration -of json ${target}`.json();
     const duration = Number.parseFloat(result?.format?.duration ?? "0");
     return Number.isFinite(duration) ? duration : 0;
   } catch {
     return 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Video trimming — trims a source video to a time range via local ffmpeg.
+// Used to pre-trim prompt.video inputs before sending to AI models that
+// have input length limits (e.g. motion-control max 30s).
+// ---------------------------------------------------------------------------
+/** Trim a video file to [cutFrom, cutTo] via local ffmpeg.
+ *  Uses the URL directly when available (no full pre-download via range seek).
+ *  Returns a new File with the trimmed video data. */
+async function trimVideoLocal(
+  file: File,
+  cutFrom: number,
+  cutTo: number,
+): Promise<File> {
+  const input = file.url ?? (await file.toTempFile());
+  const tmpDir = process.env.TMPDIR ?? "/tmp";
+  const outPath = `${tmpDir}/varg-trim-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`;
+  const duration = cutTo - cutFrom;
+
+  await $`ffmpeg -y -ss ${cutFrom} -i ${input} -t ${duration} -c copy -movflags +faststart ${outPath}`.quiet();
+
+  const data = await Bun.file(outPath).arrayBuffer();
+  await Bun.file(outPath).delete?.();
+  return File.fromBuffer(new Uint8Array(data), "video/mp4");
 }
 
 // ---------------------------------------------------------------------------
@@ -666,9 +693,32 @@ export async function resolveVideoElement(
     const file = src.startsWith("http")
       ? File.fromUrl(src)
       : File.fromPath(src.startsWith("file://") ? src.slice(7) : src);
+    // Probe duration via local CPU ffprobe (HTTP range request for URLs,
+    // no full download). Intentionally uses probeDurationLocal instead of
+    // probeDuration to avoid Rendi's slow remux-based probe on cloud.
+    const fullDuration = await probeDurationLocal(file);
+
+    const cutFrom = props.cutFrom as number | undefined;
+    const cutTo = props.cutTo as number | undefined;
+
+    // When cutFrom/cutTo are set, trim the video via local ffmpeg.
+    // This is used to pre-split source videos for models with input length
+    // limits (e.g. motion-control max 30s). The trimmed File replaces the
+    // original so downstream consumers (prompt.video) get only the segment.
+    if (cutFrom !== undefined || cutTo !== undefined) {
+      const start = cutFrom ?? 0;
+      const end = cutTo ?? fullDuration;
+      const trimmedFile = await trimVideoLocal(file, start, end);
+      const trimmedDuration = end - start;
+      return new ResolvedElement(element, {
+        file: trimmedFile,
+        duration: trimmedDuration,
+      });
+    }
+
     return new ResolvedElement(element, {
       file,
-      duration: 0, // video duration probing deferred to a later phase
+      duration: fullDuration,
     });
   }
 
@@ -833,6 +883,247 @@ export async function resolveVideoElement(
   return new ResolvedElement(element, {
     file,
     duration: 0, // video duration probing deferred to a later phase
+  });
+}
+
+// ---------------------------------------------------------------------------
+// FFmpeg processing resolvers (Slice, FFmpeg, Probe)
+// ---------------------------------------------------------------------------
+
+/** Resolve the source URL from a string, File, or ResolvedElement. */
+async function resolveSourceUrl(
+  src:
+    | string
+    | File
+    | { meta?: { file?: File }; props?: Record<string, unknown> },
+): Promise<string> {
+  if (typeof src === "string") return src;
+  if (src instanceof File) return src.url ?? (await src.toTempFile());
+  if (src.meta?.file)
+    return src.meta.file.url ?? (await src.meta.file.toTempFile());
+  throw new Error("cannot resolve source URL from input");
+}
+
+/** Get the varg gateway client settings. */
+function getGatewayConfig(): { apiKey: string; baseUrl: string } | null {
+  const apiKey = process.env.VARG_API_KEY;
+  if (!apiKey) return null;
+  return {
+    apiKey,
+    baseUrl: process.env.VARG_API_URL ?? "https://api.varg.ai",
+  };
+}
+
+/** Call gateway and wait for job completion. */
+async function gatewayJobRequest(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const config = getGatewayConfig();
+  if (!config) throw new Error("VARG_API_KEY not set");
+
+  const submitRes = await fetch(`${config.baseUrl}/v1${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!submitRes.ok) {
+    const text = await submitRes.text().catch(() => "");
+    throw new Error(`gateway ${path} failed: ${submitRes.status} ${text}`);
+  }
+  const job = (await submitRes.json()) as {
+    job_id: string;
+    status: string;
+    output?: Record<string, unknown>;
+  };
+
+  if (job.status === "completed" && job.output) return job;
+
+  const maxAttempts = 300;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, 2_000));
+    const pollRes = await fetch(`${config.baseUrl}/v1/jobs/${job.job_id}`, {
+      headers: { Authorization: `Bearer ${config.apiKey}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!pollRes.ok) continue;
+    const result = (await pollRes.json()) as {
+      status: string;
+      output?: Record<string, unknown>;
+      error?: string;
+    };
+    if (result.status === "completed") return result;
+    if (result.status === "failed")
+      throw new Error(`gateway job failed: ${result.error ?? "unknown"}`);
+  }
+  throw new Error("gateway job timed out");
+}
+
+/**
+ * Resolve a Slice element -- splits video into segments.
+ * Returns a ResolvedElement with `.segments` populated (same pattern as Speech).
+ */
+export async function resolveSliceElement(
+  element: VargElement<"slice">,
+  props: import("./types").SliceProps,
+): Promise<ResolvedElement<"slice">> {
+  const srcUrl = await resolveSourceUrl(props.src);
+
+  const body: Record<string, unknown> = {
+    video_url: srcUrl,
+    codec: props.codec ?? "copy",
+  };
+  if (props.every !== undefined) body.every = props.every;
+  if (props.at !== undefined) body.at = props.at;
+  if (props.count !== undefined) body.count = props.count;
+  if (props.ranges !== undefined) body.ranges = props.ranges;
+
+  const result = await gatewayJobRequest("/ffmpeg/slice", body);
+  const output = result.output as
+    | { url?: string; metadata?: Record<string, unknown> }
+    | undefined;
+  const metadata = output?.metadata as
+    | {
+        segments?: Array<{ url: string; index: number; filename: string }>;
+        total_segments?: number;
+      }
+    | undefined;
+
+  const segmentData = metadata?.segments ?? [];
+
+  // biome-ignore lint/suspicious/noExplicitAny: segment construction requires flexible typing
+  const segments: any[] = [];
+  for (const seg of segmentData) {
+    const segFile = File.fromUrl(seg.url);
+    const segDuration = await probeDuration(segFile);
+    const segElement = new ResolvedElement(
+      { type: "video" as const, props: { src: seg.url }, children: [] },
+      { file: segFile, duration: segDuration },
+    );
+    segments.push(
+      Object.assign(segElement, {
+        text: seg.filename,
+        start: 0,
+        end: segDuration,
+        index: seg.index,
+        url: seg.url,
+      }),
+    );
+  }
+
+  const firstFile = segmentData[0]
+    ? File.fromUrl(segmentData[0].url)
+    : File.fromBuffer(new Uint8Array(0), "video/mp4");
+
+  return new ResolvedElement(element, {
+    file: firstFile,
+    duration: 0,
+    segments,
+  });
+}
+
+/**
+ * Resolve an FFmpeg element -- runs arbitrary FFmpeg command via gateway.
+ */
+export async function resolveFFmpegElement(
+  element: VargElement<"ffmpeg">,
+  props: import("./types").FFmpegProps,
+): Promise<ResolvedElement<"ffmpeg">> {
+  const inputFiles: Record<string, string> = {};
+  if (props.src) {
+    inputFiles.in_1 = await resolveSourceUrl(props.src);
+  }
+  if (props.inputs) {
+    for (const [key, val] of Object.entries(props.inputs)) {
+      inputFiles[key] = await resolveSourceUrl(val);
+    }
+  }
+
+  let command = props.command;
+  if (props.src && !command.includes("{{in_1}}")) {
+    command = `-i {{in_1}} ${command} {{out_1}}`;
+  }
+
+  const outputFiles = command.includes("OUTPUT_FOLDER")
+    ? "OUTPUT_FOLDER"
+    : { out_1: "output.mp4" };
+
+  const result = await gatewayJobRequest("/ffmpeg", {
+    command,
+    input_files: inputFiles,
+    output_files: outputFiles,
+  });
+
+  const output = result.output as
+    | { url?: string; media_type?: string }
+    | undefined;
+  const url = output?.url ?? "";
+  const file = url
+    ? File.fromUrl(url)
+    : File.fromBuffer(new Uint8Array(0), "video/mp4");
+  const duration = url ? await probeDuration(file) : 0;
+
+  return new ResolvedElement(element, { file, duration });
+}
+
+/**
+ * Resolve a Probe element -- gets media metadata via gateway.
+ */
+export async function resolveProbeElement(
+  element: VargElement<"probe">,
+  props: import("./types").ProbeProps,
+): Promise<ResolvedElement<"probe">> {
+  const srcUrl = await resolveSourceUrl(props.src);
+
+  const config = getGatewayConfig();
+  if (!config) throw new Error("VARG_API_KEY not set");
+
+  const res = await fetch(`${config.baseUrl}/v1/ffmpeg/probe`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({ url: srcUrl }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`probe failed: ${res.status} ${text}`);
+  }
+
+  const probeData = (await res.json()) as {
+    duration?: number;
+    width?: number;
+    height?: number;
+    codec?: string;
+    audio_codec?: string;
+    format?: string;
+    bitrate?: number;
+    fps?: number;
+    size_bytes?: number;
+  };
+
+  const file = File.fromUrl(srcUrl);
+
+  const resolved = new ResolvedElement(element, {
+    file,
+    duration: probeData.duration ?? 0,
+  });
+
+  return Object.assign(resolved, {
+    width: probeData.width,
+    height: probeData.height,
+    codec: probeData.codec,
+    audioCodec: probeData.audio_codec,
+    format: probeData.format,
+    bitrate: probeData.bitrate,
+    fps: probeData.fps,
+    sizeBytes: probeData.size_bytes,
   });
 }
 

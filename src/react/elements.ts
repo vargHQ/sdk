@@ -1,6 +1,9 @@
 import {
+  resolveFFmpegElement,
   resolveImageElement,
   resolveMusicElement,
+  resolveProbeElement,
+  resolveSliceElement,
   resolveSpeechElement,
   resolveTalkingHeadElement,
   resolveVideoElement,
@@ -9,11 +12,14 @@ import type { ResolvedElement } from "./resolved-element";
 import type {
   CaptionsProps,
   ClipProps,
+  FFmpegProps,
   ImageProps,
   MusicProps,
   OverlayProps,
   PackshotProps,
+  ProbeProps,
   RenderProps,
+  SliceProps,
   SliderProps,
   SpeechProps,
   SubtitleProps,
@@ -204,4 +210,79 @@ export function Swipe(props: SwipeProps): VargElement<"swipe"> {
 
 export function Packshot(props: PackshotProps): VargElement<"packshot"> {
   return createElement("packshot", props as Record<string, unknown>, undefined);
+}
+
+// ---------------------------------------------------------------------------
+// FFmpeg processing elements (awaitable, resolve via gateway/Rendi)
+// ---------------------------------------------------------------------------
+
+/**
+ * Slice a video into segments. Returns `{ segments }` when awaited —
+ * same pattern as `Speech({ children: [...] })`.
+ *
+ * Modes: `every` (interval), `at` (timestamps), `count` (equal parts), `ranges`.
+ *
+ * ```tsx
+ * const { segments } = await Slice({ src: video, every: 5 });
+ * segments[0].file, segments[0].duration, segments[0].url
+ * ```
+ */
+export function Slice(
+  props: SliceProps,
+): VargElement<"slice"> & PromiseLike<ResolvedElement<"slice">> {
+  const element = createElement(
+    "slice",
+    props as unknown as Record<string, unknown>,
+    undefined,
+  );
+  return makeThenable(element, (el) =>
+    resolveSliceElement(el, el.props as unknown as SliceProps),
+  );
+}
+
+/**
+ * Run an arbitrary FFmpeg command. When awaited, returns a `ResolvedElement`
+ * with the processed output file.
+ *
+ * ```tsx
+ * const result = await FFmpeg({
+ *   src: video,
+ *   command: "-vf scale=1920:1080 -c:a copy",
+ * });
+ * result.file, result.url
+ * ```
+ */
+export function FFmpeg(
+  props: FFmpegProps,
+): VargElement<"ffmpeg"> & PromiseLike<ResolvedElement<"ffmpeg">> {
+  const element = createElement(
+    "ffmpeg",
+    props as unknown as Record<string, unknown>,
+    undefined,
+  );
+  return makeThenable(element, (el) =>
+    resolveFFmpegElement(el, el.props as unknown as FFmpegProps),
+  );
+}
+
+/**
+ * Probe a media file's metadata. When awaited, returns a `ResolvedElement`
+ * with duration, resolution, codec, and other info in `.meta`.
+ *
+ * ```tsx
+ * const info = await Probe({ src: "https://s3.varg.ai/o/video.mp4" });
+ * info.duration, info.meta.width, info.meta.height
+ * ```
+ */
+export function Probe(
+  props: ProbeProps,
+): VargElement<"probe"> & PromiseLike<ResolvedElement<"probe">> {
+  const element = createElement(
+    "probe",
+    props as unknown as Record<string, unknown>,
+    undefined,
+  );
+  return makeThenable(element, (el) =>
+    resolveProbeElement(el, el.props as unknown as ProbeProps),
+  );
 }

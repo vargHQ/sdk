@@ -35,6 +35,9 @@ export type VargElementType =
   | "slider"
   | "swipe"
   | "packshot"
+  | "slice"
+  | "ffmpeg"
+  | "probe"
   | "__lazy";
 
 /**
@@ -401,6 +404,37 @@ export interface RenderResult {
   files: File[];
 }
 
+// ── FFmpeg processing element props ──────────────────────────────────
+
+export interface SliceProps {
+  /** Source video: URL string, File object, or ResolvedElement */
+  src: string | File | VargElement;
+  /** Codec mode: "copy" for keyframe-aligned fast cuts, "reencode" for frame-accurate */
+  codec?: "copy" | "reencode";
+  /** Split every N seconds */
+  every?: number;
+  /** Split at specific timestamps (cut points) */
+  at?: number[];
+  /** Split into N equal parts (probes duration automatically) */
+  count?: number;
+  /** Split at explicit time ranges */
+  ranges?: Array<{ start: number; end: number }>;
+}
+
+export interface FFmpegProps {
+  /** Source input: URL string, File object, or ResolvedElement (used as {{in_1}}) */
+  src?: string | File | VargElement;
+  /** Multiple named inputs (for multi-input commands) */
+  inputs?: Record<string, string | File | VargElement>;
+  /** FFmpeg command flags (without -i input, which is added automatically for src) */
+  command: string;
+}
+
+export interface ProbeProps {
+  /** Source to probe: URL string, File object, or ResolvedElement */
+  src: string | File | VargElement;
+}
+
 export interface ElementPropsMap {
   render: RenderProps;
   clip: ClipProps;
@@ -417,4 +451,7 @@ export interface ElementPropsMap {
   slider: SliderProps;
   swipe: SwipeProps;
   packshot: PackshotProps;
+  slice: SliceProps;
+  ffmpeg: FFmpegProps;
+  probe: ProbeProps;
 }
