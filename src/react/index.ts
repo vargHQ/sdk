@@ -45,6 +45,7 @@ export type {
   RenderProps,
   RenderResult,
   SliceProps,
+  SliceSegment,
   SliderProps,
   SpeechProps,
   SplitProps,

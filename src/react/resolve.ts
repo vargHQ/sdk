@@ -995,8 +995,8 @@ export async function resolveSliceElement(
 
   const segmentData = metadata?.segments ?? [];
 
-  // biome-ignore lint/suspicious/noExplicitAny: segment construction requires flexible typing
-  const segments: any[] = [];
+  const segments: import("./types").SliceSegment[] = [];
+  let cursor = 0;
   for (const seg of segmentData) {
     const segFile = File.fromUrl(seg.url);
     const segDuration = await probeDuration(segFile);
@@ -1006,13 +1006,13 @@ export async function resolveSliceElement(
     );
     segments.push(
       Object.assign(segElement, {
-        text: seg.filename,
-        start: 0,
-        end: segDuration,
-        index: seg.index,
         url: seg.url,
-      }),
+        index: seg.index,
+        start: cursor,
+        end: cursor + segDuration,
+      }) as import("./types").SliceSegment,
     );
+    cursor += segDuration;
   }
 
   const firstFile = segmentData[0]

@@ -57,11 +57,11 @@ export interface ElementMeta {
    */
   words?: WordTiming[];
   /**
-   * Speech segments — each is a `ResolvedElement<"speech">` with timing metadata.
-   * Undefined for non-speech elements. Empty array when speech has no segments.
-   * Each segment works as a clip child, video audio input, or captions source.
+   * Segments — speech segments or video slice segments.
+   * For Speech: each is a `Segment` (ResolvedElement<"speech"> with text/start/end).
+   * For Slice: each is a `SliceSegment` (ResolvedElement<"video"> with url/index/start/end).
    */
-  segments?: Segment[];
+  segments?: Segment[] | SliceSegment[];
 }
 
 export interface VargElement<T extends VargElementType = VargElementType> {
@@ -434,6 +434,29 @@ export interface ProbeProps {
   /** Source to probe: URL string, File object, or ResolvedElement */
   src: string | File | VargElement;
 }
+
+/**
+ * A video segment from `await Slice(...)`. Each segment is a `ResolvedElement<"video">`
+ * with its CDN URL, index, and position within the source video.
+ *
+ * @example
+ * ```tsx
+ * const sliced = await Slice({ src: video, every: 10 });
+ * sliced.segments[0].url       // CDN URL
+ * sliced.segments[0].index     // 0
+ * sliced.segments[0].start     // 0 (seconds in source)
+ * sliced.segments[0].end       // 10 (seconds in source)
+ * sliced.segments[0].duration  // 10 (from ResolvedElement)
+ * sliced.segments[0].file      // File (from ResolvedElement)
+ * ```
+ */
+export type SliceSegment =
+  import("./resolved-element").ResolvedElement<"video"> & {
+    readonly url: string;
+    readonly index: number;
+    readonly start: number;
+    readonly end: number;
+  };
 
 export interface ElementPropsMap {
   render: RenderProps;

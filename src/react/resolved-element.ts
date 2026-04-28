@@ -1,6 +1,11 @@
 import type { File } from "../ai-sdk/file";
 import type { Segment, WordTiming } from "../speech/types";
-import type { ElementMeta, VargElementType, VargNode } from "./types";
+import type {
+  ElementMeta,
+  SliceSegment,
+  VargElementType,
+  VargNode,
+} from "./types";
 
 /**
  * A VargElement that has been resolved via `await`.
@@ -70,11 +75,13 @@ export class ResolvedElement<T extends VargElementType = VargElementType> {
   }
 
   /**
-   * Speech segments — each is a `ResolvedElement<"speech">` with timing metadata.
-   * Empty array when no segments. Each segment works as a clip child, video audio
-   * input, or captions source.
+   * Segments from Speech or Slice elements.
+   * - Speech: `Segment[]` with `.text`, `.start`, `.end`
+   * - Slice: `SliceSegment[]` with `.url`, `.index`, `.start`, `.end`
    */
-  get segments(): Segment[] {
-    return this.meta.segments ?? [];
+  get segments(): T extends "slice" ? SliceSegment[] : Segment[] {
+    return (this.meta.segments ?? []) as T extends "slice"
+      ? SliceSegment[]
+      : Segment[];
   }
 }
