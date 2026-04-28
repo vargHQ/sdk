@@ -904,8 +904,17 @@ async function resolveSourceUrl(
   throw new Error("cannot resolve source URL from input");
 }
 
-/** Get the varg gateway client settings. */
-function getGatewayConfig(): { apiKey: string; baseUrl: string } | null {
+/** Get the varg gateway client settings.
+ *  Checks for `_gateway` injected by `varg.slice()` / `varg.probe()` / `varg.ffmpeg()`
+ *  first, then falls back to `process.env.VARG_API_KEY` for local CLI usage.
+ */
+function getGatewayConfig(
+  props?: Record<string, unknown>,
+): { apiKey: string; baseUrl: string } | null {
+  if (props?._gateway) {
+    const gw = props._gateway as { apiKey: string; baseUrl: string };
+    if (gw.apiKey) return gw;
+  }
   const apiKey = process.env.VARG_API_KEY;
   if (!apiKey) return null;
   return {
@@ -918,8 +927,9 @@ function getGatewayConfig(): { apiKey: string; baseUrl: string } | null {
 async function gatewayJobRequest(
   path: string,
   body: Record<string, unknown>,
+  props?: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const config = getGatewayConfig();
+  const config = getGatewayConfig(props);
   if (!config) throw new Error("VARG_API_KEY not set");
 
   const submitRes = await fetch(`${config.baseUrl}/v1${path}`, {
@@ -982,7 +992,11 @@ export async function resolveSliceElement(
   if (props.count !== undefined) body.count = props.count;
   if (props.ranges !== undefined) body.ranges = props.ranges;
 
-  const result = await gatewayJobRequest("/ffmpeg/slice", body);
+  const result = await gatewayJobRequest(
+    "/ffmpeg/slice",
+    body,
+    props as unknown as Record<string, unknown>,
+  );
   const output = result.output as
     | { url?: string; metadata?: Record<string, unknown> }
     | undefined;
@@ -1052,11 +1066,15 @@ export async function resolveFFmpegElement(
     ? "OUTPUT_FOLDER"
     : { out_1: "output.mp4" };
 
-  const result = await gatewayJobRequest("/ffmpeg", {
-    command,
-    input_files: inputFiles,
-    output_files: outputFiles,
-  });
+  const result = await gatewayJobRequest(
+    "/ffmpeg",
+    {
+      command,
+      input_files: inputFiles,
+      output_files: outputFiles,
+    },
+    props as unknown as Record<string, unknown>,
+  );
 
   const output = result.output as
     | { url?: string; media_type?: string }
@@ -1079,7 +1097,7 @@ export async function resolveProbeElement(
 ): Promise<ResolvedElement<"probe">> {
   const srcUrl = await resolveSourceUrl(props.src);
 
-  const config = getGatewayConfig();
+  const config = getGatewayConfig(props as unknown as Record<string, unknown>);
   if (!config) throw new Error("VARG_API_KEY not set");
 
   const res = await fetch(`${config.baseUrl}/v1/ffmpeg/probe`, {

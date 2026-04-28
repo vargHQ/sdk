@@ -419,6 +419,8 @@ export interface SliceProps {
   count?: number;
   /** Split at explicit time ranges */
   ranges?: Array<{ start: number; end: number }>;
+  /** @internal Gateway config injected by varg.slice() for cloud auth. */
+  _gateway?: { apiKey: string; baseUrl: string };
 }
 
 export interface FFmpegProps {
@@ -428,11 +430,15 @@ export interface FFmpegProps {
   inputs?: Record<string, string | File | VargElement>;
   /** FFmpeg command flags (without -i input, which is added automatically for src) */
   command: string;
+  /** @internal Gateway config injected by varg.ffmpeg() for cloud auth. */
+  _gateway?: { apiKey: string; baseUrl: string };
 }
 
 export interface ProbeProps {
   /** Source to probe: URL string, File object, or ResolvedElement */
   src: string | File | VargElement;
+  /** @internal Gateway config injected by varg.probe() for cloud auth. */
+  _gateway?: { apiKey: string; baseUrl: string };
 }
 
 /**
