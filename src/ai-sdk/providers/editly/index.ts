@@ -64,7 +64,11 @@ async function getFirstVideoInfo(
     for (const layer of clip.layers) {
       if (layer.type === "video") {
         const info = await backend.ffprobe((layer as VideoLayer).path);
-        return { width: info.width, height: info.height, fps: info.fps };
+        return {
+          ...(info.width != null ? { width: info.width } : {}),
+          ...(info.height != null ? { height: info.height } : {}),
+          ...(info.fps != null ? { fps: info.fps } : {}),
+        };
       }
     }
   }
@@ -280,7 +284,9 @@ function buildBaseClipFilter(
           videoSources.push({
             inputIndex: inputIdx,
             cutFrom: videoLayer.cutFrom ?? 0,
-            mixVolume: videoLayer.mixVolume,
+            ...(videoLayer.mixVolume != null
+              ? { mixVolume: videoLayer.mixVolume }
+              : {}),
           });
         }
         inputIdx++;
@@ -793,10 +799,10 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
         startTime: currentClipTime,
         duration: clip.duration,
         cutFrom,
-        mixVolume,
-        fadeInDuration: fadeInDuration > 0 ? fadeInDuration : undefined,
+        ...(mixVolume != null ? { mixVolume } : {}),
+        ...(fadeInDuration > 0 ? { fadeInDuration } : {}),
         fadeInCurve,
-        fadeOutDuration: fadeOutDuration > 0 ? fadeOutDuration : undefined,
+        ...(fadeOutDuration > 0 ? { fadeOutDuration } : {}),
         fadeOutCurve,
       });
     }
@@ -1067,7 +1073,7 @@ export async function editly(config: EditlyConfig): Promise<EditlyResult> {
     filterComplex,
     outputArgs,
     outputPath: outPath,
-    verbose,
+    ...(verbose != null ? { verbose } : {}),
   });
 
   if (result.output.type === "file" && verbose) {

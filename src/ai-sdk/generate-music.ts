@@ -32,8 +32,8 @@ export async function generateMusic(
     prompt,
     duration,
     providerOptions: providerOptions ?? {},
-    abortSignal,
-    headers,
+    ...(abortSignal != null && { abortSignal }),
+    ...(headers != null && { headers }),
   });
 
   return {

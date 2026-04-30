@@ -104,9 +104,9 @@ export class RendiBackend implements FFmpegBackend {
         }
         return {
           duration: output.duration ?? 0,
-          width: output.width,
-          height: output.height,
-          fps: output.frame_rate,
+          ...(output.width != null ? { width: output.width } : {}),
+          ...(output.height != null ? { height: output.height } : {}),
+          ...(output.frame_rate != null ? { fps: output.frame_rate } : {}),
         };
       }
 

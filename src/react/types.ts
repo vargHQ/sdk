@@ -4,10 +4,10 @@ import type {
   SpeechModelV3,
   TranscriptionModelV3,
 } from "@ai-sdk/provider";
-import type { FFmpegBackend } from "@/ai-sdk/providers/editly/backends";
 import type { CacheStorage } from "../ai-sdk/cache";
 import type { File } from "../ai-sdk/file";
 import type { MusicModelV3 } from "../ai-sdk/music-model";
+import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
 import type {
   CropPosition,
   Position,

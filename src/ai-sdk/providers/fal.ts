@@ -90,7 +90,7 @@ function createFalCache(name: string): CacheStorage {
 
 const pendingStorage = createFalCache("fal-pending");
 
-const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
+const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 const FAL_TIMEOUT_MS = (() => {
   if (!process.env.FAL_TIMEOUT_MS) return DEFAULT_TIMEOUT_MS;
   const parsed = Number.parseInt(process.env.FAL_TIMEOUT_MS, 10);
@@ -438,7 +438,7 @@ async function executeWithQueueRecovery<T>(
           requestId: pending.request_id,
           logs,
           timeout: FAL_TIMEOUT_MS,
-          onQueueUpdate,
+          ...(onQueueUpdate != null ? { onQueueUpdate } : {}),
         });
         const result = await fal.queue.result(pending.endpoint, {
           requestId: pending.request_id,
@@ -490,7 +490,7 @@ async function executeWithQueueRecovery<T>(
       requestId: request_id,
       logs,
       timeout: FAL_TIMEOUT_MS,
-      onQueueUpdate,
+      ...(onQueueUpdate != null ? { onQueueUpdate } : {}),
     });
 
     const result = await fal.queue.result(endpoint, {
@@ -872,7 +872,7 @@ class FalVideoModel implements VideoModelV3 {
     const result = await executeWithQueueRecovery<{ data: unknown }>(
       endpoint,
       input,
-      { logs: true, stableKey },
+      { logs: true, ...(stableKey != null ? { stableKey } : {}) },
     );
 
     const data = result.data as { video?: { url?: string } };
@@ -882,7 +882,9 @@ class FalVideoModel implements VideoModelV3 {
       throw new Error("No video URL in fal response");
     }
 
-    const videoResponse = await fetch(videoUrl, { signal: abortSignal });
+    const videoResponse = await fetch(videoUrl, {
+      ...(abortSignal != null ? { signal: abortSignal } : {}),
+    });
     const videoBuffer = await videoResponse.arrayBuffer();
 
     return {
@@ -1101,7 +1103,7 @@ class FalImageModel implements ImageModelV3 {
     const result = await executeWithQueueRecovery<{ data: unknown }>(
       finalEndpoint,
       input,
-      { logs: true, stableKey },
+      { logs: true, ...(stableKey != null ? { stableKey } : {}) },
     );
 
     const data = result.data as {
@@ -1118,7 +1120,9 @@ class FalImageModel implements ImageModelV3 {
     const imageBuffers = await Promise.all(
       images.map(async (img) => {
         if (!img.url) throw new Error("Image URL is missing");
-        const response = await fetch(img.url, { signal: abortSignal });
+        const response = await fetch(img.url, {
+          ...(abortSignal != null ? { signal: abortSignal } : {}),
+        });
         return new Uint8Array(await response.arrayBuffer());
       }),
     );
@@ -1200,7 +1204,6 @@ class FalTranscriptionModel implements TranscriptionModelV3 {
       response: {
         timestamp: new Date(),
         modelId: this.modelId,
-        headers: undefined,
       },
     };
   }

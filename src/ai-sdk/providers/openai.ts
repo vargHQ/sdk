@@ -93,7 +93,9 @@ class OpenAIVideoModel implements VideoModelV3 {
               : imageFile.data;
           blob = new Blob([data], { type: imageFile.mediaType });
         } else {
-          const response = await fetch(imageFile.url, { signal: abortSignal });
+          const response = await fetch(imageFile.url, {
+            ...(abortSignal != null ? { signal: abortSignal } : {}),
+          });
           blob = await response.blob();
         }
         formData.append("input_reference", blob, "input.png");
@@ -147,7 +149,7 @@ class OpenAIVideoModel implements VideoModelV3 {
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: formData,
-      signal: abortSignal,
+      ...(abortSignal != null ? { signal: abortSignal } : {}),
     });
 
     if (!createResponse.ok) {
@@ -172,7 +174,7 @@ class OpenAIVideoModel implements VideoModelV3 {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
         },
-        signal: abortSignal,
+        ...(abortSignal != null ? { signal: abortSignal } : {}),
       });
 
       if (!statusResponse.ok) {
@@ -199,7 +201,7 @@ class OpenAIVideoModel implements VideoModelV3 {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
         },
-        signal: abortSignal,
+        ...(abortSignal != null ? { signal: abortSignal } : {}),
       },
     );
 
@@ -241,8 +243,8 @@ export function createOpenAI(
   // add videoModel method
   provider.videoModel = (modelId: VideoModelId): VideoModelV3 =>
     new OpenAIVideoModel(modelId, {
-      apiKey: settings.apiKey,
-      baseURL: settings.baseURL,
+      ...(settings.apiKey != null ? { apiKey: settings.apiKey } : {}),
+      ...(settings.baseURL != null ? { baseURL: settings.baseURL } : {}),
     });
 
   return provider;

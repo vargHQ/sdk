@@ -89,7 +89,9 @@ class ElevenLabsMusicModel implements MusicModelV3 {
     const elevenLabsOptions = providerOptions?.elevenlabs ?? {};
     const audio = await this.client.music.compose({
       prompt,
-      musicLengthMs: duration ? Math.round(duration * 1000) : undefined,
+      ...(duration != null
+        ? { musicLengthMs: Math.round(duration * 1000) }
+        : {}),
       modelId: this.modelId,
       ...elevenLabsOptions,
     } as Parameters<typeof this.client.music.compose>[0]);
@@ -230,9 +232,8 @@ class ElevenLabsSpeechModel implements SpeechModelV3 {
       response: {
         timestamp: new Date(),
         modelId: this.modelId,
-        headers: undefined,
       },
-      providerMetadata,
+      ...(providerMetadata != null ? { providerMetadata } : {}),
     };
   }
 }
@@ -318,7 +319,9 @@ export async function generateMusic(
 
   const audio = await client.music.compose({
     prompt,
-    musicLengthMs: durationSeconds ? durationSeconds * 1000 : undefined,
+    ...(durationSeconds != null
+      ? { musicLengthMs: durationSeconds * 1000 }
+      : {}),
     modelId: "music_v1",
   });
 

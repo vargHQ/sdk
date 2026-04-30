@@ -209,7 +209,9 @@ class GoogleVideoModel implements VideoModelV3 {
       options.polling?.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
     this.maxPollDurationMs =
       options.polling?.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS;
-    this.onProgress = options.polling?.onProgress;
+    if (options.polling?.onProgress != null) {
+      this.onProgress = options.polling.onProgress;
+    }
   }
 
   async doGenerate(options: VideoModelV3CallOptions) {
@@ -269,7 +271,9 @@ class GoogleVideoModel implements VideoModelV3 {
             mimeType: imageFile.mediaType ?? "image/png",
           };
         } else {
-          const response = await fetch(imageFile.url, { signal: abortSignal });
+          const response = await fetch(imageFile.url, {
+            ...(abortSignal != null ? { signal: abortSignal } : {}),
+          });
           if (!response.ok) {
             throw new Error(
               `Failed to fetch image from ${imageFile.url}: ${response.status} ${response.statusText}`,
@@ -286,7 +290,7 @@ class GoogleVideoModel implements VideoModelV3 {
     let operation = await this.client.models.generateVideos({
       model,
       prompt,
-      image,
+      ...(image != null ? { image } : {}),
       config,
     });
 
@@ -336,7 +340,9 @@ class GoogleVideoModel implements VideoModelV3 {
 
       const videoUrl = `${videoUri}&key=${this.apiKey}`;
 
-      const response = await fetch(videoUrl, { signal: abortSignal });
+      const response = await fetch(videoUrl, {
+        ...(abortSignal != null ? { signal: abortSignal } : {}),
+      });
       if (!response.ok) {
         throw new Error(`Failed to download video: ${response.statusText}`);
       }
@@ -400,10 +406,15 @@ export function createGoogle(
   return {
     specificationVersion: "v3",
     imageModel(modelId: string): GoogleImageModel {
-      return new GoogleImageModel(modelId, { apiKey });
+      return new GoogleImageModel(modelId, {
+        ...(apiKey != null ? { apiKey } : {}),
+      });
     },
     videoModel(modelId: string): GoogleVideoModel {
-      return new GoogleVideoModel(modelId, { apiKey, polling });
+      return new GoogleVideoModel(modelId, {
+        ...(apiKey != null ? { apiKey } : {}),
+        ...(polling != null ? { polling } : {}),
+      });
     },
     languageModel(modelId: string): LanguageModelV3 {
       throw new NoSuchModelError({

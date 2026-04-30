@@ -35,10 +35,10 @@ export class LocalBackend implements FFmpegBackend {
 
     return {
       duration,
-      width: videoStream?.width,
-      height: videoStream?.height,
-      fps,
-      framerateStr,
+      ...(videoStream?.width != null ? { width: videoStream.width } : {}),
+      ...(videoStream?.height != null ? { height: videoStream.height } : {}),
+      ...(fps != null ? { fps } : {}),
+      ...(framerateStr != null ? { framerateStr } : {}),
     };
   }
 

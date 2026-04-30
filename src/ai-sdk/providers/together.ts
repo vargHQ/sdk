@@ -106,7 +106,7 @@ class TogetherImageModel implements ImageModelV3 {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: abortSignal,
+      ...(abortSignal != null ? { signal: abortSignal } : {}),
     });
 
     if (!response.ok) {
@@ -138,7 +138,9 @@ class TogetherImageModel implements ImageModelV3 {
         }
         if (img.url) {
           // URL response - download
-          const imgResponse = await fetch(img.url, { signal: abortSignal });
+          const imgResponse = await fetch(img.url, {
+            ...(abortSignal != null ? { signal: abortSignal } : {}),
+          });
           return new Uint8Array(await imgResponse.arrayBuffer());
         }
         throw new Error("Image has neither url nor b64_json");

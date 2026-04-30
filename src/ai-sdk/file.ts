@@ -59,7 +59,7 @@ export class File {
   }
 
   static fromUrl(url: string, mediaType?: string): File {
-    return new File({ url, mediaType });
+    return new File(mediaType != null ? { url, mediaType } : { url });
   }
 
   /** Hydrate a File from the render service response shape */
@@ -86,7 +86,7 @@ export class File {
     return new File({
       data: generated.uint8Array,
       mediaType: generated.mediaType,
-      url: generated.url,
+      ...(generated.url != null && { url: generated.url }),
     });
   }
 

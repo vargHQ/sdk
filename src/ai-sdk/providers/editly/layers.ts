@@ -129,14 +129,15 @@ export function getVideoFilter(
     filters.push("setsar=1");
     filters.push("fps=30");
     filters.push("settb=1/30");
+    const overlayDuration = layer.cutTo
+      ? layer.cutTo - (layer.cutFrom ?? 0)
+      : undefined;
     return {
       inputs: [
         {
           label: inputLabel,
           path: layer.path,
-          duration: layer.cutTo
-            ? layer.cutTo - (layer.cutFrom ?? 0)
-            : undefined,
+          ...(overlayDuration != null ? { duration: overlayDuration } : {}),
         },
       ],
       filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,
@@ -154,14 +155,17 @@ export function getVideoFilter(
       `[${fgLabel}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[${fgLabel}fg]`,
       `[${blurLabel}bg][${fgLabel}fg]overlay=(W-w)/2:(H-h)/2,fps=30,settb=1/30[${outputLabel}]`,
     ].join(";");
+    const containBlurDuration = layer.cutTo
+      ? layer.cutTo - (layer.cutFrom ?? 0)
+      : undefined;
     return {
       inputs: [
         {
           label: inputLabel,
           path: layer.path,
-          duration: layer.cutTo
-            ? layer.cutTo - (layer.cutFrom ?? 0)
-            : undefined,
+          ...(containBlurDuration != null
+            ? { duration: containBlurDuration }
+            : {}),
         },
       ],
       filterComplex,
@@ -186,12 +190,15 @@ export function getVideoFilter(
   filters.push("fps=30");
   filters.push("settb=1/30");
 
+  const fullDuration = layer.cutTo
+    ? layer.cutTo - (layer.cutFrom ?? 0)
+    : undefined;
   return {
     inputs: [
       {
         label: inputLabel,
         path: layer.path,
-        duration: layer.cutTo ? layer.cutTo - (layer.cutFrom ?? 0) : undefined,
+        ...(fullDuration != null ? { duration: fullDuration } : {}),
       },
     ],
     filterComplex: `[${inputLabel}]${filters.join(",")}[${outputLabel}]`,

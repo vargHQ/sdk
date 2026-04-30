@@ -151,8 +151,8 @@ export async function generateVideo(
     seed,
     files,
     providerOptions,
-    abortSignal,
-    headers,
+    ...(abortSignal != null && { abortSignal }),
+    ...(headers != null && { headers }),
   });
 
   const videos = result.videos.map((v) => new DefaultGeneratedVideo(v));

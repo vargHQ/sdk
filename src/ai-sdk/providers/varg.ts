@@ -101,7 +101,7 @@ async function pollJob(
   baseUrl: string,
   apiKey: string,
   jobId: string,
-  maxAttempts = 450,
+  maxAttempts = 900,
   intervalMs = 2000,
 ) {
   for (let i = 0; i < maxAttempts; i++) {

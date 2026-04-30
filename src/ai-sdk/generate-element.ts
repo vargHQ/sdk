@@ -77,9 +77,9 @@ export async function generateElement(
     model,
     prompt: images ? { text, images } : text,
     n,
-    size,
-    aspectRatio,
-    seed,
+    ...(size != null && { size }),
+    ...(aspectRatio != null && { aspectRatio }),
+    ...(seed != null && { seed }),
   });
 
   return {

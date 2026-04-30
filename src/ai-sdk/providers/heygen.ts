@@ -161,7 +161,7 @@ async function pollVideoStatus(
           "X-Api-Key": apiKey,
           Accept: "application/json",
         },
-        signal,
+        ...(signal != null ? { signal } : {}),
       },
     );
 
@@ -331,7 +331,7 @@ class HeyGenVideoModel implements VideoModelV3 {
         Accept: "application/json",
       },
       body: submitBody,
-      signal: abortSignal,
+      ...(abortSignal != null ? { signal: abortSignal } : {}),
     });
 
     if (!submitRes.ok) {
@@ -353,7 +353,7 @@ class HeyGenVideoModel implements VideoModelV3 {
 
     // ---- Download video ----
     const videoRes = await fetch(statusData.video_url!, {
-      signal: abortSignal,
+      ...(abortSignal != null ? { signal: abortSignal } : {}),
     });
     if (!videoRes.ok) {
       throw new Error(`Failed to download HeyGen video (${videoRes.status})`);

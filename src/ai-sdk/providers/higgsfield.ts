@@ -163,9 +163,11 @@ class HiggsfieldImageModel implements ImageModelV3 {
     this.apiSecret = options.apiSecret ?? process.env.HIGGSFIELD_SECRET ?? "";
     this.baseURL = options.baseURL ?? "https://platform.higgsfield.ai";
     this.modelSettings = {
-      styleId: options.styleId,
-      quality: options.quality,
-      enhancePrompt: options.enhancePrompt,
+      ...(options.styleId != null ? { styleId: options.styleId } : {}),
+      ...(options.quality != null ? { quality: options.quality } : {}),
+      ...(options.enhancePrompt != null
+        ? { enhancePrompt: options.enhancePrompt }
+        : {}),
     };
   }
 
@@ -225,7 +227,7 @@ class HiggsfieldImageModel implements ImageModelV3 {
         Accept: "application/json",
       },
       body: JSON.stringify(requestBody),
-      signal: abortSignal,
+      ...(abortSignal != null ? { signal: abortSignal } : {}),
     });
 
     if (!response.ok) {
@@ -246,7 +248,9 @@ class HiggsfieldImageModel implements ImageModelV3 {
     const imageUrl = await this.pollForResult(jobId, abortSignal);
 
     // Download image
-    const imageResponse = await fetch(imageUrl, { signal: abortSignal });
+    const imageResponse = await fetch(imageUrl, {
+      ...(abortSignal != null ? { signal: abortSignal } : {}),
+    });
     const imageBuffer = new Uint8Array(await imageResponse.arrayBuffer());
 
     return {
@@ -275,7 +279,7 @@ class HiggsfieldImageModel implements ImageModelV3 {
           "hf-secret": this.apiSecret,
           Accept: "application/json",
         },
-        signal: abortSignal,
+        ...(abortSignal != null ? { signal: abortSignal } : {}),
       });
 
       if (!response.ok) {
@@ -365,9 +369,11 @@ export function createHiggsfield(
       modelSettings?: HiggsfieldImageModelSettings,
     ): ImageModelV3 {
       return new HiggsfieldImageModel(modelId, {
-        apiKey: settings.apiKey,
-        apiSecret: settings.apiSecret,
-        baseURL: settings.baseURL,
+        ...(settings.apiKey != null ? { apiKey: settings.apiKey } : {}),
+        ...(settings.apiSecret != null
+          ? { apiSecret: settings.apiSecret }
+          : {}),
+        ...(settings.baseURL != null ? { baseURL: settings.baseURL } : {}),
         ...settings.defaultModelSettings,
         ...modelSettings,
       });
