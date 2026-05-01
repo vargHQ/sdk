@@ -417,7 +417,13 @@ export interface FFmpegGateway {
     ranges?: Array<{ start: number; end: number }>;
   }): Promise<{
     url: string;
-    segments: Array<{ url: string; index: number; filename: string }>;
+    segments: Array<{
+      url: string;
+      index: number;
+      filename: string;
+      first_frame?: string;
+      thumbnail?: string;
+    }>;
     jobId: string;
   }>;
   probe(params: { url: string }): Promise<{
@@ -499,6 +505,10 @@ export type SliceSegment =
     readonly index: number;
     readonly start: number;
     readonly end: number;
+    /** Full-resolution first frame (JPEG). */
+    readonly first_frame?: string;
+    /** 480px-wide thumbnail (WebP). */
+    readonly thumbnail?: string;
   };
 
 export interface ElementPropsMap {

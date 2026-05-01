@@ -938,13 +938,23 @@ export async function resolveSliceElement(
       { type: "video" as const, props: { src: seg.url }, children: [] },
       { file: segFile, duration: segDuration },
     );
+    const augmented: {
+      url: string;
+      index: number;
+      start: number;
+      end: number;
+      first_frame?: string;
+      thumbnail?: string;
+    } = {
+      url: seg.url,
+      index: seg.index,
+      start: cursor,
+      end: cursor + segDuration,
+    };
+    if (seg.first_frame) augmented.first_frame = seg.first_frame;
+    if (seg.thumbnail) augmented.thumbnail = seg.thumbnail;
     segments.push(
-      Object.assign(segElement, {
-        url: seg.url,
-        index: seg.index,
-        start: cursor,
-        end: cursor + segDuration,
-      }) as import("./types").SliceSegment,
+      Object.assign(segElement, augmented) as import("./types").SliceSegment,
     );
     cursor += segDuration;
   }
