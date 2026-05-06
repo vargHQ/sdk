@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { isPrivateWebhookUrl } from "./webhook-validate";
 import { getCacheItemMedia, scanCacheFolder } from "./scanner";
 import { extractStages, serializeStages } from "./stages";
 import {
@@ -96,6 +97,8 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
     renderId: string,
     onProgress: (progress: RenderProgress) => void,
     _signal: AbortSignal,
+    webhookUrl?: string,
+    webhookSecret?: string,
   ): Promise<string> {
     const outputPath = join(outputDir, `${renderId}.mp4`);
     const tempDir = join(import.meta.dir, "../react/examples");
@@ -132,6 +135,8 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
         output: outputPath,
         cache: cacheDir,
         quiet: false,
+        ...(webhookUrl != null && { webhookUrl }),
+        ...(webhookSecret != null && { webhookSecret }),
       });
 
       console.log(`[render] complete: ${outputPath}`);
@@ -229,6 +234,14 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
       if (url.pathname === "/api/render" && req.method === "POST") {
         const body = (await req.json()) as RenderRequest;
+
+        if (body.webhookUrl && isPrivateWebhookUrl(body.webhookUrl)) {
+          return Response.json(
+            { error: "webhookUrl must be a public HTTPS URL" },
+            { status: 400 },
+          );
+        }
+
         const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const controller = new AbortController();
         activeRenders.set(renderId, controller);
@@ -251,6 +264,8 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
                 renderId,
                 (progress) => send("progress", progress),
                 controller.signal,
+                body.webhookUrl,
+                body.webhookSecret,
               );
               send("complete", { videoUrl: `/api/output/${renderId}.mp4` });
             } catch (error) {

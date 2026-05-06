@@ -1,6 +1,7 @@
 import { type CacheStorage, withCache } from "../ai-sdk/cache";
 import { fileCache } from "../ai-sdk/file-cache";
 import { localBackend } from "../ai-sdk/providers/editly";
+import { createRenderWebhook } from "./render-webhook";
 import { renderRoot } from "./renderers";
 import { resolveLazy } from "./renderers/resolve-lazy";
 import { withResolveContext } from "./resolve-context";
@@ -30,20 +31,28 @@ export async function render(
 ): Promise<RenderResult> {
   const backend = options.backend ?? localBackend;
   const cache = resolveCacheStorage(options.cache);
+  const webhook = createRenderWebhook(options);
 
-  // Resolve lazy elements (from async components) within the resolve context.
-  // This makes backend/cache/storage available to `await Speech()` etc. via
-  // AsyncLocalStorage, so they use the same infrastructure as the render pipeline.
-  const resolved = (await withResolveContext(
-    { backend, cache, storage: options.storage },
-    () => resolveLazy(element),
-  )) as VargElement;
+  try {
+    const resolved = (await withResolveContext(
+      { backend, cache, storage: options.storage },
+      () => resolveLazy(element),
+    )) as VargElement;
 
-  if (resolved.type !== "render") {
-    throw new Error("Root element must be <Render>");
+    if (resolved.type !== "render") {
+      throw new Error("Root element must be <Render>");
+    }
+
+    const result = await renderRoot(
+      resolved as VargElement<"render">,
+      webhook.wrapOptions(options),
+    );
+    await webhook.onComplete(result);
+    return result;
+  } catch (err) {
+    await webhook.onError(err);
+    throw err;
   }
-
-  return renderRoot(resolved as VargElement<"render">, options);
 }
 
 /** Streaming render interface that yields progress events. */

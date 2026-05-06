@@ -180,6 +180,17 @@ const sharedArgs = {
     description: "open video after generation",
     default: false,
   },
+  "webhook-url": {
+    type: "string" as const,
+    description: "POST a JSON payload to this URL when render completes or errors",
+  },
+  "webhook-secret": {
+    type: "string" as const,
+    description:
+      "HMAC-SHA256 secret for signing the webhook body (X-Varg-Signature header). " +
+      "Falls back to VARG_WEBHOOK_SECRET env var. " +
+      "Warning: supplying secrets on the command line may expose them in process listings and shell/CI logs.",
+  },
 };
 
 async function runRender(
@@ -219,12 +230,20 @@ async function runRender(
 
   const defaults = await detectDefaultModels();
 
+  const webhookUrl = args["webhook-url"] as string | undefined;
+  const webhookSecret =
+    (args["webhook-secret"] as string | undefined) ??
+    process.env.VARG_WEBHOOK_SECRET;
+
   const buffer = await render(component, {
     output: outputPath,
     cache: useCache ? (args.cache as string) : undefined,
     mode,
     defaults,
     verbose: args.verbose as boolean,
+    quiet: args.quiet as boolean,
+    ...(webhookUrl != null && { webhookUrl }),
+    ...(webhookSecret != null && { webhookSecret }),
   });
 
   if (!args.quiet) {
@@ -313,6 +332,14 @@ function RenderHelpView() {
         <Text>
           <VargText variant="accent">--open </VargText>open video after
           generation
+        </Text>
+        <Text>
+          <VargText variant="accent">--webhook-url </VargText>POST JSON to URL
+          on completion or error
+        </Text>
+        <Text>
+          <VargText variant="accent">--webhook-secret </VargText>HMAC-SHA256
+          secret for X-Varg-Signature header
         </Text>
       </Box>
 
