@@ -445,6 +445,7 @@ class VargSpeechModel implements SpeechModelV3 {
       if (byok) {
         const result = await magnificDirectSpeech(magnificLeaf, byok, options, {
           baseUrl: this.settings.magnificBaseUrl,
+          signal: options.abortSignal,
         });
         return {
           audio: result.data,
@@ -508,6 +509,7 @@ class VargMusicModel implements MusicModelV3 {
       if (byok) {
         const result = await magnificDirectMusic(magnificLeaf, byok, options, {
           baseUrl: this.settings.magnificBaseUrl,
+          signal: options.abortSignal,
         });
         return {
           audio: result.data,

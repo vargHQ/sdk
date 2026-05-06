@@ -644,7 +644,7 @@ async function buildUpscaleCreative(
     );
   }
   return prune({
-    image: await toBase64(opts.files[0]),
+    image: await toBase64(opts.files[0], ctx.signal),
     webhook_url: poOpt<string>(ctx, "webhook_url"),
     scale_factor: po(ctx, "scale_factor", "2x"),
     optimized_for: po(ctx, "optimized_for", "standard"),
@@ -668,7 +668,7 @@ async function buildUpscalePrecision(
     );
   }
   return prune({
-    image: await toBase64(opts.files[0]),
+    image: await toBase64(opts.files[0], ctx.signal),
     webhook_url: poOpt<string>(ctx, "webhook_url"),
     sharpen: po(ctx, "sharpen", 50),
     smart_grain: po(ctx, "smart_grain", 7),
@@ -700,7 +700,7 @@ async function buildRelight(
     fixed_generation: advUser.fixed_generation ?? false,
   });
   return prune({
-    image: await toBase64(opts.files[0]),
+    image: await toBase64(opts.files[0], ctx.signal),
     prompt: opts.prompt ?? poOpt<string>(ctx, "prompt"),
     transfer_light_from_reference_image: poOpt<string>(
       ctx,
@@ -733,14 +733,16 @@ async function buildStyleTransfer(
   const referenceFromCtx = poOpt<string>(ctx, "reference_image");
   const reference =
     referenceFromCtx ??
-    (referenceFromOpts ? await toBase64(referenceFromOpts) : undefined);
+    (referenceFromOpts
+      ? await toBase64(referenceFromOpts, ctx.signal)
+      : undefined);
   if (!reference) {
     throw new MagnificAPIError(
       "magnific/style-transfer requires a reference image (pass as second file or providerOptions.magnific.reference_image)",
     );
   }
   return prune({
-    image: await toBase64(opts.files[0]),
+    image: await toBase64(opts.files[0], ctx.signal),
     reference_image: reference,
     webhook_url: poOpt<string>(ctx, "webhook_url"),
     prompt: opts.prompt ?? poOpt<string>(ctx, "prompt"),
@@ -778,7 +780,7 @@ async function buildExpand(
     throw new MagnificAPIError("magnific/expand requires an input image");
   }
   return prune({
-    image: await toBase64(opts.files[0]),
+    image: await toBase64(opts.files[0], ctx.signal),
     prompt: opts.prompt ?? poOpt<string>(ctx, "prompt"),
     webhook_url: poOpt<string>(ctx, "webhook_url"),
     left: poOpt<number>(ctx, "left"),
@@ -817,7 +819,7 @@ async function buildFlux2Pro(
 ): Promise<Record<string, unknown>> {
   const inputs = opts.files ?? [];
   const collectInput = async (i: number): Promise<string | undefined> =>
-    inputs[i] ? await toBase64(inputs[i]!) : undefined;
+    inputs[i] ? await toBase64(inputs[i]!, ctx.signal) : undefined;
 
   const sizeFromV3 = parseSize(opts.size);
   return prune({
@@ -866,7 +868,7 @@ async function buildFlux2Klein(
 ): Promise<Record<string, unknown>> {
   const inputs = opts.files ?? [];
   const collectInput = async (i: number): Promise<string | undefined> =>
-    inputs[i] ? await toBase64(inputs[i]!) : undefined;
+    inputs[i] ? await toBase64(inputs[i]!, ctx.signal) : undefined;
   return prune({
     prompt: requirePrompt(opts.prompt, "magnific/flux-2-klein"),
     aspect_ratio: po(
@@ -977,9 +979,14 @@ async function buildSeedreamV45Edit(
   //   optional: aspect_ratio, seed, enable_safety_checker, webhook_url
   const refsFromOpts = opts.files ?? [];
   const refsFromCtx = poOpt<string[]>(ctx, "reference_images");
+  if (!refsFromCtx && refsFromOpts.length > 5) {
+    throw new MagnificAPIError(
+      "magnific/seedream-v4.5/edit accepts at most 5 reference images",
+    );
+  }
   const reference_images =
     refsFromCtx ??
-    (await Promise.all(refsFromOpts.slice(0, 5).map((f) => toBase64(f))));
+    (await Promise.all(refsFromOpts.map((f) => toBase64(f, ctx.signal))));
   if (!reference_images.length) {
     throw new MagnificAPIError(
       "magnific/seedream-v4.5/edit requires at least one reference image (pass via files[] or providerOptions.magnific.reference_images)",
@@ -1063,7 +1070,8 @@ async function buildKlingV21Pro(
   ctx: BuilderCtx,
 ): Promise<Record<string, unknown>> {
   const image = opts.files?.[0]
-    ? (poOpt<string>(ctx, "image") ?? (await toBase64Or(opts.files[0])))
+    ? (poOpt<string>(ctx, "image") ??
+      (await toBase64Or(opts.files[0], ctx.signal)))
     : poOpt<string>(ctx, "image");
   return prune({
     duration: po(
@@ -1087,7 +1095,8 @@ async function buildKlingV25Pro(
   ctx: BuilderCtx,
 ): Promise<Record<string, unknown>> {
   const image = opts.files?.[0]
-    ? (poOpt<string>(ctx, "image") ?? (await toBase64Or(opts.files[0])))
+    ? (poOpt<string>(ctx, "image") ??
+      (await toBase64Or(opts.files[0], ctx.signal)))
     : poOpt<string>(ctx, "image");
   return prune({
     image,
@@ -1108,7 +1117,8 @@ async function buildKlingV26Pro(
   ctx: BuilderCtx,
 ): Promise<Record<string, unknown>> {
   const image = opts.files?.[0]
-    ? (poOpt<string>(ctx, "image") ?? (await toBase64Or(opts.files[0])))
+    ? (poOpt<string>(ctx, "image") ??
+      (await toBase64Or(opts.files[0], ctx.signal)))
     : poOpt<string>(ctx, "image");
   return prune({
     prompt: opts.prompt || poOpt<string>(ctx, "prompt"),
@@ -1163,10 +1173,12 @@ async function buildKlingO1Pro(
 ): Promise<Record<string, unknown>> {
   const inputs = opts.files ?? [];
   const first = inputs[0]
-    ? (poOpt<string>(ctx, "first_frame") ?? (await toBase64Or(inputs[0])))
+    ? (poOpt<string>(ctx, "first_frame") ??
+      (await toBase64Or(inputs[0], ctx.signal)))
     : poOpt<string>(ctx, "first_frame");
   const last = inputs[1]
-    ? (poOpt<string>(ctx, "last_frame") ?? (await toBase64Or(inputs[1])))
+    ? (poOpt<string>(ctx, "last_frame") ??
+      (await toBase64Or(inputs[1], ctx.signal)))
     : poOpt<string>(ctx, "last_frame");
   return prune({
     prompt: opts.prompt || poOpt<string>(ctx, "prompt"),
@@ -1239,11 +1251,11 @@ async function buildMinimaxHailuo02(
 ): Promise<Record<string, unknown>> {
   const first = opts.files?.[0]
     ? (poOpt<string>(ctx, "first_frame_image") ??
-      (await toBase64Or(opts.files[0])))
+      (await toBase64Or(opts.files[0], ctx.signal)))
     : poOpt<string>(ctx, "first_frame_image");
   const last = opts.files?.[1]
     ? (poOpt<string>(ctx, "last_frame_image") ??
-      (await toBase64Or(opts.files[1])))
+      (await toBase64Or(opts.files[1], ctx.signal)))
     : poOpt<string>(ctx, "last_frame_image");
   return prune({
     prompt: requirePrompt(opts.prompt, "magnific/minimax-hailuo-02"),
@@ -1361,7 +1373,7 @@ async function buildRunwayGen4Turbo(
 ): Promise<Record<string, unknown>> {
   const file = opts.files?.[0];
   const image = file
-    ? (poOpt<string>(ctx, "image") ?? (await toBase64Or(file)))
+    ? (poOpt<string>(ctx, "image") ?? (await toBase64Or(file, ctx.signal)))
     : poOpt<string>(ctx, "image");
   if (!image) {
     throw new MagnificAPIError(
@@ -1442,7 +1454,7 @@ async function buildSeedancePro(
 ): Promise<Record<string, unknown>> {
   const file = opts.files?.[0];
   const image = file
-    ? (poOpt<string>(ctx, "image") ?? (await toBase64Or(file)))
+    ? (poOpt<string>(ctx, "image") ?? (await toBase64Or(file, ctx.signal)))
     : poOpt<string>(ctx, "image");
   return prune({
     prompt: requirePrompt(opts.prompt, "magnific/seedance-pro"),

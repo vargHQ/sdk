@@ -202,11 +202,16 @@ export class MagnificProvider extends BaseProvider {
     options: { maxWait?: number; pollInterval?: number } = {},
   ): Promise<string[]> {
     const jobId = await this.submit(capabilityPath, inputs);
-    const result = (await this.waitForCompletion(jobId, {
-      maxWait: options.maxWait ?? this.config.timeout ?? 30 * 60 * 1000,
-      pollInterval: options.pollInterval ?? 5000,
-    })) as { generated?: string[] } | undefined;
-    return result?.generated ?? [];
+    try {
+      const result = (await this.waitForCompletion(jobId, {
+        maxWait: options.maxWait ?? this.config.timeout ?? 30 * 60 * 1000,
+        pollInterval: options.pollInterval ?? 5000,
+      })) as { generated?: string[] } | undefined;
+      return result?.generated ?? [];
+    } finally {
+      this.taskCapabilities.delete(jobId);
+      this.syncResults.delete(jobId);
+    }
   }
 
   // -------------------------------------------------------------------------

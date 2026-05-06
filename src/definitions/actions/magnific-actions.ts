@@ -34,7 +34,19 @@ type SingleUrlOutput = typeof singleUrlOutput;
 
 async function readBase64(input: string): Promise<string> {
   if (/^https?:\/\//i.test(input)) {
-    const r = await fetch(input);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    let r: Response;
+    try {
+      r = await fetch(input, { signal: controller.signal });
+    } catch (err) {
+      clearTimeout(timer);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new Error(`fetch timed out for ${input}`);
+      }
+      throw err;
+    }
+    clearTimeout(timer);
     if (!r.ok) {
       throw new Error(`failed to fetch ${input}: ${r.status}`);
     }
