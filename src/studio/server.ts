@@ -96,6 +96,8 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
     renderId: string,
     onProgress: (progress: RenderProgress) => void,
     _signal: AbortSignal,
+    webhookUrl?: string,
+    webhookSecret?: string,
   ): Promise<string> {
     const outputPath = join(outputDir, `${renderId}.mp4`);
     const tempDir = join(import.meta.dir, "../react/examples");
@@ -132,6 +134,8 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
         output: outputPath,
         cache: cacheDir,
         quiet: false,
+        ...(webhookUrl != null && { webhookUrl }),
+        ...(webhookSecret != null && { webhookSecret }),
       });
 
       console.log(`[render] complete: ${outputPath}`);
@@ -251,6 +255,8 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
                 renderId,
                 (progress) => send("progress", progress),
                 controller.signal,
+                body.webhookUrl,
+                body.webhookSecret,
               );
               send("complete", { videoUrl: `/api/output/${renderId}.mp4` });
             } catch (error) {

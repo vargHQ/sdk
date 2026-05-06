@@ -37,6 +37,8 @@ export interface VideoData {
 export interface RenderRequest {
   code: string;
   cacheDir?: string;
+  webhookUrl?: string;
+  webhookSecret?: string;
 }
 
 export interface RenderProgress {

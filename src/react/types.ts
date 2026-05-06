@@ -392,6 +392,10 @@ export interface RenderOptions {
   concurrency?: number;
   /** Callback invoked after each AI generation completes. Used to accumulate per-model costs. */
   onGeneration?: (entry: GenerationPricingEntry) => void;
+  /** If set, POST a JSON payload to this URL when the render completes or errors. */
+  webhookUrl?: string;
+  /** Optional secret used to sign the webhook body via HMAC-SHA256 (sent as `X-Varg-Signature` header, hex). */
+  webhookSecret?: string;
 }
 
 // Re-export from file module for convenience
