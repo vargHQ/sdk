@@ -100,6 +100,22 @@ export {
   SoulQuality,
   SoulSize,
 } from "./higgsfield";
+// Magnific provider (image upscale/relight/style/expand + Mystic image gen + audio + video)
+export {
+  MagnificProvider,
+  magnificAudioIsolation,
+  magnificExpand,
+  magnificMusic,
+  magnificMystic,
+  magnificProvider,
+  magnificRelight,
+  magnificRemoveBackground,
+  magnificSoundEffects,
+  magnificStyleTransfer,
+  magnificUpscaleCreative,
+  magnificUpscalePrecision,
+  magnificVfx,
+} from "./magnific";
 // PiAPI provider (Seedance video generation)
 export { PiAPIProvider, piapiProvider } from "./piapi";
 // Replicate provider (video/image generation)
@@ -133,6 +149,7 @@ import { fireworksProvider } from "./fireworks";
 import { groqProvider } from "./groq";
 import { heygenProvider } from "./heygen";
 import { higgsfieldProvider } from "./higgsfield";
+import { magnificProvider } from "./magnific";
 import { piapiProvider } from "./piapi";
 import { replicateProvider } from "./replicate";
 import { storageProvider } from "./storage";
@@ -147,5 +164,6 @@ providers.register(fireworksProvider);
 providers.register(higgsfieldProvider);
 providers.register(heygenProvider);
 providers.register(piapiProvider);
+providers.register(magnificProvider);
 providers.register(ffmpegProvider);
 providers.register(storageProvider);

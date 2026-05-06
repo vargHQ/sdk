@@ -11,6 +11,14 @@ import {
 } from "@ai-sdk/provider";
 import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
+import {
+  magnificDirectImage,
+  magnificDirectMusic,
+  magnificDirectSpeech,
+  magnificDirectVideo,
+  parseMagnificModelId,
+  resolveMagnificKey,
+} from "./magnific";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -19,6 +27,20 @@ import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 export interface VargProviderSettings {
   apiKey?: string;
   baseUrl?: string;
+  /**
+   * BYOK Magnific API key. When set, calls to `varg.imageModel("magnific/...")`,
+   * `videoModel`, `musicModel`, and `speechModel` go directly to api.magnific.com
+   * with this key instead of being forwarded to the Varg gateway.
+   *
+   * Precedence (highest first):
+   *   1. `options.providerOptions.magnific.apiKey` on the call
+   *   2. this `magnificApiKey`
+   *   3. `process.env.MAGNIFIC_API_KEY`
+   *   4. (none) → call goes to Varg gateway
+   */
+  magnificApiKey?: string;
+  /** Optional override for the Magnific API base URL (testing). */
+  magnificBaseUrl?: string;
 }
 
 export interface VargProvider extends ProviderV3 {
@@ -209,14 +231,49 @@ class VargVideoModel implements VideoModelV3 {
   readonly maxVideosPerCall = 1;
   private baseUrl: string;
   private apiKey: string;
+  private settings: VargProviderSettings;
 
-  constructor(modelId: string, baseUrl: string, apiKey: string) {
+  constructor(
+    modelId: string,
+    baseUrl: string,
+    apiKey: string,
+    settings: VargProviderSettings,
+  ) {
     this.modelId = modelId;
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
+    this.settings = settings;
   }
 
   async doGenerate(options: VideoModelV3CallOptions) {
+    // Magnific BYOK fast path — bypass the Varg gateway when a Magnific key is
+    // resolvable. When no key is available, fall through to the gateway and let
+    // it forward "magnific/<leaf>" upstream.
+    const magnificLeaf = parseMagnificModelId(this.modelId);
+    if (magnificLeaf !== null) {
+      const byok = resolveMagnificKey({
+        settings: this.settings,
+        perCall: options.providerOptions?.magnific as
+          | Record<string, unknown>
+          | undefined,
+      });
+      if (byok) {
+        const result = await magnificDirectVideo(magnificLeaf, byok, options, {
+          baseUrl: this.settings.magnificBaseUrl,
+          signal: options.abortSignal,
+        });
+        return {
+          videos: [result.data],
+          warnings: [] as SharedV3Warning[],
+          response: {
+            timestamp: new Date(),
+            modelId: this.modelId,
+            headers: undefined,
+          },
+        };
+      }
+    }
+
     const warnings: SharedV3Warning[] = [];
     const params: Record<string, unknown> = {
       model: this.modelId,
@@ -271,14 +328,47 @@ class VargImageModel implements ImageModelV3 {
   readonly maxImagesPerCall = 1;
   private baseUrl: string;
   private apiKey: string;
+  private settings: VargProviderSettings;
 
-  constructor(modelId: string, baseUrl: string, apiKey: string) {
+  constructor(
+    modelId: string,
+    baseUrl: string,
+    apiKey: string,
+    settings: VargProviderSettings,
+  ) {
     this.modelId = modelId;
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
+    this.settings = settings;
   }
 
   async doGenerate(options: ImageModelV3CallOptions) {
+    // Magnific BYOK fast path — see VargVideoModel for the contract.
+    const magnificLeaf = parseMagnificModelId(this.modelId);
+    if (magnificLeaf !== null) {
+      const byok = resolveMagnificKey({
+        settings: this.settings,
+        perCall: options.providerOptions?.magnific as
+          | Record<string, unknown>
+          | undefined,
+      });
+      if (byok) {
+        const result = await magnificDirectImage(magnificLeaf, byok, options, {
+          baseUrl: this.settings.magnificBaseUrl,
+          signal: options.abortSignal,
+        });
+        return {
+          images: [result.data],
+          warnings: [] as SharedV3Warning[],
+          response: {
+            timestamp: new Date(),
+            modelId: this.modelId,
+            headers: undefined,
+          },
+        };
+      }
+    }
+
     const warnings: SharedV3Warning[] = [];
     const params: Record<string, unknown> = {
       model: this.modelId,
@@ -328,14 +418,43 @@ class VargSpeechModel implements SpeechModelV3 {
   readonly modelId: string;
   private baseUrl: string;
   private apiKey: string;
+  private settings: VargProviderSettings;
 
-  constructor(modelId: string, baseUrl: string, apiKey: string) {
+  constructor(
+    modelId: string,
+    baseUrl: string,
+    apiKey: string,
+    settings: VargProviderSettings,
+  ) {
     this.modelId = modelId;
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
+    this.settings = settings;
   }
 
   async doGenerate(options: SpeechModelV3CallOptions) {
+    // Magnific BYOK fast path
+    const magnificLeaf = parseMagnificModelId(this.modelId);
+    if (magnificLeaf !== null) {
+      const byok = resolveMagnificKey({
+        settings: this.settings,
+        perCall: options.providerOptions?.magnific as
+          | Record<string, unknown>
+          | undefined,
+      });
+      if (byok) {
+        const result = await magnificDirectSpeech(magnificLeaf, byok, options, {
+          baseUrl: this.settings.magnificBaseUrl,
+          signal: options.abortSignal,
+        });
+        return {
+          audio: result.data,
+          warnings: [] as SharedV3Warning[],
+          response: { timestamp: new Date(), modelId: this.modelId },
+        };
+      }
+    }
+
     const warnings: SharedV3Warning[] = [];
     const params: Record<string, unknown> = {
       model: this.modelId,
@@ -363,14 +482,47 @@ class VargMusicModel implements MusicModelV3 {
   readonly modelId: string;
   private baseUrl: string;
   private apiKey: string;
+  private settings: VargProviderSettings;
 
-  constructor(modelId: string, baseUrl: string, apiKey: string) {
+  constructor(
+    modelId: string,
+    baseUrl: string,
+    apiKey: string,
+    settings: VargProviderSettings,
+  ) {
     this.modelId = modelId;
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
+    this.settings = settings;
   }
 
   async doGenerate(options: MusicModelV3CallOptions) {
+    // Magnific BYOK fast path
+    const magnificLeaf = parseMagnificModelId(this.modelId);
+    if (magnificLeaf !== null) {
+      const byok = resolveMagnificKey({
+        settings: this.settings,
+        perCall: options.providerOptions?.magnific as
+          | Record<string, unknown>
+          | undefined,
+      });
+      if (byok) {
+        const result = await magnificDirectMusic(magnificLeaf, byok, options, {
+          baseUrl: this.settings.magnificBaseUrl,
+          signal: options.abortSignal,
+        });
+        return {
+          audio: result.data,
+          warnings: [] as SharedV3Warning[],
+          response: {
+            timestamp: new Date(),
+            modelId: this.modelId,
+            headers: undefined,
+          },
+        };
+      }
+    }
+
     const warnings: SharedV3Warning[] = [];
     const params: Record<string, unknown> = {
       model: this.modelId,
@@ -403,10 +555,14 @@ export function createVarg(settings: VargProviderSettings = {}): VargProvider {
 
   return {
     specificationVersion: "v3",
-    videoModel: (modelId) => new VargVideoModel(modelId, baseUrl, apiKey),
-    imageModel: (modelId) => new VargImageModel(modelId, baseUrl, apiKey),
-    speechModel: (modelId) => new VargSpeechModel(modelId, baseUrl, apiKey),
-    musicModel: (modelId) => new VargMusicModel(modelId, baseUrl, apiKey),
+    videoModel: (modelId) =>
+      new VargVideoModel(modelId, baseUrl, apiKey, settings),
+    imageModel: (modelId) =>
+      new VargImageModel(modelId, baseUrl, apiKey, settings),
+    speechModel: (modelId) =>
+      new VargSpeechModel(modelId, baseUrl, apiKey, settings),
+    musicModel: (modelId) =>
+      new VargMusicModel(modelId, baseUrl, apiKey, settings),
     languageModel(modelId: string): LanguageModelV3 {
       throw new NoSuchModelError({ modelId, modelType: "languageModel" });
     },
