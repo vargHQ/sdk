@@ -33,16 +33,16 @@ export async function render(
   const cache = resolveCacheStorage(options.cache);
   const webhook = createRenderWebhook(options);
 
-  const resolved = (await withResolveContext(
-    { backend, cache, storage: options.storage },
-    () => resolveLazy(element),
-  )) as VargElement;
-
-  if (resolved.type !== "render") {
-    throw new Error("Root element must be <Render>");
-  }
-
   try {
+    const resolved = (await withResolveContext(
+      { backend, cache, storage: options.storage },
+      () => resolveLazy(element),
+    )) as VargElement;
+
+    if (resolved.type !== "render") {
+      throw new Error("Root element must be <Render>");
+    }
+
     const result = await renderRoot(
       resolved as VargElement<"render">,
       webhook.wrapOptions(options),
@@ -50,7 +50,7 @@ export async function render(
     await webhook.onComplete(result);
     return result;
   } catch (err) {
-    webhook.onError(err);
+    await webhook.onError(err);
     throw err;
   }
 }

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { isPrivateWebhookUrl } from "./webhook-validate";
 import { getCacheItemMedia, scanCacheFolder } from "./scanner";
 import { extractStages, serializeStages } from "./stages";
 import {
@@ -233,6 +234,14 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
       if (url.pathname === "/api/render" && req.method === "POST") {
         const body = (await req.json()) as RenderRequest;
+
+        if (body.webhookUrl && isPrivateWebhookUrl(body.webhookUrl)) {
+          return Response.json(
+            { error: "webhookUrl must be a public HTTPS URL" },
+            { status: 400 },
+          );
+        }
+
         const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const controller = new AbortController();
         activeRenders.set(renderId, controller);

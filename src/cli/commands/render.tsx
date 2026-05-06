@@ -186,7 +186,10 @@ const sharedArgs = {
   },
   "webhook-secret": {
     type: "string" as const,
-    description: "HMAC-SHA256 secret for signing the webhook body (X-Varg-Signature header)",
+    description:
+      "HMAC-SHA256 secret for signing the webhook body (X-Varg-Signature header). " +
+      "Falls back to VARG_WEBHOOK_SECRET env var. " +
+      "Warning: supplying secrets on the command line may expose them in process listings and shell/CI logs.",
   },
 };
 
@@ -228,7 +231,9 @@ async function runRender(
   const defaults = await detectDefaultModels();
 
   const webhookUrl = args["webhook-url"] as string | undefined;
-  const webhookSecret = args["webhook-secret"] as string | undefined;
+  const webhookSecret =
+    (args["webhook-secret"] as string | undefined) ??
+    process.env.VARG_WEBHOOK_SECRET;
 
   const buffer = await render(component, {
     output: outputPath,

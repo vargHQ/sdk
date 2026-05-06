@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { isPrivateWebhookUrl } from "../studio/webhook-validate";
 import type { File as VargFile } from "../ai-sdk/file";
 import type {
   GenerationPricingEntry,
@@ -13,6 +14,7 @@ const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 const HEADER_EVENT = "x-varg-event";
 const HEADER_SIGNATURE = "x-varg-signature";
+const HEADER_TIMESTAMP = "x-varg-timestamp";
 
 export const WEBHOOK_EVENTS = {
   COMPLETED: "render.completed",
@@ -47,13 +49,13 @@ export type RenderWebhookPayload = CompletedPayload | FailedPayload;
 interface RenderWebhookCoordinator {
   wrapOptions(opts: RenderOptions): RenderOptions;
   onComplete(result: RenderResult): Promise<void>;
-  onError(err: unknown): void;
+  onError(err: unknown): Promise<void>;
 }
 
 const NOOP_COORDINATOR: RenderWebhookCoordinator = {
   wrapOptions: (o) => o,
   onComplete: async () => {},
-  onError: () => {},
+  onError: async () => {},
 };
 
 /**
@@ -78,7 +80,7 @@ export function createRenderWebhook(
     }),
     async onComplete(result) {
       const videoUrl = await uploadVideo(result.video, options);
-      void fireRenderWebhook(
+      await fireRenderWebhook(
         options,
         buildCompletedPayload({
           result,
@@ -89,8 +91,8 @@ export function createRenderWebhook(
         }),
       );
     },
-    onError(err) {
-      void fireRenderWebhook(options, buildFailedPayload({ err, startedAt }));
+    async onError(err) {
+      await fireRenderWebhook(options, buildFailedPayload({ err, startedAt }));
     },
   };
 }
@@ -164,15 +166,25 @@ export async function fireRenderWebhook(
   payload: RenderWebhookPayload,
 ): Promise<void> {
   if (!opts.webhookUrl) return;
+  if (isPrivateWebhookUrl(opts.webhookUrl)) {
+    if (!opts.quiet) {
+      console.warn(
+        `[webhook] rejected private/non-HTTPS URL: ${opts.webhookUrl}`,
+      );
+    }
+    return;
+  }
 
   const body = JSON.stringify(payload);
+  const timestamp = String(Date.now());
   const headers: Record<string, string> = {
     "content-type": "application/json",
     [HEADER_EVENT]: payload.event satisfies WebhookEvent,
+    [HEADER_TIMESTAMP]: timestamp,
   };
   if (opts.webhookSecret) {
     headers[HEADER_SIGNATURE] = createHmac("sha256", opts.webhookSecret)
-      .update(body)
+      .update(`${timestamp}.${body}`)
       .digest("hex");
   }
 
