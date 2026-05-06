@@ -49,8 +49,21 @@ export type { ImageGenerationResult } from "./image";
 export {
   definition as image,
   generateWithFal,
+  generateWithMagnific,
   generateWithSoul,
 } from "./image";
+// Magnific actions
+export {
+  allMagnificActionDefinitions,
+  expandDefinition as magnificExpand,
+  isolateAudioDefinition as magnificIsolateAudio,
+  relightDefinition as magnificRelight,
+  removeBgDefinition as magnificRemoveBg,
+  restyleDefinition as magnificRestyle,
+  sfxDefinition as magnificSfx,
+  upscaleDefinition as magnificUpscale,
+  vfxDefinition as magnificVfx,
+} from "./magnific-actions";
 export type { GenerateMusicOptions, MusicResult } from "./music";
 // Music generation
 export { definition as music, generateMusic } from "./music";
@@ -101,6 +114,7 @@ import {
 } from "./edit";
 import { definition as grokEditDefinition } from "./grok-edit";
 import { definition as imageDefinition } from "./image";
+import { allMagnificActionDefinitions } from "./magnific-actions";
 import { definition as musicDefinition } from "./music";
 import { definition as qwenAnglesDefinition } from "./qwen-angles";
 import { definition as syncDefinition } from "./sync";
@@ -127,4 +141,5 @@ export const allActions = [
   transitionDefinition,
   removeDefinition,
   uploadDefinition,
+  ...allMagnificActionDefinitions,
 ];
