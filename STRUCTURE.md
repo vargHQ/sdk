@@ -76,6 +76,85 @@ markdown guides for complex workflows
 
 - `talking-character.md`: create talking character videos
 
+## studio/ - visual node canvas for templates
+
+`bun run src/cli/index.ts studio [file.tsx]` launches the studio at
+http://localhost:8282. The studio is both a code editor and a node canvas;
+each VargElement (Image, Video, Speech, Music, TalkingHead, Clip, Render,
+...) appears as a single node, with data-flow ports for the nested element
+slots (e.g. `Image → Video.prompt.images`, `Speech → TalkingHead.audio`).
+
+### Layers
+
+- **`react/element-schemas.ts`** — Zod schema per `VargElementType`, plus
+  port descriptors and palette metadata. Single source of truth for the
+  param panel, codegen, parser, and connection rules.
+- **`studio/graph.ts`** — `WorkflowGraph` JSON document type and validators.
+  A graph is a DAG of nodes (1:1 with VargElements) plus typed edges
+  encoding data-flow into specific prop slots.
+- **`studio/parser.ts`** — `parseElement(VargElement) → WorkflowGraph`.
+  Walks a resolved element tree, extracts nested elements at known port
+  paths into edges, normalises `model` references to `{ provider, id }`.
+- **`studio/codegen.ts`** — `generateCode(WorkflowGraph) → TSX`. Inverse of
+  the parser. Inlines producer elements at their consumer's prop path.
+  Auto-emits imports for `vargai/ai` providers and `vargai/react` factories.
+
+### On-disk format
+
+A template `my-template` may be persisted as either form (or both):
+
+- `src/templates/my-template.tsx` — canonical executable
+- `src/templates/my-template.varg.json` — graph (positions, ids, meta)
+
+The TSX is always authoritative for `render()`; the JSON is the friendlier
+form for the canvas. Both files round-trip losslessly via `parser` ↔
+`codegen`.
+
+### Studio HTTP API (additions)
+
+UI routes:
+
+- `GET  /graph`                     — minimal visual canvas (palette,
+                                       drawflow, JSON / TSX inspectors).
+
+Graph endpoints:
+
+- `GET  /api/graph/schemas`         — Zod-derived JSON Schemas for every
+                                       element type, plus palette categories.
+- `POST /api/graph/new    { width?, height?, fps?, name? }` — blank graph.
+- `POST /api/graph/parse  { code }` — TSX → graph (imports + walks).
+- `POST /api/graph/codegen { graph }`— graph → TSX (validates first).
+- `POST /api/graph/load   { path? }`— read a `.varg.json` from disk.
+- `POST /api/graph/save   { graph, path?, writeTsx? }` — write `.varg.json`
+                                       and optionally regenerate `.tsx`.
+
+(Existing `/api/render`, `/api/step/*`, `/api/templates` and friends are
+unchanged.)
+
+### Trying it out
+
+CLI smoke test (no server):
+
+```bash
+cd sdk
+bun run scripts/graph-demo.tsx
+# or, point at any example .tsx:
+bun run scripts/graph-demo.tsx src/react/examples/character-video.tsx
+```
+
+Visual canvas:
+
+```bash
+cd sdk
+bun run src/cli/index.ts studio src/react/examples/quickstart-test.tsx
+# then open http://localhost:8282/graph
+```
+
+### Tests
+
+- `studio/graph.test.tsx` — round-trip validation: builds JSX, parses to a
+  graph, codegens TSX, and asserts topology is preserved.
+
 ## dependencies
 
 - `@ai-sdk/fal` - vercel ai sdk fal provider

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "root": "render_1_yn70",
+  "nodes": {
+    "image_4_eltf": {
+      "id": "image_4_eltf",
+      "type": "image",
+      "props": {
+        "prompt": "a friendly robot waving hello, simple cartoon style, blue and white colors, clean background",
+        "model": {
+          "provider": "fal",
+          "id": "flux-schnell"
+        },
+        "aspectRatio": "1:1"
+      },
+      "position": {
+        "x": 320,
+        "y": 240
+      }
+    },
+    "video_3_nz0p": {
+      "id": "video_3_nz0p",
+      "type": "video",
+      "props": {
+        "prompt": {
+          "text": "robot waves hello, friendly gesture, slight head tilt"
+        },
+        "model": {
+          "provider": "fal",
+          "id": "wan-2.5"
+        }
+      },
+      "position": {
+        "x": 560,
+        "y": 80
+      }
+    },
+    "clip_2_usm6": {
+      "id": "clip_2_usm6",
+      "type": "clip",
+      "props": {
+        "duration": 3
+      },
+      "children": ["video_3_nz0p"],
+      "position": {
+        "x": 320,
+        "y": 80
+      }
+    },
+    "render_1_yn70": {
+      "id": "render_1_yn70",
+      "type": "render",
+      "props": {
+        "width": 720,
+        "height": 720
+      },
+      "children": ["clip_2_usm6"],
+      "position": {
+        "x": 80,
+        "y": 80
+      }
+    }
+  },
+  "edges": [
+    {
+      "source": "image_4_eltf",
+      "target": "video_3_nz0p",
+      "targetPort": "prompt.images"
+    }
+  ],
+  "meta": {
+    "name": "quickstart-test.tsx",
+    "createdAt": "2026-05-20T22:46:48.809Z"
+  }
+}

@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>varg studio — graph</title>
+  <link rel="stylesheet" href="https://unpkg.com/drawflow@0.0.60/dist/drawflow.min.css" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --bg-secondary: #141414;
+      --bg-tertiary: #1a1a1a;
+      --border: #222;
+      --border-hover: #444;
+      --text: #fafafa;
+      --text-muted: #888;
+      --text-dim: #555;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    header {
+      height: 44px;
+      padding: 0 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo { font-weight: 600; font-size: 0.85rem; margin-right: 0.75rem; }
+    .logo small { color: var(--text-muted); font-weight: 400; margin-left: 0.5rem; }
+    .nav { display: flex; gap: 0.25rem; margin-right: auto; }
+    .nav a {
+      padding: 0.375rem 0.625rem;
+      border-radius: 0.25rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+    }
+    .nav a:hover { color: var(--text); background: var(--bg-secondary); }
+    .nav a.active { color: var(--text); background: var(--bg-secondary); }
+    .btn {
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.25rem;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn:hover { border-color: var(--border-hover); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-ghost { background: transparent; }
+    .status-badge {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      background: var(--bg-secondary);
+      margin-left: 0.5rem;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status-badge.success { color: var(--success); }
+    .status-badge.error { color: var(--error); }
+    .status-badge.warning { color: var(--warning); }
+
+    main {
+      display: grid;
+      grid-template-columns: 220px 1fr 360px;
+      height: calc(100vh - 44px);
+    }
+    .palette {
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 0.75rem 0.5rem;
+    }
+    .palette h3 {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin: 0.75rem 0.5rem 0.25rem;
+    }
+    .palette h3:first-child { margin-top: 0; }
+    .palette-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 0.25rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: var(--text);
+      user-select: none;
+    }
+    .palette-item:hover {
+      background: var(--bg-secondary);
+      border-color: var(--border);
+    }
+    .palette-item .icon {
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-tertiary);
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+    }
+    .palette-item .desc { display: block; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+    .canvas-wrap { position: relative; overflow: hidden; background: #050505; }
+    #drawflow { width: 100%; height: 100%; }
+    .canvas-empty {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      text-align: center;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .canvas-empty.hidden { display: none; }
+
+    /* drawflow node theming */
+    .drawflow .drawflow-node {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0;
+      min-width: 180px;
+      color: var(--text);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .drawflow .drawflow-node.selected {
+      border-color: var(--accent);
+      box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+    }
+    .drawflow .drawflow-node .inputs, .drawflow .drawflow-node .outputs {
+      padding: 0;
+    }
+    .drawflow .drawflow-node .input, .drawflow .drawflow-node .output {
+      background: var(--bg-tertiary);
+      border: 2px solid var(--border);
+      width: 12px;
+      height: 12px;
+    }
+    .drawflow .drawflow-node .input:hover, .drawflow .drawflow-node .output:hover {
+      border-color: var(--accent);
+    }
+    .drawflow .connection .main-path {
+      stroke: #555;
+      stroke-width: 2px;
+    }
+    .drawflow .connection .main-path:hover { stroke: var(--accent); }
+
+    .node-card {
+      padding: 0.5rem 0.625rem;
+    }
+    .node-header {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+    .node-header .icon {
+      width: 18px;
+      height: 18px;
+      background: var(--bg-tertiary);
+      border-radius: 0.2rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+    }
+    .node-meta {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .node-card.container .node-header .icon { background: rgba(59,130,246,0.2); }
+    .node-card.ai .node-header .icon { background: rgba(34,197,94,0.2); }
+    .node-card.captions .node-header .icon { background: rgba(245,158,11,0.2); }
+    .node-card.processing .node-header .icon { background: rgba(168,85,247,0.2); }
+
+    .inspector {
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .inspector-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .inspector-tab {
+      flex: 1;
+      padding: 0.625rem;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .inspector-tab.active { color: var(--text); border-bottom: 2px solid var(--accent); }
+    .inspector-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem;
+      font-size: 0.75rem;
+    }
+    .inspector-content textarea, .inspector-content pre {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+      line-height: 1.45;
+      resize: vertical;
+    }
+    .inspector-content textarea { min-height: 220px; }
+    .inspector-content pre { white-space: pre-wrap; word-wrap: break-word; }
+
+    .form-row { margin-bottom: 0.625rem; }
+    .form-row label {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+    }
+    .form-row input, .form-row textarea, .form-row select {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.375rem 0.5rem;
+      border-radius: 0.25rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+    }
+    .form-row textarea { min-height: 56px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .form-row input:focus, .form-row textarea:focus, .form-row select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .form-row .hint { font-size: 0.65rem; color: var(--text-dim); margin-top: 0.2rem; }
+
+    .empty-state { color: var(--text-muted); font-size: 0.75rem; text-align: center; padding: 2rem 1rem; }
+
+    .toolbar-spacer { width: 1px; height: 18px; background: var(--border); margin: 0 0.25rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">varg studio <small>graph (alpha)</small></div>
+    <nav class="nav">
+      <a href="/editor">code</a>
+      <a href="/graph" class="active">graph</a>
+      <a href="/cache">cache</a>
+    </nav>
+    <button class="btn" id="btn-new">+ new</button>
+    <button class="btn" id="btn-load">load .tsx</button>
+    <button class="btn" id="btn-load-graph">load .varg.json</button>
+    <div class="toolbar-spacer"></div>
+    <button class="btn" id="btn-codegen">show tsx</button>
+    <button class="btn btn-primary" id="btn-save">save</button>
+    <span id="status" class="status-badge">idle</span>
+  </header>
+
+  <main>
+    <aside class="palette" id="palette">
+      <div class="empty-state">loading schemas…</div>
+    </aside>
+
+    <div class="canvas-wrap" id="canvas-wrap">
+      <div id="drawflow"></div>
+      <div class="canvas-empty" id="canvas-empty">
+        <div>empty graph</div>
+        <div style="font-size: 0.7rem;">click <strong>+ new</strong> or <strong>load .tsx</strong> to begin</div>
+      </div>
+    </div>
+
+    <aside class="inspector">
+      <div class="inspector-tabs">
+        <button class="inspector-tab active" data-tab="node">node</button>
+        <button class="inspector-tab" data-tab="json">graph json</button>
+        <button class="inspector-tab" data-tab="tsx">tsx</button>
+      </div>
+      <div class="inspector-content" id="inspector-content">
+        <div class="empty-state">select a node or load a graph</div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="https://unpkg.com/drawflow@0.0.60/dist/drawflow.min.js"></script>
+  <script>
+    // ─── State ────────────────────────────────────────────────────────
+    const state = {
+      schemas: null,
+      categories: null,
+      graph: null,           // current WorkflowGraph
+      selectedNodeId: null,
+      df: null,              // drawflow instance
+      tab: "node",
+      lastTsx: null,
+    };
+
+    // ─── Helpers ──────────────────────────────────────────────────────
+    const $ = (sel) => document.querySelector(sel);
+    function setStatus(text, kind) {
+      const el = $("#status");
+      el.textContent = text;
+      el.className = "status-badge" + (kind ? " " + kind : "");
+    }
+    async function api(path, opts) {
+      const res = await fetch(path, {
+        method: opts?.method || "GET",
+        headers: { "content-type": "application/json" },
+        body: opts?.body ? JSON.stringify(opts.body) : undefined,
+      });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      if (!res.ok) {
+        const msg = data?.error || res.statusText;
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    // ─── Palette ──────────────────────────────────────────────────────
+    async function loadSchemas() {
+      const data = await api("/api/graph/schemas");
+      state.schemas = data.schemas;
+      state.categories = data.categories;
+      renderPalette();
+    }
+
+    function renderPalette() {
+      const root = $("#palette");
+      root.innerHTML = "";
+      const labels = {
+        layout: "layout",
+        ai: "ai generation",
+        captions: "text & captions",
+        processing: "processing",
+        asset: "assets",
+      };
+      for (const [cat, types] of Object.entries(state.categories || {})) {
+        if (!types.length) continue;
+        const h = document.createElement("h3");
+        h.textContent = labels[cat] || cat;
+        root.appendChild(h);
+        for (const type of types) {
+          const def = state.schemas[type];
+          if (!def) continue;
+          const item = document.createElement("div");
+          item.className = "palette-item";
+          item.innerHTML = `
+            <span class="icon">${def.icon}</span>
+            <div>
+              <div>${def.label}</div>
+              <div class="desc">${def.description || ""}</div>
+            </div>
+          `;
+          item.addEventListener("click", () => addNodeFromPalette(type));
+          root.appendChild(item);
+        }
+      }
+    }
+
+    // ─── Drawflow setup ───────────────────────────────────────────────
+    function initCanvas() {
+      const el = $("#drawflow");
+      const df = new Drawflow(el);
+      df.reroute = true;
+      df.start();
+      df.on("nodeSelected", (id) => {
+        const dfId = String(id);
+        const node = nodeIdFromDrawflow(dfId);
+        if (node) {
+          state.selectedNodeId = node;
+          state.tab = "node";
+          $$tabButtons.forEach((b) => { b.classList.toggle("active", b.dataset.tab === "node"); });
+          renderInspector();
+        }
+      });
+      df.on("nodeUnselected", () => {
+        state.selectedNodeId = null;
+        renderInspector();
+      });
+      df.on("nodeRemoved", (id) => {
+        const nodeId = nodeIdFromDrawflow(String(id));
+        if (nodeId && state.graph) {
+          delete state.graph.nodes[nodeId];
+          // strip from any children arrays and from edges
+          for (const n of Object.values(state.graph.nodes)) {
+            if (n.children) n.children = n.children.filter((c) => c !== nodeId);
+          }
+          state.graph.edges = state.graph.edges.filter(
+            (e) => e.source !== nodeId && e.target !== nodeId
+          );
+          if (state.selectedNodeId === nodeId) state.selectedNodeId = null;
+          renderInspector();
+        }
+      });
+      df.on("connectionCreated", (info) => {
+        if (!state.graph) return;
+        const sourceNode = nodeIdFromDrawflow(String(info.output_id));
+        const targetNode = nodeIdFromDrawflow(String(info.input_id));
+        if (!sourceNode || !targetNode) return;
+        // input_class = "input_N" — map back to port path
+        const portIndex = parseInt(String(info.input_class).replace("input_", ""), 10) - 1;
+        const targetType = state.graph.nodes[targetNode]?.type;
+        const ports = state.schemas[targetType]?.ports?.in || [];
+        const port = ports[portIndex];
+        if (!port) return;
+        state.graph.edges.push({
+          source: sourceNode,
+          target: targetNode,
+          targetPort: port.path,
+        });
+        setStatus(`edge: ${sourceNode} → ${targetNode}.${port.path}`);
+      });
+      df.on("connectionRemoved", (info) => {
+        if (!state.graph) return;
+        const sourceNode = nodeIdFromDrawflow(String(info.output_id));
+        const targetNode = nodeIdFromDrawflow(String(info.input_id));
+        const portIndex = parseInt(String(info.input_class).replace("input_", ""), 10) - 1;
+        const targetType = state.graph.nodes[targetNode]?.type;
+        const ports = state.schemas[targetType]?.ports?.in || [];
+        const port = ports[portIndex];
+        if (!port) return;
+        // remove only the first matching edge
+        const idx = state.graph.edges.findIndex(
+          (e) => e.source === sourceNode && e.target === targetNode && e.targetPort === port.path
+        );
+        if (idx >= 0) state.graph.edges.splice(idx, 1);
+      });
+      state.df = df;
+    }
+
+    // Drawflow ids ↔ graph node ids: we store the graph id in the node's `data`.
+    const dfToGraph = new Map();
+    const graphToDf = new Map();
+    function nodeIdFromDrawflow(dfId) {
+      return dfToGraph.get(dfId) || null;
+    }
+
+    // ─── Render the whole canvas from state.graph ─────────────────────
+    function renderCanvas() {
+      if (!state.df) return;
+      state.df.clear();
+      dfToGraph.clear();
+      graphToDf.clear();
+
+      const emptyEl = $("#canvas-empty");
+      if (!state.graph) {
+        emptyEl.classList.remove("hidden");
+        return;
+      }
+      emptyEl.classList.add("hidden");
+
+      // Place nodes (use saved positions if present)
+      for (const node of Object.values(state.graph.nodes)) {
+        const dfId = createNodeOnCanvas(node);
+        dfToGraph.set(String(dfId), node.id);
+        graphToDf.set(node.id, String(dfId));
+      }
+
+      // Draw edges (data flow)
+      for (const e of state.graph.edges) {
+        const srcDf = graphToDf.get(e.source);
+        const tgtDf = graphToDf.get(e.target);
+        if (!srcDf || !tgtDf) continue;
+        const targetType = state.graph.nodes[e.target]?.type;
+        const ports = state.schemas[targetType]?.ports?.in || [];
+        const idx = ports.findIndex((p) => p.path === e.targetPort);
+        if (idx < 0) continue;
+        try {
+          state.df.addConnection(parseInt(srcDf, 10), parseInt(tgtDf, 10), "output_1", `input_${idx + 1}`);
+        } catch (err) {
+          console.warn("addConnection failed", err);
+        }
+      }
+
+      // Draw containment edges (parent → children) as dashed connections too?
+      // For now we visualise containment by adjacency only via position;
+      // an explicit visual is added by drawing a thin connection from parent
+      // out-port to a synthetic input. To keep this minimal we skip it.
+    }
+
+    function createNodeOnCanvas(node) {
+      const def = state.schemas[node.type];
+      if (!def) return null;
+      const inputs = (def.ports.in || []).length;
+      const outputs = def.ports.out ? 1 : 0;
+      const x = node.position?.x ?? 100;
+      const y = node.position?.y ?? 100;
+      const html = nodeCardHtml(node, def);
+      const dfId = state.df.addNode(
+        node.type,                 // class name
+        inputs,
+        outputs,
+        x,
+        y,
+        `node-${def.category}`,    // css class
+        { graphId: node.id },      // data
+        html,
+      );
+      return dfId;
+    }
+
+    function nodeCardHtml(node, def) {
+      const meta = nodePreview(node);
+      return `
+        <div class="node-card ${def.category}">
+          <div class="node-header"><span class="icon">${def.icon}</span><span>${def.label}</span></div>
+          <div class="node-meta">${escapeHtml(meta)}</div>
+        </div>
+      `;
+    }
+
+    function nodePreview(node) {
+      const p = node.props || {};
+      if (typeof p.prompt === "string") return shorten(p.prompt, 40);
+      if (p.prompt && typeof p.prompt === "object" && p.prompt.text) return shorten(p.prompt.text, 40);
+      if (p.text) return shorten(typeof p.text === "string" ? p.text : JSON.stringify(p.text), 40);
+      if (p.src) return shorten(p.src.split("/").pop() || p.src, 40);
+      if (node.type === "render") return `${p.width || "?"}×${p.height || "?"} @ ${p.fps || "?"}fps`;
+      if (node.type === "clip") return p.duration ? `${p.duration}s` : "auto";
+      return node.id;
+    }
+
+    function shorten(s, n) {
+      if (!s) return "";
+      return s.length > n ? s.slice(0, n - 1) + "…" : s;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    // ─── Adding nodes from the palette ────────────────────────────────
+    function addNodeFromPalette(type) {
+      if (!state.graph) {
+        setStatus("create or load a graph first", "warning");
+        return;
+      }
+      const def = state.schemas[type];
+      if (!def) return;
+      // Mint a node id locally.
+      const id = `${type.replace(/[^a-z0-9]/gi, "")}_${Math.random().toString(36).slice(2, 8)}`;
+      const node = {
+        id,
+        type,
+        props: {},
+        children: def.container ? [] : undefined,
+        position: { x: 200 + Math.random() * 100, y: 200 + Math.random() * 100 },
+      };
+      state.graph.nodes[id] = node;
+
+      // If this is a container-eligible child of <Render>, append to root.
+      // Heuristic: if we're adding a clip and root is empty, attach it.
+      if (type === "clip" && state.graph.nodes[state.graph.root]) {
+        const root = state.graph.nodes[state.graph.root];
+        root.children = root.children || [];
+        root.children.push(id);
+      }
+
+      const dfId = createNodeOnCanvas(node);
+      dfToGraph.set(String(dfId), id);
+      graphToDf.set(id, String(dfId));
+      state.selectedNodeId = id;
+      renderInspector();
+      setStatus(`+ ${def.label}`, "success");
+    }
+
+    // ─── Inspector ────────────────────────────────────────────────────
+    const $$tabButtons = Array.from(document.querySelectorAll(".inspector-tab"));
+    $$tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        $$tabButtons.forEach((b) => { b.classList.toggle("active", b === btn); });
+        state.tab = btn.dataset.tab;
+        renderInspector();
+      });
+    });
+
+    function renderInspector() {
+      const root = $("#inspector-content");
+      if (state.tab === "json") return renderJsonTab(root);
+      if (state.tab === "tsx") return renderTsxTab(root);
+      return renderNodeTab(root);
+    }
+
+    function renderNodeTab(root) {
+      if (!state.graph) {
+        root.innerHTML = `<div class="empty-state">no graph loaded</div>`;
+        return;
+      }
+      if (!state.selectedNodeId) {
+        root.innerHTML = `<div class="empty-state">select a node on the canvas</div>`;
+        return;
+      }
+      const node = state.graph.nodes[state.selectedNodeId];
+      if (!node) {
+        root.innerHTML = `<div class="empty-state">node not found</div>`;
+        return;
+      }
+      const def = state.schemas[node.type];
+      root.innerHTML = `
+        <div class="form-row">
+          <label>id</label>
+          <input value="${escapeHtml(node.id)}" disabled />
+        </div>
+        <div class="form-row">
+          <label>type</label>
+          <input value="${escapeHtml(node.type)}" disabled />
+        </div>
+        <div class="form-row">
+          <label>category</label>
+          <input value="${escapeHtml(def?.category || "?")}" disabled />
+        </div>
+        <div class="form-row">
+          <label>props (json)</label>
+          <textarea id="props-editor" spellcheck="false">${escapeHtml(JSON.stringify(node.props, null, 2))}</textarea>
+          <div class="hint">edits apply on blur; invalid JSON is rejected</div>
+        </div>
+        ${def?.ports?.in?.length ? `
+          <div class="form-row">
+            <label>in-ports</label>
+            <pre>${escapeHtml(JSON.stringify(def.ports.in, null, 2))}</pre>
+          </div>
+        ` : ""}
+        ${def?.ports?.out ? `
+          <div class="form-row">
+            <label>out</label>
+            <pre>${escapeHtml(JSON.stringify(def.ports.out, null, 2))}</pre>
+          </div>
+        ` : ""}
+      `;
+      const ta = $("#props-editor");
+      ta.addEventListener("blur", () => {
+        try {
+          const parsed = JSON.parse(ta.value);
+          node.props = parsed;
+          updateNodeCard(node);
+          setStatus("props updated", "success");
+        } catch (err) {
+          setStatus("invalid json: " + err.message, "error");
+        }
+      });
+    }
+
+    function updateNodeCard(node) {
+      const dfId = graphToDf.get(node.id);
+      if (!dfId || !state.df) return;
+      const def = state.schemas[node.type];
+      const dfNode = state.df.getNodeFromId(parseInt(dfId, 10));
+      if (!dfNode) return;
+      // Re-render only the inner card to avoid losing connections.
+      const html = nodeCardHtml(node, def);
+      const dom = document.getElementById(`node-${dfId}`);
+      if (dom) {
+        const body = dom.querySelector(".drawflow_content_node");
+        if (body) body.innerHTML = html;
+      }
+    }
+
+    function renderJsonTab(root) {
+      if (!state.graph) {
+        root.innerHTML = `<div class="empty-state">no graph loaded</div>`;
+        return;
+      }
+      const json = JSON.stringify(state.graph, null, 2);
+      root.innerHTML = `<pre>${escapeHtml(json)}</pre>`;
+    }
+
+    async function renderTsxTab(root) {
+      if (!state.graph) {
+        root.innerHTML = `<div class="empty-state">no graph loaded</div>`;
+        return;
+      }
+      root.innerHTML = `<div class="empty-state">generating tsx…</div>`;
+      try {
+        const { code } = await api("/api/graph/codegen", {
+          method: "POST",
+          body: { graph: state.graph },
+        });
+        state.lastTsx = code;
+        root.innerHTML = `<pre>${escapeHtml(code)}</pre>`;
+      } catch (err) {
+        root.innerHTML = `<div class="empty-state" style="color: var(--error)">codegen failed: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    // ─── Top-bar actions ──────────────────────────────────────────────
+    $("#btn-new").addEventListener("click", async () => {
+      try {
+        const { graph } = await api("/api/graph/new", {
+          method: "POST",
+          body: { width: 1080, height: 1920, fps: 30 },
+        });
+        state.graph = graph;
+        state.selectedNodeId = null;
+        renderCanvas();
+        renderInspector();
+        setStatus("new graph", "success");
+      } catch (err) {
+        setStatus(err.message, "error");
+      }
+    });
+
+    $("#btn-load").addEventListener("click", async () => {
+      const code = prompt("paste TSX (must export <Render> as default):");
+      if (!code) return;
+      setStatus("parsing tsx…");
+      try {
+        const { graph, issues } = await api("/api/graph/parse", {
+          method: "POST",
+          body: { code },
+        });
+        state.graph = graph;
+        state.selectedNodeId = null;
+        renderCanvas();
+        renderInspector();
+        if (issues && issues.length > 0) {
+          setStatus(`loaded with ${issues.length} issue(s)`, "warning");
+        } else {
+          setStatus("loaded", "success");
+        }
+      } catch (err) {
+        setStatus(err.message, "error");
+      }
+    });
+
+    $("#btn-load-graph").addEventListener("click", async () => {
+      try {
+        const { graph, path } = await api("/api/graph/load", {
+          method: "POST",
+          body: {},
+        });
+        if (!graph) {
+          setStatus(`no graph at ${path || "default path"}`, "warning");
+          return;
+        }
+        state.graph = graph;
+        state.selectedNodeId = null;
+        renderCanvas();
+        renderInspector();
+        setStatus(`loaded ${path?.split("/").pop() || ""}`, "success");
+      } catch (err) {
+        setStatus(err.message, "error");
+      }
+    });
+
+    $("#btn-save").addEventListener("click", async () => {
+      if (!state.graph) {
+        setStatus("nothing to save", "warning");
+        return;
+      }
+      try {
+        // Sync node positions back from drawflow before saving.
+        syncPositions();
+        const { jsonPath, tsxPath } = await api("/api/graph/save", {
+          method: "POST",
+          body: { graph: state.graph, writeTsx: true },
+        });
+        setStatus(`saved ${jsonPath.split("/").pop()}${tsxPath ? " + tsx" : ""}`, "success");
+      } catch (err) {
+        setStatus(err.message, "error");
+      }
+    });
+
+    $("#btn-codegen").addEventListener("click", () => {
+      state.tab = "tsx";
+      $$tabButtons.forEach((b) => { b.classList.toggle("active", b.dataset.tab === "tsx"); });
+      renderInspector();
+    });
+
+    function syncPositions() {
+      if (!state.graph || !state.df) return;
+      const exported = state.df.export();
+      const dfNodes = exported?.drawflow?.Home?.data || {};
+      for (const [dfId, dfNode] of Object.entries(dfNodes)) {
+        const graphId = dfToGraph.get(String(dfId));
+        if (!graphId) continue;
+        const node = state.graph.nodes[graphId];
+        if (!node) continue;
+        node.position = { x: dfNode.pos_x, y: dfNode.pos_y };
+      }
+    }
+
+    // ─── Boot ─────────────────────────────────────────────────────────
+    (async function boot() {
+      initCanvas();
+      try {
+        await loadSchemas();
+        setStatus("schemas loaded — try + new", "success");
+      } catch (err) {
+        setStatus("failed to load schemas: " + err.message, "error");
+      }
+      // Auto-load any companion .varg.json for the studio's initial file.
+      try {
+        const res = await api("/api/graph/load", { method: "POST", body: {} });
+        if (res.graph) {
+          state.graph = res.graph;
+          renderCanvas();
+          renderInspector();
+          setStatus(`auto-loaded ${res.path?.split("/").pop() || ""}`, "success");
+        }
+      } catch {
+        // silent
+      }
+    })();
+  </script>
+</body>
+</html>

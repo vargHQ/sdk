@@ -1,5 +1,15 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { elementSchemas, elementsByCategory } from "../react/element-schemas";
+import type { VargElement } from "../react/types";
+import { generateCode } from "./codegen";
+import {
+  emptyGraph,
+  validateGraph,
+  type WorkflowGraph,
+  workflowGraphSchema,
+} from "./graph";
+import { parseElement } from "./parser";
 import { getCacheItemMedia, scanCacheFolder } from "./scanner";
 import { extractStages, serializeStages } from "./stages";
 import {
@@ -40,6 +50,15 @@ function fileNameToReadable(filename: string): string {
   return basename(filename, ".tsx")
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (c) => c.toLowerCase());
+}
+
+/**
+ * Return the `.varg.json` graph companion path for a `.tsx` template.
+ * Falls through unchanged if the path is already `.varg.json`.
+ */
+function graphFilePathFor(tsxPath: string): string {
+  if (/\.varg\.json$/i.test(tsxPath)) return tsxPath;
+  return tsxPath.replace(/\.tsx?$/i, ".varg.json");
 }
 
 function scanTemplates(dir: string): TemplateInfo[] {
@@ -175,6 +194,14 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
       if (url.pathname === "/cache") {
         const html = await Bun.file(
           join(import.meta.dir, "ui/cache.html"),
+        ).text();
+        return new Response(html, { headers: { "content-type": "text/html" } });
+      }
+
+      if (url.pathname === "/graph") {
+        // Minimal Phase-2 visual canvas. Reads from the graph API below.
+        const html = await Bun.file(
+          join(import.meta.dir, "ui/graph.html"),
         ).text();
         return new Response(html, { headers: { "content-type": "text/html" } });
       }
@@ -549,6 +576,223 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
           const videoPath = await finalizeRender(session, outputDir);
           const videoUrl = `/api/output/${videoPath.split("/").pop()}`;
           return Response.json({ videoUrl, path: videoPath });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 500 });
+        }
+      }
+
+      // ─── Graph (visual studio) ─────────────────────────────────────────
+      //
+      // The graph API lets a browser canvas (Phase 2 UI) round-trip between
+      // a TSX template and a `WorkflowGraph` JSON document, and write either
+      // form to disk. See `studio/parser.ts` and `studio/codegen.ts`.
+
+      if (url.pathname === "/api/graph/schemas") {
+        // Static schema registry — used by the param panel to render forms
+        // from the Zod schemas declared in `react/element-schemas.ts`.
+        // We convert each schema to JSON Schema for transport. The shape is
+        // stable across requests, so the client can cache.
+        const { toJsonSchema } = await import("../core/schema/helpers");
+        const out: Record<string, unknown> = {};
+        for (const [type, def] of Object.entries(elementSchemas)) {
+          if (type === "__lazy") continue;
+          out[type] = {
+            label: def.label,
+            icon: def.icon,
+            description: def.description,
+            category: def.category,
+            container: def.container,
+            ports: def.ports,
+            schema: toJsonSchema(def.props),
+          };
+        }
+        return Response.json({
+          categories: elementsByCategory(),
+          schemas: out,
+        });
+      }
+
+      if (url.pathname === "/api/graph/new" && req.method === "POST") {
+        // Body: { width?, height?, fps?, name? } — returns a blank graph
+        // containing only a <Render> root node. Mirrors `emptyGraph()`.
+        try {
+          const body = (await req.json().catch(() => ({}))) as {
+            width?: number;
+            height?: number;
+            fps?: number;
+            name?: string;
+          };
+          const graph = emptyGraph(body);
+          return Response.json({ graph });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 500 });
+        }
+      }
+
+      if (url.pathname === "/api/graph/parse" && req.method === "POST") {
+        // Body: { code: string } — import the TSX, walk the resulting
+        // element tree, return a `WorkflowGraph`.
+        const body = (await req.json()) as { code: string };
+        const tempDir = join(import.meta.dir, "../react/examples");
+        const tempFile = join(tempDir, `_graph_parse_${Date.now()}.tsx`);
+
+        try {
+          await Bun.write(tempFile, body.code);
+          const mod = await import(tempFile);
+          let element = mod.default;
+          if (typeof element === "function") element = await element();
+          if (
+            !element ||
+            typeof element !== "object" ||
+            (element as VargElement).type !== "render"
+          ) {
+            return Response.json(
+              { error: "file must export a <Render> element as default" },
+              { status: 400 },
+            );
+          }
+
+          const graph = parseElement(element as VargElement);
+          const issues = validateGraph(graph);
+          return Response.json({ graph, issues });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 400 });
+        } finally {
+          try {
+            if (await Bun.file(tempFile).exists()) {
+              await Bun.$`rm ${tempFile}`;
+            }
+          } catch {}
+        }
+      }
+
+      if (url.pathname === "/api/graph/codegen" && req.method === "POST") {
+        // Body: { graph: WorkflowGraph } — returns generated TSX.
+        try {
+          const body = (await req.json()) as { graph: WorkflowGraph };
+          const parsed = workflowGraphSchema.safeParse(body.graph);
+          if (!parsed.success) {
+            return Response.json(
+              { error: "invalid graph", details: parsed.error.issues },
+              { status: 400 },
+            );
+          }
+          const graph = parsed.data as WorkflowGraph;
+          const issues = validateGraph(graph);
+          if (issues.length > 0) {
+            return Response.json(
+              { error: "graph failed validation", issues },
+              { status: 400 },
+            );
+          }
+          const result = generateCode(graph);
+          return Response.json(result);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 400 });
+        }
+      }
+
+      if (url.pathname === "/api/graph/load" && req.method === "POST") {
+        // Body: { path?: string } — load a `<name>.varg.json` graph from disk.
+        // Defaults to the studio's initialFile (with extension swapped).
+        try {
+          const body = (await req.json().catch(() => ({}))) as {
+            path?: string;
+          };
+          const target = body.path
+            ? resolve(body.path)
+            : initialFile
+              ? graphFilePathFor(initialFile)
+              : null;
+          if (!target) {
+            return Response.json(
+              { error: "no graph path provided" },
+              { status: 400 },
+            );
+          }
+          const file = Bun.file(target);
+          if (!(await file.exists())) {
+            return Response.json({ graph: null, path: target });
+          }
+          const data = await file.json();
+          const parsed = workflowGraphSchema.safeParse(data);
+          if (!parsed.success) {
+            return Response.json(
+              { error: "invalid graph on disk", details: parsed.error.issues },
+              { status: 400 },
+            );
+          }
+          return Response.json({
+            graph: parsed.data as WorkflowGraph,
+            path: target,
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return Response.json({ error: message }, { status: 500 });
+        }
+      }
+
+      if (url.pathname === "/api/graph/save" && req.method === "POST") {
+        // Body: { graph, path?, writeTsx?: boolean }
+        //  - `path` defaults to the studio's initialFile with extension swapped to .varg.json
+        //  - if writeTsx is true, also writes the codegen'd TSX next to it.
+        try {
+          const body = (await req.json()) as {
+            graph: WorkflowGraph;
+            path?: string;
+            writeTsx?: boolean;
+          };
+          const parsed = workflowGraphSchema.safeParse(body.graph);
+          if (!parsed.success) {
+            return Response.json(
+              { error: "invalid graph", details: parsed.error.issues },
+              { status: 400 },
+            );
+          }
+          const graph = parsed.data as WorkflowGraph;
+          const issues = validateGraph(graph);
+          if (issues.length > 0) {
+            return Response.json(
+              { error: "graph failed validation", issues },
+              { status: 400 },
+            );
+          }
+
+          const jsonPath = body.path
+            ? resolve(body.path)
+            : initialFile
+              ? graphFilePathFor(initialFile)
+              : null;
+          if (!jsonPath) {
+            return Response.json(
+              { error: "no save path provided" },
+              { status: 400 },
+            );
+          }
+
+          mkdirSync(dirname(jsonPath), { recursive: true });
+          const updated: WorkflowGraph = {
+            ...graph,
+            meta: {
+              ...(graph.meta ?? {}),
+              updatedAt: new Date().toISOString(),
+            },
+          };
+          await Bun.write(jsonPath, `${JSON.stringify(updated, null, 2)}\n`);
+
+          let tsxPath: string | undefined;
+          if (body.writeTsx) {
+            const { code } = generateCode(updated);
+            tsxPath = jsonPath.replace(/\.varg\.json$/i, ".tsx");
+            if (tsxPath === jsonPath) tsxPath = `${jsonPath}.tsx`;
+            await Bun.write(tsxPath, code);
+          }
+
+          return Response.json({ jsonPath, tsxPath });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           return Response.json({ error: message }, { status: 500 });
