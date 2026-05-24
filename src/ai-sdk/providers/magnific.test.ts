@@ -7,9 +7,10 @@
  * every property — this is the binding artifact for the property coverage rule.
  */
 
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   _internal_buildBody,
+  createMagnific,
   IMAGE_MODELS,
   listMagnificModels,
   MAGNIFIC_BASE_URL,
@@ -21,7 +22,6 @@ import {
   SPEECH_MODELS,
   VIDEO_MODELS,
 } from "./magnific";
-import { createVarg } from "./varg";
 
 // ---------------------------------------------------------------------------
 // Test fetch harness
@@ -152,21 +152,21 @@ describe("resolveMagnificKey", () => {
     else process.env.MAGNIFIC_API_KEY = ENV_BACKUP;
   });
 
-  test("per-call apiKey wins over settings and env", () => {
+  test("per-call apiKey wins over explicit and env", () => {
     process.env.MAGNIFIC_API_KEY = "from-env";
     expect(
       resolveMagnificKey({
-        settings: { magnificApiKey: "from-settings" },
+        explicit: "from-settings",
         perCall: { apiKey: "from-call" },
       }),
     ).toBe("from-call");
   });
 
-  test("settings wins over env", () => {
+  test("explicit wins over env", () => {
     process.env.MAGNIFIC_API_KEY = "from-env";
-    expect(
-      resolveMagnificKey({ settings: { magnificApiKey: "from-settings" } }),
-    ).toBe("from-settings");
+    expect(resolveMagnificKey({ explicit: "from-settings" })).toBe(
+      "from-settings",
+    );
   });
 
   test("env is fallback when nothing else is set", () => {
@@ -179,16 +179,16 @@ describe("resolveMagnificKey", () => {
     expect(resolveMagnificKey({ perCall: { apiKey: "" } })).toBeNull();
   });
 
-  test("ignores empty-string keys (gateway fallback)", () => {
-    expect(resolveMagnificKey({ settings: { magnificApiKey: "" } })).toBeNull();
+  test("ignores empty-string explicit keys (env/throw fallback)", () => {
+    expect(resolveMagnificKey({ explicit: "" })).toBeNull();
   });
 });
 
 // ---------------------------------------------------------------------------
-// Routing fork — BYOK direct vs Varg gateway
+// Direct path — `createMagnific({ apiKey }).imageModel(...)` hits api.magnific.com
 // ---------------------------------------------------------------------------
 
-describe("varg.imageModel('magnific/...') routing", () => {
+describe("createMagnific direct path", () => {
   const ENV_BACKUP = process.env.MAGNIFIC_API_KEY;
 
   beforeEach(() => {
@@ -199,7 +199,7 @@ describe("varg.imageModel('magnific/...') routing", () => {
     else process.env.MAGNIFIC_API_KEY = ENV_BACKUP;
   });
 
-  test("BYOK direct path: hits api.magnific.com with x-magnific-api-key", async () => {
+  test("hits api.magnific.com with x-magnific-api-key header", async () => {
     const { calls, restore } = makeFetchHarness([
       // submitTask → returns task_id
       {
@@ -218,11 +218,8 @@ describe("varg.imageModel('magnific/...') routing", () => {
     ]);
 
     try {
-      const v = createVarg({
-        apiKey: "varg-key",
-        magnificApiKey: "magnific-byok-key",
-      });
-      const out = await v.imageModel("magnific/upscale-creative").doGenerate({
+      const m = createMagnific({ apiKey: "magnific-byok-key" });
+      const out = await m.imageModel("magnific/upscale-creative").doGenerate({
         prompt: undefined,
         n: 1,
         size: undefined,
@@ -248,7 +245,7 @@ describe("varg.imageModel('magnific/...') routing", () => {
       expect(submit.url).toBe("https://api.magnific.com/v1/ai/image-upscaler");
       expect(submit.method).toBe("POST");
       expect(submit.headers["x-magnific-api-key"]).toBe("magnific-byok-key");
-      // No Authorization Bearer header (that's the gateway path).
+      // No Authorization Bearer header (Magnific uses its own header).
       expect(submit.headers["authorization"]).toBeUndefined();
       // Body covers every documented field.
       expect(submit.body).toMatchObject({
@@ -272,23 +269,22 @@ describe("varg.imageModel('magnific/...') routing", () => {
     }
   });
 
-  test("gateway path: no BYOK key → POST to varg gateway with magnific/<leaf> model", async () => {
+  test("bare leaf modelId (no `magnific/` prefix) works", async () => {
     const { calls, restore } = makeFetchHarness([
-      // varg /image submit
       {
         json: {
-          job_id: "j1",
-          status: "completed",
-          output: { url: "https://cdn.example/r.png", media_type: "image/png" },
+          task_id: "t-bare",
+          status: "COMPLETED",
+          generated: ["https://cdn.example/r.png"],
         },
       },
-      // download
-      { bytes: new Uint8Array([9, 8, 7]) },
+      { bytes: new Uint8Array([1]) },
     ]);
 
     try {
-      const v = createVarg({ apiKey: "varg-key" });
-      const out = await v.imageModel("magnific/mystic").doGenerate({
+      const m = createMagnific({ apiKey: "k" });
+      // No "magnific/" prefix — natural standalone-provider call style.
+      const out = await m.imageModel("mystic").doGenerate({
         prompt: "a cat",
         n: 1,
         size: undefined,
@@ -298,23 +294,14 @@ describe("varg.imageModel('magnific/...') routing", () => {
         mask: undefined,
         providerOptions: {},
       });
-
       expect(out.images).toHaveLength(1);
-      const submit = calls[0]!;
-      expect(submit.url).toBe("https://api.varg.ai/v1/image");
-      expect(submit.headers["authorization"]).toBe("Bearer varg-key");
-      expect(submit.headers["x-magnific-api-key"]).toBeUndefined();
-      // Gateway gets the full namespaced model id verbatim.
-      expect(submit.body).toMatchObject({
-        model: "magnific/mystic",
-        prompt: "a cat",
-      });
+      expect(calls[0]!.url).toBe("https://api.magnific.com/v1/ai/mystic");
     } finally {
       restore();
     }
   });
 
-  test("apiKey in providerOptions.magnific does NOT leak into the request body", async () => {
+  test("apiKey in providerOptions.magnific overrides settings and does NOT leak into the body", async () => {
     const { calls, restore } = makeFetchHarness([
       { json: { task_id: "t-2", status: "IN_PROGRESS" } },
       {
@@ -328,8 +315,8 @@ describe("varg.imageModel('magnific/...') routing", () => {
     ]);
 
     try {
-      const v = createVarg({ apiKey: "varg-key" });
-      await v.imageModel("magnific/relight").doGenerate({
+      const m = createMagnific({ apiKey: "settings-key" });
+      await m.imageModel("magnific/relight").doGenerate({
         prompt: "golden hour",
         n: 1,
         size: undefined,
@@ -352,19 +339,68 @@ describe("varg.imageModel('magnific/...') routing", () => {
       });
 
       const submit = calls[0]!;
+      // Per-call apiKey wins over settings.apiKey.
       expect(submit.headers["x-magnific-api-key"]).toBe("secret-byok-key");
+      // Scrubbed from the body.
       expect(submit.body?.apiKey).toBeUndefined();
-      // Builder-produced field still present
+      // Builder-produced field still present.
       expect(submit.body).toMatchObject({ light_transfer_strength: 80 });
     } finally {
       restore();
     }
   });
 
-  test("unknown magnific leaf throws NoSuchModelError on direct call", async () => {
-    process.env.MAGNIFIC_API_KEY = "key";
+  test("env MAGNIFIC_API_KEY is used when no apiKey is passed to createMagnific", async () => {
+    const { calls, restore } = makeFetchHarness([
+      {
+        json: {
+          task_id: "t-env",
+          status: "COMPLETED",
+          generated: ["https://cdn.example/r.png"],
+        },
+      },
+      { bytes: new Uint8Array([1]) },
+    ]);
+    process.env.MAGNIFIC_API_KEY = "env-key";
+
+    try {
+      const m = createMagnific();
+      await m.imageModel("magnific/mystic").doGenerate({
+        prompt: "x",
+        n: 1,
+        size: undefined,
+        aspectRatio: undefined,
+        seed: undefined,
+        files: undefined,
+        mask: undefined,
+        providerOptions: {},
+      });
+      expect(calls[0]!.headers["x-magnific-api-key"]).toBe("env-key");
+    } finally {
+      restore();
+    }
+  });
+
+  test("throws when no apiKey is resolvable", async () => {
+    const m = createMagnific(); // no settings, no env
     await expect(
-      createVarg().imageModel("magnific/nope").doGenerate({
+      m.imageModel("magnific/mystic").doGenerate({
+        prompt: "x",
+        n: 1,
+        size: undefined,
+        aspectRatio: undefined,
+        seed: undefined,
+        files: undefined,
+        mask: undefined,
+        providerOptions: {},
+      }),
+    ).rejects.toThrow(/no magnific api key/i);
+  });
+
+  test("unknown magnific leaf throws NoSuchModelError on direct call", async () => {
+    const m = createMagnific({ apiKey: "key" });
+    await expect(
+      m.imageModel("magnific/nope").doGenerate({
         prompt: "x",
         n: 1,
         size: undefined,
@@ -392,8 +428,8 @@ describe("varg.imageModel('magnific/...') routing", () => {
     ]);
 
     try {
-      const v = createVarg({ magnificApiKey: "k" });
-      const out = await v.imageModel("magnific/remove-bg").doGenerate({
+      const m = createMagnific({ apiKey: "k" });
+      const out = await m.imageModel("magnific/remove-bg").doGenerate({
         prompt: undefined,
         n: 1,
         size: undefined,
@@ -411,6 +447,39 @@ describe("varg.imageModel('magnific/...') routing", () => {
       expect(calls[0]!.body).toEqual({
         image_url: "https://cdn.example/in.png",
       });
+    } finally {
+      restore();
+    }
+  });
+
+  test("settings.baseUrl overrides the default base URL", async () => {
+    const { calls, restore } = makeFetchHarness([
+      {
+        json: {
+          task_id: "t-base",
+          status: "COMPLETED",
+          generated: ["https://cdn.example/r.png"],
+        },
+      },
+      { bytes: new Uint8Array([1]) },
+    ]);
+
+    try {
+      const m = createMagnific({
+        apiKey: "k",
+        baseUrl: "https://staging.example.com/v1",
+      });
+      await m.imageModel("magnific/mystic").doGenerate({
+        prompt: "x",
+        n: 1,
+        size: undefined,
+        aspectRatio: undefined,
+        seed: undefined,
+        files: undefined,
+        mask: undefined,
+        providerOptions: {},
+      });
+      expect(calls[0]!.url).toBe("https://staging.example.com/v1/ai/mystic");
     } finally {
       restore();
     }
@@ -1558,59 +1627,6 @@ describe("providerOptions.magnific passthrough", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Gateway fallback (no MAGNIFIC_API_KEY, no magnificApiKey setting)
-// ---------------------------------------------------------------------------
-
-describe("gateway fallback when no magnific key is available", () => {
-  const ENV_BACKUP = process.env.MAGNIFIC_API_KEY;
-
-  beforeEach(() => {
-    delete process.env.MAGNIFIC_API_KEY;
-  });
-  afterEach(() => {
-    if (ENV_BACKUP === undefined) delete process.env.MAGNIFIC_API_KEY;
-    else process.env.MAGNIFIC_API_KEY = ENV_BACKUP;
-  });
-
-  test("routes through varg gateway when no magnific key exists", async () => {
-    const { calls, restore } = makeFetchHarness([
-      {
-        json: {
-          job_id: "gw-1",
-          status: "completed",
-          output: {
-            url: "https://cdn.example/gw.png",
-            media_type: "image/png",
-          },
-        },
-      },
-      { bytes: new Uint8Array([5, 6, 7]) },
-    ]);
-
-    try {
-      const v = createVarg({ apiKey: "varg-key" });
-      await v.imageModel("magnific/mystic").doGenerate({
-        prompt: "gateway test",
-        n: 1,
-        size: undefined,
-        aspectRatio: undefined,
-        seed: undefined,
-        files: undefined,
-        mask: undefined,
-        providerOptions: {},
-      });
-
-      expect(calls.length).toBeGreaterThanOrEqual(1);
-      const submit = calls[0]!;
-      expect(submit.url).toContain("/v1/image");
-      expect(submit.url).not.toContain("api.magnific.com");
-    } finally {
-      restore();
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Abort signal propagation
 // ---------------------------------------------------------------------------
 
@@ -1634,12 +1650,9 @@ describe("abort signal propagation", () => {
       const ac = new AbortController();
       ac.abort();
 
-      const v = createVarg({
-        apiKey: "varg-key",
-        magnificApiKey: "test-key",
-      });
+      const m = createMagnific({ apiKey: "test-key" });
       await expect(
-        v.imageModel("magnific/mystic").doGenerate({
+        m.imageModel("magnific/mystic").doGenerate({
           prompt: "abort test",
           n: 1,
           size: undefined,
@@ -1669,7 +1682,7 @@ describe("abort signal propagation", () => {
       init?: RequestInit,
     ) => {
       callCount++;
-      const url = typeof input === "string" ? input : input.toString();
+      const _url = typeof input === "string" ? input : input.toString();
       if (callCount === 1) {
         // submit — return completed immediately so we skip polling
         return new Response(
@@ -1689,12 +1702,9 @@ describe("abort signal propagation", () => {
     };
 
     try {
-      const v = createVarg({
-        apiKey: "varg-key",
-        magnificApiKey: "test-key",
-      });
+      const m = createMagnific({ apiKey: "test-key" });
       await expect(
-        v.imageModel("magnific/mystic").doGenerate({
+        m.imageModel("magnific/mystic").doGenerate({
           prompt: "abort download test",
           n: 1,
           size: undefined,
