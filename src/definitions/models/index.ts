@@ -22,6 +22,20 @@ export {
 } from "./kling";
 export { definition as llama } from "./llama";
 export { definition as ltxA2v } from "./ltx-a2v";
+export {
+  allMagnificDefinitions,
+  magnificAudioIsolationDefinition,
+  magnificExpandDefinition,
+  magnificMusicDefinition,
+  magnificMysticDefinition,
+  magnificRelightDefinition,
+  magnificRemoveBgDefinition,
+  magnificSoundEffectsDefinition,
+  magnificStyleTransferDefinition,
+  magnificUpscaleCreativeDefinition,
+  magnificUpscalePrecisionDefinition,
+  magnificVfxDefinition,
+} from "./magnific";
 export { definition as nanoBanana2 } from "./nano-banana-2";
 export { definition as nanoBananaPro } from "./nano-banana-pro";
 export { definition as omnihuman } from "./omnihuman";
@@ -58,6 +72,7 @@ import {
 } from "./kling";
 import { definition as llamaDefinition } from "./llama";
 import { definition as ltxA2vDefinition } from "./ltx-a2v";
+import { allMagnificDefinitions } from "./magnific";
 import { definition as nanoBanana2Definition } from "./nano-banana-2";
 import { definition as nanoBananaProDefinition } from "./nano-banana-pro";
 import { definition as omnihumanDefinition } from "./omnihuman";
@@ -108,6 +123,7 @@ export const allModels = [
   sonautoDefinition,
   llamaDefinition,
   heygenAvatarDefinition,
+  ...allMagnificDefinitions,
 ];
 
 // ---------------------------------------------------------------------------

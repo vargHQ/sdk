@@ -48,11 +48,12 @@ export const definition: ModelDefinition<typeof schema> = {
   name: "kling",
   description:
     "Kling video generation model for high-quality video from text or image",
-  providers: ["fal", "replicate"],
+  providers: ["fal", "replicate", "magnific"],
   defaultProvider: "fal",
   providerModels: {
     fal: "fal-ai/kling-video/o3/pro",
     replicate: "fofr/kling-v1.5",
+    magnific: "ai/video/kling-v3-pro",
   },
   schema,
   pricing: {

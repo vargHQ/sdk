@@ -92,6 +92,12 @@ export {
   higgsfield,
 } from "./providers/higgsfield";
 export {
+  createMagnific,
+  type MagnificProvider,
+  type MagnificProviderSettings,
+  magnific,
+} from "./providers/magnific";
+export {
   createOpenAI,
   type OpenAIProvider,
   type OpenAIProviderSettings,
