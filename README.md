@@ -322,7 +322,8 @@ A typical 3-clip video costs $2-5. Cache hits are always free.
 
 ## Discord 
 
-https://discord.com/channels/1463766525117861922/1463766526250188824
+[https://discord.com/channels/1463766525117861922/1463766526250188824
+](https://discord.com/invite/VAecJay7R9)
 
 ## Contributing
 
