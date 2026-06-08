@@ -320,7 +320,9 @@ A typical 3-clip video costs $2-5. Cache hits are always free.
 <img width="2832" height="2253" alt="star-history-202643" src="https://github.com/user-attachments/assets/63e84279-d756-43a9-b328-118fb69ed2d5" />
 
 
+## Discord 
 
+https://discord.com/channels/1463766525117861922/1463766526250188824
 
 ## Contributing
 
