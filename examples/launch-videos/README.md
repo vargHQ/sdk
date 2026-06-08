@@ -16,13 +16,13 @@ Pre-made video templates for vargai launch and demo purposes.
 
 ```bash
 # Preview mode (fast, uses placeholders)
-bunx vargai render launch-videos/01-hero.tsx --preview
+bunx vargai render examples/launch-videos/01-hero.tsx --preview
 
 # Full render (uses AI generation)
-bunx vargai render launch-videos/01-hero.tsx
+bunx vargai render examples/launch-videos/01-hero.tsx
 
 # Output to specific path
-bunx vargai render launch-videos/01-hero.tsx -o my-video.mp4
+bunx vargai render examples/launch-videos/01-hero.tsx -o my-video.mp4
 ```
 
 ## Requirements

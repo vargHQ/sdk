@@ -4,7 +4,7 @@
  * 4 cute fruit characters that wave and say hi, then appear together.
  * Uses nano-banana-pro for images, kling for animation.
  *
- * Run: bunx vargai render launch-videos/06-kawaii-fruits.tsx
+ * Run: bunx vargai render examples/launch-videos/06-kawaii-fruits.tsx
  */
 import { elevenlabs, fal } from "vargai/ai";
 import { Clip, Image, Music, Render, Video } from "vargai/react";

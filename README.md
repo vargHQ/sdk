@@ -324,7 +324,7 @@ A typical 3-clip video costs $2-5. Cache hits are always free.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup.
 
 ## License
 

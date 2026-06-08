@@ -5,7 +5,7 @@
  * Uses Higgsfield Soul for character, nano-banana-pro/edit for branded clothing,
  * Animate for image-to-video, and Video with sync-v2 for lip synchronization
  *
- * Run: bunx vargai render launch-videos/08-talking-head-varg.tsx
+ * Run: bunx vargai render examples/launch-videos/08-talking-head-varg.tsx
  */
 import { elevenlabs, fal, higgsfield } from "vargai/ai";
 import {

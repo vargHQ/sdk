@@ -1,4 +1,17 @@
-# ffmpeg video mixing lessons
+---
+name: ffmpeg-mixing
+description: Mix, trim, and concatenate video clips with ffmpeg without audio/video desync. Use when stitching generated clips into an original video, inserting scenes at timestamps, or any ffmpeg filter_complex work involving trim/concat with a continuous audio track.
+license: MIT
+metadata:
+  author: vargHQ
+  version: "1.0.0"
+compatibility: Requires ffmpeg installed locally.
+allowed-tools: Bash(ffmpeg:*) Bash(ffprobe:*) Read
+---
+
+# ffmpeg video mixing
+
+Lessons for mixing video clips with ffmpeg while keeping audio and video in sync.
 
 ## problem: audio/video desync when mixing clips
 

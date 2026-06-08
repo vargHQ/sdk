@@ -4,7 +4,7 @@
  * Ultra realistic AI UGC ad - split screen before/after with voiceover and captions.
  * Left: overweight person (Higgsfield), Right: slim fit person (nano-banana-pro/edit)
  *
- * Run: bunx vargai render launch-videos/07-ugc-weight-loss.tsx
+ * Run: bunx vargai render examples/launch-videos/07-ugc-weight-loss.tsx
  *
  * Note: Requires GROQ_API_KEY for auto-captions transcription
  */
