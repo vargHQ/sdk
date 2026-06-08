@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">varg — AI Video Generation SDK</h1>
+  <h1 align="center">varg — Agentic Video Generation SDK</h1>
   <p align="center">Create AI videos with JSX. One SDK for Kling, Flux, ElevenLabs, Sora and more. Built on Vercel AI SDK.</p>
 </p>
 
