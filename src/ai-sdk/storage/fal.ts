@@ -4,7 +4,7 @@ export function falStorage(): StorageProvider {
   return {
     async upload(data: Uint8Array, _key: string, mediaType: string) {
       const { fal } = await import("@fal-ai/client");
-      const blob = new Blob([data], { type: mediaType });
+      const blob = new Blob([data as BlobPart], { type: mediaType });
       return fal.storage.upload(blob);
     },
   };

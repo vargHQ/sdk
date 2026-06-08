@@ -235,7 +235,7 @@ class VargVideoModel implements VideoModelV3 {
           const uploaded = await uploadFile(
             this.baseUrl,
             this.apiKey,
-            new Blob([fd.data], { type: fd.mediaType }),
+            new Blob([fd.data as BlobPart], { type: fd.mediaType }),
             fd.mediaType,
           );
           fileUrls.push({
@@ -296,7 +296,7 @@ class VargImageModel implements ImageModelV3 {
           const uploaded = await uploadFile(
             this.baseUrl,
             this.apiKey,
-            new Blob([fd.data], { type: fd.mediaType }),
+            new Blob([fd.data as BlobPart], { type: fd.mediaType }),
             fd.mediaType,
           );
           fileUrls.push({ url: uploaded.url });

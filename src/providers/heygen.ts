@@ -383,7 +383,9 @@ export class HeyGenProvider extends BaseProvider {
   ): Promise<string> {
     console.log("[heygen] uploading talking photo...");
 
-    const body = file instanceof Uint8Array ? file : new Uint8Array(file);
+    const body = (
+      file instanceof Uint8Array ? file : new Uint8Array(file)
+    ) as BodyInit;
 
     const res = await fetch(`${HEYGEN_UPLOAD_BASE}/v1/talking_photo`, {
       method: "POST",
@@ -424,7 +426,9 @@ export class HeyGenProvider extends BaseProvider {
   ): Promise<{ assetId: string; url: string }> {
     console.log(`[heygen] uploading asset (${contentType})...`);
 
-    const body = file instanceof Uint8Array ? file : new Uint8Array(file);
+    const body = (
+      file instanceof Uint8Array ? file : new Uint8Array(file)
+    ) as BodyInit;
 
     const res = await fetch(`${HEYGEN_UPLOAD_BASE}/v1/asset`, {
       method: "POST",

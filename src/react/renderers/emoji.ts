@@ -76,17 +76,20 @@ export function stripEmoji(text: string, nSpaces = 1): string {
  * Extract emoji from text, returning their codepoints and positions.
  *
  * The `charIndex` in the result corresponds to the position in the
- * STRIPPED text (where each emoji is replaced by a single space).
+ * STRIPPED text (where each emoji is replaced by `nSpaces` space chars).
  * This is the index needed for X-position calculation.
+ *
+ * @param nSpaces - Number of spaces each emoji is replaced with in the
+ *   stripped text (must match the value passed to `stripEmoji`). Default 1.
  */
-export function extractEmoji(text: string): EmojiInstance[] {
+export function extractEmoji(text: string, nSpaces = 1): EmojiInstance[] {
   const results: EmojiInstance[] = [];
 
   // Reset regex state
   EMOJI_REGEX.lastIndex = 0;
 
   // Track how many characters have been "shrunk" by emoji → space replacement
-  // Each emoji (possibly multi-char in JS) gets replaced by one space
+  // Each emoji (possibly multi-char in JS) gets replaced by `nSpaces` spaces
   let shrinkage = 0;
 
   for (
@@ -116,28 +119,29 @@ export function extractEmoji(text: string): EmojiInstance[] {
       charIndex: strippedIndex,
     });
 
-    // This emoji occupies emoji.length chars in original but 1 space in stripped
-    shrinkage += emoji.length - 1;
+    // This emoji occupies emoji.length chars in original but `nSpaces` spaces
+    // in the stripped text.
+    shrinkage += emoji.length - nSpaces;
   }
 
   return results;
 }
 
 /**
- * Rendered emoji size in pixels, given the ASS font size and video dimensions.
+ * Rendered emoji size in pixels, sized to the font's ascent so emoji match
+ * the visual height of the surrounding text.
  *
- * ASS fontSize doesn't map 1:1 to rendered pixel height — libass applies its
- * own scaling. Empirically, the rendered text height is ~0.55x the ASS fontSize
- * when PlayRes matches the video resolution (the common case in our pipeline).
+ * @param winAscent - Font windows ascent in PlayRes units (precise metric)
+ * @param playResY - ASS PlayResY
+ * @param videoHeight - Actual video height in pixels
  */
 export function calculateEmojiSize(
-  fontSize: number,
+  winAscent: number,
   playResY: number,
   videoHeight: number,
 ): number {
   const scale = videoHeight / playResY;
-  // Emoji should be slightly larger than text cap-height for visual balance
-  return Math.round(fontSize * 0.55 * scale);
+  return Math.round(winAscent * scale);
 }
 
 /**
@@ -172,18 +176,33 @@ export function calculateEmojiX(
 }
 
 /**
- * Calculate the Y position of the emoji based on ASS alignment and margins.
+ * Vertical nudge (in PlayRes units) applied so emoji visually align with the
+ * cap-height of surrounding text rather than its baseline.
+ */
+const EMOJI_Y_NUDGE = 9.5;
+
+/**
+ * Calculate the Y position of the emoji based on ASS alignment and precise
+ * font metrics.
  *
- * @param alignment - ASS alignment (2=bottom-center, 5=center, 8=top-center)
+ * Uses real font metrics (winAscent / winDescent / capHeight) so the emoji
+ * lines up with the rendered text across fonts, instead of an empirical
+ * fontSize-based approximation.
+ *
+ * @param alignment - ASS alignment (1-3=bottom, 4-6=center, 7-9=top)
  * @param marginV - ASS vertical margin
- * @param fontSize - ASS font size
+ * @param winDescent - Font windows descent (PlayRes units)
+ * @param winAscent - Font windows ascent (PlayRes units)
+ * @param capHeight - Font cap height (PlayRes units)
  * @param playResY - ASS PlayResY
  * @param videoHeight - Actual video height
  */
 export function calculateEmojiY(
   alignment: number,
   marginV: number,
-  fontSize: number,
+  winDescent: number,
+  winAscent: number,
+  _capHeight: number,
   playResY: number,
   videoHeight: number,
 ): number {
@@ -192,14 +211,15 @@ export function calculateEmojiY(
 
   if (alignment >= 7) {
     // Top alignment (7, 8, 9)
-    y = marginV;
+    y = marginV + EMOJI_Y_NUDGE;
   } else if (alignment >= 4) {
     // Center alignment (4, 5, 6)
-    y = playResY / 2 - (fontSize * 0.55) / 2;
+    y = playResY / 2 - winAscent / 2 + EMOJI_Y_NUDGE;
   } else {
     // Bottom alignment (1, 2, 3)
-    // Empirical: text baseline sits at playResY - marginV - fontSize*0.75
-    y = playResY - marginV - fontSize * 0.75;
+    // Text baseline sits at playResY - marginV - winDescent.
+    const baseline = playResY - marginV - winDescent;
+    y = baseline - winAscent + EMOJI_Y_NUDGE;
   }
 
   return Math.round(y * scale);

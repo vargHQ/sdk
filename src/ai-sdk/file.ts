@@ -196,7 +196,7 @@ export class File {
 
   async blob(): Promise<Blob> {
     const data = await this.arrayBuffer();
-    return new Blob([data], { type: this._mediaType });
+    return new Blob([data as BlobPart], { type: this._mediaType });
   }
 
   /**

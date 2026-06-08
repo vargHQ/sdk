@@ -361,7 +361,9 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
   if (cached) return cached;
 
   const mediaType = file.mediaType ?? detectImageType(bytes) ?? "image/png";
-  const url = await fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  const url = await fal.storage.upload(
+    new Blob([bytes as BlobPart], { type: mediaType }),
+  );
   await uploadCache.set(hash, url, 7 * 24 * 60 * 60 * 1000);
   return url;
 }
