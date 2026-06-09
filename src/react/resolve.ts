@@ -489,13 +489,14 @@ export async function resolveSpeechElement(
 
   const duration = await probeDuration(file);
 
-  // Extract alignment data if the provider returned it (ElevenLabs with-timestamps).
-  // The AI SDK passes provider-specific data via `providerMetadata`.
+  // Extract alignment data if the provider returned it (ElevenLabs
+  // with-timestamps, or 60db's STT round-trip). Both emit the same
+  // character-alignment shape, namespaced by provider in `providerMetadata`.
   const providerMeta = (
     rest as { providerMetadata?: Record<string, Record<string, unknown>> }
   ).providerMetadata;
-  const elevenLabsMeta = providerMeta?.elevenlabs;
-  const alignment = elevenLabsMeta?.alignment as
+  const speechMeta = providerMeta?.elevenlabs ?? providerMeta?.sixtydb;
+  const alignment = speechMeta?.alignment as
     | ElevenLabsCharacterAlignment
     | undefined;
 

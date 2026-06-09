@@ -71,6 +71,13 @@ export {
   elevenlabs,
   VOICES,
 } from "./providers/elevenlabs";
+export {
+  createSixtyDB,
+  SIXTYDB_DEFAULTS,
+  type SixtyDBProvider,
+  type SixtyDBProviderSettings,
+  sixtydb,
+} from "./providers/60db";
 export { createFal, type FalProvider, fal } from "./providers/fal";
 export {
   createGoogle,
