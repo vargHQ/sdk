@@ -101,11 +101,16 @@ export type ElevenLabsModel = z.infer<typeof elevenLabsModelSchema>;
 export const transcriptionProviderSchema = z.enum(["groq", "fireworks"]);
 export type TranscriptionProvider = z.infer<typeof transcriptionProviderSchema>;
 
+// Text-to-speech providers
+export const speechProviderSchema = z.enum(["elevenlabs", "60db"]);
+export type SpeechProvider = z.infer<typeof speechProviderSchema>;
+
 // Provider name choices
 export const providerNameSchema = z.enum([
   "fal",
   "replicate",
   "elevenlabs",
+  "60db",
   "higgsfield",
   "groq",
   "fireworks",
