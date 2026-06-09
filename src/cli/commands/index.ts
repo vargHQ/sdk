@@ -7,6 +7,7 @@ export { initCmd, showInitHelp } from "./init.tsx";
 export { listCmd, showListHelp } from "./list.tsx";
 export { loginCmd } from "./login.tsx";
 export { logoutCmd } from "./logout.ts";
+export { prerenderCmd, showPrerenderHelp } from "./prerender.tsx";
 export {
   previewCmd,
   renderCmd,

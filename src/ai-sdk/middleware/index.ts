@@ -4,6 +4,10 @@ export {
   type PlaceholderResult,
 } from "./placeholder";
 export {
+  type PrerenderFallbackOptions,
+  prerenderFallbackMiddleware,
+} from "./prerender";
+export {
   type ImagePlaceholderFallbackOptions,
   imagePlaceholderFallbackMiddleware,
   withImagePlaceholderFallback,

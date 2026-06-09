@@ -14,7 +14,9 @@ import { Captions, Clip, Image, Music, Overlay, Packshot, Render, Slider, Speech
 import { fal, elevenlabs, replicate, varg } from "vargai/ai";
 `;
 
-async function detectDefaultModels(): Promise<DefaultModels | undefined> {
+export async function detectDefaultModels(): Promise<
+  DefaultModels | undefined
+> {
   const defaults: DefaultModels = {};
 
   // Gateway provider — single key for all models (recommended)
@@ -68,7 +70,7 @@ async function resolveDefaultExport(mod: {
   return component as VargElement;
 }
 
-async function loadComponent(filePath: string): Promise<VargElement> {
+export async function loadComponent(filePath: string): Promise<VargElement> {
   const resolvedPath = resolve(filePath);
   const source = await Bun.file(resolvedPath).text();
 
@@ -141,7 +143,7 @@ async function loadComponent(filePath: string): Promise<VargElement> {
   }
 }
 
-const sharedArgs = {
+export const sharedArgs = {
   file: {
     type: "positional" as const,
     description: "component file (.tsx)",
