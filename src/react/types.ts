@@ -35,6 +35,9 @@ export type VargElementType =
   | "slider"
   | "swipe"
   | "packshot"
+  | "slice"
+  | "ffmpeg"
+  | "probe"
   | "__lazy";
 
 /**
@@ -129,7 +132,7 @@ export interface OverlayProps extends BaseProps, PositionProps, AudioProps {
 }
 
 export type ImageInput = Uint8Array | string | VargElement<"image">;
-export type ImagePrompt = string | { text?: string; images: ImageInput[] };
+export type ImagePrompt = string | { text?: string; images?: ImageInput[] };
 
 export interface ImageProps extends BaseProps, PositionProps {
   prompt?: ImagePrompt;
@@ -215,6 +218,8 @@ export interface TalkingHeadProps extends BaseProps {
 }
 
 export interface TitleProps extends BaseProps {
+  /** Title text. Alias for children — if both are provided, children takes precedence. */
+  text?: string;
   position?: Position;
   color?: string;
   /** Path to a custom font file (.ttf, .otf) */
@@ -229,6 +234,8 @@ export interface TitleProps extends BaseProps {
 }
 
 export interface SubtitleProps extends BaseProps {
+  /** Subtitle text. Alias for children — if both are provided, children takes precedence. */
+  text?: string;
   backgroundColor?: string;
   children?: string;
 }
@@ -257,6 +264,9 @@ export interface CaptionsProps extends BaseProps {
   wordsPerLine?: number;
   /** When src is a Speech element, include its audio track in the video. Defaults to false. */
   withAudio?: boolean;
+  /** Font to use for captions. Overrides the style preset's default font.
+   *  Available: "montserrat" | "roboto" | "poppins" | "inter" | "bebas-neue" | "rock-salt" | "oswald" | "space-grotesk" | "dm-sans" */
+  font?: string;
 }
 
 export interface SplitProps extends BaseProps {
@@ -351,6 +361,24 @@ export interface DefaultModels {
   transcription?: TranscriptionModelV3;
 }
 
+/** Pricing metadata for a single generation call, emitted via onGeneration. */
+export interface GenerationPricingEntry {
+  /** Generation type */
+  type: "image" | "video" | "speech" | "music" | "transcription";
+  /** Model ID used */
+  model: string;
+  /** Estimated cost in credits (before generation) */
+  estimated?: number;
+  /** Actual cost in credits (after generation) */
+  actual?: number;
+  /** Billing mode */
+  billing?: "metered" | "byok" | "x402";
+  /** Whether result was served from cache */
+  cached?: boolean;
+  /** Gateway job ID for this generation */
+  jobId?: string;
+}
+
 export interface RenderOptions {
   output?: string;
   cache?: string | CacheStorage;
@@ -362,6 +390,8 @@ export interface RenderOptions {
   storage?: StorageProvider;
   /** Max concurrent clip renders. Defaults to 3. */
   concurrency?: number;
+  /** Callback invoked after each AI generation completes. Used to accumulate per-model costs. */
+  onGeneration?: (entry: GenerationPricingEntry) => void;
 }
 
 // Re-export from file module for convenience
@@ -372,6 +402,37 @@ export interface RenderResult {
   video: Uint8Array;
   /** All intermediate files generated during rendering (lazy-loaded) */
   files: File[];
+}
+
+// ── FFmpeg processing element props ──────────────────────────────────
+
+export interface SliceProps {
+  /** Source video: URL string, File object, or ResolvedElement */
+  src: string | File | VargElement;
+  /** Codec mode: "copy" for keyframe-aligned fast cuts, "reencode" for frame-accurate */
+  codec?: "copy" | "reencode";
+  /** Split every N seconds */
+  every?: number;
+  /** Split at specific timestamps (cut points) */
+  at?: number[];
+  /** Split into N equal parts (probes duration automatically) */
+  count?: number;
+  /** Split at explicit time ranges */
+  ranges?: Array<{ start: number; end: number }>;
+}
+
+export interface FFmpegProps {
+  /** Source input: URL string, File object, or ResolvedElement (used as {{in_1}}) */
+  src?: string | File | VargElement;
+  /** Multiple named inputs (for multi-input commands) */
+  inputs?: Record<string, string | File | VargElement>;
+  /** FFmpeg command flags (without -i input, which is added automatically for src) */
+  command: string;
+}
+
+export interface ProbeProps {
+  /** Source to probe: URL string, File object, or ResolvedElement */
+  src: string | File | VargElement;
 }
 
 export interface ElementPropsMap {
@@ -390,4 +451,7 @@ export interface ElementPropsMap {
   slider: SliderProps;
   swipe: SwipeProps;
   packshot: PackshotProps;
+  slice: SliceProps;
+  ffmpeg: FFmpegProps;
+  probe: ProbeProps;
 }

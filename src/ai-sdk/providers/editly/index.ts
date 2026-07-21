@@ -115,8 +115,15 @@ async function processClips(
         );
 
         // Clamp the layer's cutTo so the FFmpeg trim filter also respects
-        // the actual source duration (prevents freeze frames at the tail)
-        videoLayer.cutTo = cutTo;
+        // the actual source duration (prevents freeze frames at the tail).
+        // When clip has an explicit duration shorter than the video,
+        // cutTo must respect it — otherwise the trim produces more frames
+        // than the clip intended, overriding the clip's duration in concat.
+        if (clip.duration && clip.duration < cutTo - cutFrom) {
+          videoLayer.cutTo = (videoLayer.cutFrom ?? 0) + clip.duration;
+        } else {
+          videoLayer.cutTo = cutTo;
+        }
 
         const effectiveDuration = cutTo - cutFrom;
         if (!clip.duration) {

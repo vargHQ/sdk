@@ -113,9 +113,30 @@ export async function renderVideo(
   const props = element.props as VideoProps;
 
   if (props.src && !props.prompt) {
-    return typeof props.src === "string" && props.src.startsWith("http")
-      ? File.fromUrl(props.src)
-      : File.fromPath(props.src);
+    const file =
+      typeof props.src === "string" && props.src.startsWith("http")
+        ? File.fromUrl(props.src)
+        : File.fromPath(props.src);
+
+    // When cutFrom/cutTo are set on a src-only Video, trim the video via
+    // local ffmpeg before returning. This pre-trims prompt.video inputs for
+    // models with input length limits (e.g. motion-control max 30s).
+    if (props.cutFrom !== undefined || props.cutTo !== undefined) {
+      const input = file.url ?? (await file.toTempFile());
+      const start = props.cutFrom ?? 0;
+      const duration = (props.cutTo ?? start + 30) - start;
+      const tmpDir = process.env.TMPDIR ?? "/tmp";
+      const outPath = `${tmpDir}/varg-trim-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`;
+
+      const { $ } = await import("bun");
+      await $`ffmpeg -y -ss ${start} -i ${input} -t ${duration} -c copy -movflags +faststart ${outPath}`.quiet();
+
+      const data = await Bun.file(outPath).arrayBuffer();
+      await Bun.file(outPath).delete?.();
+      return File.fromBuffer(new Uint8Array(data), "video/mp4");
+    }
+
+    return file;
   }
 
   const prompt = props.prompt;
