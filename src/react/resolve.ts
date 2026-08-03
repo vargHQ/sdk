@@ -11,7 +11,7 @@
  */
 
 import {
-  generateImage,
+  generateImage as generateImageRaw,
   experimental_generateSpeech as generateSpeechAI,
 } from "ai";
 import { $ } from "bun";
@@ -129,8 +129,14 @@ async function trimVideoLocal(
 }
 
 // ---------------------------------------------------------------------------
-// Cached video generation — uses context cache when available
+// Cached generation wrappers — use context cache when available
 // ---------------------------------------------------------------------------
+/** Get a cached generateImage wrapper using the active cache storage. */
+function getCachedGenerateImage() {
+  const storage = getActiveCache();
+  return withCache(generateImageRaw, { storage });
+}
+
 /** Get a cached generateVideo wrapper using the active cache storage. */
 function getCachedGenerateVideo() {
   const ctx = getResolveContext();
@@ -149,6 +155,25 @@ function getCachedGenerateMusic() {
 function getCachedGenerateSpeech() {
   const storage = getActiveCache();
   return withCache(generateSpeechAI, { storage });
+}
+
+/**
+ * In-flight dedup helper: if a resolve for the same cache key is already
+ * running in the current ResolveContext, return its promise instead of
+ * starting a new generation. Prevents duplicate API calls when multiple
+ * parallel consumers (e.g. Promise.all of speechRange) pull the same
+ * reference image/video.
+ */
+function getPendingResolve<T extends ResolvedElement>(
+  key: string,
+): Promise<T> | undefined {
+  const ctx = getResolveContext();
+  return ctx?.pendingResolves?.get(key) as Promise<T> | undefined;
+}
+
+function setPendingResolve(key: string, promise: Promise<ResolvedElement>): void {
+  const ctx = getResolveContext();
+  ctx?.pendingResolves?.set(key, promise);
 }
 
 // ---------------------------------------------------------------------------
@@ -628,17 +653,26 @@ export async function resolveImageElement(
   element: VargElement<"image">,
   props: ImageProps,
 ): Promise<ResolvedElement<"image">> {
+  // Already resolved (pre-resolved via await Image() or previous resolve)
+  if (element.meta?.file) {
+    return element instanceof ResolvedElement
+      ? (element as ResolvedElement<"image">)
+      : new ResolvedElement(element, element.meta);
+  }
+
   if (props.src) {
     const src = props.src as string;
     const file = src.startsWith("http")
       ? File.fromUrl(src)
       : File.fromPath(src.startsWith("file://") ? src.slice(7) : src);
 
-    return new ResolvedElement(element, {
+    const result = new ResolvedElement(element, {
       file,
       duration: 0,
       aspectRatio: props.aspectRatio,
     });
+    element.meta = result.meta;
+    return result;
   }
 
   const prompt = props.prompt;
@@ -653,42 +687,58 @@ export async function resolveImageElement(
     );
   }
 
+  // In-flight dedup: if another parallel call is already generating this
+  // exact image, share its promise instead of starting a duplicate request.
   const cacheKey = computeCacheKey(element);
-  const resolvedPrompt = await resolveImagePrompt(prompt);
+  const dedupKey = `image:${cacheKey.join(":")}`;
+  const pending = getPendingResolve<ResolvedElement<"image">>(dedupKey);
+  if (pending) return pending;
 
-  const { images } = await generateImage({
-    model,
-    prompt: resolvedPrompt,
-    aspectRatio: props.aspectRatio,
-    providerOptions: props.providerOptions,
-    n: 1,
-    cacheKey,
-  } as Parameters<typeof generateImage>[0]);
+  const promise = (async () => {
+    const resolvedPrompt = await resolveImagePrompt(prompt);
 
-  const firstImage = images[0];
-  if (!firstImage?.uint8Array) {
-    throw new Error("Image generation returned no image data");
-  }
+    const generateImage = getCachedGenerateImage();
+    const { images } = await generateImage({
+      model,
+      prompt: resolvedPrompt,
+      aspectRatio: props.aspectRatio,
+      providerOptions: props.providerOptions,
+      n: 1,
+      cacheKey,
+    } as Parameters<typeof generateImageRaw>[0]);
 
-  const promptText =
-    typeof resolvedPrompt === "string" ? resolvedPrompt : resolvedPrompt.text;
-  const modelId = typeof model === "string" ? model : model.modelId;
+    const firstImage = images[0];
+    if (!firstImage?.uint8Array) {
+      throw new Error("Image generation returned no image data");
+    }
 
-  const file = File.fromGenerated({
-    uint8Array: firstImage.uint8Array,
-    mediaType: "image/png",
-    url: (firstImage as { url?: string }).url,
-  }).withMetadata({
-    type: "image",
-    model: modelId,
-    prompt: promptText,
-  });
+    const promptText =
+      typeof resolvedPrompt === "string" ? resolvedPrompt : resolvedPrompt.text;
+    const modelId = typeof model === "string" ? model : model.modelId;
 
-  return new ResolvedElement(element, {
-    file,
-    duration: 0,
-    aspectRatio: props.aspectRatio,
-  });
+    const file = File.fromGenerated({
+      uint8Array: firstImage.uint8Array,
+      mediaType: "image/png",
+      url: (firstImage as { url?: string }).url,
+    }).withMetadata({
+      type: "image",
+      model: modelId,
+      prompt: promptText,
+    });
+
+    const result = new ResolvedElement(element, {
+      file,
+      duration: 0,
+      aspectRatio: props.aspectRatio,
+    });
+    // Write meta back so compile() marks this element as "skipped" and
+    // executePlan doesn't re-generate it.
+    element.meta = result.meta;
+    return result;
+  })();
+
+  setPendingResolve(dedupKey, promise);
+  return promise;
 }
 
 // ---------------------------------------------------------------------------
@@ -699,6 +749,13 @@ export async function resolveVideoElement(
   element: VargElement<"video">,
   props: Record<string, unknown>,
 ): Promise<ResolvedElement<"video">> {
+  // Already resolved (pre-resolved via await Video() or previous resolve)
+  if (element.meta?.file) {
+    return element instanceof ResolvedElement
+      ? (element as ResolvedElement<"video">)
+      : new ResolvedElement(element, element.meta);
+  }
+
   if (props.src && !props.prompt) {
     const src = props.src as string;
     const file = src.startsWith("http")
@@ -721,16 +778,20 @@ export async function resolveVideoElement(
       const end = cutTo ?? fullDuration;
       const trimmedFile = await trimVideoLocal(file, start, end);
       const trimmedDuration = end - start;
-      return new ResolvedElement(element, {
+      const result = new ResolvedElement(element, {
         file: trimmedFile,
         duration: trimmedDuration,
       });
+      element.meta = result.meta;
+      return result;
     }
 
-    return new ResolvedElement(element, {
+    const result = new ResolvedElement(element, {
       file,
       duration: fullDuration,
     });
+    element.meta = result.meta;
+    return result;
   }
 
   const prompt = props.prompt;
@@ -745,161 +806,180 @@ export async function resolveVideoElement(
     );
   }
 
+  // In-flight dedup: if another parallel call is already generating this
+  // exact video, share its promise instead of starting a duplicate request.
   const cacheKey = computeCacheKey(element);
+  const dedupKey = `video:${cacheKey.join(":")}`;
+  const pending = getPendingResolve<ResolvedElement<"video">>(dedupKey);
+  if (pending) return pending;
 
-  // Resolve prompt inputs (images, audio, video references)
-  let resolvedPrompt: Parameters<typeof generateVideoRaw>[0]["prompt"];
-  if (typeof prompt === "string") {
-    resolvedPrompt = prompt;
-  } else {
-    const promptObj = prompt as {
-      text?: string;
-      images?: unknown[];
-      audio?: unknown;
-      video?: unknown;
-    };
+  const promise = (async () => {
+    // Resolve prompt inputs (images, audio, video references)
+    let resolvedPrompt: Parameters<typeof generateVideoRaw>[0]["prompt"];
+    if (typeof prompt === "string") {
+      resolvedPrompt = prompt;
+    } else {
+      const promptObj = prompt as {
+        text?: string;
+        images?: unknown[];
+        audio?: unknown;
+        video?: unknown;
+      };
 
-    const resolvedImages = promptObj.images
-      ? await Promise.all(
-          promptObj.images.map(async (img) => {
-            if (img instanceof Uint8Array) return img;
-            if (typeof img === "string") {
-              const res = await fetch(img);
-              if (!res.ok) {
-                throw new Error(
-                  `Failed to fetch image from ${img}: ${res.status} ${res.statusText}`,
+      const resolvedImages = promptObj.images
+        ? await Promise.all(
+            promptObj.images.map(async (img) => {
+              if (img instanceof Uint8Array) return img;
+              if (typeof img === "string") {
+                const res = await fetch(img);
+                if (!res.ok) {
+                  throw new Error(
+                    `Failed to fetch image from ${img}: ${res.status} ${res.statusText}`,
+                  );
+                }
+                return new Uint8Array(await res.arrayBuffer());
+              }
+              // VargElement<"image"> — could be resolved or unresolved
+              if (
+                img &&
+                typeof img === "object" &&
+                "type" in img &&
+                (img as VargElement).type === "image"
+              ) {
+                const imgEl = img as VargElement<"image">;
+                if (imgEl.meta?.file) {
+                  return await imgEl.meta.file.arrayBuffer();
+                }
+                const resolved = await resolveImageElement(
+                  imgEl,
+                  imgEl.props as ImageProps,
                 );
+                return await resolved.file.arrayBuffer();
               }
-              return new Uint8Array(await res.arrayBuffer());
-            }
-            // VargElement<"image"> — could be resolved or unresolved
-            if (
-              img &&
-              typeof img === "object" &&
-              "type" in img &&
-              (img as VargElement).type === "image"
-            ) {
-              const imgEl = img as VargElement<"image">;
-              if (imgEl.meta?.file) {
-                return await imgEl.meta.file.arrayBuffer();
-              }
-              const resolved = await resolveImageElement(
-                imgEl,
-                imgEl.props as ImageProps,
-              );
-              return await resolved.file.arrayBuffer();
-            }
-            throw new Error("Unsupported image input in Video prompt");
-          }),
-        )
-      : undefined;
+              throw new Error("Unsupported image input in Video prompt");
+            }),
+          )
+        : undefined;
 
-    let resolvedAudio: Uint8Array | undefined;
-    if (promptObj.audio) {
-      if (promptObj.audio instanceof Uint8Array) {
-        resolvedAudio = promptObj.audio;
-      } else if (typeof promptObj.audio === "string") {
-        const res = await fetch(promptObj.audio);
-        if (!res.ok) {
-          throw new Error(
-            `Failed to fetch audio from ${promptObj.audio}: ${res.status} ${res.statusText}`,
-          );
-        }
-        resolvedAudio = new Uint8Array(await res.arrayBuffer());
-      } else if (
-        promptObj.audio &&
-        typeof promptObj.audio === "object" &&
-        "type" in promptObj.audio
-      ) {
-        const audioEl = promptObj.audio as VargElement;
-        if (audioEl.meta?.file) {
-          resolvedAudio = await audioEl.meta.file.arrayBuffer();
-        } else if (audioEl.type === "audio") {
-          const resolved = await resolveAudioElement(
-            audioEl as VargElement<"audio">,
-          );
-          resolvedAudio = await resolved.file.arrayBuffer();
-        } else {
-          const resolved = await resolveSpeechElement(
-            audioEl as VargElement<"speech">,
-            audioEl.props as SpeechProps,
-          );
-          resolvedAudio = await resolved.file.arrayBuffer();
+      let resolvedAudio: Uint8Array | undefined;
+      if (promptObj.audio) {
+        if (promptObj.audio instanceof Uint8Array) {
+          resolvedAudio = promptObj.audio;
+        } else if (typeof promptObj.audio === "string") {
+          const res = await fetch(promptObj.audio);
+          if (!res.ok) {
+            throw new Error(
+              `Failed to fetch audio from ${promptObj.audio}: ${res.status} ${res.statusText}`,
+            );
+          }
+          resolvedAudio = new Uint8Array(await res.arrayBuffer());
+        } else if (
+          promptObj.audio &&
+          typeof promptObj.audio === "object" &&
+          "type" in promptObj.audio
+        ) {
+          const audioEl = promptObj.audio as VargElement;
+          if (audioEl.meta?.file) {
+            resolvedAudio = await audioEl.meta.file.arrayBuffer();
+          } else if (audioEl.type === "audio") {
+            const resolved = await resolveAudioElement(
+              audioEl as VargElement<"audio">,
+            );
+            resolvedAudio = await resolved.file.arrayBuffer();
+          } else {
+            const resolved = await resolveSpeechElement(
+              audioEl as VargElement<"speech">,
+              audioEl.props as SpeechProps,
+            );
+            resolvedAudio = await resolved.file.arrayBuffer();
+          }
         }
       }
-    }
 
-    let resolvedVideo: Uint8Array | undefined;
-    if (promptObj.video) {
-      if (promptObj.video instanceof Uint8Array) {
-        resolvedVideo = promptObj.video;
-      } else if (typeof promptObj.video === "string") {
-        const res = await fetch(promptObj.video);
-        if (!res.ok) {
-          throw new Error(
-            `Failed to fetch video from ${promptObj.video}: ${res.status} ${res.statusText}`,
-          );
-        }
-        resolvedVideo = new Uint8Array(await res.arrayBuffer());
-      } else if (
-        promptObj.video &&
-        typeof promptObj.video === "object" &&
-        "type" in promptObj.video
-      ) {
-        const videoEl = promptObj.video as VargElement<"video">;
-        if (videoEl.meta?.file) {
-          resolvedVideo = await videoEl.meta.file.arrayBuffer();
-        } else {
-          const resolved = await resolveVideoElement(
-            videoEl,
-            videoEl.props as Record<string, unknown>,
-          );
-          resolvedVideo = await resolved.file.arrayBuffer();
+      let resolvedVideo: Uint8Array | undefined;
+      if (promptObj.video) {
+        if (promptObj.video instanceof Uint8Array) {
+          resolvedVideo = promptObj.video;
+        } else if (typeof promptObj.video === "string") {
+          const res = await fetch(promptObj.video);
+          if (!res.ok) {
+            throw new Error(
+              `Failed to fetch video from ${promptObj.video}: ${res.status} ${res.statusText}`,
+            );
+          }
+          resolvedVideo = new Uint8Array(await res.arrayBuffer());
+        } else if (
+          promptObj.video &&
+          typeof promptObj.video === "object" &&
+          "type" in promptObj.video
+        ) {
+          const videoEl = promptObj.video as VargElement<"video">;
+          if (videoEl.meta?.file) {
+            resolvedVideo = await videoEl.meta.file.arrayBuffer();
+          } else {
+            const resolved = await resolveVideoElement(
+              videoEl,
+              videoEl.props as Record<string, unknown>,
+            );
+            resolvedVideo = await resolved.file.arrayBuffer();
+          }
         }
       }
+
+      resolvedPrompt = {
+        text: promptObj.text,
+        images: resolvedImages,
+        audio: resolvedAudio,
+        video: resolvedVideo,
+      };
     }
 
-    resolvedPrompt = {
-      text: promptObj.text,
-      images: resolvedImages,
-      audio: resolvedAudio,
-      video: resolvedVideo,
-    };
-  }
+    const generateVideo = getCachedGenerateVideo();
 
-  const generateVideo = getCachedGenerateVideo();
+    // Check cache before calling generateVideo to log cache hits/misses
+    const videoCacheKey = depsToKey("generateVideo", cacheKey);
+    const videoCached = await getActiveCache().get(videoCacheKey);
+    console.info(`[RESOLVE] video cache ${videoCached ? "HIT" : "MISS"}: ${cacheKey.slice(0, 80)}`);
 
-  const { video } = await generateVideo({
-    model: model as Parameters<typeof generateVideoRaw>[0]["model"],
-    prompt: resolvedPrompt,
-    duration: (props.duration as number) ?? 5,
-    aspectRatio: props.aspectRatio as `${number}:${number}` | undefined,
-    providerOptions: props.providerOptions as Parameters<
-      typeof generateVideoRaw
-    >[0]["providerOptions"],
-    cacheKey,
-  });
+    const { video } = await generateVideo({
+      model: model as Parameters<typeof generateVideoRaw>[0]["model"],
+      prompt: resolvedPrompt,
+      duration: (props.duration as number) ?? 5,
+      aspectRatio: props.aspectRatio as `${number}:${number}` | undefined,
+      providerOptions: props.providerOptions as Parameters<
+        typeof generateVideoRaw
+      >[0]["providerOptions"],
+      cacheKey,
+    });
 
-  const mediaType = video.mimeType ?? "video/mp4";
-  const promptText =
-    typeof resolvedPrompt === "string" ? resolvedPrompt : resolvedPrompt?.text;
-  const modelId =
-    typeof model === "string" ? model : (model as { modelId: string }).modelId;
+    const mediaType = video.mimeType ?? "video/mp4";
+    const promptText =
+      typeof resolvedPrompt === "string" ? resolvedPrompt : resolvedPrompt?.text;
+    const modelId =
+      typeof model === "string" ? model : (model as { modelId: string }).modelId;
 
-  const file = File.fromGenerated({
-    uint8Array: video.uint8Array,
-    mediaType,
-    url: (video as { url?: string }).url,
-  }).withMetadata({
-    type: "video",
-    model: modelId,
-    prompt: promptText,
-  });
+    const file = File.fromGenerated({
+      uint8Array: video.uint8Array,
+      mediaType,
+      url: (video as { url?: string }).url,
+    }).withMetadata({
+      type: "video",
+      model: modelId,
+      prompt: promptText,
+    });
 
-  return new ResolvedElement(element, {
-    file,
-    duration: 0, // video duration probing deferred to a later phase
-  });
+    const result = new ResolvedElement(element, {
+      file,
+      duration: 0, // video duration probing deferred to a later phase
+    });
+    // Write meta back so compile() marks this element as "skipped" and
+    // executePlan doesn't re-generate it.
+    element.meta = result.meta;
+    return result;
+  })();
+
+  setPendingResolve(dedupKey, promise);
+  return promise;
 }
 
 // ---------------------------------------------------------------------------
@@ -1190,16 +1270,21 @@ export async function resolveAudioElement(
     const extractKey = depsToKey("extractAudio", computeCacheKey(parentEl));
     const cached = (await cache.get(extractKey)) as
       | { uint8Array: Uint8Array; mediaType: string; duration: number }
+      | { audio: { uint8Array: Uint8Array; mediaType: string }; duration: number }
       | undefined;
 
     if (cached) {
+      // Handle both flat and { audio: {...} } wrapped formats — the render
+      // service's reconstructCachedValue wraps audio in { audio: {...} },
+      // while the SDK's own cache returns a flat { uint8Array, mediaType }.
+      const data = "audio" in cached ? cached.audio : cached;
       const file = File.fromGenerated({
-        uint8Array: cached.uint8Array,
-        mediaType: cached.mediaType,
+        uint8Array: data.uint8Array,
+        mediaType: data.mediaType,
       }).withMetadata({ type: "speech" });
       return new ResolvedElement(element, {
         file,
-        duration: cached.duration,
+        duration: cached.duration ?? 0,
       });
     }
 

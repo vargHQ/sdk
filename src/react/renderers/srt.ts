@@ -84,5 +84,18 @@ export function parseSrt(content: string): SrtEntry[] {
     entries.push({ index, start, end, text });
   }
 
+  // Ensure monotonically increasing start times.
+  // Whisper can return out-of-order word timings (e.g. word N+1 starts
+  // before word N), which causes inverted Dialogue timestamps in
+  // convertSrtToAssGrouped and triggers libass collision detection.
+  for (let i = 0; i < entries.length; i++) {
+    if (i > 0 && entries[i]!.start < entries[i - 1]!.start) {
+      entries[i]!.start = entries[i - 1]!.start;
+    }
+    if (entries[i]!.end < entries[i]!.start) {
+      entries[i]!.end = entries[i]!.start;
+    }
+  }
+
   return entries;
 }

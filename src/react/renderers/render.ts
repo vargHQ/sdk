@@ -247,8 +247,11 @@ export async function renderRoot(
   });
 
   // 4. Assemble timeline with clip start offsets + overlay layers
+  // Track cutFrom per clip so caption timestamps (relative to the
+  // original untrimmed audio) can be shifted to match the trimmed clip.
   const clips: Clip[] = [];
   const clipStartOffsets: number[] = [];
+  const clipCutFroms: number[] = [];
   let currentTime = 0;
 
   for (let i = 0; i < flatten.clipElements.length; i++) {
@@ -262,6 +265,7 @@ export async function renderRoot(
       typeof clipProps.duration === "number" ? clipProps.duration : 3;
 
     clipStartOffsets.push(currentTime);
+    clipCutFroms.push(clipProps.cutFrom ?? 0);
 
     for (const overlay of renderedOverlays) {
       const overlayLayer: VideoLayer = {
@@ -358,23 +362,30 @@ export async function renderRoot(
       }
     }
 
-    // Merge ASS files: shift timestamps by each clip's start offset
+    // Merge ASS files: shift timestamps to final timeline position.
+    // Whisper word timings are relative to the original untrimmed audio,
+    // so we must subtract cutFrom (clip's trim point) and add the clip's
+    // start offset in the final timeline:  final = T - cutFrom + clipStart
     if (hoistedCaptionsResults.length === 1) {
+      const ci = flatten.hoistedCaptions[0]!.clipIndex;
       const offset =
-        clipStartOffsets[flatten.hoistedCaptions[0]!.clipIndex] ?? 0;
+        (clipStartOffsets[ci] ?? 0) - (clipCutFroms[ci] ?? 0);
       const assPath = hoistedCaptionsResults[0]!.assPath;
       mergedAssPath =
-        offset > 0 ? shiftAssTimestamps(assPath, offset) : assPath;
+        offset !== 0 ? shiftAssTimestamps(assPath, offset) : assPath;
       if (mergedAssPath !== assPath) {
         ctx.tempFiles.push(mergedAssPath);
       }
     } else if (hoistedCaptionsResults.length > 1) {
-      const segments = hoistedCaptionsResults.map((result, i) => ({
-        assPath: result.assPath,
-        timeOffset:
-          clipStartOffsets[flatten.hoistedCaptions[i]!.clipIndex] ?? 0,
-        styleSuffix: `_${i}`,
-      }));
+      const segments = hoistedCaptionsResults.map((result, i) => {
+        const ci = flatten.hoistedCaptions[i]!.clipIndex;
+        return {
+          assPath: result.assPath,
+          timeOffset:
+            (clipStartOffsets[ci] ?? 0) - (clipCutFroms[ci] ?? 0),
+          styleSuffix: `_${i}`,
+        };
+      });
       mergedAssPath = mergeAssFiles(segments, ctx.width, ctx.height);
       ctx.tempFiles.push(mergedAssPath);
     }
@@ -449,15 +460,17 @@ export async function renderRoot(
     }
     const allFontFiles = [...fontFileMap.values()];
 
-    // Collect emoji overlays from all caption results, shifting timing by clip offsets
+    // Collect emoji overlays from all caption results, shifting timing
+    // by clip start offset minus cutFrom (same correction as ASS timestamps)
     const allEmojiOverlays: EmojiOverlay[] = [];
     for (let i = 0; i < hoistedCaptionsResults.length; i++) {
       const result = hoistedCaptionsResults[i]!;
+      const ci = flatten.hoistedCaptions[i]!.clipIndex;
       const offset =
-        clipStartOffsets[flatten.hoistedCaptions[i]!.clipIndex] ?? 0;
+        (clipStartOffsets[ci] ?? 0) - (clipCutFroms[ci] ?? 0);
       for (const overlay of result.emojiOverlays ?? []) {
         allEmojiOverlays.push(
-          offset > 0
+          offset !== 0
             ? {
                 ...overlay,
                 startTime: overlay.startTime + offset,

@@ -143,6 +143,7 @@ async function submitJob(
   capability: "video" | "image" | "speech" | "music",
   params: Record<string, unknown>,
 ): Promise<VargJobResponse> {
+  console.info(`[GATEWAY] POST /v2/${capability} — submitting job`);
   const response = await fetch(`${baseUrl}/${capability}`, {
     method: "POST",
     headers: getHeaders(apiKey),

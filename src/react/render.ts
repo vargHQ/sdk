@@ -32,6 +32,7 @@ async function prepare(
     cache,
     storage: options.storage,
     defaults: options.defaults,
+    pendingResolves: new Map(),
   };
 
   // Resolve lazy elements (from async components) within the resolve context.

@@ -13,6 +13,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { CacheStorage } from "../ai-sdk/cache";
 import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
 import type { StorageProvider } from "../ai-sdk/storage/types";
+import type { ResolvedElement } from "./resolved-element";
 import type { DefaultModels } from "./types";
 
 /** Context available to standalone resolve functions during rendering. */
@@ -25,6 +26,15 @@ export interface ResolveContext {
   storage?: StorageProvider;
   /** Default models from RenderOptions — used for transcription fallback. */
   defaults?: DefaultModels;
+  /**
+   * In-flight resolve deduplication map: cacheKey → Promise<ResolvedElement>.
+   *
+   * When multiple parallel calls resolve the same element (e.g. 5 videos in a
+   * Promise.all all pulling the same reference image), only the first triggers
+   * generation; the rest share the same promise. Prevents duplicate API calls
+   * during the eval phase (before compile/executePlan).
+   */
+  pendingResolves?: Map<string, Promise<ResolvedElement>>;
 }
 
 const resolveContextStorage = new AsyncLocalStorage<ResolveContext>();

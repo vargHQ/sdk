@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { convertToSRT } from "../renderers/srt";
+import { convertToSRT, parseSrt as parseSrtModule } from "../renderers/srt";
 
 // We need to test the internal convertSrtToAssGrouped function.
 // Since it's not exported, we'll test the full flow via convertToSRT + verifying SRT output,
@@ -95,5 +95,45 @@ is
     expect(entries[0]!.start).toBeCloseTo(0.5);
     expect(entries[0]!.end).toBeCloseTo(0.8);
     expect(entries[2]!.text).toBe("is");
+  });
+});
+
+describe("parseSrt monotonization", () => {
+  test("clamps out-of-order word start times (Whisper bug)", () => {
+    // Whisper sometimes returns word N+1 with an earlier start than word N.
+    // Here "I" (entry 3) starts at 3.500, before "bet." (entry 2) at 3.520.
+    const srt = `1
+00:00:03,319 --> 00:00:03,520
+the
+
+2
+00:00:03,520 --> 00:00:04,040
+bet.
+
+3
+00:00:03,500 --> 00:00:04,540
+I
+`;
+    const entries = parseSrtModule(srt);
+    expect(entries).toHaveLength(3);
+    // "the" unchanged
+    expect(entries[0]!.start).toBeCloseTo(3.319);
+    // "bet." unchanged
+    expect(entries[1]!.start).toBeCloseTo(3.520);
+    // "I" clamped from 3.500 to 3.520 (previous word's start)
+    expect(entries[2]!.start).toBeCloseTo(3.520);
+    // Monotonically increasing
+    expect(entries[1]!.start).toBeGreaterThanOrEqual(entries[0]!.start);
+    expect(entries[2]!.start).toBeGreaterThanOrEqual(entries[1]!.start);
+  });
+
+  test("clamps end < start to start", () => {
+    const srt = `1
+00:00:01,000 --> 00:00:00,500
+weird
+`;
+    const entries = parseSrtModule(srt);
+    expect(entries[0]!.start).toBeCloseTo(1.0);
+    expect(entries[0]!.end).toBeCloseTo(1.0);
   });
 });
