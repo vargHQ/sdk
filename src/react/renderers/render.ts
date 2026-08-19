@@ -22,6 +22,7 @@ import type {
   Layer,
   VideoLayer,
 } from "../../ai-sdk/providers/editly/types";
+import type { VideoModelV3 } from "../../ai-sdk/video-model";
 import { ResolvedElement } from "../resolved-element";
 import type {
   ClipProps,
@@ -85,6 +86,29 @@ function toImageModelV3(
     doGenerate: async () => {
       throw new Error(
         `toImageModelV3 shell: doGenerate should not be called in preview mode (model: ${modelId})`,
+      );
+    },
+  };
+}
+
+function toVideoModelV3(
+  model: Parameters<typeof generateVideo>[0]["model"],
+): VideoModelV3 {
+  if (typeof model === "object" && model.specificationVersion === "v3") {
+    return model;
+  }
+  // for string IDs, create a shell that satisfies the type.
+  // in preview mode the middleware intercepts before doGenerate is called;
+  // in strict mode generateVideo() resolves the string via the default provider.
+  const modelId = typeof model === "string" ? model : model.modelId;
+  return {
+    specificationVersion: "v3",
+    provider: "placeholder",
+    modelId,
+    maxVideosPerCall: 1,
+    doGenerate: async () => {
+      throw new Error(
+        `toVideoModelV3 shell: doGenerate should not be called in preview mode (model: ${modelId})`,
       );
     },
   };
@@ -179,7 +203,7 @@ export async function renderRoot(
       return cachedGenerateVideo({
         ...opts,
         model: wrapVideoModel({
-          model: opts.model,
+          model: toVideoModelV3(opts.model),
           middleware: placeholderFallbackMiddleware({
             mode: "preview",
             onFallback: () => {},
@@ -190,7 +214,9 @@ export async function renderRoot(
     }
 
     const result = await cachedGenerateVideo(opts);
-    emitPricing("video", opts.model.modelId, result);
+    const videoModelId =
+      typeof opts.model === "string" ? opts.model : opts.model.modelId;
+    emitPricing("video", videoModelId, result);
     return result;
   };
 

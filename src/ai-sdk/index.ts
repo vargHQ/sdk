@@ -26,6 +26,7 @@ export {
   type GenerateVideoPrompt,
   type GenerateVideoResult,
   generateVideo,
+  type VideoModel,
 } from "./generate-video";
 export {
   generatePlaceholder,

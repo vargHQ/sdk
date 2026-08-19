@@ -15,8 +15,16 @@ export type GenerateVideoPrompt =
       video?: DataContent | Array<DataContent>;
     };
 
+/**
+ * A video model can be passed as a string ID (resolved via the default
+ * provider set on `globalThis.AI_SDK_DEFAULT_PROVIDER`) or as a full
+ * `VideoModelV3` object. This mirrors how the Vercel AI SDK's
+ * `generateImage` accepts string model IDs.
+ */
+export type VideoModel = VideoModelV3 | string;
+
 export interface GenerateVideoOptions {
-  model: VideoModelV3;
+  model: VideoModel;
   prompt: GenerateVideoPrompt;
   n?: number;
   resolution?: `${number}x${number}`;
@@ -122,11 +130,37 @@ function normalizePrompt(prompt: GenerateVideoPrompt): {
   };
 }
 
+/**
+ * Resolve a `VideoModel` (which may be a string ID) into a `VideoModelV3`
+ * object. String IDs are resolved through `globalThis.AI_SDK_DEFAULT_PROVIDER`
+ * (set by the render service before calling `render()`), mirroring how the
+ * Vercel AI SDK's `generateImage` resolves string image model IDs.
+ */
+function resolveVideoModel(model: VideoModel): VideoModelV3 {
+  if (typeof model !== "string") {
+    return model;
+  }
+
+  const provider = globalThis.AI_SDK_DEFAULT_PROVIDER as
+    | { videoModel?: (id: string) => VideoModelV3 }
+    | undefined;
+
+  if (!provider?.videoModel) {
+    throw new Error(
+      `Cannot resolve video model "${model}" — no default provider with videoModel() is set. ` +
+        'Either pass a VideoModelV3 object (e.g. varg.videoModel("seedance_2_5")) ' +
+        "or ensure globalThis.AI_SDK_DEFAULT_PROVIDER is configured.",
+    );
+  }
+
+  return provider.videoModel(model);
+}
+
 export async function generateVideo(
   options: GenerateVideoOptions,
 ): Promise<GenerateVideoResult> {
   const {
-    model,
+    model: modelArg,
     prompt: promptArg,
     n = 1,
     resolution,
@@ -140,6 +174,8 @@ export async function generateVideo(
   } = options;
 
   const { prompt, files } = normalizePrompt(promptArg);
+
+  const model = resolveVideoModel(modelArg);
 
   const result = await model.doGenerate({
     prompt: prompt ?? "",

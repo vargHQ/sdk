@@ -6,6 +6,7 @@ import type {
 } from "@ai-sdk/provider";
 import type { CacheStorage } from "../ai-sdk/cache";
 import type { File } from "../ai-sdk/file";
+import type { VideoModel } from "../ai-sdk/generate-video";
 import type { MusicModelV3 } from "../ai-sdk/music-model";
 import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
 import type {
@@ -164,7 +165,7 @@ export type VideoProps = BaseProps &
   TrimProps & {
     prompt?: VideoPrompt;
     src?: string;
-    model?: VideoModelV3;
+    model?: VideoModel;
     resize?: ResizeMode;
     cropPosition?: CropPosition;
     aspectRatio?: `${number}:${number}`;
@@ -206,9 +207,9 @@ export interface TalkingHeadProps extends BaseProps {
   /** Pre-resolved or lazy speech element to use as the audio track. */
   audio?: VargElement<"speech">;
   /** Lipsync video model (e.g. fal.videoModel("sync-v2-pro")). */
-  model?: VideoModelV3;
+  model?: VideoModel;
   /** Separate lipsync model override (defaults to `model`). */
-  lipsyncModel?: VideoModelV3;
+  lipsyncModel?: VideoModel;
   /** Video resolution for lipsync generation (default: "720p") */
   resolution?: "480p" | "720p" | "1080p";
   position?:
@@ -355,7 +356,7 @@ export type RenderMode = "strict" | "preview";
 
 export interface DefaultModels {
   image?: ImageModelV3;
-  video?: VideoModelV3;
+  video?: VideoModel;
   speech?: SpeechModelV3;
   music?: MusicModelV3;
   transcription?: TranscriptionModelV3;
