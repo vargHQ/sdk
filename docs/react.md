@@ -117,8 +117,9 @@ import { Video } from "@vargai/react";
 // use existing video file
 <Video src="./interview.mp4" />
 
-// with audio and trimming
-<Video src="./clip.mp4" keepAudio volume={0.8} cutFrom={5} cutTo={15} />
+// source audio is preserved by default; set keepAudio={false} to mute
+<Video src="./clip.mp4" volume={0.8} cutFrom={5} cutTo={15} />
+<Video src="./silent-clip.mp4" keepAudio={false} />
 ```
 
 ### image-to-video animation
@@ -447,9 +448,11 @@ import { Packshot } from "@vargai/react";
 
 ### preserve source audio
 
+Video source audio is preserved by default. Use `keepAudio={false}` to mute it.
+
 ```tsx
 <Clip>
-  <Video src="./interview.mp4" keepAudio volume={0.8} />
+  <Video src="./interview.mp4" volume={0.8} />
 </Clip>
 ```
 

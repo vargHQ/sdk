@@ -2,6 +2,7 @@ import { zipSync } from "fflate";
 import sharp from "sharp";
 import { File } from "../../../file";
 import type { StorageProvider } from "../../../storage/types";
+import { localBackend } from "../backends/local";
 import type {
   FFmpegBackend,
   FFmpegInput,
@@ -61,6 +62,15 @@ export class RendiBackend implements FFmpegBackend {
   }
 
   async ffprobe(input: string): Promise<VideoInfo> {
+    // The render image includes ffprobe even when Rendi performs composition.
+    // Prefer it because it exposes stream-level metadata such as hasAudio.
+    // Fall back to Rendi in environments that intentionally omit ffprobe.
+    try {
+      return await localBackend.ffprobe(input);
+    } catch {
+      // Continue with the remote metadata probe below.
+    }
+
     const inputUrl = await this.resolvePath(input);
 
     const submitResponse = await fetch(`${RENDI_API_BASE}/run-ffmpeg-command`, {

@@ -97,6 +97,7 @@ export interface VolumeProps {
 }
 
 export interface AudioProps extends VolumeProps {
+  /** Preserve a video's source audio in the final composition. @default true */
   keepAudio?: boolean;
 }
 

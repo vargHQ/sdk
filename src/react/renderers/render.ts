@@ -35,6 +35,7 @@ import type {
   SpeechProps,
   VargElement,
 } from "../types";
+import { resolveVideoMixVolume } from "./audio";
 import { burnCaptions } from "./burn-captions";
 import { type CaptionsResult, renderCaptions } from "./captions";
 import { renderClip } from "./clip";
@@ -431,10 +432,17 @@ export async function renderRoot(
         const path = await ctx.backend.resolvePath(file);
         renderedOverlays.push({ path, props: overlayProps, isVideo });
 
-        if (isVideo && overlayProps.keepAudio) {
+        if (isVideo) {
+          const mixVolume = await resolveVideoMixVolume({
+            backend: ctx.backend,
+            keepAudio: overlayProps.keepAudio,
+            path,
+            volume: overlayProps.volume,
+          });
+          if (mixVolume === 0) continue;
           audioTracks.push({
             path,
-            mixVolume: overlayProps.volume ?? 1,
+            mixVolume,
           });
         }
       }
