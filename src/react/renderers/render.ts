@@ -34,6 +34,7 @@ import type {
   RenderResult,
   SpeechProps,
   VargElement,
+  VargNode,
 } from "../types";
 import { resolveVideoMixVolume } from "./audio";
 import { burnCaptions } from "./burn-captions";
@@ -298,6 +299,53 @@ export async function renderRoot(
   // ---------------------------------------------------------------------------
   let clipIndexCounter = 0;
 
+  // Non-visual element types that can live inside <Overlay> but don't need
+  // positioning — they should be promoted to the clip level so they're not
+  // silently dropped by the overlay renderer (which only handles image/video).
+  const OVERLAY_PASSTHROUGH_TYPES = new Set([
+    "speech",
+    "music",
+    "captions",
+    "title",
+    "subtitle",
+  ]);
+
+  /**
+   * Extract non-visual children (speech, music, captions, title, subtitle)
+   * from inside an <Overlay> element, returning them separately from the
+   * visual-only overlay. The overlay is returned with only its visual children
+   * (image, video) so the overlay renderer can position them correctly.
+   *
+   * Without this, placing <Speech> or <Captions> inside <Overlay> would
+   * silently produce a silent video — the overlay case in renderClipLayers
+   * only handles image/video children.
+   */
+  function extractOverlayPassthrough(overlayEl: VargElement<"overlay">): {
+    passthrough: VargElement[];
+    visualOverlay: VargElement<"overlay">;
+  } {
+    const passthrough: VargElement[] = [];
+    const visualChildren: VargNode[] = [];
+
+    for (const child of overlayEl.children) {
+      if (
+        child &&
+        typeof child === "object" &&
+        "type" in child &&
+        OVERLAY_PASSTHROUGH_TYPES.has((child as VargElement).type)
+      ) {
+        passthrough.push(child as VargElement);
+      } else {
+        visualChildren.push(child);
+      }
+    }
+
+    return {
+      passthrough,
+      visualOverlay: { ...overlayEl, children: visualChildren },
+    };
+  }
+
   function flattenClip(clipElement: VargElement<"clip">): void {
     const childClips: VargElement<"clip">[] = [];
     const nonClipChildren: VargElement[] = [];
@@ -313,7 +361,8 @@ export async function renderRoot(
     }
 
     if (childClips.length === 0) {
-      // Leaf clip — hoist captions, keep everything else
+      // Leaf clip — hoist captions, promote non-visual children from overlays,
+      // keep everything else
       const currentClipIndex = clipIndexCounter++;
       const kept: typeof clipElement.children = [];
       for (const el of nonClipChildren) {
@@ -322,6 +371,40 @@ export async function renderRoot(
             element: el as VargElement<"captions">,
             clipIndex: currentClipIndex,
           });
+        } else if (el.type === "overlay") {
+          // Extract non-visual children (speech, music, captions, title,
+          // subtitle) from inside the overlay and promote them to clip level.
+          // The overlay keeps only visual children (image, video) for
+          // positioning.
+          const { passthrough, visualOverlay } = extractOverlayPassthrough(
+            el as VargElement<"overlay">,
+          );
+
+          for (const pt of passthrough) {
+            if (pt.type === "captions") {
+              hoistedCaptions.push({
+                element: pt as VargElement<"captions">,
+                clipIndex: currentClipIndex,
+              });
+            } else {
+              // speech, music, title, subtitle — keep at clip level
+              kept.push(pt);
+            }
+          }
+
+          // Keep the overlay if it still has visual children
+          if (
+            visualOverlay.children.some(
+              (c) =>
+                c &&
+                typeof c === "object" &&
+                "type" in c &&
+                ((c as VargElement).type === "image" ||
+                  (c as VargElement).type === "video"),
+            )
+          ) {
+            kept.push(visualOverlay);
+          }
         } else {
           kept.push(el);
         }
@@ -340,10 +423,44 @@ export async function renderRoot(
 
     // Collect overlays from container level — these get injected into each
     // child clip so the overlay appears across all inner clips.
+    // Non-visual children inside overlays are extracted and handled at the
+    // container level (deferred audio / hoisted captions).
     const containerOverlays: VargElement[] = [];
     for (const el of nonClipChildren) {
       if (el.type === "overlay") {
-        containerOverlays.push(el);
+        const { passthrough, visualOverlay } = extractOverlayPassthrough(
+          el as VargElement<"overlay">,
+        );
+
+        // Handle promoted non-visual children at container level
+        for (const pt of passthrough) {
+          if (pt.type === "captions") {
+            hoistedCaptions.push({
+              element: pt as VargElement<"captions">,
+              clipIndex: firstLeafClipIndex,
+            });
+          } else if (pt.type === "speech" || pt.type === "music") {
+            deferredAudioElements.push({
+              element: pt as VargElement<"speech"> | VargElement<"music">,
+              clipIndex: firstLeafClipIndex,
+            });
+          }
+          // title/subtitle at container level: not yet supported
+        }
+
+        // Keep the overlay with only visual children
+        if (
+          visualOverlay.children.some(
+            (c) =>
+              c &&
+              typeof c === "object" &&
+              "type" in c &&
+              ((c as VargElement).type === "image" ||
+                (c as VargElement).type === "video"),
+          )
+        ) {
+          containerOverlays.push(visualOverlay);
+        }
       }
     }
 
@@ -368,7 +485,7 @@ export async function renderRoot(
           clipIndex: firstLeafClipIndex,
         });
       }
-      // overlay: already handled above (distributed to child clips)
+      // overlay: already handled above (non-visual extracted, visual distributed to child clips)
       // Image/Video at container level: not supported yet (would need
       // background layer spanning all child clips — a future feature)
     }
