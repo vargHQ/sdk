@@ -8,6 +8,7 @@
  * - FAL_API_KEY (or FAL_KEY)
  * - REPLICATE_API_TOKEN
  * - ELEVENLABS_API_KEY
+ * - SIXTYDB_API_KEY
  * - GROQ_API_KEY
  * - FIREWORKS_API_KEY
  * - HIGGSFIELD_API_KEY / HF_API_KEY
@@ -145,6 +146,11 @@ await test("elevenlabs provider is registered", async () => {
   if (!el) throw new Error("ElevenLabs provider not found");
 });
 
+await test("60db provider is registered", async () => {
+  const db60 = providers.get("60db");
+  if (!db60) throw new Error("60db provider not found");
+});
+
 await test("groq provider is registered", async () => {
   const groq = providers.get("groq");
   if (!groq) throw new Error("Groq provider not found");
@@ -213,6 +219,7 @@ const modelNames = [
   "wan",
   "whisper",
   "elevenlabs-tts",
+  "60db-tts",
   "soul",
   "sonauto",
   "llama",
@@ -380,6 +387,35 @@ await test(
     console.log(`   Found ${voices.length} voices`);
   },
   !hasApiKey("ELEVENLABS_API_KEY"),
+);
+
+// 60db tests
+await test(
+  "60db: text-to-speech",
+  async () => {
+    const { sixtyDbProvider } = await import("../providers/60db");
+    const buffer = await sixtyDbProvider.textToSpeech({
+      text: "Hello, this is a test of the varg SDK.",
+    });
+    if (buffer.length === 0) {
+      throw new Error("Empty audio buffer");
+    }
+    console.log(`   Generated: ${buffer.length} bytes of audio`);
+  },
+  !hasApiKey("SIXTYDB_API_KEY"),
+);
+
+await test(
+  "60db: list voices",
+  async () => {
+    const { sixtyDbProvider } = await import("../providers/60db");
+    const voices = await sixtyDbProvider.listVoices();
+    if (voices.length === 0) {
+      throw new Error("No voices found");
+    }
+    console.log(`   Found ${voices.length} voices`);
+  },
+  !hasApiKey("SIXTYDB_API_KEY"),
 );
 
 // Groq tests

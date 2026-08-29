@@ -8,6 +8,7 @@ import type {
   ProviderPricing,
 } from "../../core/schema/types";
 
+export { definition as sixtydbTts } from "./60db";
 export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
 export { definition as heygenAvatar } from "./heygen";
@@ -58,6 +59,7 @@ export { definition as wan } from "./wan";
 export { definition as whisper } from "./whisper";
 
 // All model definitions for auto-loading
+import { definition as sixtydbDefinition } from "./60db";
 import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
 import { definition as heygenAvatarDefinition } from "./heygen";
@@ -117,6 +119,7 @@ export const allModels = [
   veedFabricDefinition,
   whisperDefinition,
   elevenlabsDefinition,
+  sixtydbDefinition,
   soulDefinition,
   seedance2PreviewDefinition,
   seedance2FastPreviewDefinition,

@@ -20,6 +20,16 @@ export {
   runActor,
   waitForRun,
 } from "./apify";
+export type { SixtyDBTranscript, SixtyDBVoice, SixtyDBWord } from "./60db";
+// 60db provider (voice/audio + speech-to-text)
+export {
+  getVoice as getVoice60db,
+  listVoices as listVoices60db,
+  SixtyDBProvider,
+  sixtyDbProvider,
+  speechToText as speechToText60db,
+  textToSpeech as textToSpeech60db,
+} from "./60db";
 export type { ProviderResult } from "./base";
 // Base provider infrastructure
 export {
@@ -140,6 +150,7 @@ export {
 } from "./storage";
 
 // Register all providers
+import { sixtyDbProvider } from "./60db";
 import { apifyProvider } from "./apify";
 import { providers } from "./base";
 import { elevenlabsProvider } from "./elevenlabs";
@@ -159,6 +170,7 @@ providers.register(apifyProvider);
 providers.register(falProvider);
 providers.register(replicateProvider);
 providers.register(elevenlabsProvider);
+providers.register(sixtyDbProvider);
 providers.register(groqProvider);
 providers.register(fireworksProvider);
 providers.register(higgsfieldProvider);
