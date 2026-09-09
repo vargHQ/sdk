@@ -265,6 +265,12 @@ export const IMAGE_MODELS: Record<string, string> = {
   // ── Microsoft MAI-Image-2.5 (2026-07) ────────────────────────────────────
   "mai-image-2-5": "microsoft/mai-image-2.5",
   "mai-image-2-5/edit": "microsoft/mai-image-2.5/edit",
+  // ── OpenAI GPT Image 2.5 (2026-09, fal-hosted) ───────────────────────────
+  // Flare = fast/default; Sunburst = premium (reachable via exact addressing).
+  "gpt-image-2-5": "openai/gpt-image-2.5/flare/text-to-image",
+  "gpt-image-2-5/edit": "openai/gpt-image-2.5/flare/edit",
+  "gpt-image-2-5-sunburst": "openai/gpt-image-2.5/sunburst/text-to-image",
+  "gpt-image-2-5-sunburst/edit": "openai/gpt-image-2.5/sunburst/edit",
   // ── Image upscale models ────────────────────────────────────────────────
   seedvr: "fal-ai/seedvr/upscale/image",
   "recraft-clarity": "fal-ai/recraft-clarity-upscale",
@@ -287,6 +293,10 @@ const IMAGE_SIZE_MODELS = new Set([
   "qwen-image-2-pro",
   "qwen-image-2-pro/edit",
   "recraft-v4-pro",
+  "gpt-image-2-5",
+  "gpt-image-2-5/edit",
+  "gpt-image-2-5-sunburst",
+  "gpt-image-2-5-sunburst/edit",
 ]);
 
 // Qwen Angles model - image-to-image with camera angle adjustment

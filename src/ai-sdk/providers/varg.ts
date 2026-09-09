@@ -42,7 +42,8 @@ class VargAPIError extends Error {
   }
 }
 
-function resolveConfig(settings: VargProviderSettings = {}) {
+/** Exported for CLI actions that need the same config resolution. */
+export function resolveVargConfig(settings: VargProviderSettings = {}) {
   let apiKey = settings.apiKey ?? process.env.VARG_API_KEY ?? "";
 
   // Fallback to global credentials (~/.varg/credentials) if no key from settings or env
@@ -81,6 +82,7 @@ function getHeaders(apiKey: string): Record<string, string> {
 const KNOWN_UNDERLYING_PROVIDERS = new Set([
   "fal",
   "together",
+  "openai",
   "rendi",
   "groq",
   "elevenlabs",
@@ -309,6 +311,43 @@ async function downloadOutput(
     data: json,
     mediaType: out.media_type ?? "application/json",
     jobId: job.id,
+  };
+}
+
+/**
+ * Submit + poll a /v2 job and return the first output URL (no download).
+ * Used by CLI actions that need a URL (not bytes) — e.g. the `image` action's
+ * openai provider path, which returns { imageUrl } to the caller.
+ */
+export async function executeJobUrl(
+  baseUrl: string,
+  apiKey: string,
+  capability: "video" | "image" | "speech" | "music",
+  params: Record<string, unknown>,
+): Promise<{ url: string; mediaType: string; jobId: string }> {
+  const job = await submitJob(baseUrl, apiKey, capability, params);
+
+  let terminal = job;
+  if (!(job.status === "completed" && job.output?.outputs?.length)) {
+    terminal = await pollJob(baseUrl, apiKey, job.id);
+  }
+
+  if (terminal.status === "failed") {
+    throw new VargAPIError(
+      `job ${terminal.id} failed: ${terminal.error || "unknown"}`,
+    );
+  }
+  if (terminal.status === "cancelled") {
+    throw new VargAPIError(`job ${terminal.id} was cancelled`);
+  }
+  const out = terminal.output?.outputs?.[0];
+  if (!out?.url) {
+    throw new VargAPIError(`${capability} completed but no output URL`);
+  }
+  return {
+    url: out.url,
+    mediaType: out.media_type ?? "application/octet-stream",
+    jobId: terminal.id,
   };
 }
 
@@ -559,7 +598,7 @@ class VargMusicModel implements MusicModelV3 {
 // ---------------------------------------------------------------------------
 
 export function createVarg(settings: VargProviderSettings = {}): VargProvider {
-  const { apiKey, baseUrl } = resolveConfig(settings);
+  const { apiKey, baseUrl } = resolveVargConfig(settings);
 
   return {
     specificationVersion: "v3",
