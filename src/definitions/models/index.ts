@@ -10,6 +10,7 @@ import type {
 
 export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
+export { definition as gptImage25 } from "./gpt-image-2-5";
 export { definition as heygenAvatar } from "./heygen";
 export {
   definition as kling,
@@ -65,6 +66,7 @@ export { definition as whisper } from "./whisper";
 // All model definitions for auto-loading
 import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
+import { definition as gptImage25Definition } from "./gpt-image-2-5";
 import { definition as heygenAvatarDefinition } from "./heygen";
 import {
   kling4kDefinition,
@@ -113,6 +115,7 @@ export const allModels = [
   klingV3MotionDefinition,
   klingV3MotionStdDefinition,
   fluxDefinition,
+  gptImage25Definition,
   nanoBananaProDefinition,
   nanoBanana2Definition,
   qwenImage2Definition,
