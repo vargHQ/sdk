@@ -302,4 +302,62 @@ describe("Atlas Cloud provider", () => {
     ).rejects.toThrow("ATLASCLOUD_API_KEY");
     expect(() => provider.languageModel("vendor/model")).toThrow();
   });
+
+  test("rejects a cleartext baseUrl", () => {
+    expect(() =>
+      createAtlasCloud({
+        apiKey: "test-key",
+        baseUrl: "http://api.example.com",
+      }),
+    ).toThrow(AtlasCloudAPIError);
+    expect(() =>
+      createAtlasCloud({ apiKey: "test-key", baseUrl: "not a url" }),
+    ).toThrow(AtlasCloudAPIError);
+  });
+
+  test("allows https and loopback baseUrls", () => {
+    expect(() =>
+      createAtlasCloud({
+        apiKey: "test-key",
+        baseUrl: "https://staging.example.com/api/v1",
+      }),
+    ).not.toThrow();
+    for (const baseUrl of [
+      "http://localhost:8080/api/v1",
+      "http://127.0.0.1:8080/api/v1",
+      "http://[::1]:8080/api/v1",
+    ]) {
+      expect(() =>
+        createAtlasCloud({ apiKey: "test-key", baseUrl }),
+      ).not.toThrow();
+    }
+  });
+
+  test("strips trailing slashes from the baseUrl", async () => {
+    const harness = makeFetchHarness([
+      {
+        json: {
+          code: "200",
+          data: {
+            id: "img-slash",
+            status: "completed",
+            outputs: ["https://cdn.example/image.png"],
+          },
+        },
+      },
+      { bytes: [1, 2, 3] },
+    ]);
+    restoreFetch = harness.restore;
+
+    await createAtlasCloud({
+      apiKey: "test-key",
+      baseUrl: "https://staging.example.com/api/v1//",
+    })
+      .imageModel("vendor/model")
+      .doGenerate(imageOptions());
+
+    expect(harness.calls[0]?.url).toBe(
+      "https://staging.example.com/api/v1/model/generateImage",
+    );
+  });
 });

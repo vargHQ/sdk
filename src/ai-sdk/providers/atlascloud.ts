@@ -391,6 +391,41 @@ class AtlasCloudVideoModel implements VideoModelV3 {
   }
 }
 
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+/**
+ * Normalize and validate a base URL before it is used with a bearer token.
+ *
+ * Credentials must not travel in cleartext, so anything other than `https:` is
+ * rejected — except loopback origins, which keep local proxies and test
+ * doubles usable.
+ *
+ * @throws {AtlasCloudAPIError} If the URL is unparseable or would send the
+ * API key over an unencrypted connection.
+ */
+function resolveBaseUrl(baseUrl: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new AtlasCloudAPIError(
+      `Atlas Cloud baseUrl is not a valid URL: ${baseUrl}`,
+    );
+  }
+
+  if (
+    parsed.protocol !== "https:" &&
+    !LOOPBACK_HOSTNAMES.has(parsed.hostname)
+  ) {
+    throw new AtlasCloudAPIError(
+      `Atlas Cloud baseUrl must use https (got ${parsed.protocol.replace(":", "")}); ` +
+        "the API key is sent as a bearer token and must not travel in cleartext.",
+    );
+  }
+
+  return baseUrl.replace(/\/+$/, "");
+}
+
 /**
  * Create an Atlas Cloud provider for the AI SDK.
  *
@@ -409,7 +444,7 @@ export function createAtlasCloud(
 ): AtlasCloudProvider {
   const config: AtlasCloudConfig = {
     apiKey: settings.apiKey,
-    baseUrl: (settings.baseUrl ?? ATLASCLOUD_BASE_URL).replace(/\/+$/, ""),
+    baseUrl: resolveBaseUrl(settings.baseUrl ?? ATLASCLOUD_BASE_URL),
     pollIntervalMs: settings.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
     maxPollDurationMs:
       settings.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS,
