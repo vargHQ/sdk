@@ -740,7 +740,7 @@ createVideoAd();
 
 | model type | models |
 |---|---|
-| `imageModel` | `mai-image-2-5`, `mai-image-2-5/edit`, `seedream-5-pro`, `seedream-5-pro/edit`, `nano-banana-pro`, `nano-banana-pro/edit`, `nano-banana-2`, `nano-banana-2/edit`, `flux-pro`, `flux-dev`, `flux-schnell`, `seedream-v4.5/edit`, `qwen-image-2`, `qwen-image-2-pro`, `grok-imagine-image`, `phota`, `phota/edit`, `seedvr`, `recraft-clarity`, `topaz` |
+| `imageModel` | `ideogram-v4-5`, `ideogram-v4-5/edit`, `gpt-image-2-5`, `gpt-image-2-5/edit`, `mai-image-2-5`, `mai-image-2-5/edit`, `seedream-5-pro`, `seedream-5-pro/edit`, `nano-banana-pro`, `nano-banana-pro/edit`, `nano-banana-2`, `nano-banana-2/edit`, `flux-pro`, `flux-dev`, `flux-schnell`, `seedream-v4.5/edit`, `qwen-image-2`, `qwen-image-2-pro`, `grok-imagine-image`, `phota`, `phota/edit`, `seedvr`, `recraft-clarity`, `topaz` |
 | `videoModel` | `kling-v3`, `kling-v3-standard`, `kling-v2.6`, `kling-v2.5` |
 | `lipsyncModel` | `sync-v2-pro` |
 

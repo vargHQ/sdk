@@ -26,7 +26,7 @@ const imageInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Provider-specific model name. For fal: gpt-image-2-5, gpt-image-2-5/edit, gpt-image-2-5-sunburst, gpt-image-2-5-sunburst/edit, mai-image-2-5, mai-image-2-5/edit, seedream-5-pro, seedream-5-pro/edit, nano-banana-pro, nano-banana-pro/edit, flux-pro, flux-dev, flux-schnell, seedream-v4.5/edit, qwen-image-2, qwen-image-2-pro, grok-imagine-image, phota, phota/edit, seedvr, recraft-clarity, topaz. For openai (native, via varg API): gpt-image-2.5-flare, gpt-image-2.5-sunburst, gpt-image-2, gpt-image-1.5, gpt-image-1, chatgpt-image-latest. For magnific: mystic (default), flux-2-pro, flux-2-turbo, flux-2-klein, flux-pro-v1.1, flux-dev, hyperflux, seedream-4, seedream-v4.5, runway-image.",
+      "Provider-specific model name. For fal: ideogram-v4-5, ideogram-v4-5/edit, gpt-image-2-5, gpt-image-2-5/edit, gpt-image-2-5-sunburst, gpt-image-2-5-sunburst/edit, mai-image-2-5, mai-image-2-5/edit, seedream-5-pro, seedream-5-pro/edit, nano-banana-pro, nano-banana-pro/edit, flux-pro, flux-dev, flux-schnell, seedream-v4.5/edit, qwen-image-2, qwen-image-2-pro, grok-imagine-image, phota, phota/edit, seedvr, recraft-clarity, topaz. For openai (native, via varg API): gpt-image-2.5-flare, gpt-image-2.5-sunburst, gpt-image-2, gpt-image-1.5, gpt-image-1, chatgpt-image-latest. For magnific: mystic (default), flux-2-pro, flux-2-turbo, flux-2-klein, flux-pro-v1.1, flux-dev, hyperflux, seedream-4, seedream-v4.5, runway-image.",
     ),
 });
 

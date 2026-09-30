@@ -271,6 +271,11 @@ export const IMAGE_MODELS: Record<string, string> = {
   "gpt-image-2-5/edit": "openai/gpt-image-2.5/flare/edit",
   "gpt-image-2-5-sunburst": "openai/gpt-image-2.5/sunburst/text-to-image",
   "gpt-image-2-5-sunburst/edit": "openai/gpt-image-2.5/sunburst/edit",
+  // ── Ideogram 4.5 (2026-09) ──────────────────────────────────────────────
+  // Typography-first t2i + edit. "ideogram-v4-5" auto-routes to /edit when
+  // files are passed (see resolveImageEndpoint).
+  "ideogram-v4-5": "ideogram/v4.5",
+  "ideogram-v4-5/edit": "ideogram/v4.5/edit",
   // ── Image upscale models ────────────────────────────────────────────────
   seedvr: "fal-ai/seedvr/upscale/image",
   "recraft-clarity": "fal-ai/recraft-clarity-upscale",
@@ -279,6 +284,19 @@ export const IMAGE_MODELS: Record<string, string> = {
   ccsr: "fal-ai/ccsr",
   "aura-sr": "fal-ai/aura-sr",
 };
+
+// Ideogram 4.5 — fal schemas are additionalProperties:false, so unknown fields
+// (e.g. `acceleration`, `aspect_ratio`, `image_urls`) are rejected with a 422.
+// Edit takes ONE source `image_url` plus up to 4 `reference_image_urls`.
+// Raw upstream ids are listed too: normalizeModelId leaves ids with "/" as-is.
+const IDEOGRAM_IMAGE_MODELS_LIST = [
+  "ideogram-v4-5",
+  "ideogram-v4-5/edit",
+  "ideogram/v4.5",
+  "ideogram/v4.5/edit",
+];
+const IDEOGRAM_IMAGE_MODELS = new Set(IDEOGRAM_IMAGE_MODELS_LIST);
+const IDEOGRAM_MAX_REFERENCES = 4;
 
 // Models that use image_size instead of aspect_ratio
 const IMAGE_SIZE_MODELS = new Set([
@@ -297,6 +315,7 @@ const IMAGE_SIZE_MODELS = new Set([
   "gpt-image-2-5/edit",
   "gpt-image-2-5-sunburst",
   "gpt-image-2-5-sunburst/edit",
+  ...IDEOGRAM_IMAGE_MODELS_LIST,
 ]);
 
 // Qwen Angles model - image-to-image with camera angle adjustment
@@ -314,6 +333,69 @@ const SINGULAR_IMAGE_URL_MODELS = new Set([
   "ccsr",
   "aura-sr",
 ]);
+
+/**
+ * Put resolved file URLs on the fal input using the field layout the model
+ * expects. Mutates `input`. `id` is the normalized model id.
+ *   - singular models (reve/edit, upscalers): image_url = urls[0]
+ *   - Ideogram 4.5: image_url = urls[0], reference_image_urls = urls[1..4]
+ *   - everything else: image_urls = urls
+ */
+export function applyImageFileInputs(
+  id: string,
+  input: Record<string, unknown>,
+  urls: string[],
+): void {
+  if (urls.length === 0) return;
+  if (IDEOGRAM_IMAGE_MODELS.has(id)) {
+    const refs = urls.slice(1);
+    if (refs.length > IDEOGRAM_MAX_REFERENCES) {
+      throw new Error(
+        `ideogram-v4-5 accepts 1 source image + up to ${IDEOGRAM_MAX_REFERENCES} references (${urls.length} files given)`,
+      );
+    }
+    input.image_url = urls[0];
+    if (refs.length > 0) input.reference_image_urls = refs;
+    return;
+  }
+  if (SINGULAR_IMAGE_URL_MODELS.has(id)) {
+    input.image_url = urls[0];
+    return;
+  }
+  input.image_urls = urls;
+}
+
+/** Whether the model accepts fal's `acceleration` field. */
+export function supportsImageAcceleration(id: string): boolean {
+  return !IDEOGRAM_IMAGE_MODELS.has(id);
+}
+
+/**
+ * Resolve an image model id (SDK alias, prod canonical, raw fal id, or
+ * "raw:"-prefixed) to the fal endpoint, routing dual-endpoint families to
+ * their edit endpoint when files are present.
+ */
+export function resolveImageEndpoint(
+  modelId: string,
+  hasFiles?: boolean,
+): string {
+  const id = normalizeModelId(modelId);
+  if (id.startsWith("raw:")) {
+    return id.slice(4);
+  }
+
+  // Nano Banana 2: route to /edit when images are provided, base endpoint for t2i
+  if (id === "nano-banana-2" && hasFiles) {
+    return "fal-ai/nano-banana-2/edit";
+  }
+
+  // Ideogram 4.5: t2i takes no images at all — files always mean /edit
+  if ((id === "ideogram-v4-5" || id === "ideogram/v4.5") && hasFiles) {
+    return "ideogram/v4.5/edit";
+  }
+
+  return IMAGE_MODELS[id] ?? id;
+}
 
 // Map aspect ratio to image_size for Qwen Angles (base dimension 1024)
 const ASPECT_RATIO_TO_QWEN_SIZE: Record<
@@ -1044,8 +1126,11 @@ class FalImageModel implements ImageModelV3 {
       }
     } else {
       input.prompt = prompt;
-      // Use high acceleration for faster queue processing on supported models (flux-schnell)
-      input.acceleration = "high";
+      // Use high acceleration for faster queue processing on supported models
+      // (flux-schnell). Strict-schema models (Ideogram) reject the field.
+      if (supportsImageAcceleration(id)) {
+        input.acceleration = "high";
+      }
     }
 
     const usesImageSize = IMAGE_SIZE_MODELS.has(id);
@@ -1105,12 +1190,8 @@ class FalImageModel implements ImageModelV3 {
     if (hasFiles && files) {
       const fileHashes = await computeFileHashes(files);
       const imageUrls = await pMap(files, fileToUrl, { concurrency: 2 });
-      // Reve uses singular image_url instead of image_urls array
-      if (SINGULAR_IMAGE_URL_MODELS.has(id)) {
-        input.image_url = imageUrls[0];
-      } else {
-        input.image_urls = imageUrls;
-      }
+      // image_urls / image_url / image_url + reference_image_urls per model
+      applyImageFileInputs(id, input, imageUrls);
       // Compute stable key after files are resolved
       const finalEndpointForKey = this.resolveEndpoint(hasFiles);
       stableKey = JSON.stringify({
@@ -1182,17 +1263,7 @@ class FalImageModel implements ImageModelV3 {
   }
 
   private resolveEndpoint(hasFiles?: boolean): string {
-    const id = normalizeModelId(this.modelId);
-    if (id.startsWith("raw:")) {
-      return id.slice(4);
-    }
-
-    // Nano Banana 2: route to /edit when images are provided, base endpoint for t2i
-    if (id === "nano-banana-2" && hasFiles) {
-      return "fal-ai/nano-banana-2/edit";
-    }
-
-    return IMAGE_MODELS[id] ?? id;
+    return resolveImageEndpoint(this.modelId, hasFiles);
   }
 }
 
