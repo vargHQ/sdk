@@ -38,6 +38,7 @@ import {
   storyboardCmd,
   studioCmd,
   topupCmd,
+  usageCmd,
   whichCmd,
 } from "./commands";
 
@@ -124,6 +125,7 @@ const main = defineCommand({
     logout: logoutCmd,
     balance: balanceCmd,
     topup: topupCmd,
+    usage: usageCmd,
     hello: helloCmd,
     init: initCmd,
     render: renderCmd,
