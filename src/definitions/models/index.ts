@@ -12,6 +12,7 @@ export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
 export { definition as gptImage25 } from "./gpt-image-2-5";
 export { definition as heygenAvatar } from "./heygen";
+export { definition as ideogramV45 } from "./ideogram-v4-5";
 export {
   definition as kling,
   kling4kDefinition as kling4k,
@@ -68,6 +69,7 @@ import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
 import { definition as gptImage25Definition } from "./gpt-image-2-5";
 import { definition as heygenAvatarDefinition } from "./heygen";
+import { definition as ideogramV45Definition } from "./ideogram-v4-5";
 import {
   kling4kDefinition,
   kling4kRefDefinition,
@@ -116,6 +118,7 @@ export const allModels = [
   klingV3MotionStdDefinition,
   fluxDefinition,
   gptImage25Definition,
+  ideogramV45Definition,
   nanoBananaProDefinition,
   nanoBanana2Definition,
   qwenImage2Definition,

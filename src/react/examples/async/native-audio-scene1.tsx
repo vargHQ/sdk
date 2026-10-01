@@ -25,7 +25,6 @@
 // transcript are lazy graph nodes, cached by computeCacheKey like any op.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { createVarg } from "@vargai/gateway";
 import {
   Captions,
   Clip,
@@ -35,6 +34,7 @@ import {
   Video,
   type VideoElement,
 } from "vargai/react";
+import { createVarg } from "../../../ai-sdk/index";
 
 const varg = createVarg({ apiKey: process.env.VARG_API_KEY! });
 
