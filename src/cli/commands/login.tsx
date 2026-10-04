@@ -1,9 +1,10 @@
 /**
  * vargai login — agent-first authentication
  *
- * Two modes:
- *   1. Email OTP — sign in via email magic code (creates account + API key)
- *   2. API key   — paste an existing API key directly
+ * Three modes:
+ *   1. Browser   — OAuth via browser (recommended, supports Google + email)
+ *   2. Email OTP — sign in via email magic code (creates account + API key)
+ *   3. API key   — paste an existing API key directly
  *
  * The `runLogin()` function is exported so `init` can embed the login flow.
  */
@@ -14,9 +15,16 @@ import {
   getCredentialsPath,
   saveCredentials,
 } from "../credentials";
+import { startCallbackServer } from "../oauth/oauth-callback-server";
+import {
+  generateCodeChallenge,
+  generateCodeVerifier,
+  generateState,
+} from "../oauth/pkce";
 
 const APP_URL = process.env.VARG_APP_URL ?? "https://app.varg.ai";
 const GATEWAY_URL = process.env.VARG_GATEWAY_URL ?? "https://api.varg.ai";
+const MCP_URL = process.env.VARG_MCP_URL ?? "https://mcp.varg.ai";
 
 export const COLORS = {
   reset: "\x1b[0m",
@@ -178,6 +186,147 @@ export interface LoginResult {
   balanceCents: number;
   /** Only available after email OTP login, not API key login */
   accessToken: string;
+}
+
+// ──── Browser OAuth Login ────
+
+async function loginWithBrowser(): Promise<LoginResult | null> {
+  // Generate PKCE pair
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
+  const state = generateState();
+
+  // Start temporary localhost server for callback
+  const {
+    port,
+    result: callbackResult,
+    close: closeServer,
+  } = startCallbackServer(state);
+  const redirectUri = `http://127.0.0.1:${port}/callback`;
+
+  try {
+    // Register as a dynamic client with the MCP OAuth server
+    process.stdout.write(
+      `${COLORS.dim}  ● Preparing authentication...${COLORS.reset}`,
+    );
+
+    const registerRes = await fetch(`${MCP_URL}/oauth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: [redirectUri],
+        client_name: "varg CLI",
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code"],
+        response_types: ["code"],
+      }),
+    });
+
+    if (!registerRes.ok) {
+      process.stdout.write("\r\x1b[K");
+      log.error(
+        "Failed to initialize authentication. Try again or use email login.",
+      );
+      closeServer();
+      return null;
+    }
+
+    const client = (await registerRes.json()) as { client_id: string };
+    process.stdout.write("\r\x1b[K");
+
+    // Build authorization URL
+    const authUrl = new URL(`${MCP_URL}/oauth/authorize`);
+    authUrl.searchParams.set("client_id", client.client_id);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("code_challenge", codeChallenge);
+    authUrl.searchParams.set("code_challenge_method", "S256");
+    authUrl.searchParams.set("state", state);
+    authUrl.searchParams.set("scope", "mcp:tools");
+
+    // Open browser
+    console.log();
+    log.info("Opening browser to authenticate...");
+    await openBrowser(authUrl.toString());
+
+    console.log();
+    console.log(
+      `${COLORS.dim}  If the browser didn't open, visit:${COLORS.reset}`,
+    );
+    console.log(`  ${COLORS.cyan}${authUrl.toString()}${COLORS.reset}`);
+    console.log();
+    process.stdout.write(
+      `${COLORS.dim}  ● Waiting for authorization... (press Ctrl+C to cancel)${COLORS.reset}`,
+    );
+
+    // Wait for the OAuth callback
+    const { code } = await callbackResult;
+    process.stdout.write("\r\x1b[K");
+
+    // Exchange auth code for access token (API key)
+    process.stdout.write(
+      `${COLORS.dim}  ● Completing authentication...${COLORS.reset}`,
+    );
+
+    const tokenRes = await fetch(`${MCP_URL}/oauth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        code_verifier: codeVerifier,
+        client_id: client.client_id,
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+
+    if (!tokenRes.ok) {
+      process.stdout.write("\r\x1b[K");
+      const err = (await tokenRes.json().catch(() => ({}))) as {
+        error_description?: string;
+      };
+      log.error(err.error_description ?? "Token exchange failed.");
+      return null;
+    }
+
+    const token = (await tokenRes.json()) as {
+      access_token: string;
+      token_type: string;
+    };
+
+    process.stdout.write("\r\x1b[K");
+
+    // Validate the API key and get balance
+    const balanceRes = await fetch(`${GATEWAY_URL}/v1/balance`, {
+      headers: { Authorization: `Bearer ${token.access_token}` },
+    });
+
+    let balanceCents = 0;
+    if (balanceRes.ok) {
+      const data = (await balanceRes.json()) as { balance_cents: number };
+      balanceCents = data.balance_cents;
+    }
+
+    return {
+      apiKey: token.access_token,
+      email: "", // email is not returned via OAuth token exchange
+      balanceCents,
+      accessToken: "", // not available via OAuth flow
+    };
+  } catch (err) {
+    process.stdout.write("\r\x1b[K");
+    closeServer();
+
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("timed out")) {
+      log.error("Authentication timed out. Please try again.");
+    } else if (message.includes("State mismatch")) {
+      log.error("Security check failed. Please try again.");
+    } else {
+      log.error(`Authentication failed: ${message}`);
+    }
+    return null;
+  }
 }
 
 // ──── API Key Login ────
@@ -531,22 +680,27 @@ export async function runLogin(
   log.step("Sign in to varg.ai");
   console.log();
   console.log(
-    `  ${COLORS.cyan}[1]${COLORS.reset}  Email ${COLORS.dim}— sign in with your email (creates account if needed)${COLORS.reset}`,
+    `  ${COLORS.cyan}[1]${COLORS.reset}  Browser ${COLORS.dim}— sign in via browser (recommended)${COLORS.reset}`,
   );
   console.log(
-    `  ${COLORS.cyan}[2]${COLORS.reset}  API key ${COLORS.dim}— paste an existing API key${COLORS.reset}`,
+    `  ${COLORS.cyan}[2]${COLORS.reset}  Email ${COLORS.dim}— sign in with your email (creates account if needed)${COLORS.reset}`,
+  );
+  console.log(
+    `  ${COLORS.cyan}[3]${COLORS.reset}  API key ${COLORS.dim}— paste an existing API key${COLORS.reset}`,
   );
   console.log();
 
-  const mode = await readLine(`  Select login method (1-2): `);
+  const mode = await readLine(`  Select login method (1-3): `);
 
   let result: LoginResult | null = null;
 
   if (mode === "2") {
+    result = await loginWithEmail();
+  } else if (mode === "3") {
     result = await loginWithApiKey();
   } else {
-    // Default to email login (mode "1" or anything else)
-    result = await loginWithEmail();
+    // Default to browser login (mode "1" or anything else)
+    result = await loginWithBrowser();
   }
 
   if (!result) {
