@@ -736,6 +736,31 @@ createVideoAd();
 
 ## provider reference
 
+### atlascloud
+
+Atlas Cloud exposes image and video models through an asynchronous prediction
+API. Set `ATLASCLOUD_API_KEY`, then pass the catalog model ID to the matching
+model factory. Model-specific fields can be supplied through
+`providerOptions.atlascloud`.
+
+```ts
+import { atlascloud, generateImage } from "@varg/sdk/ai";
+
+const { image } = await generateImage({
+  model: atlascloud.imageModel("qwen-image-3.0/text-to-image"),
+  prompt: "a paper sculpture in a sunlit gallery",
+  size: "1024x1024",
+  providerOptions: {
+    atlascloud: { prompt_extend: false },
+  },
+});
+```
+
+| model type | models |
+|---|---|
+| `imageModel` | any Atlas Cloud image model ID |
+| `videoModel` | any Atlas Cloud video model ID |
+
 ### fal
 
 | model type | models |
