@@ -358,6 +358,7 @@ const expectedProviders = [
   "fal",
   "replicate",
   "elevenlabs",
+  "60db",
   "groq",
   "fireworks",
   "higgsfield",

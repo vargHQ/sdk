@@ -294,9 +294,26 @@ You can use provider keys directly if you prefer:
 ```bash
 FAL_API_KEY=fal_xxx                # fal.ai direct
 ELEVENLABS_API_KEY=xxx             # ElevenLabs direct
+SIXTYDB_API_KEY=sk_live_xxx        # 60db direct (TTS + STT)
 OPENAI_API_KEY=sk_xxx              # OpenAI / Sora
 REPLICATE_API_TOKEN=r8_xxx         # Replicate
 ```
+
+**60db** speech is available as a direct provider for text-to-speech (and
+speech-to-text via the `voice` / `transcribe` paths):
+
+```tsx
+import { Speech } from "vargai/react";
+import { sixtydb } from "vargai/ai";
+
+const voiceover = Speech({
+  model: sixtydb.speechModel(),
+  voice: "<60db_voice_id>",
+  children: "Hello from 60db",
+});
+```
+
+Or from the CLI: `bunx vargai run voice --text "Hello" --provider 60db --voice <60db_voice_id>`
 
 See the [BYOK docs](https://docs.varg.ai/sdk/byok) for details.
 
