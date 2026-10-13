@@ -100,6 +100,8 @@ export {
   SoulQuality,
   SoulSize,
 } from "./higgsfield";
+// Krea provider (Krea 3 image generation, direct api.krea.ai)
+export { KreaProvider, kreaGenerateImage, kreaProvider } from "./krea";
 // Magnific provider (image upscale/relight/style/expand + Mystic image gen + audio + video)
 export {
   MagnificProvider,
@@ -149,6 +151,7 @@ import { fireworksProvider } from "./fireworks";
 import { groqProvider } from "./groq";
 import { heygenProvider } from "./heygen";
 import { higgsfieldProvider } from "./higgsfield";
+import { kreaProvider } from "./krea";
 import { magnificProvider } from "./magnific";
 import { piapiProvider } from "./piapi";
 import { replicateProvider } from "./replicate";
@@ -165,5 +168,6 @@ providers.register(higgsfieldProvider);
 providers.register(heygenProvider);
 providers.register(piapiProvider);
 providers.register(magnificProvider);
+providers.register(kreaProvider);
 providers.register(ffmpegProvider);
 providers.register(storageProvider);

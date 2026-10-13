@@ -296,6 +296,7 @@ FAL_API_KEY=fal_xxx                # fal.ai direct
 ELEVENLABS_API_KEY=xxx             # ElevenLabs direct
 OPENAI_API_KEY=sk_xxx              # OpenAI / Sora
 REPLICATE_API_TOKEN=r8_xxx         # Replicate
+KREA_API_KEY=xxx                   # Krea direct (krea.imageModel("krea"))
 ```
 
 See the [BYOK docs](https://docs.varg.ai/sdk/byok) for details.

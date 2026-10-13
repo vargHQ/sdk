@@ -93,6 +93,14 @@ export {
   higgsfield,
 } from "./providers/higgsfield";
 export {
+  createKrea,
+  KREA_IMAGE_MODELS,
+  KreaAPIError,
+  type KreaProvider,
+  type KreaProviderSettings,
+  krea,
+} from "./providers/krea";
+export {
   createMagnific,
   type MagnificProvider,
   type MagnificProviderSettings,

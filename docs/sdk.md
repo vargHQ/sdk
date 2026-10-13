@@ -750,6 +750,20 @@ createVideoAd();
 |---|---|
 | `imageModel` | `soul` |
 
+### krea
+
+Direct to `api.krea.ai` with your own `KREA_API_KEY` (`createKrea({ apiKey })`
+or the `krea` singleton from `vargai/ai`). One image per job; files become
+`image_urls` (URLs as-is, in-memory bytes as data URIs); everything else goes
+through `providerOptions.krea` (`thinking_mode: "fast" | "high" | "ultra"`,
+`resolution: "1k" | "2k"`, `negative_prompt`, …). Aborting cancels the Krea job.
+
+| model type | models |
+|---|---|
+| `imageModel` | `krea` (always the latest Krea model — today Krea 3), `krea-3`, or any raw `/generate/` path, e.g. `image/krea/krea-2/large` |
+
+Through the varg API instead: `varg.imageModel("krea")` / `"krea_3"`.
+
 ### elevenlabs
 
 | model type | models |
