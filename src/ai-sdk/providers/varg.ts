@@ -90,6 +90,7 @@ const KNOWN_UNDERLYING_PROVIDERS = new Set([
   "piapi",
   "heygen",
   "replicate",
+  "krea",
 ]);
 
 let warnedFlatProviderOptions = false;
