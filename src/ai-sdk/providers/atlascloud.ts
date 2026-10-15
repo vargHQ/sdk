@@ -427,6 +427,21 @@ function resolveBaseUrl(baseUrl: string): string {
 }
 
 /**
+ * Validate a polling duration setting.
+ *
+ * @throws {AtlasCloudAPIError} If the value is negative or not finite, which
+ * would produce a tight polling loop or remove the polling time limit.
+ */
+function resolvePollingMs(name: string, value: number): number {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new AtlasCloudAPIError(
+      `Atlas Cloud ${name} must be a finite number >= 0 (got ${value})`,
+    );
+  }
+  return value;
+}
+
+/**
  * Create an Atlas Cloud provider for the AI SDK.
  *
  * Exposes image and video models only. Atlas Cloud's generation endpoints are
@@ -445,9 +460,14 @@ export function createAtlasCloud(
   const config: AtlasCloudConfig = {
     apiKey: settings.apiKey,
     baseUrl: resolveBaseUrl(settings.baseUrl ?? ATLASCLOUD_BASE_URL),
-    pollIntervalMs: settings.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
-    maxPollDurationMs:
+    pollIntervalMs: resolvePollingMs(
+      "pollIntervalMs",
+      settings.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
+    ),
+    maxPollDurationMs: resolvePollingMs(
+      "maxPollDurationMs",
       settings.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS,
+    ),
   };
 
   return {

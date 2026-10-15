@@ -315,6 +315,20 @@ describe("Atlas Cloud provider", () => {
     ).toThrow(AtlasCloudAPIError);
   });
 
+  test("rejects negative or non-finite polling settings", () => {
+    for (const value of [-1, Number.POSITIVE_INFINITY, Number.NaN]) {
+      expect(() =>
+        createAtlasCloud({ apiKey: "test-key", pollIntervalMs: value }),
+      ).toThrow(AtlasCloudAPIError);
+      expect(() =>
+        createAtlasCloud({ apiKey: "test-key", maxPollDurationMs: value }),
+      ).toThrow(AtlasCloudAPIError);
+    }
+    expect(() =>
+      createAtlasCloud({ apiKey: "test-key", pollIntervalMs: 0 }),
+    ).not.toThrow();
+  });
+
   test("allows https and loopback baseUrls", () => {
     expect(() =>
       createAtlasCloud({
