@@ -16,7 +16,13 @@ import { ffmpegProvider } from "../../providers/ffmpeg";
 // Input schema with Zod
 const syncInputSchema = z.object({
   model: z
-    .enum(["wan-25", "omnihuman-v1.5", "veed-fabric-1.0", "ltx-2-a2v"])
+    .enum([
+      "wan-25",
+      "omnihuman-v1.5",
+      "omnihuman-v2",
+      "veed-fabric-1.0",
+      "ltx-2-a2v",
+    ])
     .optional()
     .default("wan-25")
     .describe("Lip sync / avatar backend model"),
@@ -54,7 +60,12 @@ export const definition: ActionDefinition<typeof schema> = {
 
 // Types
 export interface LipsyncOptions {
-  model?: "wan-25" | "omnihuman-v1.5" | "veed-fabric-1.0" | "ltx-2-a2v";
+  model?:
+    | "wan-25"
+    | "omnihuman-v1.5"
+    | "omnihuman-v2"
+    | "veed-fabric-1.0"
+    | "ltx-2-a2v";
   image?: string;
   audio: string;
   prompt: string;
@@ -118,21 +129,27 @@ export async function lipsync(options: LipsyncOptions): Promise<LipsyncResult> {
               | "720p"
               | "1080p",
           })
-        : model === "veed-fabric-1.0"
-          ? await falProvider.veedFabric10({
-              imageUrl: image!,
-              audioUrl: audio,
-              resolution: (resolution === "1080p" ? "720p" : resolution) as
-                | "480p"
-                | "720p",
-            })
-          : await falProvider.wan25({
+        : model === "omnihuman-v2"
+          ? await falProvider.omnihumanV2({
               imageUrl: image!,
               audioUrl: audio,
               prompt,
-              duration,
-              resolution,
-            });
+            })
+          : model === "veed-fabric-1.0"
+            ? await falProvider.veedFabric10({
+                imageUrl: image!,
+                audioUrl: audio,
+                resolution: (resolution === "1080p" ? "720p" : resolution) as
+                  | "480p"
+                  | "720p",
+              })
+            : await falProvider.wan25({
+                imageUrl: image!,
+                audioUrl: audio,
+                prompt,
+                duration,
+                resolution,
+              });
 
   const videoUrl = result.data?.video?.url;
   if (!videoUrl) {

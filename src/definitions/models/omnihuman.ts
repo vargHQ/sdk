@@ -1,6 +1,9 @@
 /**
- * Bytedance OmniHuman v1.5
+ * Bytedance OmniHuman — v1.5 and v2.0
  * Image + audio -> video (full-body human animation)
+ *
+ * v2.0: up to 5 min (300s), understands tone/emotion, $0.07/sec (40% cheaper
+ * than v1.5's $0.12/sec). Optional text prompt for scene/camera control.
  */
 
 import { z } from "zod";
@@ -15,7 +18,7 @@ const omnihumanResolutionSchema = z
   .enum(["720p", "1080p"])
   .describe("Output resolution");
 
-// Input schema with Zod
+// Input schema with Zod (shared by v1.5 and v2 — v2 drops turbo_mode)
 const omnihumanInputSchema = z.object({
   prompt: z
     .string()
@@ -31,7 +34,7 @@ const omnihumanInputSchema = z.object({
     .boolean()
     .optional()
     .default(false)
-    .describe("Faster generation with slight quality trade-off"),
+    .describe("Faster generation with slight quality trade-off (v1.5 only)"),
   resolution: omnihumanResolutionSchema
     .optional()
     .default("1080p")
@@ -59,6 +62,8 @@ const schema: ZodSchema<
   output: omnihumanOutputSchema,
 };
 
+// ── v1.5 ──────────────────────────────────────────────────────────────────────
+
 export const definition: ModelDefinition<typeof schema> = {
   type: "model",
   name: "omnihuman",
@@ -76,6 +81,32 @@ export const definition: ModelDefinition<typeof schema> = {
       calculate: ({ duration = 5 }) => 0.16 * duration,
       minUsd: 0.48, // ~3s minimum
       maxUsd: 9.6, // 60s at 720p max
+    },
+  },
+};
+
+// ── v2.0 ──────────────────────────────────────────────────────────────────────
+// Up to 5 min (300s) in a single continuous shot, understands tone/emotion,
+// 40%+ cheaper ($0.07/sec vs v1.5's $0.12/sec).
+
+export const v2Definition: ModelDefinition<typeof schema> = {
+  type: "model",
+  name: "omnihuman_v2",
+  description:
+    "OmniHuman v2.0 - understands your audio (tone, emotion, every word) and performs it. Up to 5 min continuous shot, 40%+ cheaper than v1.5",
+  providers: ["fal"],
+  defaultProvider: "fal",
+  providerModels: {
+    fal: "fal-ai/bytedance/omnihuman/v2",
+  },
+  schema,
+  pricing: {
+    fal: {
+      description:
+        "$0.07 per second of output video via fal (40%+ cheaper than v1.5)",
+      calculate: ({ duration = 5 }) => 0.07 * duration,
+      minUsd: 0.28, // ~4s minimum
+      maxUsd: 21.0, // 300s max
     },
   },
 };
