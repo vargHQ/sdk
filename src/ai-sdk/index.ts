@@ -53,6 +53,12 @@ export type {
   MusicModelV3ProviderMetadata,
 } from "./music-model";
 export {
+  type AtlasCloudProvider,
+  type AtlasCloudProviderSettings,
+  atlascloud,
+  createAtlasCloud,
+} from "./providers/atlascloud";
+export {
   type AudioTrack,
   type Clip as EditlyClip,
   type EditlyConfig,
