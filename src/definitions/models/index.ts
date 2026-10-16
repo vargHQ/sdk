@@ -44,7 +44,10 @@ export {
 } from "./minimax-h3-max";
 export { definition as nanoBanana2 } from "./nano-banana-2";
 export { definition as nanoBananaPro } from "./nano-banana-pro";
-export { definition as omnihuman } from "./omnihuman";
+export {
+  definition as omnihuman,
+  v2Definition as omnihumanV2,
+} from "./omnihuman";
 export {
   photaDefinition as phota,
   photaEditDefinition as photaEdit,
@@ -87,7 +90,10 @@ import {
 } from "./minimax-h3-max";
 import { definition as nanoBanana2Definition } from "./nano-banana-2";
 import { definition as nanoBananaProDefinition } from "./nano-banana-pro";
-import { definition as omnihumanDefinition } from "./omnihuman";
+import {
+  definition as omnihumanDefinition,
+  v2Definition as omnihumanV2Definition,
+} from "./omnihuman";
 import {
   photaDefinition,
   photaEditDefinition,
@@ -126,6 +132,7 @@ export const allModels = [
   reveDefinition,
   wanDefinition,
   omnihumanDefinition,
+  omnihumanV2Definition,
   ltxA2vDefinition,
   minimaxH3MaxTextToVideoDefinition,
   minimaxH3MaxImageToVideoDefinition,

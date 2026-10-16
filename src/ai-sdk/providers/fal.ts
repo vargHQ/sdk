@@ -637,7 +637,9 @@ class FalVideoModel implements VideoModelV3 {
       // OmniHuman and LTX-2 a2v support prompt (required for LTX-2 a2v)
       if (
         prompt &&
-        (this.modelId === "omnihuman-v1.5" || this.modelId === "ltx-2-a2v")
+        (this.modelId === "omnihuman-v1.5" ||
+          this.modelId === "omnihuman-v2" ||
+          this.modelId === "ltx-2-a2v")
       ) {
         input.prompt = prompt;
       }

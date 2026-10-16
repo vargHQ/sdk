@@ -415,6 +415,44 @@ export class FalProvider extends BaseProvider {
     return result;
   }
 
+  async omnihumanV2(args: {
+    imageUrl: string;
+    audioUrl: string;
+    prompt?: string;
+  }) {
+    const modelId: string = "fal-ai/bytedance/omnihuman/v2";
+
+    console.log(`[fal] starting omnihuman v2.0: ${modelId}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+    const audioUrl = await ensureUrl(args.audioUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const input: Record<string, unknown> = {
+      ...(args.prompt ? { prompt: args.prompt } : {}),
+      image_url: imageUrl,
+      audio_url: audioUrl,
+    };
+
+    const result = await fal.subscribe(modelId, {
+      input,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
   async veedFabric10(args: {
     imageUrl: string;
     audioUrl: string;
@@ -864,6 +902,8 @@ export const wan25 = (args: Parameters<FalProvider["wan25"]>[0]) =>
   falProvider.wan25(args);
 export const omnihuman15 = (args: Parameters<FalProvider["omnihuman15"]>[0]) =>
   falProvider.omnihuman15(args);
+export const omnihumanV2 = (args: Parameters<FalProvider["omnihumanV2"]>[0]) =>
+  falProvider.omnihumanV2(args);
 export const veedFabric10 = (
   args: Parameters<FalProvider["veedFabric10"]>[0],
 ) => falProvider.veedFabric10(args);
