@@ -4,17 +4,25 @@
  */
 
 import { z } from "zod";
-import { filePathSchema, voiceSchema } from "../../core/schema/shared";
+import {
+  filePathSchema,
+  speechProviderSchema,
+  voiceSchema,
+} from "../../core/schema/shared";
 import type { ActionDefinition, ZodSchema } from "../../core/schema/types";
+import { sixtyDbProvider } from "../../providers/60db";
 import { elevenlabsProvider, VOICES } from "../../providers/elevenlabs";
 import { storageProvider } from "../../providers/storage";
 
-// Input schema with Zod — accepts any voice name or ElevenLabs voice_id
+// Input schema with Zod — accepts any voice name or provider voice_id
 const voiceInputSchema = z.object({
   text: z.string().describe("Text to convert to speech"),
   voice: voiceSchema
     .default("rachel")
-    .describe("Voice name or ElevenLabs voice_id"),
+    .describe("Voice name or provider voice_id"),
+  provider: speechProviderSchema
+    .default("elevenlabs")
+    .describe("Speech provider (elevenlabs or 60db)"),
   output: filePathSchema.optional().describe("Output file path"),
 });
 
@@ -39,8 +47,8 @@ export const definition: ActionDefinition<typeof schema> = {
   schema,
   routes: [],
   execute: async (inputs) => {
-    const { text, voice, output } = inputs;
-    return generateVoice({ text, voice, outputPath: output });
+    const { text, voice, provider, output } = inputs;
+    return generateVoice({ text, voice, provider, outputPath: output });
   },
 };
 
@@ -48,7 +56,7 @@ export const definition: ActionDefinition<typeof schema> = {
 export interface GenerateVoiceOptions {
   text: string;
   voice?: string;
-  provider?: "elevenlabs";
+  provider?: "elevenlabs" | "60db";
   upload?: boolean;
   outputPath?: string;
 }
@@ -105,13 +113,22 @@ export async function generateVoice(
 
   console.log(`[voice] generating with ${provider} (${voice})...`);
 
-  const voiceId = VOICE_MAP[voice.toLowerCase()] || voice;
+  let voiceId: string;
+  let audio: Buffer;
 
-  const audio = await elevenlabsProvider.textToSpeech({
-    text,
-    voiceId,
-    outputPath,
-  });
+  if (provider === "60db") {
+    // 60db resolves friendly names against the account's voices; UUIDs and
+    // unknown names pass through unchanged.
+    voiceId = (await sixtyDbProvider.resolveVoiceId(voice)) ?? voice;
+    audio = await sixtyDbProvider.textToSpeech({ text, voiceId, outputPath });
+  } else {
+    voiceId = VOICE_MAP[voice.toLowerCase()] || voice;
+    audio = await elevenlabsProvider.textToSpeech({
+      text,
+      voiceId,
+      outputPath,
+    });
+  }
 
   const result: VoiceResult = {
     audio,
