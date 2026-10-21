@@ -297,7 +297,7 @@ bunx vargai jobs wait job_xxx --quiet          # no status lines
 | 3 | auth error, job not found, or other error |
 | 4 | multi-step job paused in `awaiting_confirmation` (resume with `POST /v2/jobs/:id/confirm`) |
 
-It uses `VARG_API_KEY` (or the key saved by `vargai login`) and `https://api.varg.ai/v2` (override with `--base-url`). It long-polls `GET /v2/jobs/:id?wait=55`. Against a server that ignores `wait`, it polls with backoff from 2s up to 10s. Network errors, 429 and 5xx are retried, while 401/403/404 fail at once.
+It uses `VARG_API_KEY` (or the key saved by `vargai login`) and `https://api.varg.ai/v2` (override with `--base-url`). It long-polls `GET /v2/jobs/:id?wait=50`. Against a server that ignores `wait`, it polls with backoff from 2s up to 10s. Network errors, 429 and 5xx are retried, while 401/403/404 fail at once.
 
 From code, the same loop is `waitForJob(jobId, { baseUrl, apiKey, timeoutMs, signal, onStatus })` from `vargai/ai`. It returns the terminal job and throws `VargJobWaitError` (`reason`: `timeout`, `auth`, `not_found`, `http` or `network`).
 

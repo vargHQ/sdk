@@ -79,7 +79,7 @@ export interface WaitForJobOptions {
   onStatus?: (job: VargJob) => void;
   /** Return (instead of waiting) when the job pauses in `awaiting_confirmation`. Default true. */
   returnOnAwaitingConfirmation?: boolean;
-  /** Long-poll window per request, seconds (1..60). Default 55. */
+  /** Long-poll window per request, seconds (1..50, the API clamps to 50). Default 50. */
   waitSeconds?: number;
   /** Consecutive transient failures tolerated before giving up. Default 8. */
   maxConsecutiveErrors?: number;
@@ -90,7 +90,9 @@ export interface WaitForJobOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
-const DEFAULT_WAIT_SECONDS = 55;
+const DEFAULT_WAIT_SECONDS = 50;
+/** The API clamps `wait` to 50s (Fly closes idle requests at ~60s). */
+const MAX_WAIT_SECONDS = 50;
 /** Fallback (server ignores `wait`) poll interval: start, growth, cap. */
 const POLL_BACKOFF_START_MS = 2_000;
 const POLL_BACKOFF_FACTOR = 1.5;
@@ -165,7 +167,7 @@ export async function waitForJob(
   const baseUrl = options.baseUrl.replace(/\/+$/, "");
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxWaitSeconds = Math.min(
-    60,
+    MAX_WAIT_SECONDS,
     Math.max(1, Math.floor(options.waitSeconds ?? DEFAULT_WAIT_SECONDS)),
   );
   const fetchImpl = options.fetch ?? fetch;

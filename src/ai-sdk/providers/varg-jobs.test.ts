@@ -91,7 +91,7 @@ describe("waitForJob", () => {
       opts(h.hooks, { onStatus: (j) => seen.push(j.status) }),
     );
     expect(result.status).toBe("completed");
-    expect(h.urls).toEqual([`${BASE}/jobs/${JOB_ID}?wait=55`]);
+    expect(h.urls).toEqual([`${BASE}/jobs/${JOB_ID}?wait=50`]);
     expect(h.headers[0]?.Authorization).toBe("Bearer varg_test");
     expect(h.sleeps).toEqual([]);
     expect(seen).toEqual(["completed"]);
@@ -99,8 +99,8 @@ describe("waitForJob", () => {
 
   test("several long-poll rounds: re-polls immediately while the server holds", async () => {
     const held = {
-      holdMs: 55_000,
-      headers: { "X-Varg-Wait": "55000", "X-Varg-Wait-Timeout": "1" },
+      holdMs: 50_000,
+      headers: { "X-Varg-Wait": "50000", "X-Varg-Wait-Timeout": "1" },
     };
     const h = harness([
       { body: job("running", { stage: "rendering" }), ...held },
@@ -117,7 +117,7 @@ describe("waitForJob", () => {
     );
     expect(result.status).toBe("completed");
     expect(h.urls.length).toBe(4);
-    expect(h.urls.every((u) => u.endsWith("?wait=55"))).toBe(true);
+    expect(h.urls.every((u) => u.endsWith("?wait=50"))).toBe(true);
     expect(h.sleeps).toEqual([]);
     // onStatus fires only on changes
     expect(seen).toEqual(["running:", "running:0.5", "completed:"]);
@@ -177,11 +177,11 @@ describe("waitForJob", () => {
     expect(err).toBeInstanceOf(VargJobWaitError);
     expect((err as VargJobWaitError).reason).toBe("timeout");
     expect((err as VargJobWaitError).job?.status).toBe("running");
-    // 55 + 55 + 10 seconds: the last request only asks for what is left
+    // 50 + 50 + 20 seconds: the last request only asks for what is left
     expect(h.urls.map((u) => new URL(u).searchParams.get("wait"))).toEqual([
-      "55",
-      "55",
-      "10",
+      "50",
+      "50",
+      "20",
     ]);
     expect(h.elapsed()).toBe(120_000);
   });
@@ -267,7 +267,7 @@ describe("waitForJob", () => {
       "awaiting_confirmation",
     );
 
-    const h2 = harness([{ body: paused, holdMs: 55_000 }, { body: completed }]);
+    const h2 = harness([{ body: paused, holdMs: 50_000 }, { body: completed }]);
     const r = await waitForJob(
       JOB_ID,
       opts(h2.hooks, { returnOnAwaitingConfirmation: false }),
@@ -318,7 +318,7 @@ describe("vargai jobs wait (runJobsWait)", () => {
 
   test("completed → exit 0, summary + output URLs on stdout, transitions on stderr", async () => {
     const h = harness([
-      { body: job("running", { stage: "rendering" }), holdMs: 55_000 },
+      { body: job("running", { stage: "rendering" }), holdMs: 50_000 },
       { body: completed },
     ]);
     const c = io(h);
