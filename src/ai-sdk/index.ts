@@ -128,6 +128,14 @@ export {
   varg,
 } from "./providers/varg";
 export {
+  isTerminalJobStatus,
+  type VargJob,
+  VargJobWaitError,
+  type VargJobWaitErrorReason,
+  type WaitForJobOptions,
+  waitForJob,
+} from "./providers/varg-jobs";
+export {
   falStorage,
   limitedRetryUpload,
   type R2StorageOptions,

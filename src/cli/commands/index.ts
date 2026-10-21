@@ -4,6 +4,7 @@ export { frameCmd, showFrameHelp } from "./frame.tsx";
 export { helloCmd } from "./hello.ts";
 export { helpCmd, showHelp } from "./help.tsx";
 export { initCmd, showInitHelp } from "./init.tsx";
+export { jobsCmd } from "./jobs.ts";
 export { listCmd, showListHelp } from "./list.tsx";
 export { loginCmd } from "./login.tsx";
 export { logoutCmd } from "./logout.ts";

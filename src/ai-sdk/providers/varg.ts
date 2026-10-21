@@ -11,6 +11,7 @@ import {
 } from "@ai-sdk/provider";
 import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
 import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
+import { type VargJob, waitForJob } from "./varg-jobs";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -118,27 +119,12 @@ function checkVargProviderOptions(
 }
 
 // /v2 job shape (routes/varg_jobs/common.ts serializeVargJob). The create
-// response wraps this with `urls: { self, refresh, status, cancel, retry }`.
-// The poll response (GET /v2/jobs/:id) is the same shape, possibly with
+// response wraps it with `urls: { self, refresh, status, cancel, retry }`.
+// The poll response (GET /v2/jobs/:id) is the same shape, with
 // `output: { version: "v1", outputs: [{url, media_type, size_bytes, ...}] }`
 // once terminal. `id` is the varg job id ("job_…"); the legacy /v1 gateway
-// used `job_id` — this is the main breaking shape change.
-interface VargJobResponse {
-  id: string;
-  status: string;
-  output?: {
-    version: "v1";
-    outputs: Array<{
-      url?: string;
-      media_type?: string;
-      size_bytes?: number;
-      data?: unknown;
-    }>;
-  };
-  error?: string | null;
-  progress_message?: string | null;
-  progress?: number | null;
-}
+// used `job_id`. Defined in ./varg-jobs (shared with `vargai jobs wait`).
+type VargJobResponse = VargJob;
 
 /**
  * Stable idempotency key for a job submission.
@@ -219,34 +205,15 @@ async function submitJob(
   }
 }
 
-async function pollJob(
+/** Wait for a submitted job via the long-poll helper (30 min budget, same
+ *  as the old 900 x 2s loop). Returns the terminal job; failed/cancelled are
+ *  returned for the caller to turn into errors. */
+function pollJob(
   baseUrl: string,
   apiKey: string,
   jobId: string,
-  maxAttempts = 900,
-  intervalMs = 2000,
 ): Promise<VargJobResponse> {
-  for (let i = 0; i < maxAttempts; i++) {
-    const res = await fetch(`${baseUrl}/jobs/${jobId}`, {
-      headers: getHeaders(apiKey),
-    });
-    if (!res.ok) {
-      throw new VargAPIError(
-        `failed to poll job ${jobId}: ${res.status}`,
-        res.status,
-      );
-    }
-    const job = (await res.json()) as VargJobResponse;
-    if (
-      job.status === "completed" ||
-      job.status === "failed" ||
-      job.status === "cancelled"
-    ) {
-      return job;
-    }
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-  throw new VargAPIError(`job ${jobId} did not complete within timeout`);
+  return waitForJob(jobId, { baseUrl, apiKey, timeoutMs: 30 * 60 * 1000 });
 }
 
 /**
@@ -277,6 +244,12 @@ async function executeJob(
   }
   if (completed.status === "cancelled") {
     throw new VargAPIError(`job ${completed.id} was cancelled`);
+  }
+  if (completed.status !== "completed") {
+    // e.g. a multi-step job paused in awaiting_confirmation
+    throw new VargAPIError(
+      `job ${completed.id} stopped in status ${completed.status}`,
+    );
   }
   if (!completed.output?.outputs?.length) {
     throw new VargAPIError(`${capability} completed but no output`);
@@ -340,6 +313,12 @@ export async function executeJobUrl(
   }
   if (terminal.status === "cancelled") {
     throw new VargAPIError(`job ${terminal.id} was cancelled`);
+  }
+  if (terminal.status !== "completed") {
+    // e.g. a multi-step job paused in awaiting_confirmation
+    throw new VargAPIError(
+      `job ${terminal.id} stopped in status ${terminal.status}`,
+    );
   }
   const out = terminal.output?.outputs?.[0];
   if (!out?.url) {
