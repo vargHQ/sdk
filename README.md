@@ -275,7 +275,31 @@ bunx vargai run image --prompt "sunset"        # generate a single image
 bunx vargai run video --prompt "ocean waves"   # generate a single video
 bunx vargai list                               # list available models and actions
 bunx vargai studio                             # open visual editor
+bunx vargai jobs wait job_xxx                  # block until an API job finishes
 ```
+
+### Waiting for a job
+
+`vargai jobs wait` blocks until a varg API job (`job_…`) finishes. Use it instead of `sleep N && curl …/v2/jobs/<id>` loops:
+
+```bash
+bunx vargai jobs wait job_xxx                  # status lines on stderr; "completed job_xxx" + output URLs on stdout
+bunx vargai jobs wait job_xxx --json           # final job JSON on stdout
+bunx vargai jobs wait job_xxx --timeout 600    # give up after 600s (default 1800)
+bunx vargai jobs wait job_xxx --quiet          # no status lines
+```
+
+| Exit code | Meaning |
+|---|---|
+| 0 | completed |
+| 1 | failed or cancelled |
+| 2 | timed out (with `--json`, the last seen job JSON is printed) |
+| 3 | auth error, job not found, or other error |
+| 4 | multi-step job paused in `awaiting_confirmation` (resume with `POST /v2/jobs/:id/confirm`) |
+
+It uses `VARG_API_KEY` (or the key saved by `vargai login`) and `https://api.varg.ai/v2` (override with `--base-url`). It long-polls `GET /v2/jobs/:id?wait=50`. Against a server that ignores `wait`, it polls with backoff from 2s up to 10s. Network errors, 429 and 5xx are retried, while 401/403/404 fail at once.
+
+From code, the same loop is `waitForJob(jobId, { baseUrl, apiKey, timeoutMs, signal, onStatus })` from `vargai/ai`. It returns the terminal job and throws `VargJobWaitError` (`reason`: `timeout`, `auth`, `not_found`, `http` or `network`).
 
 ## Environment
 

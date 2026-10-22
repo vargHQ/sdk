@@ -44,6 +44,10 @@ function HelpView() {
         />
         <CommandRow name="run" description="run a single model or action" />
         <CommandRow
+          name="jobs wait"
+          description="block until a varg API job finishes"
+        />
+        <CommandRow
           name="list"
           description="discover models, actions, skills"
         />
