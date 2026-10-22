@@ -88,6 +88,20 @@ const ModelDurationRules: Record<string, z.ZodType> = {
     duration: stringIntDuration(3, 15, 5),
   }),
 
+  // Kling 4.0: integer 3-30 (fal expects integer, not string like v3)
+  "kling-v4": z.object({ duration: rangeDuration(3, 30, 5) }),
+  "kling-v4-flash": z.object({ duration: rangeDuration(3, 20, 5) }),
+  "kling-v4-reference-to-video": z.object({
+    duration: rangeDuration(3, 30, 5),
+  }),
+  "kling-v4-flash-reference-to-video": z.object({
+    duration: rangeDuration(3, 20, 5),
+  }),
+  "kling-v4-keyframes-to-video": z.object({
+    duration: rangeDuration(3, 30, 10),
+  }),
+  "kling-v4-video-edit": z.object({ duration: rangeDuration(3, 30, 5) }),
+
   // Kling v2.6: same rules as v3
   "kling-v2.6": z.object({ duration: stringIntDuration(3, 15, 5) }),
 

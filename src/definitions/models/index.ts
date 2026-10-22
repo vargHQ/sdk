@@ -22,6 +22,14 @@ export {
   klingV3MotionDefinition as klingV3Motion,
   klingV3MotionStdDefinition as klingV3MotionStd,
 } from "./kling";
+export {
+  klingV4Definition as klingV4,
+  klingV4EditDefinition as klingV4Edit,
+  klingV4FlashDefinition as klingV4Flash,
+  klingV4FlashRefDefinition as klingV4FlashRef,
+  klingV4KeyframesDefinition as klingV4Keyframes,
+  klingV4RefDefinition as klingV4Ref,
+} from "./kling-v4";
 export { definition as llama } from "./llama";
 export { definition as ltxA2v } from "./ltx-a2v";
 export {
@@ -82,6 +90,14 @@ import {
   klingV3MotionDefinition,
   klingV3MotionStdDefinition,
 } from "./kling";
+import {
+  klingV4Definition,
+  klingV4EditDefinition,
+  klingV4FlashDefinition,
+  klingV4FlashRefDefinition,
+  klingV4KeyframesDefinition,
+  klingV4RefDefinition,
+} from "./kling-v4";
 import { definition as llamaDefinition } from "./llama";
 import { definition as ltxA2vDefinition } from "./ltx-a2v";
 import { allMagnificDefinitions } from "./magnific";
@@ -122,6 +138,12 @@ export const allModels = [
   klingV2VRefDefinition,
   klingV3MotionDefinition,
   klingV3MotionStdDefinition,
+  klingV4Definition,
+  klingV4FlashDefinition,
+  klingV4RefDefinition,
+  klingV4FlashRefDefinition,
+  klingV4KeyframesDefinition,
+  klingV4EditDefinition,
   fluxDefinition,
   gptImage25Definition,
   ideogramV45Definition,
