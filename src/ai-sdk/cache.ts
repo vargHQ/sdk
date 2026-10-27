@@ -122,14 +122,25 @@ function flatten(value: unknown): unknown {
  * });
  * ```
  */
-const DEFAULT_TTL = "7d";
-
+/**
+ * Cached entries do not expire unless the caller asks for a TTL.
+ *
+ * This used to default to `"7d"`, which is the wrong model for what is being
+ * cached. Entries here are AI generations keyed by `cacheKey` — a hash of the
+ * model plus every input. The key changes whenever the inputs change, so a
+ * stale hit is impossible; there is nothing for expiry to protect against.
+ * What expiry did instead was silently re-bill the user: a project rendered
+ * eight days after its last run paid full price again for byte-identical
+ * output (~$0.15/image, ~$0.15/second of video).
+ *
+ * Pass `ttl` explicitly to opt into expiry.
+ */
 export function withCache<T extends object, R>(
   fn: (options: T) => Promise<R>,
   options: WithCacheOptions = {},
 ): CachedFn<T, R> {
   const storage = options.storage ?? defaultStorage;
-  const ttl = parseTTL(options.ttl ?? DEFAULT_TTL);
+  const ttl = parseTTL(options.ttl);
   const prefix = fn.name || "anonymous";
   const limit = options.limit;
   // Only the real call is limited; cache lookups stay unbounded.

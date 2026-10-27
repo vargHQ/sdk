@@ -185,6 +185,28 @@ async function trimVideoLocal(
 // available. The limiter is passed to withCache rather than wrapped around
 // it, so cache hits resolve immediately instead of queueing for a slot.
 // ---------------------------------------------------------------------------
+/**
+ * Get a cached generateImage wrapper using the active cache storage.
+ *
+ * This path used to call the raw `generateImage`, which silently ignored the
+ * `cacheKey` it was handed. That broke the approve-then-render workflow: a
+ * scene still approved during a preview stage was regenerated with a fresh
+ * seed the moment `speechRange()` resolved the same element, so the image the
+ * video model actually received was never the one the user signed off on —
+ * and the user paid twice for the discrepancy.
+ *
+ * The prefix `withCache` derives from `fn.name` is "generateImage" here, the
+ * same as on the render path (`context-builder.ts`), and both sides key on
+ * `computeCacheKey(element)` — so the two paths share cache entries rather
+ * than each keeping their own copy.
+ */
+function getCachedGenerateImage() {
+  return withCache(generateImageRaw, {
+    storage: getActiveCache(),
+    limit: getActiveLimit(),
+  });
+}
+
 /** Get a cached generateVideo wrapper using the active cache storage. */
 function getCachedGenerateVideo() {
   return withCache(generateVideoRaw, {
@@ -735,20 +757,17 @@ async function resolveImageElementImpl(
   // deadlock. Same ordering in every resolver below.
   const resolvedPrompt = await resolveImagePrompt(prompt);
 
-  // NOTE: this path deliberately calls the RAW generateImage — unlike
-  // video/music/speech it is not withCache-wrapped, so `cacheKey` below is
-  // inert here. Wiring up the cache is a separate behavior change (it would
-  // start persisting standalone image generations); out of scope for #225.
-  const { images } = await getActiveLimit()(() =>
-    generateImageRaw({
-      model,
-      prompt: resolvedPrompt,
-      aspectRatio: props.aspectRatio,
-      providerOptions: props.providerOptions,
-      n: 1,
-      cacheKey,
-    } as Parameters<typeof generateImageRaw>[0]),
-  );
+  // The limiter is passed *into* withCache rather than wrapped around it, so
+  // a cache hit returns without queueing for a slot. Same shape as the
+  // video/music/speech wrappers above.
+  const { images } = await getCachedGenerateImage()({
+    model,
+    prompt: resolvedPrompt,
+    aspectRatio: props.aspectRatio,
+    providerOptions: props.providerOptions,
+    n: 1,
+    cacheKey,
+  } as Parameters<ReturnType<typeof getCachedGenerateImage>>[0]);
 
   const firstImage = images[0];
   if (!firstImage?.uint8Array) {

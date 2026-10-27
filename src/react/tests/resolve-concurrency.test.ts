@@ -260,18 +260,31 @@ describe("resolveLazy concurrency limit", () => {
     expect(t.calls).toBe(1);
   });
 
-  test("falls back to a bounded limiter with no resolve context", async () => {
+  test("falls back to a bounded limiter when the context sets no limit", async () => {
     // Top-level `await Promise.all([...])` outside render() has the same
     // fan-out problem with no RenderOptions to configure. The module-level
     // fallback (concurrency 3) bounds it.
+    //
+    // The context here carries a cache but deliberately no `limit`, which is
+    // what `getActiveLimit()` keys on — it returns the module-level fallback
+    // whenever `ctx.limit` is absent, context or not. Running fully
+    // context-free would exercise the identical code path but send the
+    // generations to the user's real `.cache/ai`, so the cache is stubbed
+    // and the limiter is left unset.
     const t = makeConcurrencyTracker();
     const model = makeTrackingImageModel(t);
     const images = Array.from({ length: 8 }, (_, i) =>
       Image({ prompt: `top-level scene ${i}`, model }),
     );
 
-    await Promise.all(
-      images.map((img) => resolveImageElement(img, img.props as ImageProps)),
+    await withResolveContext(
+      { backend: stubBackend, cache: createMemoryCache() },
+      () =>
+        Promise.all(
+          images.map((img) =>
+            resolveImageElement(img, img.props as ImageProps),
+          ),
+        ),
     );
 
     expect(t.calls).toBe(8);

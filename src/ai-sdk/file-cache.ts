@@ -78,8 +78,17 @@ export function fileCache(options: { dir: string }): CacheStorage {
         const entry = deserialize(content) as CacheEntry;
 
         if (entry.expires && Date.now() > entry.expires) {
-          // expired, clean up
-          await Bun.write(path, "").catch(() => {});
+          // Expired: report a miss, but leave the file alone.
+          //
+          // This used to `Bun.write(path, "")`, which made a *read* destroy
+          // the entry — turning a multi-gigabyte cache of paid generations
+          // into zero-byte files just by looking at it. Truncating also lost
+          // the only copy of data that costs real money to recreate
+          // ($0.15/image, ~$0.15/second of video), while still leaving the
+          // file on disk, so it reclaimed a directory entry and nothing else.
+          //
+          // Callers overwrite the entry on the next `set()` anyway, so
+          // eviction here bought nothing. Explicit `delete()` still unlinks.
           return undefined;
         }
 
