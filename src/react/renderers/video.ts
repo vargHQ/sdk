@@ -1,5 +1,7 @@
 import { File } from "../../ai-sdk/file";
 import type { generateVideo } from "../../ai-sdk/generate-video";
+import type { VideoModelV3 } from "../../ai-sdk/video-model";
+import { resolveVideoModel } from "../resolve-model";
 import { ResolvedElement } from "../resolved-element";
 import type {
   ImageInput,
@@ -123,7 +125,9 @@ export async function renderVideo(
     throw new Error("Video element requires either 'prompt' or 'src'");
   }
 
-  const model = props.model ?? ctx.defaults?.video;
+  const model = resolveVideoModel(
+    (props.model ?? ctx.defaults?.video) as VideoModelV3 | string,
+  );
   if (!model) {
     throw new Error(
       "Video element requires 'model' prop (or set defaults.video in render options)",

@@ -1,5 +1,7 @@
 import { File } from "../../ai-sdk/file";
 import type { generateMusic } from "../../ai-sdk/generate-music";
+import type { MusicModelV3 } from "../../ai-sdk/music-model";
+import { resolveMusicModel } from "../resolve-model";
 import { ResolvedElement } from "../resolved-element";
 import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
@@ -19,7 +21,9 @@ export async function renderMusic(
   const props = element.props as MusicProps;
 
   const prompt = props.prompt;
-  const model = props.model ?? ctx.defaults?.music;
+  const model = resolveMusicModel(
+    (props.model ?? ctx.defaults?.music) as MusicModelV3 | string,
+  );
   if (!prompt || !model) {
     throw new Error("Music requires prompt and model (or set defaults.music)");
   }

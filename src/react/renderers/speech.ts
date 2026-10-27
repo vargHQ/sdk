@@ -1,5 +1,7 @@
 import type { experimental_generateSpeech } from "ai";
+import type { SpeechModelV3 } from "@ai-sdk/provider";
 import { File } from "../../ai-sdk/file";
+import { resolveSpeechModel } from "../resolve-model";
 import { ResolvedElement } from "../resolved-element";
 import type { SpeechProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
@@ -23,7 +25,9 @@ export async function renderSpeech(
     throw new Error("Speech element requires text content");
   }
 
-  const model = props.model ?? ctx.defaults?.speech;
+  const model = resolveSpeechModel(
+    (props.model ?? ctx.defaults?.speech) as SpeechModelV3 | string,
+  );
   if (!model) {
     throw new Error("Speech requires 'model' prop (or set defaults.speech)");
   }

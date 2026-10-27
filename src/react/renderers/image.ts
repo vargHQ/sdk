@@ -1,5 +1,7 @@
 import type { generateImage } from "ai";
+import type { ImageModelV3 } from "@ai-sdk/provider";
 import { File } from "../../ai-sdk/file";
+import { resolveImageModel } from "../resolve-model";
 import { ResolvedElement } from "../resolved-element";
 import type {
   ImageInput,
@@ -66,7 +68,9 @@ export async function renderImage(
     throw new Error("Image element requires either 'prompt' or 'src'");
   }
 
-  const model = props.model ?? ctx.defaults?.image;
+  const model = resolveImageModel(
+    (props.model ?? ctx.defaults?.image) as ImageModelV3 | string,
+  );
   if (!model) {
     throw new Error(
       "Image element requires 'model' prop (or set defaults.image in render options)",

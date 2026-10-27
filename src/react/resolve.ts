@@ -14,13 +14,16 @@ import {
   generateImage,
   experimental_generateSpeech as generateSpeechAI,
 } from "ai";
+import type { ImageModelV3, SpeechModelV3 } from "@ai-sdk/provider";
 import { $ } from "bun";
 import { type CacheStorage, depsToKey, withCache } from "../ai-sdk/cache";
 import { File } from "../ai-sdk/file";
 import { fileCache } from "../ai-sdk/file-cache";
 import { generateMusic as generateMusicRaw } from "../ai-sdk/generate-music";
 import { generateVideo as generateVideoRaw } from "../ai-sdk/generate-video";
+import type { MusicModelV3 } from "../ai-sdk/music-model";
 import type { FFmpegBackend } from "../ai-sdk/providers/editly/backends";
+import type { VideoModelV3 } from "../ai-sdk/video-model";
 import { mapWordsToSegments } from "../speech/map-segments";
 import { parseElevenLabsAlignment } from "../speech/parse-alignment";
 import type {
@@ -30,6 +33,12 @@ import type {
   WordTiming,
 } from "../speech/types";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
+import {
+  resolveImageModel,
+  resolveMusicModel,
+  resolveSpeechModel,
+  resolveVideoModel,
+} from "./resolve-model";
 import { getResolveContext } from "./resolve-context";
 import { ResolvedElement } from "./resolved-element";
 import type {
@@ -392,7 +401,7 @@ export async function resolveSpeechElement(
     );
   }
 
-  const model = props.model;
+  const model = resolveSpeechModel(props.model as SpeechModelV3 | string);
   if (!model) {
     throw new Error(
       "await Speech() requires 'model' prop (e.g., elevenlabs.speechModel('eleven_turbo_v2'))",
@@ -608,7 +617,7 @@ export async function resolveImageElement(
     throw new Error("Image element requires either 'prompt' or 'src'");
   }
 
-  const model = props.model;
+  const model = resolveImageModel(props.model as ImageModelV3 | string);
   if (!model) {
     throw new Error(
       "await Image() requires 'model' prop (e.g., fal.imageModel('nano-banana-pro'))",
@@ -677,7 +686,7 @@ export async function resolveVideoElement(
     throw new Error("Video element requires either 'prompt' or 'src'");
   }
 
-  const model = props.model;
+  const model = resolveVideoModel(props.model as VideoModelV3 | string);
   if (!model) {
     throw new Error(
       "await Video() requires 'model' prop (e.g., fal.videoModel('kling-v3'))",
@@ -845,7 +854,7 @@ export async function resolveMusicElement(
   props: MusicProps,
 ): Promise<ResolvedElement<"music">> {
   const prompt = props.prompt;
-  const model = props.model;
+  const model = resolveMusicModel(props.model as MusicModelV3 | string);
 
   if (!prompt || !model) {
     throw new Error("await Music() requires 'prompt' and 'model' props");
@@ -895,7 +904,7 @@ export async function resolveTalkingHeadElement(
   element: VargElement<"talking-head">,
   props: TalkingHeadProps,
 ): Promise<ResolvedElement<"talking-head">> {
-  const model = props.model;
+  const model = resolveVideoModel(props.model as VideoModelV3 | string);
   if (!model) {
     throw new Error(
       "await TalkingHead() requires 'model' prop for lipsync video generation",
@@ -933,7 +942,7 @@ export async function resolveTalkingHeadElement(
   const speechBytes = new Uint8Array(await resolvedSpeech.file.arrayBuffer());
 
   // Step 3: Generate lipsync video (image + audio → video)
-  const lipsyncModel = props.lipsyncModel ?? model;
+  const lipsyncModel = resolveVideoModel(props.lipsyncModel as VideoModelV3 | string) ?? model;
   const generateVideo = getCachedGenerateVideo();
 
   // Pass image + audio to the lipsync model. Models like veed-fabric and
