@@ -1,6 +1,7 @@
 export { renderCaptions } from "./captions";
 export { renderClip } from "./clip";
 export type { RenderContext } from "./context";
+export { createRenderContext, type PreparedRender } from "./context-builder";
 export { renderImage } from "./image";
 export { renderPackshot } from "./packshot";
 export {

@@ -3,14 +3,13 @@ import { File } from "../../ai-sdk/file";
 import { ResolvedElement } from "../resolved-element";
 import type { SpeechProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
-import { addTask, completeTask, startTask } from "./progress";
+import { withDedup } from "./dedup";
 import { computeCacheKey, getTextContent } from "./utils";
 
 export async function renderSpeech(
   element: VargElement<"speech">,
   ctx: RenderContext,
 ): Promise<File> {
-  // If already resolved via `await Speech(...)`, reuse the pre-generated file
   if (element instanceof ResolvedElement) {
     ctx.generatedFiles.push(element.meta.file);
     return element.meta.file;
@@ -28,22 +27,10 @@ export async function renderSpeech(
     throw new Error("Speech requires 'model' prop (or set defaults.speech)");
   }
 
+  const modelId = typeof model === "string" ? model : model.modelId;
   const cacheKey = computeCacheKey(element);
-  const cacheKeyStr = JSON.stringify(cacheKey);
 
-  // Deduplicate concurrent renders of the same speech element
-  const pendingRender = ctx.pendingFiles.get(cacheKeyStr);
-  if (pendingRender) {
-    return pendingRender;
-  }
-
-  const renderPromise = (async () => {
-    const modelId = typeof model === "string" ? model : model.modelId;
-    const taskId = ctx.progress
-      ? addTask(ctx.progress, "speech", modelId)
-      : null;
-    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
-
+  return withDedup(element, ctx, "speech", modelId, async () => {
     const { audio } = await ctx.generateSpeech({
       model,
       text,
@@ -51,7 +38,13 @@ export async function renderSpeech(
       cacheKey,
     } as Parameters<typeof experimental_generateSpeech>[0]);
 
-    if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+    if (!audio?.uint8Array) {
+      throw new Error(
+        `We couldn't generate the voiceover for this scene (speech model "${modelId}"). ` +
+          `The audio came back empty. Please try again — if it keeps happening, ` +
+          `try a different voice or speech model.`,
+      );
+    }
 
     const mediaType =
       (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
@@ -66,12 +59,6 @@ export async function renderSpeech(
       prompt: text,
     });
 
-    ctx.generatedFiles.push(file);
-
     return file;
-  })();
-
-  ctx.pendingFiles.set(cacheKeyStr, renderPromise);
-
-  return renderPromise;
+  });
 }

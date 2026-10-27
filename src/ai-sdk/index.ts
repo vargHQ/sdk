@@ -26,6 +26,7 @@ export {
   type GenerateVideoPrompt,
   type GenerateVideoResult,
   generateVideo,
+  type VideoModel,
 } from "./generate-video";
 export {
   generatePlaceholder,
@@ -91,6 +92,20 @@ export {
   type HiggsfieldProviderSettings,
   higgsfield,
 } from "./providers/higgsfield";
+export {
+  createKrea,
+  KREA_IMAGE_MODELS,
+  KreaAPIError,
+  type KreaProvider,
+  type KreaProviderSettings,
+  krea,
+} from "./providers/krea";
+export {
+  createMagnific,
+  type MagnificProvider,
+  type MagnificProviderSettings,
+  magnific,
+} from "./providers/magnific";
 export {
   createOpenAI,
   type OpenAIProvider,

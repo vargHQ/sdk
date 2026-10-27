@@ -10,6 +10,41 @@ export function resolvePath(path: string): string {
   return resolve(process.cwd(), path);
 }
 
+/**
+ * Normalize the `concurrency` render option into a positive integer (or
+ * Infinity), throwing the SDK's own error message rather than p-limit's
+ * TypeError.
+ *
+ * Shared by the resolveLazy limiter and the clip-render pMap so a bad
+ * value fails identically no matter which phase reaches it first.
+ */
+export function resolveConcurrency(concurrency: number | undefined): number {
+  const value = concurrency === undefined ? 3 : concurrency;
+  if (
+    value !== Number.POSITIVE_INFINITY &&
+    (!Number.isInteger(value) || value < 1)
+  ) {
+    throw new Error("render option `concurrency` must be a positive integer");
+  }
+  return value;
+}
+
+let tempCounter = 0;
+
+/**
+ * Collision-free temp file path.
+ *
+ * `Date.now()` alone has millisecond resolution — two renders in the same
+ * millisecond get the SAME path and silently overwrite each other's files.
+ * This bit ep5 hard once caption transcripts became memoized: 12 clips'
+ * ASS files collapsed into 7, and mergeAssFiles composed neighboring
+ * clips' captions over the wrong video. A process-wide counter makes
+ * every path unique regardless of timing.
+ */
+export function uniqueTempPath(prefix: string, ext: string): string {
+  return `/tmp/${prefix}-${Date.now()}-${tempCounter++}.${ext}`;
+}
+
 export function toFileUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
@@ -66,6 +101,10 @@ const IGNORED_PROPS_BY_TYPE: Partial<Record<VargElement["type"], Set<string>>> =
       "cutTo",
       "volume",
       "keepAudio",
+      // "audio: native" sugar is expanded into providerOptions.*.generate_audio
+      // at element creation; the expanded options carry the semantic difference,
+      // so the sugar prop itself must not affect the key.
+      "audio",
     ]),
     speech: new Set(["volume", "id"]),
   };

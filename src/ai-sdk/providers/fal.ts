@@ -112,6 +112,16 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
     t2v: "fal-ai/kling-video/o3/pro/text-to-video",
     i2v: "fal-ai/kling-video/o3/4k/image-to-video",
   },
+  // Kling 4.0 — 720p/1080p, 3-30s, multi-shot, end frames
+  "kling-v4": {
+    t2v: "fal-ai/kling-video/v4/text-to-video",
+    i2v: "fal-ai/kling-video/v4/image-to-video",
+  },
+  // Kling 4.0 Flash — 720p only, 3-20s, start frame only
+  "kling-v4-flash": {
+    t2v: "fal-ai/kling-video/v4/flash/text-to-video",
+    i2v: "fal-ai/kling-video/v4/flash/image-to-video",
+  },
   // Kling v2.6 - with native audio generation
   "kling-v2.6": {
     t2v: "fal-ai/kling-video/v2.6/pro/text-to-video",
@@ -166,6 +176,7 @@ const VIDEO_MODELS: Record<string, { t2v: string; i2v: string }> = {
 const VIDEO_EDIT_MODELS: Record<string, string> = {
   "grok-imagine-edit": "xai/grok-imagine-video/edit-video",
   "sora-2-remix": "fal-ai/sora-2/video-to-video/remix",
+  "kling-v4-video-edit": "fal-ai/kling-video/v4/video-to-video/edit",
 };
 
 // Reference-to-video models - images/elements + prompt → video with character consistency
@@ -174,6 +185,14 @@ const REFERENCE_VIDEO_MODELS: Record<string, string> = {
     "fal-ai/kling-video/o3/pro/reference-to-video",
   "kling-v3-4k-reference-to-video":
     "fal-ai/kling-video/o3/4k/reference-to-video",
+  "kling-v4-reference-to-video": "fal-ai/kling-video/v4/reference-to-video",
+  "kling-v4-flash-reference-to-video":
+    "fal-ai/kling-video/v4/flash/reference-to-video",
+};
+
+// Keyframes-to-video models - ordered keyframe images → video
+const KEYFRAMES_VIDEO_MODELS: Record<string, string> = {
+  "kling-v4-keyframes-to-video": "fal-ai/kling-video/v4/keyframes-to-video",
 };
 
 // Video-to-video reference models - reference video + prompt → new video preserving motion/camera
@@ -211,35 +230,72 @@ const VIDEO_UPSCALE_MODELS: Record<string, string> = {
   "sima-video-upscaler": "simalabs/sima-video-upscaler-lite",
 };
 
-const IMAGE_MODELS: Record<string, string> = {
+/**
+ * Normalize a model alias: underscores → hyphens. The prod API uses
+ * underscored canonical names (nano_banana_pro, flux_pro, mai_image_2_5),
+ * while the SDK historically uses hyphenated aliases (nano-banana-pro,
+ * flux-pro, mai-image-2.5). Normalizing once here lets every lookup table
+ * (IMAGE_MODELS, IMAGE_SIZE_MODELS, SINGULAR_IMAGE_URL_MODELS, …) store
+ * only the hyphenated form and still accept the prod canonical spelling.
+ * `raw:` prefix and strings containing `/` (upstream fal endpoints) are
+ * returned unchanged.
+ */
+export function normalizeModelId(modelId: string): string {
+  if (modelId.startsWith("raw:")) return modelId;
+  if (modelId.includes("/")) return modelId;
+  return modelId.replace(/_/g, "-");
+}
+
+export const IMAGE_MODELS: Record<string, string> = {
+  // ── Flux (fal-ai/flux/*) ────────────────────────────────────────────────
   "flux-pro": "fal-ai/flux-pro/v1.1",
   "flux-dev": "fal-ai/flux/dev",
   "flux-schnell": "fal-ai/flux/schnell",
+  // ── Recraft ─────────────────────────────────────────────────────────────
   "recraft-v3": "fal-ai/recraft/v3/text-to-image",
+  "recraft-v4-pro": "fal-ai/recraft/v4/pro/text-to-image",
+  // ── Nano Banana (Google Gemini 3 Pro Image) ─────────────────────────────
   "nano-banana-pro": "fal-ai/nano-banana-pro",
   "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
   "nano-banana-2": "fal-ai/nano-banana-2",
   "nano-banana-2/edit": "fal-ai/nano-banana-2/edit",
+  // ── Seedream ────────────────────────────────────────────────────────────
   "seedream-v4.5/edit": "fal-ai/bytedance/seedream/v4.5/edit",
-  // Qwen Image 2 - text-to-image and image-to-image editing (standard + pro)
+  "seedream-5-pro": "bytedance/seedream/v5/pro/text-to-image",
+  "seedream-5-pro/edit": "bytedance/seedream/v5/pro/edit",
+  // ── Qwen Image 2 (standard + pro) ───────────────────────────────────────
   "qwen-image-2": "fal-ai/qwen-image-2/text-to-image",
   "qwen-image-2/edit": "fal-ai/qwen-image-2/edit",
   "qwen-image-2-pro": "fal-ai/qwen-image-2/pro/text-to-image",
   "qwen-image-2-pro/edit": "fal-ai/qwen-image-2/pro/edit",
-  // Grok Imagine Image - xAI text-to-image and image editing
+  // ── Qwen Image Edit 2511 Multiple Angles ─────────────────────────────────
+  "qwen-angles": "fal-ai/qwen-image-edit-2511-multiple-angles",
+  // ── Grok Imagine Image (xAI) ─────────────────────────────────────────────
   "grok-imagine-image": "xai/grok-imagine-image",
   "grok-imagine-image/edit": "xai/grok-imagine-image/edit",
-  // Qwen Image Edit 2511 Multiple Angles - camera angle adjustment
-  "qwen-angles": "fal-ai/qwen-image-edit-2511-multiple-angles",
-  // Recraft V4 Pro - text-to-image
-  "recraft-v4-pro": "fal-ai/recraft/v4/pro/text-to-image",
-  // Reve - image editing
+  // ── Krea 2 ──────────────────────────────────────────────────────────────
+  "krea-2-turbo-style": "fal-ai/krea-2/turbo/style",
+  // ── Reve ────────────────────────────────────────────────────────────────
   "reve/edit": "fal-ai/reve/edit",
-  // Phota - personalized photo generation, editing, and enhancement
+  // ── Phota ───────────────────────────────────────────────────────────────
   phota: "fal-ai/phota",
   "phota/edit": "fal-ai/phota/edit",
   "phota/enhance": "fal-ai/phota/enhance",
-  // Image upscale models
+  // ── Microsoft MAI-Image-2.5 (2026-07) ────────────────────────────────────
+  "mai-image-2-5": "microsoft/mai-image-2.5",
+  "mai-image-2-5/edit": "microsoft/mai-image-2.5/edit",
+  // ── OpenAI GPT Image 2.5 (2026-09, fal-hosted) ───────────────────────────
+  // Flare = fast/default; Sunburst = premium (reachable via exact addressing).
+  "gpt-image-2-5": "openai/gpt-image-2.5/flare/text-to-image",
+  "gpt-image-2-5/edit": "openai/gpt-image-2.5/flare/edit",
+  "gpt-image-2-5-sunburst": "openai/gpt-image-2.5/sunburst/text-to-image",
+  "gpt-image-2-5-sunburst/edit": "openai/gpt-image-2.5/sunburst/edit",
+  // ── Ideogram 4.5 (2026-09) ──────────────────────────────────────────────
+  // Typography-first t2i + edit. "ideogram-v4-5" auto-routes to /edit when
+  // files are passed (see resolveImageEndpoint).
+  "ideogram-v4-5": "ideogram/v4.5",
+  "ideogram-v4-5/edit": "ideogram/v4.5/edit",
+  // ── Image upscale models ────────────────────────────────────────────────
   seedvr: "fal-ai/seedvr/upscale/image",
   "recraft-clarity": "fal-ai/recraft-clarity-upscale",
   "clarity-upscaler": "fal-ai/clarity-upscaler",
@@ -248,21 +304,41 @@ const IMAGE_MODELS: Record<string, string> = {
   "aura-sr": "fal-ai/aura-sr",
 };
 
+// Ideogram 4.5 — fal schemas are additionalProperties:false, so unknown fields
+// (e.g. `acceleration`, `aspect_ratio`, `image_urls`) are rejected with a 422.
+// Edit takes ONE source `image_url` plus up to 4 `reference_image_urls`.
+// Raw upstream ids are listed too: normalizeModelId leaves ids with "/" as-is.
+const IDEOGRAM_IMAGE_MODELS_LIST = [
+  "ideogram-v4-5",
+  "ideogram-v4-5/edit",
+  "ideogram/v4.5",
+  "ideogram/v4.5/edit",
+];
+const IDEOGRAM_IMAGE_MODELS = new Set(IDEOGRAM_IMAGE_MODELS_LIST);
+const IDEOGRAM_MAX_REFERENCES = 4;
+
 // Models that use image_size instead of aspect_ratio
 const IMAGE_SIZE_MODELS = new Set([
   "flux-schnell",
   "flux-dev",
   "flux-pro",
   "seedream-v4.5/edit",
+  "seedream-5-pro",
+  "seedream-5-pro/edit",
   "qwen-image-2",
   "qwen-image-2/edit",
   "qwen-image-2-pro",
   "qwen-image-2-pro/edit",
   "recraft-v4-pro",
+  "gpt-image-2-5",
+  "gpt-image-2-5/edit",
+  "gpt-image-2-5-sunburst",
+  "gpt-image-2-5-sunburst/edit",
+  ...IDEOGRAM_IMAGE_MODELS_LIST,
 ]);
 
 // Qwen Angles model - image-to-image with camera angle adjustment
-const QWEN_ANGLES_MODEL = "qwen-angles";
+const QWEN_ANGLES_MODELS = new Set(["qwen-angles"]);
 
 // Models that use singular image_url instead of image_urls array
 const SINGULAR_IMAGE_URL_MODELS = new Set([
@@ -276,6 +352,69 @@ const SINGULAR_IMAGE_URL_MODELS = new Set([
   "ccsr",
   "aura-sr",
 ]);
+
+/**
+ * Put resolved file URLs on the fal input using the field layout the model
+ * expects. Mutates `input`. `id` is the normalized model id.
+ *   - singular models (reve/edit, upscalers): image_url = urls[0]
+ *   - Ideogram 4.5: image_url = urls[0], reference_image_urls = urls[1..4]
+ *   - everything else: image_urls = urls
+ */
+export function applyImageFileInputs(
+  id: string,
+  input: Record<string, unknown>,
+  urls: string[],
+): void {
+  if (urls.length === 0) return;
+  if (IDEOGRAM_IMAGE_MODELS.has(id)) {
+    const refs = urls.slice(1);
+    if (refs.length > IDEOGRAM_MAX_REFERENCES) {
+      throw new Error(
+        `ideogram-v4-5 accepts 1 source image + up to ${IDEOGRAM_MAX_REFERENCES} references (${urls.length} files given)`,
+      );
+    }
+    input.image_url = urls[0];
+    if (refs.length > 0) input.reference_image_urls = refs;
+    return;
+  }
+  if (SINGULAR_IMAGE_URL_MODELS.has(id)) {
+    input.image_url = urls[0];
+    return;
+  }
+  input.image_urls = urls;
+}
+
+/** Whether the model accepts fal's `acceleration` field. */
+export function supportsImageAcceleration(id: string): boolean {
+  return !IDEOGRAM_IMAGE_MODELS.has(id);
+}
+
+/**
+ * Resolve an image model id (SDK alias, prod canonical, raw fal id, or
+ * "raw:"-prefixed) to the fal endpoint, routing dual-endpoint families to
+ * their edit endpoint when files are present.
+ */
+export function resolveImageEndpoint(
+  modelId: string,
+  hasFiles?: boolean,
+): string {
+  const id = normalizeModelId(modelId);
+  if (id.startsWith("raw:")) {
+    return id.slice(4);
+  }
+
+  // Nano Banana 2: route to /edit when images are provided, base endpoint for t2i
+  if (id === "nano-banana-2" && hasFiles) {
+    return "fal-ai/nano-banana-2/edit";
+  }
+
+  // Ideogram 4.5: t2i takes no images at all — files always mean /edit
+  if ((id === "ideogram-v4-5" || id === "ideogram/v4.5") && hasFiles) {
+    return "ideogram/v4.5/edit";
+  }
+
+  return IMAGE_MODELS[id] ?? id;
+}
 
 // Map aspect ratio to image_size for Qwen Angles (base dimension 1024)
 const ASPECT_RATIO_TO_QWEN_SIZE: Record<
@@ -361,7 +500,9 @@ async function fileToUrl(file: ImageModelV3File): Promise<string> {
   if (cached) return cached;
 
   const mediaType = file.mediaType ?? detectImageType(bytes) ?? "image/png";
-  const url = await fal.storage.upload(new Blob([bytes], { type: mediaType }));
+  const url = await fal.storage.upload(
+    new Blob([bytes as BlobPart], { type: mediaType }),
+  );
   await uploadCache.set(hash, url, 7 * 24 * 60 * 60 * 1000);
   return url;
 }
@@ -544,10 +685,13 @@ class FalVideoModel implements VideoModelV3 {
     const isVideoUpscale = VIDEO_UPSCALE_MODELS[this.modelId] !== undefined;
     const isReferenceVideo = REFERENCE_VIDEO_MODELS[this.modelId] !== undefined;
     const isV2VReference = V2V_REFERENCE_MODELS[this.modelId] !== undefined;
+    const isKeyframes = KEYFRAMES_VIDEO_MODELS[this.modelId] !== undefined;
     const isKlingV3 =
       this.modelId === "kling-v3" ||
       this.modelId === "kling-v3-standard" ||
       this.modelId === "kling-v3-4k-image-to-video";
+    const isKlingV4 =
+      this.modelId === "kling-v4" || this.modelId === "kling-v4-flash";
     const isKlingV26 = this.modelId === "kling-v2.6";
     const isLtx2 = this.modelId === "ltx-2-19b-distilled";
     const isGrokImagine = this.modelId === "grok-imagine";
@@ -567,7 +711,9 @@ class FalVideoModel implements VideoModelV3 {
               ? this.resolveReferenceVideoEndpoint()
               : isV2VReference
                 ? this.resolveV2VReferenceEndpoint()
-                : this.resolveEndpoint(hasImageInput ?? false);
+                : isKeyframes
+                  ? this.resolveKeyframesEndpoint()
+                  : this.resolveEndpoint(hasImageInput ?? false);
 
     const input: Record<string, unknown> = {
       ...(providerOptions?.fal ?? {}),
@@ -597,7 +743,9 @@ class FalVideoModel implements VideoModelV3 {
       // OmniHuman and LTX-2 a2v support prompt (required for LTX-2 a2v)
       if (
         prompt &&
-        (this.modelId === "omnihuman-v1.5" || this.modelId === "ltx-2-a2v")
+        (this.modelId === "omnihuman-v1.5" ||
+          this.modelId === "omnihuman-v2" ||
+          this.modelId === "ltx-2-a2v")
       ) {
         input.prompt = prompt;
       }
@@ -647,8 +795,23 @@ class FalVideoModel implements VideoModelV3 {
         input.video_url = await fileToUrl(videoFile);
       }
 
-      // Grok Imagine Edit supports resolution: "auto", "480p", "720p"
-      if (!input.resolution) {
+      // Kling v4 edit accepts reference images (image_urls) and elements
+      if (isKlingV4 && files) {
+        const imageFiles = files.filter((f) =>
+          getMediaType(f)?.startsWith("image/"),
+        );
+        if (imageFiles.length > 0) {
+          const imageUrls: string[] = [];
+          for (const imgFile of imageFiles) {
+            imageUrls.push(await fileToUrl(imgFile));
+          }
+          input.image_urls = imageUrls;
+        }
+        if (!input.resolution) {
+          input.resolution = "1080p";
+        }
+      } else if (!input.resolution) {
+        // Grok Imagine Edit supports resolution: "auto", "480p", "720p"
         input.resolution = "auto";
       }
     } else if (isVideoUpscale) {
@@ -659,6 +822,47 @@ class FalVideoModel implements VideoModelV3 {
 
       if (videoFile) {
         input.video_url = await fileToUrl(videoFile);
+      }
+    } else if (isKeyframes) {
+      // Keyframes-to-video: ordered keyframe images + prompt → video
+      // Keyframes array (with time) and voice_ids passed via providerOptions.fal
+      input.prompt = prompt;
+
+      if (files) {
+        const imageFiles = files.filter((f) =>
+          getMediaType(f)?.startsWith("image/"),
+        );
+        if (imageFiles.length >= 2) {
+          // Build keyframes from image files; time comes from
+          // providerOptions.fal.keyframes (array of {time} objects) if provided,
+          // otherwise fal spaces them evenly.
+          const falOpts = (providerOptions?.fal ?? {}) as Record<
+            string,
+            unknown
+          >;
+          const timeOverrides = Array.isArray(falOpts.keyframes)
+            ? (falOpts.keyframes as Array<{ time?: number }>)
+            : [];
+          const keyframes: Array<{ image_url: string; time?: number }> = [];
+          for (let i = 0; i < imageFiles.length; i++) {
+            const kf: { image_url: string; time?: number } = {
+              image_url: await fileToUrl(imageFiles[i]!),
+            };
+            if (timeOverrides[i]?.time !== undefined) {
+              kf.time = timeOverrides[i]!.time;
+            }
+            keyframes.push(kf);
+          }
+          input.keyframes = keyframes;
+        }
+      }
+
+      // Duration normalization
+      const normalized = normalizeProviderInput(this.modelId, { duration });
+      input.duration = normalized.duration;
+
+      if (!input.aspect_ratio) {
+        input.aspect_ratio = aspectRatio ?? "16:9";
       }
     } else if (isReferenceVideo) {
       // Reference-to-video: prompt + optional start/end images + reference images
@@ -696,8 +900,8 @@ class FalVideoModel implements VideoModelV3 {
         input.aspect_ratio = aspectRatio ?? "16:9";
       }
 
-      // Default to generating audio
-      if (input.generate_audio === undefined) {
+      // Default to generating audio (Kling O3 reference; Kling v4 ref has no audio field)
+      if (input.generate_audio === undefined && !isKlingV4) {
         input.generate_audio = true;
       }
     } else if (isV2VReference) {
@@ -783,9 +987,9 @@ class FalVideoModel implements VideoModelV3 {
         if (firstImage) {
           // First image is start image
           input.image_url = await fileToUrl(firstImage);
-          // Second image (if provided) is end image for Kling v2.6 and LTX-2
+          // Second image (if provided) is end image for Kling v2.6, v3, v4 and LTX-2
           const secondImage = imageFiles[1];
-          if ((isKlingV3 || isKlingV26 || isLtx2) && secondImage) {
+          if ((isKlingV3 || isKlingV4 || isKlingV26 || isLtx2) && secondImage) {
             input.end_image_url = await fileToUrl(secondImage);
           }
         }
@@ -958,6 +1162,14 @@ class FalVideoModel implements VideoModelV3 {
 
     return V2V_REFERENCE_MODELS[this.modelId] ?? this.modelId;
   }
+
+  private resolveKeyframesEndpoint(): string {
+    if (this.modelId.startsWith("raw:")) {
+      return this.modelId.slice(4);
+    }
+
+    return KEYFRAMES_VIDEO_MODELS[this.modelId] ?? this.modelId;
+  }
 }
 
 class FalImageModel implements ImageModelV3 {
@@ -983,7 +1195,10 @@ class FalImageModel implements ImageModelV3 {
     } = options;
     const warnings: SharedV3Warning[] = [];
 
-    const isQwenAngles = this.modelId === QWEN_ANGLES_MODEL;
+    // Normalize _ → - once so prod canonical names (nano_banana_pro) match
+    // the hyphenated keys in IMAGE_MODELS / IMAGE_SIZE_MODELS / etc.
+    const id = normalizeModelId(this.modelId);
+    const isQwenAngles = QWEN_ANGLES_MODELS.has(id);
 
     const input: Record<string, unknown> = {
       num_images: n ?? 1,
@@ -1001,11 +1216,14 @@ class FalImageModel implements ImageModelV3 {
       }
     } else {
       input.prompt = prompt;
-      // Use high acceleration for faster queue processing on supported models (flux-schnell)
-      input.acceleration = "high";
+      // Use high acceleration for faster queue processing on supported models
+      // (flux-schnell). Strict-schema models (Ideogram) reject the field.
+      if (supportsImageAcceleration(id)) {
+        input.acceleration = "high";
+      }
     }
 
-    const usesImageSize = IMAGE_SIZE_MODELS.has(this.modelId);
+    const usesImageSize = IMAGE_SIZE_MODELS.has(id);
 
     if (size) {
       // size format is "{width}x{height}"
@@ -1062,12 +1280,8 @@ class FalImageModel implements ImageModelV3 {
     if (hasFiles && files) {
       const fileHashes = await computeFileHashes(files);
       const imageUrls = await pMap(files, fileToUrl, { concurrency: 2 });
-      // Reve uses singular image_url instead of image_urls array
-      if (SINGULAR_IMAGE_URL_MODELS.has(this.modelId)) {
-        input.image_url = imageUrls[0];
-      } else {
-        input.image_urls = imageUrls;
-      }
+      // image_urls / image_url / image_url + reference_image_urls per model
+      applyImageFileInputs(id, input, imageUrls);
       // Compute stable key after files are resolved
       const finalEndpointForKey = this.resolveEndpoint(hasFiles);
       stableKey = JSON.stringify({
@@ -1139,16 +1353,7 @@ class FalImageModel implements ImageModelV3 {
   }
 
   private resolveEndpoint(hasFiles?: boolean): string {
-    if (this.modelId.startsWith("raw:")) {
-      return this.modelId.slice(4);
-    }
-
-    // Nano Banana 2: route to /edit when images are provided, base endpoint for t2i
-    if (this.modelId === "nano-banana-2" && hasFiles) {
-      return "fal-ai/nano-banana-2/edit";
-    }
-
-    return IMAGE_MODELS[this.modelId] ?? this.modelId;
+    return resolveImageEndpoint(this.modelId, hasFiles);
   }
 }
 

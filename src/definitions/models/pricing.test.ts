@@ -127,6 +127,68 @@ describe("SDK pricing formulas", () => {
     expect(cost).toBeCloseTo(1.4);
   });
 
+  // --- Kling 4.0 ---
+
+  test("kling-v4: 5s at 720p = $0.785", () => {
+    const cost = calculateProviderCost("kling-v4", "fal", {
+      duration: 5,
+      resolution: "720p",
+    });
+    expect(cost).toBeCloseTo(0.785);
+  });
+
+  test("kling-v4: 5s at 1080p = $1.175", () => {
+    const cost = calculateProviderCost("kling-v4", "fal", {
+      duration: 5,
+      resolution: "1080p",
+    });
+    expect(cost).toBeCloseTo(1.175);
+  });
+
+  test("kling-v4: 30s at 1080p = $7.05", () => {
+    const cost = calculateProviderCost("kling-v4", "fal", {
+      duration: 30,
+      resolution: "1080p",
+    });
+    expect(cost).toBeCloseTo(7.05);
+  });
+
+  test("kling-v4: defaults to 5s at 720p = $0.785", () => {
+    const cost = calculateProviderCost("kling-v4", "fal", {});
+    expect(cost).toBeCloseTo(0.785);
+  });
+
+  test("kling-v4-flash: 5s = $0.785", () => {
+    const cost = calculateProviderCost("kling-v4-flash", "fal", {
+      duration: 5,
+    });
+    expect(cost).toBeCloseTo(0.785);
+  });
+
+  test("kling-v4-flash: 20s = $3.14", () => {
+    const cost = calculateProviderCost("kling-v4-flash", "fal", {
+      duration: 20,
+    });
+    expect(cost).toBeCloseTo(3.14);
+  });
+
+  test("kling-v4-reference-to-video: 10s at 1080p = $2.35", () => {
+    const cost = calculateProviderCost("kling-v4-reference-to-video", "fal", {
+      duration: 10,
+      resolution: "1080p",
+    });
+    expect(cost).toBeCloseTo(2.35);
+  });
+
+  test("kling-v4-keyframes-to-video: defaults to 10s at 720p = $1.57", () => {
+    const cost = calculateProviderCost(
+      "kling-v4-keyframes-to-video",
+      "fal",
+      {},
+    );
+    expect(cost).toBeCloseTo(1.57);
+  });
+
   // --- Image models: per-image ---
 
   test("flux: per-image pricing, 1 image default", () => {

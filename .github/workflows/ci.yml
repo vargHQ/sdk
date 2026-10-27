@@ -21,3 +21,30 @@ jobs:
 
       - name: Check
         run: bun run check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      # Scoped to suites that are hermetic: no API keys, no paid generation.
+      # `bun run check` (biome + tsc) cannot catch runtime breakage — the
+      # opentype.js 1.3.5 regression, which crashed every emoji caption render
+      # for ~2.5 months, typechecked cleanly because @types still declared the
+      # removed `loadSync()`. Only executing the code catches that class of bug.
+      #
+      # Deliberately excluded: suites needing API keys or a live service
+      # (.../rendi, storage/retry, providers/fal, providers/magnific), heavy
+      # ffmpeg media rendering (providers/editly, react.test.ts,
+      # warnings.test.ts, packshot, talking-head), and pricing.test.ts, which
+      # has 3 failures predating this workflow.
+      # Widen this list as those are fixed.
+      - name: Test (hermetic suites)
+        run: bun run test:ci

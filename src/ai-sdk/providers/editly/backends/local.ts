@@ -21,6 +21,9 @@ export class LocalBackend implements FFmpegBackend {
     const videoStream = result.streams?.find(
       (s: { codec_type: string }) => s.codec_type === "video",
     );
+    const hasAudio = result.streams?.some(
+      (s: { codec_type: string }) => s.codec_type === "audio",
+    );
     const parsedDuration = parseFloat(result.format?.duration ?? "0");
     const duration = Number.isFinite(parsedDuration) ? parsedDuration : 0;
 
@@ -35,6 +38,7 @@ export class LocalBackend implements FFmpegBackend {
 
     return {
       duration,
+      hasAudio: hasAudio === true,
       ...(videoStream?.width != null ? { width: videoStream.width } : {}),
       ...(videoStream?.height != null ? { height: videoStream.height } : {}),
       ...(fps != null ? { fps } : {}),

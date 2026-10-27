@@ -1,34 +1,11 @@
 import type { generateImage } from "ai";
 import { File } from "../../ai-sdk/file";
 import { ResolvedElement } from "../resolved-element";
-import type {
-  ImageInput,
-  ImagePrompt,
-  ImageProps,
-  VargElement,
-} from "../types";
+import type { ImagePrompt, ImageProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
-import { addTask, completeTask, startTask } from "./progress";
-import { computeCacheKey, toFileUrl } from "./utils";
-
-async function resolveImageInput(
-  input: ImageInput,
-  ctx: RenderContext,
-): Promise<Uint8Array> {
-  if (input instanceof Uint8Array) {
-    return input;
-  }
-  if (typeof input === "string") {
-    const response = await fetch(toFileUrl(input));
-    return new Uint8Array(await response.arrayBuffer());
-  }
-  const file = await renderImage(input, ctx);
-  const data = await file.arrayBuffer();
-  if (data instanceof ArrayBuffer) {
-    return new Uint8Array(data);
-  }
-  return data;
-}
+import { withDedup } from "./dedup";
+import { resolveImageInput } from "./inputs";
+import { computeCacheKey } from "./utils";
 
 async function resolvePrompt(
   prompt: ImagePrompt,
@@ -47,7 +24,6 @@ export async function renderImage(
   element: VargElement<"image">,
   ctx: RenderContext,
 ): Promise<File> {
-  // If already resolved via `await Image(...)`, reuse the pre-generated file
   if (element instanceof ResolvedElement) {
     ctx.generatedFiles.push(element.meta.file);
     return element.meta.file;
@@ -73,22 +49,11 @@ export async function renderImage(
     );
   }
 
+  const modelId = typeof model === "string" ? model : model.modelId;
   const cacheKey = computeCacheKey(element);
-  const cacheKeyStr = JSON.stringify(cacheKey);
 
-  const pendingRender = ctx.pendingFiles.get(cacheKeyStr);
-  if (pendingRender) {
-    return pendingRender;
-  }
-
-  const renderPromise = (async () => {
+  return withDedup(element, ctx, "image", modelId, async () => {
     const resolvedPrompt = await resolvePrompt(prompt, ctx);
-
-    const modelId = typeof model === "string" ? model : model.modelId;
-    const taskId = ctx.progress
-      ? addTask(ctx.progress, "image", modelId)
-      : null;
-    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
 
     const { images } = await ctx.generateImage({
       model,
@@ -98,8 +63,6 @@ export async function renderImage(
       n: 1,
       cacheKey,
     } as Parameters<typeof generateImage>[0]);
-
-    if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
 
     const firstImage = images[0];
     if (!firstImage?.uint8Array) {
@@ -123,12 +86,6 @@ export async function renderImage(
       await file.upload(ctx.storage);
     }
 
-    ctx.generatedFiles.push(file);
-
     return file;
-  })();
-
-  ctx.pendingFiles.set(cacheKeyStr, renderPromise);
-
-  return renderPromise;
+  });
 }

@@ -1,3 +1,4 @@
+import { type AudioNode, makeAudioNode } from "./audio-element";
 import {
   resolveFFmpegElement,
   resolveImageElement,
@@ -58,8 +59,10 @@ function createElement<T extends VargElement["type"]>(
  * - With `await`: triggers AI generation and returns a ResolvedElement
  *   with `.duration`, `.file`, and `.meta` populated.
  *
- * The `.then()` is consumed on first call (deleted) to prevent
- * double-resolution if the element is re-awaited.
+ * The resolution promise is memoized: re-awaiting the same element returns
+ * the same ResolvedElement without re-triggering generation. The resolved
+ * meta is also written back onto the element so the render pipeline sees
+ * it as pre-resolved.
  */
 function makeThenable<T extends VargElement["type"]>(
   element: VargElement<T>,
@@ -69,14 +72,114 @@ function makeThenable<T extends VargElement["type"]>(
     then?: PromiseLike<ResolvedElement<T>>["then"];
   };
 
+  let resolvedPromise: Promise<ResolvedElement<T>> | undefined;
+
   // biome-ignore lint/suspicious/noThenProperty: intentional — makes element awaitable
   thenable.then = function (resolve, reject) {
-    // Remove .then to prevent double-resolution
-    delete this.then;
-    return resolver(this as VargElement<T>).then(resolve, reject);
+    resolvedPromise ??= resolver(this as VargElement<T>).then((r) => {
+      // Mirror meta onto the original element so the render pipeline
+      // treats it as pre-resolved (single generation per element).
+      element.meta = r.meta;
+      return r;
+    });
+    return resolvedPromise.then(resolve, reject);
   };
 
   return thenable as VargElement<T> & PromiseLike<ResolvedElement<T>>;
+}
+
+/**
+ * Attach a memoized lazy `.audio` getter to a media element.
+ * `video.audio` / `speech.audio` returns the same derived AudioNode on
+ * every access; resolving it resolves the parent first.
+ */
+function attachAudioGetter<
+  T extends
+    | VargElement<"video">
+    | VargElement<"speech">
+    | VargElement<"talking-head">,
+>(element: T): T & { readonly audio: AudioNode } {
+  let node: AudioNode | undefined;
+  Object.defineProperty(element, "audio", {
+    get() {
+      node ??= makeAudioNode({
+        parent: element as VargElement<"video"> | VargElement<"speech">,
+      });
+      return node;
+    },
+    // A getter with no setter makes `el.audio = x` throw "Attempted to assign
+    // to readonly property" in strict mode (all ESM). Callers legitimately
+    // overwrite this: render's dry-run validator replaces the awaitable
+    // element's fields with mocks (`el.audio = el`) so user code can run
+    // without hitting AI providers, and that assignment broke every render
+    // whose TSX contained a Speech or Video element. Accepting a replacement
+    // keeps the lazy default while leaving the property writable.
+    set(replacement: AudioNode) {
+      node = replacement;
+    },
+    enumerable: false,
+    configurable: true,
+  });
+  return element as T & { readonly audio: AudioNode };
+}
+
+/**
+ * Expand the `audio: "native"` sugar on VideoProps:
+ * - `keepAudio: true` (unless explicitly set — conflicts are reported by compile())
+ * - `generate_audio: true` in the model's provider options
+ *
+ * The `audio` prop itself is excluded from cache keys (see
+ * IGNORED_PROPS_BY_TYPE) — the expanded providerOptions carry the
+ * semantic difference, so pre-existing configurations keep their keys.
+ *
+ * Provider mapping:
+ * - direct fal models → `providerOptions.fal.generate_audio`
+ * - varg gateway models → `providerOptions.varg.audio` (the UNIFIED field —
+ *   lifted to the request body top level by VargVideoModel and mapped per
+ *   model by the API's mapping_rules; models without native-audio support
+ *   silently ignore it). Do NOT inject provider_options.fal.generate_audio
+ *   here: the API rejects unknown provider_options keys with a 422, so the
+ *   old blind injection broke every fal video model whose schema lacks
+ *   generate_audio.
+ */
+function expandNativeAudio(props: VideoProps): VideoProps {
+  if (props.audio !== "native") return props;
+
+  const provider =
+    props.model && typeof props.model === "object" && "provider" in props.model
+      ? String(props.model.provider).split(".")[0]
+      : undefined;
+
+  const providerOptions = { ...(props.providerOptions ?? {}) } as Record<
+    string,
+    Record<string, unknown>
+  >;
+
+  if (provider === "varg") {
+    const vargOpts = { ...(providerOptions.varg ?? {}) } as Record<
+      string,
+      unknown
+    >;
+    // Unified native-audio request — best-effort by design: the varg API
+    // maps it to the provider's own flag on models that support it and
+    // silently drops it elsewhere (mapping_rules, migration 0147).
+    if (vargOpts.audio === undefined) vargOpts.audio = true;
+    providerOptions.varg = vargOpts as Record<string, unknown>;
+  } else {
+    // Default to the fal namespace (fal is the only provider with a
+    // verified generate_audio flag; harmless for providers that ignore it).
+    const key = provider ?? "fal";
+    const opts = { ...(providerOptions[key] ?? {}) };
+    if (opts.generate_audio === undefined) opts.generate_audio = true;
+    providerOptions[key] = opts;
+  }
+
+  return {
+    ...props,
+    keepAudio: props.keepAudio ?? true,
+    providerOptions:
+      providerOptions as unknown as VideoProps["providerOptions"],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -107,9 +210,19 @@ export function Overlay(props: OverlayProps): VargElement<"overlay"> {
   );
 }
 
-export function Image(
-  props: ImageProps,
-): VargElement<"image"> & PromiseLike<ResolvedElement<"image">> {
+/**
+ * Named element types returned by the media factories — for typing user
+ * code (e.g. async component props) without `ReturnType<typeof Video>`
+ * acrobatics.
+ */
+export type ImageElement = VargElement<"image"> &
+  PromiseLike<ResolvedElement<"image">>;
+export type VideoElement = VargElement<"video"> &
+  PromiseLike<ResolvedElement<"video">> & { readonly audio: AudioNode };
+export type SpeechElement = VargElement<"speech"> &
+  PromiseLike<ResolvedElement<"speech">> & { readonly audio: AudioNode };
+
+export function Image(props: ImageProps): ImageElement {
   const element = createElement(
     "image",
     props as Record<string, unknown>,
@@ -120,29 +233,29 @@ export function Image(
   );
 }
 
-export function Video(
-  props: VideoProps,
-): VargElement<"video"> & PromiseLike<ResolvedElement<"video">> {
+export function Video(props: VideoProps): VideoElement {
   const element = createElement(
     "video",
-    props as Record<string, unknown>,
+    expandNativeAudio(props) as Record<string, unknown>,
     undefined,
   );
-  return makeThenable(element, (el) =>
-    resolveVideoElement(el, el.props as Record<string, unknown>),
+  return attachAudioGetter(
+    makeThenable(element, (el) =>
+      resolveVideoElement(el, el.props as Record<string, unknown>),
+    ),
   );
 }
 
-export function Speech(
-  props: SpeechProps,
-): VargElement<"speech"> & PromiseLike<ResolvedElement<"speech">> {
+export function Speech(props: SpeechProps): SpeechElement {
   const element = createElement(
     "speech",
     props as Record<string, unknown>,
     props.children,
   );
-  return makeThenable(element, (el) =>
-    resolveSpeechElement(el, el.props as unknown as SpeechProps),
+  return attachAudioGetter(
+    makeThenable(element, (el) =>
+      resolveSpeechElement(el, el.props as unknown as SpeechProps),
+    ),
   );
 }
 

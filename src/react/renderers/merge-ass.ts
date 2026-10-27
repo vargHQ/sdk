@@ -1,9 +1,54 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import type { CaptionWindow } from "./flatten";
+import { uniqueTempPath } from "./utils";
 
 export interface AssSegment {
   assPath: string;
+  /** Timeline position of the clip these captions belong to. */
   timeOffset: number;
   styleSuffix?: string;
+  /**
+   * Trim window of the source clip, when it was trimmed with cutFrom/cutTo.
+   * Cue timestamps in the ASS reference the RAW (untrimmed) media, so:
+   * - effective shift = timeOffset - cutFrom (not just timeOffset)
+   * - cues entirely outside [cutFrom, cutTo] are dropped
+   * - cues partially outside are clamped to the window
+   */
+  window?: CaptionWindow;
+}
+
+/**
+ * Transform one cue's [start, end] (raw-media seconds) into timeline
+ * seconds for a clip at `timeOffset` with an optional trim window.
+ * Returns null when the cue should be dropped (entirely outside the window).
+ */
+export function transformCue(
+  start: number,
+  end: number,
+  timeOffset: number,
+  window?: CaptionWindow,
+): { start: number; end: number } | null {
+  if (!window) {
+    return { start: start + timeOffset, end: end + timeOffset };
+  }
+
+  const cutFrom = window.cutFrom;
+  // Upper bound in raw-media time: explicit cutTo, else cutFrom + duration.
+  const cutTo =
+    window.cutTo ??
+    (window.duration !== undefined ? cutFrom + window.duration : undefined);
+
+  // Drop cues entirely outside the window.
+  if (end <= cutFrom) return null;
+  if (cutTo !== undefined && start >= cutTo) return null;
+
+  // Clamp partially-outside cues to the window, then re-base to timeline.
+  const clampedStart = Math.max(start, cutFrom);
+  const clampedEnd = cutTo !== undefined ? Math.min(end, cutTo) : end;
+  if (clampedEnd <= clampedStart) return null;
+
+  const shift = timeOffset - cutFrom;
+  return { start: clampedStart + shift, end: clampedEnd + shift };
 }
 
 /**
@@ -36,20 +81,36 @@ function formatAssTime(seconds: number): string {
 }
 
 /**
- * Shift all Dialogue timestamps in an ASS file by `offset` seconds.
+ * Shift all Dialogue timestamps in an ASS file by `offset` seconds,
+ * optionally re-basing/clamping to a clip trim window (see transformCue).
+ * Cues dropped by the window are removed entirely.
  * Returns path to a new temp file.
  */
-export function shiftAssTimestamps(assPath: string, offset: number): string {
+export function shiftAssTimestamps(
+  assPath: string,
+  offset: number,
+  window?: CaptionWindow,
+): string {
   const content = readFileSync(assPath, "utf-8");
-  const shifted = content.replace(
-    /^(Dialogue:\s*\d+,)(\d+:\d{2}:\d{2}\.\d{2}),(\d+:\d{2}:\d{2}\.\d{2})/gm,
-    (_match, prefix: string, startTs: string, endTs: string) => {
-      const newStart = formatAssTime(parseAssTime(startTs) + offset);
-      const newEnd = formatAssTime(parseAssTime(endTs) + offset);
-      return `${prefix}${newStart},${newEnd}`;
-    },
-  );
-  const outPath = `/tmp/varg-shifted-captions-${Date.now()}.ass`;
+  const DROP = "\u0000DROP\u0000";
+  const shifted = content
+    .replace(
+      /^(Dialogue:\s*\d+,)(\d+:\d{2}:\d{2}\.\d{2}),(\d+:\d{2}:\d{2}\.\d{2})/gm,
+      (_match, prefix: string, startTs: string, endTs: string) => {
+        const cue = transformCue(
+          parseAssTime(startTs),
+          parseAssTime(endTs),
+          offset,
+          window,
+        );
+        if (!cue) return DROP;
+        return `${prefix}${formatAssTime(cue.start)},${formatAssTime(cue.end)}`;
+      },
+    )
+    .split("\n")
+    .filter((line) => !line.startsWith(DROP))
+    .join("\n");
+  const outPath = uniqueTempPath("varg-shifted-captions", "ass");
   writeFileSync(outPath, shifted);
   return outPath;
 }
@@ -98,11 +159,17 @@ export function mergeAssFiles(
       const parts = dialogueLine.split(",");
       if (parts.length < 10) continue;
 
-      // Shift Start (index 1) and End (index 2)
-      const startTs = parts[1]!.trim();
-      const endTs = parts[2]!.trim();
-      parts[1] = formatAssTime(parseAssTime(startTs) + segment.timeOffset);
-      parts[2] = formatAssTime(parseAssTime(endTs) + segment.timeOffset);
+      // Re-base Start (index 1) and End (index 2) to the timeline,
+      // dropping/clamping cues via the segment's trim window.
+      const cue = transformCue(
+        parseAssTime(parts[1]!.trim()),
+        parseAssTime(parts[2]!.trim()),
+        segment.timeOffset,
+        segment.window,
+      );
+      if (!cue) continue;
+      parts[1] = formatAssTime(cue.start);
+      parts[2] = formatAssTime(cue.end);
 
       // Rename style reference (index 3)
       const styleName = parts[3]!.trim();
@@ -130,7 +197,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 ${allDialogues.join("\n")}
 `;
 
-  const outPath = `/tmp/varg-merged-captions-${Date.now()}.ass`;
+  const outPath = uniqueTempPath("varg-merged-captions", "ass");
   writeFileSync(outPath, header);
   return outPath;
 }

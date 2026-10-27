@@ -1,20 +1,13 @@
 /**
- * Magnific provider — internal module powering `varg.imageModel("magnific/...")`,
- * `varg.videoModel("magnific/...")`, `varg.musicModel("magnific/default")`, and
- * `varg.speechModel("magnific/<sound-effects|audio-isolation>")`.
+ * Magnific provider — BYOK direct path to `api.magnific.com`.
  *
- * Two execution paths share the same model maps and payload builders:
+ * Composed into the varg provider via `withMagnific(varg, opts?)` (see
+ * `magnific-wrap.ts`). When a Magnific API key is resolvable (per-call →
+ * wrapper opts → env), `magnific/<leaf>` model ids are served by the V3 model
+ * classes below; otherwise the wrapper delegates to the underlying provider,
+ * which forwards the namespaced model id to the Varg gateway.
  *
- *   1. BYOK direct path  — when a Magnific key is resolvable, the call goes
- *                          straight to api.magnific.com.
- *   2. Varg gateway path — otherwise the model id is forwarded as-is to the
- *                          Varg gateway, which holds Magnific credentials.
- *
- * This file exposes the BYOK direct entry points and the routing helpers used
- * by `src/ai-sdk/providers/varg.ts`. It is intentionally NOT re-exported from
- * `src/ai-sdk/index.ts` — Magnific is reached only through the `varg` provider.
- *
- * ─── Known live-tested gotchas (per 2026-05-06 verification run) ──────────
+ * ─── Known gotchas ────────────────────────────────────────────────────────
  *
  *   • POST /ai/beta/remove-background uses `application/x-www-form-urlencoded`
  *     and returns a flat `{ url, high_resolution, preview, original }` shape
@@ -24,34 +17,34 @@
  *   • Several Kling endpoints POST to `…-pro` but POLL under the non-`-pro`
  *     slug. Captured in POLL_PATH_OVERRIDES.
  *
- *   • Magnific can return `status: "FAILED"` with NO error detail. Empirically
+ *   • Magnific can return `status: "FAILED"` with no error detail. Empirically
  *     this means input-compatibility rejection (e.g. unsupported video codec
  *     for VFX, oversized image, format Magnific can't decode). The thrown
- *     MagnificAPIError surfaces the capability path + task_id so users can
- *     retry with a different input. Specific case verified live: VFX rejects
- *     `commondatastorage.googleapis.com/.../ForBiggerJoyrides.mp4` regardless
- *     of `filter_type` (1 or 2 both fail) — but `download.samplelib.com/.../
- *     sample-5s.mp4` succeeds with both filters. Not an SDK bug; document the
- *     class of failure and suggest a different input.
+ *     MagnificAPIError surfaces the capability path + task_id so callers can
+ *     retry with a different input.
  *
  *   • `magnific/expand` (Flux Pro outpaint) requires ≥512px source images;
  *     smaller inputs reach FAILED with no detail. Not enforced client-side
  *     because the docs don't list a hard minimum.
  *
- *   • Endpoints with un-published schemas (Z-Image, Seedream-edit) had the
- *     wrong path in our llms.txt-derived map; verified live and corrected.
- *     `seedream-v4.5/edit` actually requires `reference_images: string[]`,
- *     not a singular `image` field — the builder enforces this.
+ *   • `seedream-v4.5/edit` requires `reference_images: string[]`, not a
+ *     singular `image` field — the builder enforces this.
  */
 
 import {
+  type EmbeddingModelV3,
+  type ImageModelV3,
   type ImageModelV3CallOptions,
   type ImageModelV3File,
+  type LanguageModelV3,
   NoSuchModelError,
+  type ProviderV3,
+  type SharedV3Warning,
+  type SpeechModelV3,
   type SpeechModelV3CallOptions,
 } from "@ai-sdk/provider";
-import type { MusicModelV3CallOptions } from "../music-model";
-import type { VideoModelV3CallOptions } from "../video-model";
+import type { MusicModelV3, MusicModelV3CallOptions } from "../music-model";
+import type { VideoModelV3, VideoModelV3CallOptions } from "../video-model";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -178,16 +171,19 @@ export function parseMagnificModelId(modelId: string): string | null {
 }
 
 export interface MagnificKeyResolutionInput {
-  /** VargProviderSettings — `magnificApiKey` set at `createVarg({...})` time. */
-  settings?: { magnificApiKey?: string };
   /** Per-call `options.providerOptions.magnific` — may carry an `apiKey`. */
   perCall?: Record<string, unknown>;
+  /**
+   * Explicit BYOK key passed by the wrapper (e.g. `withMagnific(varg, { apiKey })`).
+   * Empty string is treated as absent.
+   */
+  explicit?: string | null;
 }
 
 /**
  * Resolve a Magnific BYOK key. Precedence (highest first):
  *   1. perCall.apiKey               (per-`doGenerate` override)
- *   2. settings.magnificApiKey      (per-VargProvider override)
+ *   2. explicit                     (per-wrapper, e.g. withMagnific opts)
  *   3. process.env.MAGNIFIC_API_KEY (default)
  *
  * Returns null when no key is available (caller falls back to gateway).
@@ -201,8 +197,9 @@ export function resolveMagnificKey(
       : null;
   if (fromCall) return fromCall;
 
-  const fromSettings = args.settings?.magnificApiKey;
-  if (fromSettings) return fromSettings;
+  if (typeof args.explicit === "string" && args.explicit.length > 0) {
+    return args.explicit;
+  }
 
   const fromEnv = process.env.MAGNIFIC_API_KEY;
   if (fromEnv) return fromEnv;
@@ -2027,3 +2024,236 @@ export function _internal_buildBody(
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// V3 model classes — Magnific BYOK direct path. Each class wraps the
+// corresponding magnificDirect* helper above with the V3 model interface.
+//
+// Per-call `providerOptions.magnific.apiKey` overrides the provider-level
+// key. `apiKey` is stripped from the body in `extractMagnificProviderOpts`,
+// so it never leaks into the outgoing request.
+// ---------------------------------------------------------------------------
+
+/** Pick the magnific bucket from per-call providerOptions. */
+function getPerCallBucket(
+  providerOptions:
+    | Record<string, Record<string, unknown> | undefined>
+    | undefined,
+): Record<string, unknown> | undefined {
+  return providerOptions?.magnific as Record<string, unknown> | undefined;
+}
+
+/**
+ * Resolve the API key at doGenerate time, allowing per-call override.
+ * Throws if no key is available.
+ */
+function requireApiKey(
+  perCall: Record<string, unknown> | undefined,
+  fromSettings: string | null,
+): string {
+  const key = resolveMagnificKey({ perCall, explicit: fromSettings });
+  if (!key) {
+    throw new MagnificAPIError(
+      "No Magnific API key available. Pass `apiKey` to `createMagnific({...})`, " +
+        "set `process.env.MAGNIFIC_API_KEY`, or supply `providerOptions.magnific.apiKey` per call.",
+    );
+  }
+  return key;
+}
+
+class MagnificImageModel implements ImageModelV3 {
+  readonly specificationVersion = "v3" as const;
+  readonly provider = "magnific";
+  readonly modelId: string;
+  readonly maxImagesPerCall = 1;
+
+  private leaf: string;
+  private apiKey: string | null;
+  private baseUrl: string;
+
+  constructor(modelId: string, apiKey: string | null, baseUrl: string) {
+    this.modelId = modelId;
+    this.leaf = parseMagnificModelId(modelId) ?? modelId;
+    this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
+  }
+
+  async doGenerate(options: ImageModelV3CallOptions) {
+    const perCall = getPerCallBucket(options.providerOptions);
+    const key = requireApiKey(perCall, this.apiKey);
+    const result = await magnificDirectImage(this.leaf, key, options, {
+      baseUrl: this.baseUrl,
+      signal: options.abortSignal,
+    });
+    return {
+      images: [result.data],
+      warnings: [] as SharedV3Warning[],
+      response: {
+        timestamp: new Date(),
+        modelId: this.modelId,
+        headers: undefined,
+      },
+    };
+  }
+}
+
+class MagnificVideoModel implements VideoModelV3 {
+  readonly specificationVersion = "v3" as const;
+  readonly provider = "magnific";
+  readonly modelId: string;
+  readonly maxVideosPerCall = 1;
+
+  private leaf: string;
+  private apiKey: string | null;
+  private baseUrl: string;
+
+  constructor(modelId: string, apiKey: string | null, baseUrl: string) {
+    this.modelId = modelId;
+    this.leaf = parseMagnificModelId(modelId) ?? modelId;
+    this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
+  }
+
+  async doGenerate(options: VideoModelV3CallOptions) {
+    const perCall = getPerCallBucket(options.providerOptions);
+    const key = requireApiKey(perCall, this.apiKey);
+    const result = await magnificDirectVideo(this.leaf, key, options, {
+      baseUrl: this.baseUrl,
+      signal: options.abortSignal,
+    });
+    return {
+      videos: [result.data],
+      warnings: [] as SharedV3Warning[],
+      response: {
+        timestamp: new Date(),
+        modelId: this.modelId,
+        headers: undefined,
+      },
+    };
+  }
+}
+
+class MagnificMusicModel implements MusicModelV3 {
+  readonly specificationVersion = "v3" as const;
+  readonly provider = "magnific";
+  readonly modelId: string;
+
+  private leaf: string;
+  private apiKey: string | null;
+  private baseUrl: string;
+
+  constructor(modelId: string, apiKey: string | null, baseUrl: string) {
+    this.modelId = modelId;
+    this.leaf = parseMagnificModelId(modelId) ?? modelId;
+    this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
+  }
+
+  async doGenerate(options: MusicModelV3CallOptions) {
+    const perCall = getPerCallBucket(options.providerOptions);
+    const key = requireApiKey(perCall, this.apiKey);
+    const result = await magnificDirectMusic(this.leaf, key, options, {
+      baseUrl: this.baseUrl,
+      signal: options.abortSignal,
+    });
+    return {
+      audio: result.data,
+      warnings: [] as SharedV3Warning[],
+      response: {
+        timestamp: new Date(),
+        modelId: this.modelId,
+        headers: undefined,
+      },
+    };
+  }
+}
+
+class MagnificSpeechModel implements SpeechModelV3 {
+  readonly specificationVersion = "v3" as const;
+  readonly provider = "magnific";
+  readonly modelId: string;
+
+  private leaf: string;
+  private apiKey: string | null;
+  private baseUrl: string;
+
+  constructor(modelId: string, apiKey: string | null, baseUrl: string) {
+    this.modelId = modelId;
+    this.leaf = parseMagnificModelId(modelId) ?? modelId;
+    this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
+  }
+
+  async doGenerate(options: SpeechModelV3CallOptions) {
+    const perCall = getPerCallBucket(options.providerOptions);
+    const key = requireApiKey(perCall, this.apiKey);
+    const result = await magnificDirectSpeech(this.leaf, key, options, {
+      baseUrl: this.baseUrl,
+      signal: options.abortSignal,
+    });
+    return {
+      audio: result.data,
+      warnings: [] as SharedV3Warning[],
+      response: { timestamp: new Date(), modelId: this.modelId },
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Provider factory + singleton (matches the Fal/Higgsfield/Replicate pattern)
+// ---------------------------------------------------------------------------
+
+export interface MagnificProviderSettings {
+  /**
+   * Magnific API key. Falls back to `process.env.MAGNIFIC_API_KEY`.
+   * Per-call override via `options.providerOptions.magnific.apiKey` is also
+   * supported and takes precedence.
+   */
+  apiKey?: string;
+  /**
+   * Override the Magnific API base URL (testing/staging). Falls back to
+   * `process.env.MAGNIFIC_BASE_URL`, then the built-in default
+   * (`https://api.magnific.com/v1`).
+   */
+  baseUrl?: string;
+}
+
+export interface MagnificProvider extends ProviderV3 {
+  imageModel(modelId: string): ImageModelV3;
+  videoModel(modelId: string): VideoModelV3;
+  musicModel(modelId: string): MusicModelV3;
+  speechModel(modelId: string): SpeechModelV3;
+}
+
+export function createMagnific(
+  settings: MagnificProviderSettings = {},
+): MagnificProvider {
+  const apiKey = settings.apiKey ?? process.env.MAGNIFIC_API_KEY ?? null;
+  const baseUrl =
+    settings.baseUrl ?? process.env.MAGNIFIC_BASE_URL ?? MAGNIFIC_BASE_URL;
+
+  return {
+    specificationVersion: "v3",
+    imageModel(modelId: string): ImageModelV3 {
+      return new MagnificImageModel(modelId, apiKey, baseUrl);
+    },
+    videoModel(modelId: string): VideoModelV3 {
+      return new MagnificVideoModel(modelId, apiKey, baseUrl);
+    },
+    musicModel(modelId: string): MusicModelV3 {
+      return new MagnificMusicModel(modelId, apiKey, baseUrl);
+    },
+    speechModel(modelId: string): SpeechModelV3 {
+      return new MagnificSpeechModel(modelId, apiKey, baseUrl);
+    },
+    languageModel(modelId: string): LanguageModelV3 {
+      throw new NoSuchModelError({ modelId, modelType: "languageModel" });
+    },
+    embeddingModel(modelId: string): EmbeddingModelV3 {
+      throw new NoSuchModelError({ modelId, modelType: "embeddingModel" });
+    },
+  };
+}
+
+const magnific_provider = createMagnific();
+export { magnific_provider as magnific };

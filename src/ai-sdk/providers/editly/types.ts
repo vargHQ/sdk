@@ -350,6 +350,7 @@ export interface EditlyResult {
 // Internal types used by our implementation
 export interface VideoInfo {
   duration: number;
+  hasAudio?: boolean;
   width?: number;
   height?: number;
   fps?: number;

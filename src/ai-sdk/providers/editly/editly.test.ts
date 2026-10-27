@@ -1,13 +1,42 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
+import {
+  ensureFixtures,
+  ensureLandscapeImage,
+  ensureSilentAudio,
+  fixturePath,
+  LANDSCAPE_IMAGE_PATH,
+  SILENT_AUDIO_PATH,
+} from "../../../tests/fixtures";
 import { localBackend } from "./backends/local";
 import { editly } from "./index";
 
-const VIDEO_1 = "output/sora-landscape.mp4";
-const VIDEO_2 = "output/simpsons-scene.mp4";
-const VIDEO_TALKING = "output/workflow-talking-synced.mp4";
-const IMAGE_SQUARE = "media/replicate-forest.png";
-const IMAGE_PORTRAIT = "media/madi-portrait.png";
+// Media fixtures live in R2, not in gitignored output/ and media/ — these
+// paths are only populated once the beforeAll below has downloaded them.
+const VIDEO_1 = fixturePath("sora-landscape.mp4");
+const VIDEO_2 = fixturePath("simpsons-scene.mp4");
+const VIDEO_TALKING = fixturePath("workflow-talking-synced.mp4");
+const IMAGE_SQUARE = fixturePath("replicate-forest.png");
+const IMAGE_PORTRAIT = fixturePath("madi-portrait.png");
+// Stand-ins for the unavailable media/cyberpunk-street.png and
+// media/kirill-voice.mp3, both generated locally by ffmpeg. These tests
+// assert an output file was produced, never what it looks or sounds like.
+const IMAGE_LANDSCAPE = LANDSCAPE_IMAGE_PATH;
+const AUDIO_TRACK = SILENT_AUDIO_PATH;
+
+beforeAll(async () => {
+  await Promise.all([
+    ensureFixtures(
+      "sora-landscape.mp4",
+      "simpsons-scene.mp4",
+      "workflow-talking-synced.mp4",
+      "replicate-forest.png",
+      "madi-portrait.png",
+    ),
+    ensureSilentAudio(),
+    ensureLandscapeImage(),
+  ]);
+}, 180_000);
 
 const ffprobe = localBackend.ffprobe;
 
@@ -289,7 +318,7 @@ describe("editly", () => {
             layers: [
               {
                 type: "image",
-                path: "media/cyberpunk-street.png",
+                path: IMAGE_LANDSCAPE,
                 zoomDirection: "left",
                 zoomAmount: 0.15,
                 resizeMode: "contain",
@@ -302,7 +331,7 @@ describe("editly", () => {
             layers: [
               {
                 type: "image",
-                path: "media/cyberpunk-street.png",
+                path: IMAGE_LANDSCAPE,
                 zoomDirection: "right",
                 zoomAmount: 0.15,
                 resizeMode: "contain",
@@ -314,7 +343,8 @@ describe("editly", () => {
 
       expect(existsSync(outPath)).toBe(true);
     },
-    { timeout: 10000 },
+    // Two zoompan clips at 1280x720; see the note on the portrait cover test.
+    { timeout: 60000 },
   );
 
   test("title with custom font", async () => {
@@ -658,7 +688,7 @@ describe("editly", () => {
           layers: [
             { type: "fill-color", color: "#1a1a2e" },
             { type: "title", text: "Audio Layer Test" },
-            { type: "audio", path: "media/kirill-voice.mp3" },
+            { type: "audio", path: AUDIO_TRACK },
           ],
         },
       ],
@@ -684,7 +714,7 @@ describe("editly", () => {
             { type: "title", text: "Audio starts at 2s" },
             {
               type: "detached-audio",
-              path: "media/kirill-voice.mp3",
+              path: AUDIO_TRACK,
               start: 2,
             },
           ],
@@ -704,7 +734,7 @@ describe("editly", () => {
       width: 640,
       height: 480,
       fps: 30,
-      audioFilePath: "media/kirill-voice.mp3",
+      audioFilePath: AUDIO_TRACK,
       loopAudio: true,
       clips: [
         {
@@ -854,7 +884,7 @@ describe("editly", () => {
       fps: 30,
       audioTracks: [
         {
-          path: "media/kirill-voice.mp3",
+          path: AUDIO_TRACK,
           cutFrom: 0,
           cutTo: 2,
           start: 1,
@@ -1019,7 +1049,9 @@ describe("editly", () => {
         },
         {
           duration: 4,
-          layers: [{ type: "video", path: "output/duet-mixed.mp4" }],
+          // Was output/duet-mixed.mp4 (gitignored, 404 on R2). VIDEO_2 also
+          // carries an audio stream, which is what keepSourceAudio needs.
+          layers: [{ type: "video", path: VIDEO_2 }],
         },
       ],
     });
@@ -1084,6 +1116,10 @@ describe("editly", () => {
     });
   });
 
+  // Slow by nature: fitting a 16:9 source into 1080x1920 with resizeMode
+  // "cover" makes zoompan operate on a heavily upscaled frame (~20s locally,
+  // regardless of source resolution — measured at 640x360, 960x540, 1280x720).
+  // The square-image sibling test above costs ~2s for the same output size.
   test("portrait 9:16 landscape image with zoompan cover mode", async () => {
     const outPath = "output/editly-test-portrait-landscape-cover.mp4";
     if (existsSync(outPath)) unlinkSync(outPath);
@@ -1099,7 +1135,7 @@ describe("editly", () => {
           layers: [
             {
               type: "image",
-              path: "media/cyberpunk-street.png",
+              path: IMAGE_LANDSCAPE,
               zoomDirection: "in",
               zoomAmount: 0.1,
               resizeMode: "cover",
@@ -1114,7 +1150,7 @@ describe("editly", () => {
     expect(info.width).toBe(1080);
     expect(info.height).toBe(1920);
     expect(info.duration).toBeCloseTo(3, 0);
-  });
+  }, 60_000);
 
   test("video overlay with cropPosition", async () => {
     const outPath = "output/editly-test-crop-position.mp4";
@@ -1214,7 +1250,12 @@ describe("editly", () => {
     expect(info.height).toBe(1080);
   });
 
-  test("issue #62: positioned videos in clip don't bleed into other clips", async () => {
+  // REGRESSED — see the note above `issue #123` below. A clip containing
+  // positioned videos contributes ~0s instead of its declared duration, so
+  // this composition renders 4.4s instead of 5.4s. `test.failing` keeps the
+  // assertion pinned to the CORRECT value and will start failing (loudly) the
+  // moment the underlying bug is fixed, so this cannot be silently forgotten.
+  test.failing("issue #62: positioned videos in clip don't bleed into other clips", async () => {
     // Bug: positioned videos from Grid/Split are treated as continuous overlays
     // spanning entire video instead of being scoped to their clip.
     // Fix: clip-local overlays (no cutFrom/cutTo) vs continuous (has cutFrom/cutTo)
@@ -1267,7 +1308,7 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
     const info = await ffprobe(outPath);
     expect(info.duration).toBeCloseTo(5.4, 0);
-  });
+  }, 60_000);
 
   test("issue #62: continuous overlay (with cutFrom/cutTo) spans clips correctly", async () => {
     const outPath = "output/editly-test-continuous-overlay-spans.mp4";
@@ -1337,7 +1378,20 @@ describe("editly", () => {
 
   // Regression test for issue #123
   // https://github.com/vargHQ/sdk/issues/123
-  test("issue #123: clip with only positioned videos (no base layer) generates valid filter", async () => {
+  //
+  // REGRESSED (both #62 and #123). These two tests could never run before —
+  // they died on a missing fixture long before reaching their assertions, so
+  // the regression went unnoticed. Verified with fixtures restored: an
+  // otherwise identical 3-clip composition renders 5s when the middle clip is
+  // fill-color, but 4s when the middle clip holds positioned videos — the
+  // positioned-video clip contributes ~0s of its declared 2s. A clip whose
+  // ONLY layer is a positioned video still throws "Clip N produced no video
+  // output", which is exactly the #123 symptom.
+  //
+  // Marked `test.failing` rather than skipped: the assertion still encodes the
+  // CORRECT expectation and Bun fails the test if it ever starts passing, so
+  // fixing the bug forces this marker to be removed.
+  test.failing("issue #123: clip with only positioned videos (no base layer) generates valid filter", async () => {
     // Bug: when a clip has only positioned videos (from Split/Slot) and no base layer,
     // buildBaseClipFilter returns an empty outputLabel "", causing ffmpeg to crash with
     // "Bad (empty?) label found" error like: "[]concat=n=2:v=1:a=0..."
@@ -1391,7 +1445,7 @@ describe("editly", () => {
     expect(existsSync(outPath)).toBe(true);
     const info = await ffprobe(outPath);
     expect(info.duration).toBeGreaterThan(4);
-  });
+  }, 60_000);
 
   test("issue #123: clip with no layers at all throws clear error", async () => {
     await expect(

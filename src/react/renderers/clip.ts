@@ -18,6 +18,7 @@ import type {
   VargNode,
   VideoProps,
 } from "../types";
+import { audioMixVolume, renderAudio, resolveVideoMixVolume } from "./audio";
 import type { RenderContext } from "./context";
 import { renderImage } from "./image";
 import { renderMusic } from "./music";
@@ -95,6 +96,12 @@ async function renderClipLayers(
           promise: renderVideo(element as VargElement<"video">, ctx).then(
             async (file) => {
               const path = await ctx.backend.resolvePath(file);
+              const mixVolume = await resolveVideoMixVolume({
+                backend: ctx.backend,
+                keepAudio: props.keepAudio,
+                path,
+                volume: props.volume,
+              });
               return {
                 type: "video",
                 path,
@@ -103,7 +110,7 @@ async function renderClipLayers(
                 cropPosition: props.cropPosition,
                 cutFrom: props.cutFrom ?? clipOptions?.cutFrom,
                 cutTo: props.cutTo ?? clipOptions?.cutTo,
-                mixVolume: props.keepAudio ? (props.volume ?? 1) : 0,
+                mixVolume,
                 left: props.left,
                 top: props.top,
                 width: props.width,
@@ -147,6 +154,25 @@ async function renderClipLayers(
                   type: "audio",
                   path,
                   mixVolume: props.volume ?? 1,
+                }) as AudioLayer,
+            ),
+        });
+        break;
+      }
+
+      case "audio": {
+        // Derived audio node (video.audio / speech.audio) as clip child —
+        // plays as an audio layer, same as speech.
+        pending.push({
+          type: "async",
+          promise: renderAudio(element as VargElement<"audio">, ctx)
+            .then((file) => ctx.backend.resolvePath(file))
+            .then(
+              (path) =>
+                ({
+                  type: "audio",
+                  path,
+                  mixVolume: audioMixVolume(element as VargElement<"audio">),
                 }) as AudioLayer,
             ),
         });
@@ -308,22 +334,25 @@ async function renderClipLayers(
                 ctx,
               )
                 .then((file) => ctx.backend.resolvePath(file))
-                .then(
-                  (path) =>
-                    ({
-                      type: "video",
-                      path,
-                      mixVolume: overlayProps.keepAudio
-                        ? (overlayProps.volume ?? 1)
-                        : 0,
-                      left: overlayProps.left,
-                      top: overlayProps.top,
-                      width: overlayProps.width,
-                      height: overlayProps.height,
-                      start: overlayProps.start,
-                      stop: overlayProps.end,
-                    }) as VideoLayer,
-                ),
+                .then(async (path) => {
+                  const mixVolume = await resolveVideoMixVolume({
+                    backend: ctx.backend,
+                    keepAudio: overlayProps.keepAudio,
+                    path,
+                    volume: overlayProps.volume,
+                  });
+                  return {
+                    type: "video",
+                    path,
+                    mixVolume,
+                    left: overlayProps.left,
+                    top: overlayProps.top,
+                    width: overlayProps.width,
+                    height: overlayProps.height,
+                    start: overlayProps.start,
+                    stop: overlayProps.end,
+                  } as VideoLayer;
+                }),
             });
           }
         }

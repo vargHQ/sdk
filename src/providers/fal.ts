@@ -4,12 +4,29 @@
  */
 
 import { fal } from "@fal-ai/client";
+import { IMAGE_MODELS, normalizeModelId } from "../ai-sdk/providers/fal";
 import type { JobStatusUpdate, ProviderConfig } from "../core/schema/types";
 import { BaseProvider, ensureUrl } from "./base";
 
 const falApiKey = process.env.FAL_API_KEY ?? process.env.FAL_KEY;
 if (falApiKey) {
   fal.config({ credentials: falApiKey });
+}
+
+/**
+ * Resolve an SDK image-model alias (e.g. "mai-image-2.5", "nano_banana_pro")
+ * to its fal upstream endpoint. Underscored prod canonical names are
+ * normalized to hyphenated SDK aliases before lookup. Pass-through rules:
+ *   - `raw:<endpoint>`  → strip the `raw:` prefix (escape hatch for unmapped ids)
+ *   - already an upstream id (contains a `/`) → use as-is
+ *   - known alias in IMAGE_MODELS → resolved upstream id
+ *   - unknown alias with no `/` → falls through as-is (fal will 404; surfaces
+ *     the bad name clearly rather than silently misrouting)
+ */
+function resolveFalImageModel(model: string): string {
+  const id = normalizeModelId(model);
+  if (id.startsWith("raw:")) return id.slice(4);
+  return IMAGE_MODELS[id] ?? id;
 }
 
 export class FalProvider extends BaseProvider {
@@ -240,7 +257,10 @@ export class FalProvider extends BaseProvider {
     model?: string;
     imageSize?: string;
   }) {
-    const modelId = args.model || "fal-ai/flux-pro/v1.1";
+    // Resolve SDK aliases (e.g. "mai-image-2.5", "nano-banana-pro") to fal
+    // upstream endpoints. Unknown / "raw:"-prefixed / already-upstream ids
+    // pass through unchanged. Mirrors IMAGE_MODELS in ai-sdk/providers/fal.ts.
+    const modelId = resolveFalImageModel(args.model || "fal-ai/flux-pro/v1.1");
 
     console.log(`[fal] generating image with ${modelId}`);
     console.log(`[fal] prompt: ${args.prompt}`);
@@ -377,6 +397,44 @@ export class FalProvider extends BaseProvider {
       audio_url: audioUrl,
       turbo_mode: args.turboMode ?? false,
       resolution: args.resolution ?? "1080p",
+    };
+
+    const result = await fal.subscribe(modelId, {
+      input,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log(
+            `[fal] ${update.logs?.map((l) => l.message).join(" ") || "processing..."}`,
+          );
+        }
+      },
+    });
+
+    console.log("[fal] completed!");
+    return result;
+  }
+
+  async omnihumanV2(args: {
+    imageUrl: string;
+    audioUrl: string;
+    prompt?: string;
+  }) {
+    const modelId: string = "fal-ai/bytedance/omnihuman/v2";
+
+    console.log(`[fal] starting omnihuman v2.0: ${modelId}`);
+
+    const imageUrl = await ensureUrl(args.imageUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+    const audioUrl = await ensureUrl(args.audioUrl, (buffer) =>
+      this.uploadFile(buffer),
+    );
+
+    const input: Record<string, unknown> = {
+      ...(args.prompt ? { prompt: args.prompt } : {}),
+      image_url: imageUrl,
+      audio_url: audioUrl,
     };
 
     const result = await fal.subscribe(modelId, {
@@ -844,6 +902,8 @@ export const wan25 = (args: Parameters<FalProvider["wan25"]>[0]) =>
   falProvider.wan25(args);
 export const omnihuman15 = (args: Parameters<FalProvider["omnihuman15"]>[0]) =>
   falProvider.omnihuman15(args);
+export const omnihumanV2 = (args: Parameters<FalProvider["omnihumanV2"]>[0]) =>
+  falProvider.omnihumanV2(args);
 export const veedFabric10 = (
   args: Parameters<FalProvider["veedFabric10"]>[0],
 ) => falProvider.veedFabric10(args);

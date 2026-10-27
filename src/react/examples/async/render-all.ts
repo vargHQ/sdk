@@ -35,7 +35,6 @@ async function renderExample(name: string, path: string) {
 await renderExample("simple", "./simple.tsx");
 await renderExample("simple-with-deps", "./simple-with-deps.tsx");
 await renderExample("talking-head", "./talking-head.tsx");
-await renderExample("strawberry-vs-chocolate", "./example_we_want_to_test.tsx");
 
 console.log(`\n${"=".repeat(60)}`);
 console.log("All done.");

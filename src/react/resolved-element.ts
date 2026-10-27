@@ -1,11 +1,16 @@
 import type { File } from "../ai-sdk/file";
 import type { Segment, WordTiming } from "../speech/types";
+import { type AudioNode, makeAudioNode } from "./audio-element";
 import type {
   ElementMeta,
   SliceSegment,
+  VargElement,
   VargElementType,
   VargNode,
 } from "./types";
+
+/** Memoized derived audio nodes — one AudioNode per resolved element. */
+const audioNodeCache = new WeakMap<object, AudioNode>();
 
 /**
  * A VargElement that has been resolved via `await`.
@@ -53,12 +58,29 @@ export class ResolvedElement<T extends VargElementType = VargElementType> {
   }
 
   /**
-   * Self-reference for destructuring convenience.
+   * Derived audio node for this element.
+   *
+   * - Speech parents: an `AudioNode` wrapping the same audio file, preserving
+   *   word timings — usable everywhere the speech element was (clip child,
+   *   `prompt.audio`, `Captions src`), plus `.transcribe()`, `.silenceSegments()`,
+   *   `.range()`, `.speechRange()`.
+   * - Video parents: an `AudioNode` that extracts the audio track via
+   *   ffmpeg on `await`.
+   * - Audio elements return themselves.
+   *
+   * Memoized: repeated access returns the same node.
    * Enables `const { audio, segments } = await Speech(...)`.
-   * `audio` is the full resolved speech element — pass it anywhere a speech element is accepted.
    */
-  get audio(): this {
-    return this;
+  get audio(): AudioNode {
+    if (this.type === "audio") return this as unknown as AudioNode;
+    let node = audioNodeCache.get(this);
+    if (!node) {
+      node = makeAudioNode({
+        parent: this as unknown as VargElement<"video"> | VargElement<"speech">,
+      });
+      audioNodeCache.set(this, node);
+    }
+    return node;
   }
 
   /** Aspect ratio of the generated media, if applicable. */

@@ -40,9 +40,6 @@ __pycache__
 reference/
 media/
 
-scripts/*
-!scripts/.gitkeep
-
 lib
 
 

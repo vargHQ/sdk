@@ -35,15 +35,6 @@
       "vargai/jsx-dev-runtime": ["./src/react/runtime/jsx-dev-runtime.ts"]
     }
   },
-  "include": ["src/**/*", "launch-videos/**/*"],
-  "exclude": [
-    "node_modules",
-    "action",
-    "lib",
-    "cli",
-    "service",
-    "utilities",
-    "pipeline",
-    "src/cli"
-  ]
+  "include": ["src/**/*", "examples/**/*"],
+  "exclude": ["node_modules", "pipeline", "src/cli"]
 }

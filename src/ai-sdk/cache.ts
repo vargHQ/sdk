@@ -1,3 +1,5 @@
+import type { LimitFunction } from "p-limit";
+
 export interface CacheStorage {
   get(key: string): Promise<unknown | undefined>;
   set(key: string, value: unknown, ttl?: number): Promise<void>;
@@ -7,6 +9,16 @@ export interface CacheStorage {
 export interface WithCacheOptions {
   ttl?: number | string;
   storage?: CacheStorage;
+  /**
+   * Optional concurrency limiter applied to the *underlying* call.
+   *
+   * Only cache MISSES consume a slot — a cache hit returns without
+   * queueing, so a fully cached run never serializes on the limiter.
+   * Used by the standalone resolve path (async components running during
+   * `resolveLazy`, before `executePlan` and its `concurrency` cap exist)
+   * to bound real API traffic. See sdk#225.
+   */
+  limit?: LimitFunction;
 }
 
 type CacheKeyDeps = (string | number | boolean | null | undefined)[];
@@ -119,11 +131,15 @@ export function withCache<T extends object, R>(
   const storage = options.storage ?? defaultStorage;
   const ttl = parseTTL(options.ttl ?? DEFAULT_TTL);
   const prefix = fn.name || "anonymous";
+  const limit = options.limit;
+  // Only the real call is limited; cache lookups stay unbounded.
+  const call = (input: T): Promise<R> =>
+    limit ? limit(() => fn(input)) : fn(input);
   return async (opts: WithCacheKey<T>): Promise<R> => {
     const { cacheKey, skipCacheWrite, ...rest } = opts;
 
     if (!cacheKey) {
-      return fn(rest as T);
+      return call(rest as T);
     }
 
     const key = depsToKey(prefix, cacheKey);
@@ -131,7 +147,7 @@ export function withCache<T extends object, R>(
     if (cached !== undefined) {
       return cached as R;
     }
-    const result = await fn(rest as T);
+    const result = await call(rest as T);
     if (!skipCacheWrite) {
       const flattened = flatten(result);
       await storage.set(key, flattened, ttl);

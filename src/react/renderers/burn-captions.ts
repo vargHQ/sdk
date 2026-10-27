@@ -4,6 +4,7 @@ import type {
   FFmpegBackend,
   FFmpegOutput,
 } from "../../ai-sdk/providers/editly/backends/types";
+import type { EmojiOverlay } from "./emoji";
 
 /**
  * Resolves an FFmpegOutput to a string path/URL via the backend.
@@ -33,6 +34,11 @@ export interface CaptionOverlayOptions {
   verbose?: boolean;
   /** Font files to include for subtitle rendering. When provided, fontsdir is set. */
   fontFiles?: CaptionFontFile[];
+  /**
+   * Color emoji PNG overlays to composite on top of the burned subtitles.
+   * Computed by the captions renderer with precise per-emoji pixel positions.
+   */
+  emojiOverlays?: EmojiOverlay[];
 }
 
 /** Local font cache directory. */

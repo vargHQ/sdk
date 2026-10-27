@@ -1,6 +1,8 @@
-import { describe, expect, mock, test } from "bun:test";
-import { existsSync, unlinkSync } from "node:fs";
+import { beforeAll, describe, expect, mock, test } from "bun:test";
+import { existsSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fal } from "../ai-sdk/providers/fal";
+import { ensureFixtures } from "../tests/fixtures";
 import {
   Captions,
   Clip,
@@ -241,9 +243,18 @@ describe("varg-react render", () => {
 });
 
 describe("layout renderers", () => {
-  const testImage1 = "media/cyberpunk-street.png";
-  const testImage2 = "media/fal-coffee-shop.png";
+  // Fixtures come from R2 rather than gitignored media/ — these tests only
+  // assert that a video was produced, so any valid image works.
+  let testImage1 = "";
+  let testImage2 = "";
   const outPath = "output/layout-test.mp4";
+
+  beforeAll(async () => {
+    [testImage1, testImage2] = (await ensureFixtures(
+      "test-red.png",
+      "test-green.png",
+    )) as [string, string];
+  });
 
   test("Split renders side-by-side images", async () => {
     const root = Render({
@@ -369,6 +380,16 @@ describe("layout renderers", () => {
   test(
     "Captions burns subtitles from SRT file",
     async () => {
+      // Generated rather than fixtured: an SRT is plain text, so depending on
+      // a binary asset for it was needless (the old media/dora-test.srt is
+      // gitignored and absent from a fresh checkout).
+      const srtPath = `${tmpdir()}/varg-react-captions-test.srt`;
+      writeFileSync(
+        srtPath,
+        "1\n00:00:00,000 --> 00:00:01,500\nHello world\n\n" +
+          "2\n00:00:01,500 --> 00:00:03,000\nSecond line\n",
+      );
+
       const root = Render({
         width: 1280,
         height: 720,
@@ -378,7 +399,7 @@ describe("layout renderers", () => {
             children: [Image({ src: testImage1 })],
           }),
           Captions({
-            srt: "media/dora-test.srt",
+            srt: srtPath,
             style: "tiktok",
           }),
         ],

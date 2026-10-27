@@ -153,11 +153,11 @@ async function resolveImageProp(
 }
 
 /**
- * Resolve an audio prop — either a pre-resolved ResolvedElement<"speech">
- * or a lazy VargElement<"speech"> that needs rendering.
+ * Resolve an audio prop — a pre-resolved ResolvedElement<"speech">, a lazy
+ * VargElement<"speech">, or a derived audio node (video.audio / speech.audio).
  */
 async function resolveAudioProp(
-  audio: VargElement<"speech">,
+  audio: VargElement<"speech"> | VargElement<"audio">,
   ctx: RenderContext,
 ): Promise<File> {
   if (audio instanceof ResolvedElement) {
@@ -165,5 +165,10 @@ async function resolveAudioProp(
     return audio.meta.file;
   }
 
-  return renderSpeech(audio, ctx);
+  if (audio.type === "audio") {
+    const { renderAudio } = await import("./audio");
+    return renderAudio(audio as VargElement<"audio">, ctx);
+  }
+
+  return renderSpeech(audio as VargElement<"speech">, ctx);
 }

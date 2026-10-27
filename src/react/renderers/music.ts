@@ -3,14 +3,13 @@ import type { generateMusic } from "../../ai-sdk/generate-music";
 import { ResolvedElement } from "../resolved-element";
 import type { MusicProps, VargElement } from "../types";
 import type { RenderContext } from "./context";
-import { addTask, completeTask, startTask } from "./progress";
+import { withDedup } from "./dedup";
 import { computeCacheKey } from "./utils";
 
 export async function renderMusic(
   element: VargElement<"music">,
   ctx: RenderContext,
 ): Promise<File> {
-  // If already resolved via `await Music(...)`, reuse the pre-generated file
   if (element instanceof ResolvedElement) {
     ctx.generatedFiles.push(element.meta.file);
     return element.meta.file;
@@ -24,22 +23,10 @@ export async function renderMusic(
     throw new Error("Music requires prompt and model (or set defaults.music)");
   }
 
+  const modelId = model.modelId ?? "music";
   const cacheKey = computeCacheKey(element);
-  const cacheKeyStr = JSON.stringify(cacheKey);
 
-  // Deduplicate concurrent renders of the same music element
-  const pendingRender = ctx.pendingFiles.get(cacheKeyStr);
-  if (pendingRender) {
-    return pendingRender;
-  }
-
-  const renderPromise = (async () => {
-    const modelId = model.modelId ?? "music";
-    const taskId = ctx.progress
-      ? addTask(ctx.progress, "music", modelId)
-      : null;
-    if (taskId && ctx.progress) startTask(ctx.progress, taskId);
-
+  return withDedup(element, ctx, "music", modelId, async () => {
     const { audio } = await ctx.generateMusic({
       model,
       prompt,
@@ -47,7 +34,13 @@ export async function renderMusic(
       cacheKey,
     } as Parameters<typeof generateMusic>[0]);
 
-    if (taskId && ctx.progress) completeTask(ctx.progress, taskId);
+    if (!audio?.uint8Array) {
+      throw new Error(
+        `We couldn't generate the background music for this video (music model "${modelId}"). ` +
+          `The audio came back empty. Please try again — if it keeps happening, ` +
+          `try a different music model or adjust the prompt.`,
+      );
+    }
 
     const mediaType =
       (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
@@ -62,12 +55,6 @@ export async function renderMusic(
       prompt,
     });
 
-    ctx.generatedFiles.push(file);
-
     return file;
-  })();
-
-  ctx.pendingFiles.set(cacheKeyStr, renderPromise);
-
-  return renderPromise;
+  });
 }

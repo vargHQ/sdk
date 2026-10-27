@@ -11,7 +11,7 @@
  */
 
 import {
-  generateImage,
+  generateImage as generateImageRaw,
   experimental_generateSpeech as generateSpeechAI,
 } from "ai";
 import { $ } from "bun";
@@ -29,10 +29,12 @@ import type {
   SegmentDescriptor,
   WordTiming,
 } from "../speech/types";
+import { extractAudio } from "./primitives/audio";
 import { computeCacheKey, getTextContent } from "./renderers/utils";
-import { getResolveContext } from "./resolve-context";
+import { getActiveLimit, getResolveContext } from "./resolve-context";
 import { ResolvedElement } from "./resolved-element";
 import type {
+  AudioElementProps,
   ImagePrompt,
   ImageProps,
   MusicProps,
@@ -56,8 +58,60 @@ function getLocalCache(): CacheStorage {
 }
 
 /** Get the active cache storage — from context if available, otherwise local fallback. */
-function getActiveCache(): CacheStorage {
+export function getActiveCache(): CacheStorage {
   return getResolveContext()?.cache ?? getLocalCache();
+}
+
+// ---------------------------------------------------------------------------
+// In-flight resolve memoization — one element, one generation
+// ---------------------------------------------------------------------------
+/**
+ * The computation graph invariant: a single VargElement resolves at most
+ * once, no matter how many paths lead to it.
+ *
+ * Without this, N concurrent consumers of a shared element (e.g. 12 async
+ * components whose videos all reference the same location card) each start
+ * their own generation: the `meta?.file` check only catches *finished*
+ * resolves, so concurrent paths all see `undefined` and fire N parallel
+ * API calls (the ep5 incident: 52 jobs for one image, 429 retry storm).
+ *
+ * Keyed by element identity (WeakMap), not cache key — this is graph
+ * semantics, not caching. Two textually identical but distinct elements
+ * stay distinct nodes (the disk cache still collapses them by cacheKey).
+ *
+ * A rejected promise stays memoized, consistent with `makeThenable` and
+ * the renderers' `pendingFiles` — re-awaiting a failed element re-throws
+ * the same error instead of re-spending money.
+ */
+const inFlightResolves = new WeakMap<object, Promise<ResolvedElement<never>>>();
+
+function memoizedElementResolve<T extends VargElement["type"]>(
+  element: VargElement<T>,
+  fn: () => Promise<ResolvedElement<T>>,
+): Promise<ResolvedElement<T>> {
+  // Fast path: already resolved (awaited earlier, or meta written back).
+  if (element.meta?.file) {
+    return Promise.resolve(
+      element instanceof ResolvedElement
+        ? (element as ResolvedElement<T>)
+        : new ResolvedElement(element, element.meta),
+    );
+  }
+
+  const existing = inFlightResolves.get(element);
+  if (existing) return existing as Promise<ResolvedElement<T>>;
+
+  const promise = fn().then((resolved) => {
+    // Write meta back onto the original element so every other path
+    // (renderers, executePlan, compile) sees it as pre-resolved.
+    element.meta = resolved.meta;
+    return resolved;
+  });
+  inFlightResolves.set(
+    element,
+    promise as unknown as Promise<ResolvedElement<never>>,
+  );
+  return promise;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,26 +181,32 @@ async function trimVideoLocal(
 }
 
 // ---------------------------------------------------------------------------
-// Cached video generation — uses context cache when available
+// Cached generation — uses the context cache and concurrency limit when
+// available. The limiter is passed to withCache rather than wrapped around
+// it, so cache hits resolve immediately instead of queueing for a slot.
 // ---------------------------------------------------------------------------
 /** Get a cached generateVideo wrapper using the active cache storage. */
 function getCachedGenerateVideo() {
-  const ctx = getResolveContext();
-  const storage = ctx?.cache ?? getLocalCache();
-  return withCache(generateVideoRaw, { storage });
+  return withCache(generateVideoRaw, {
+    storage: getActiveCache(),
+    limit: getActiveLimit(),
+  });
 }
 
 /** Get a cached generateMusic wrapper using the active cache storage. */
 function getCachedGenerateMusic() {
-  const ctx = getResolveContext();
-  const storage = ctx?.cache ?? getLocalCache();
-  return withCache(generateMusicRaw, { storage });
+  return withCache(generateMusicRaw, {
+    storage: getActiveCache(),
+    limit: getActiveLimit(),
+  });
 }
 
 /** Get a cached generateSpeech wrapper using the active cache storage. */
 function getCachedGenerateSpeech() {
-  const storage = getActiveCache();
-  return withCache(generateSpeechAI, { storage });
+  return withCache(generateSpeechAI, {
+    storage: getActiveCache(),
+    limit: getActiveLimit(),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -402,7 +462,16 @@ function serializeSegment(seg: Segment): CachedSegment {
 // ---------------------------------------------------------------------------
 
 /** Generate speech audio via the AI SDK and return a ResolvedElement with duration metadata. */
-export async function resolveSpeechElement(
+export function resolveSpeechElement(
+  element: VargElement<"speech">,
+  props: SpeechProps,
+): Promise<ResolvedElement<"speech">> {
+  return memoizedElementResolve(element, () =>
+    resolveSpeechElementImpl(element, props),
+  );
+}
+
+async function resolveSpeechElementImpl(
   element: VargElement<"speech">,
   props: SpeechProps,
 ): Promise<ResolvedElement<"speech">> {
@@ -474,6 +543,15 @@ export async function resolveSpeechElement(
     voice: props.voice ?? "rachel",
     cacheKey,
   });
+
+  const modelId = typeof model === "string" ? model : model.modelId;
+  if (!audio?.uint8Array) {
+    throw new Error(
+      `We couldn't generate the voiceover for this scene (speech model "${modelId}"). ` +
+        `The audio came back empty. Please try again — if it keeps happening, ` +
+        `try a different voice or speech model.`,
+    );
+  }
 
   const mediaType = (audio as { mediaType?: string }).mediaType ?? "audio/mpeg";
 
@@ -613,7 +691,16 @@ async function resolveImagePrompt(
 }
 
 /** Generate an image via the AI SDK (or load from src) and return a ResolvedElement. */
-export async function resolveImageElement(
+export function resolveImageElement(
+  element: VargElement<"image">,
+  props: ImageProps,
+): Promise<ResolvedElement<"image">> {
+  return memoizedElementResolve(element, () =>
+    resolveImageElementImpl(element, props),
+  );
+}
+
+async function resolveImageElementImpl(
   element: VargElement<"image">,
   props: ImageProps,
 ): Promise<ResolvedElement<"image">> {
@@ -643,16 +730,25 @@ export async function resolveImageElement(
   }
 
   const cacheKey = computeCacheKey(element);
+  // Nested image inputs are resolved BEFORE taking a limiter slot — a
+  // parent holding a slot while awaiting a child queued behind it would
+  // deadlock. Same ordering in every resolver below.
   const resolvedPrompt = await resolveImagePrompt(prompt);
 
-  const { images } = await generateImage({
-    model,
-    prompt: resolvedPrompt,
-    aspectRatio: props.aspectRatio,
-    providerOptions: props.providerOptions,
-    n: 1,
-    cacheKey,
-  } as Parameters<typeof generateImage>[0]);
+  // NOTE: this path deliberately calls the RAW generateImage — unlike
+  // video/music/speech it is not withCache-wrapped, so `cacheKey` below is
+  // inert here. Wiring up the cache is a separate behavior change (it would
+  // start persisting standalone image generations); out of scope for #225.
+  const { images } = await getActiveLimit()(() =>
+    generateImageRaw({
+      model,
+      prompt: resolvedPrompt,
+      aspectRatio: props.aspectRatio,
+      providerOptions: props.providerOptions,
+      n: 1,
+      cacheKey,
+    } as Parameters<typeof generateImageRaw>[0]),
+  );
 
   const firstImage = images[0];
   if (!firstImage?.uint8Array) {
@@ -684,7 +780,16 @@ export async function resolveImageElement(
 // Video
 // ---------------------------------------------------------------------------
 /** Generate a video via the AI SDK (or load from src) and return a ResolvedElement. */
-export async function resolveVideoElement(
+export function resolveVideoElement(
+  element: VargElement<"video">,
+  props: Record<string, unknown>,
+): Promise<ResolvedElement<"video">> {
+  return memoizedElementResolve(element, () =>
+    resolveVideoElementImpl(element, props),
+  );
+}
+
+async function resolveVideoElementImpl(
   element: VargElement<"video">,
   props: Record<string, unknown>,
 ): Promise<ResolvedElement<"video">> {
@@ -800,12 +905,17 @@ export async function resolveVideoElement(
         typeof promptObj.audio === "object" &&
         "type" in promptObj.audio
       ) {
-        const audioEl = promptObj.audio as VargElement<"speech">;
+        const audioEl = promptObj.audio as VargElement;
         if (audioEl.meta?.file) {
           resolvedAudio = await audioEl.meta.file.arrayBuffer();
+        } else if (audioEl.type === "audio") {
+          const resolved = await resolveAudioElement(
+            audioEl as VargElement<"audio">,
+          );
+          resolvedAudio = await resolved.file.arrayBuffer();
         } else {
           const resolved = await resolveSpeechElement(
-            audioEl,
+            audioEl as VargElement<"speech">,
             audioEl.props as SpeechProps,
           );
           resolvedAudio = await resolved.file.arrayBuffer();
@@ -1057,7 +1167,16 @@ export async function resolveProbeElement(
 // Music
 // ---------------------------------------------------------------------------
 /** Generate music audio via the AI SDK and return a ResolvedElement with duration metadata. */
-export async function resolveMusicElement(
+export function resolveMusicElement(
+  element: VargElement<"music">,
+  props: MusicProps,
+): Promise<ResolvedElement<"music">> {
+  return memoizedElementResolve(element, () =>
+    resolveMusicElementImpl(element, props),
+  );
+}
+
+async function resolveMusicElementImpl(
   element: VargElement<"music">,
   props: MusicProps,
 ): Promise<ResolvedElement<"music">> {
@@ -1096,6 +1215,118 @@ export async function resolveMusicElement(
 }
 
 // ---------------------------------------------------------------------------
+// Audio — derived node (`video.audio`, `speech.audio`)
+// ---------------------------------------------------------------------------
+/**
+ * Resolve an audio element to a ResolvedElement<"audio">.
+ *
+ * - Pre-resolved (meta already set, e.g. from a resolved speech parent) →
+ *   returned as-is.
+ * - Video parent → resolve/reuse the parent video, then extract the audio
+ *   track via ffmpeg -vn (cached at the extraction level).
+ * - Speech parent → resolve the parent speech and reuse its audio file,
+ *   preserving word timings and duration.
+ * - `src` → load the file directly and probe duration.
+ */
+export function resolveAudioElement(
+  element: VargElement<"audio">,
+): Promise<ResolvedElement<"audio">> {
+  return memoizedElementResolve(element, () =>
+    resolveAudioElementImpl(element),
+  );
+}
+
+async function resolveAudioElementImpl(
+  element: VargElement<"audio">,
+): Promise<ResolvedElement<"audio">> {
+  const props = element.props as AudioElementProps;
+
+  if (props.src) {
+    const file = props.src.startsWith("http")
+      ? File.fromUrl(props.src)
+      : File.fromPath(props.src);
+    const duration = await probeDuration(file);
+    return new ResolvedElement(element, { file, duration });
+  }
+
+  const parent = props.parent;
+  if (!parent) {
+    throw new Error("Audio element requires a 'parent' element or 'src'");
+  }
+
+  const parentEl = parent as VargElement;
+
+  if (parentEl.type === "speech") {
+    const meta = parentEl.meta?.file
+      ? parentEl.meta
+      : (
+          await resolveSpeechElement(
+            parentEl as VargElement<"speech">,
+            parentEl.props as SpeechProps,
+          )
+        ).meta;
+    return new ResolvedElement(element, {
+      file: meta.file,
+      duration: meta.duration,
+      words: meta.words,
+    });
+  }
+
+  if (parentEl.type === "video" || parentEl.type === "talking-head") {
+    // Resolve/reuse the parent video
+    let videoMeta = parentEl.meta;
+    if (!videoMeta?.file) {
+      const resolved =
+        parentEl.type === "video"
+          ? await resolveVideoElement(
+              parentEl as VargElement<"video">,
+              parentEl.props as Record<string, unknown>,
+            )
+          : await resolveTalkingHeadElement(
+              parentEl as VargElement<"talking-head">,
+              parentEl.props as TalkingHeadProps,
+            );
+      videoMeta = resolved.meta;
+    }
+
+    // Cache the extraction by the parent's cache key
+    const cache = getActiveCache();
+    const extractKey = depsToKey("extractAudio", computeCacheKey(parentEl));
+    const cached = (await cache.get(extractKey)) as
+      | { uint8Array: Uint8Array; mediaType: string; duration: number }
+      | undefined;
+
+    if (cached) {
+      const file = File.fromGenerated({
+        uint8Array: cached.uint8Array,
+        mediaType: cached.mediaType,
+      }).withMetadata({ type: "speech" });
+      return new ResolvedElement(element, {
+        file,
+        duration: cached.duration,
+      });
+    }
+
+    const audioFile = await extractAudio(videoMeta.file);
+    const duration =
+      (await probeDuration(audioFile)) || videoMeta.duration || 0;
+
+    const bytes = await audioFile.arrayBuffer();
+    await cache.set(extractKey, {
+      uint8Array: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
+      mediaType: "audio/mpeg",
+      duration,
+    });
+
+    return new ResolvedElement(element, { file: audioFile, duration });
+  }
+
+  throw new Error(
+    `Audio element parent must be a video or speech element, got "${parentEl.type}"`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // TalkingHead
 // ---------------------------------------------------------------------------
 /**
@@ -1108,7 +1339,16 @@ export async function resolveMusicElement(
  * 2. Resolve the speech from `audio` prop (generate or reuse pre-resolved)
  * 3. Generate lipsync video from image + audio via `model`
  */
-export async function resolveTalkingHeadElement(
+export function resolveTalkingHeadElement(
+  element: VargElement<"talking-head">,
+  props: TalkingHeadProps,
+): Promise<ResolvedElement<"talking-head">> {
+  return memoizedElementResolve(element, () =>
+    resolveTalkingHeadElementImpl(element, props),
+  );
+}
+
+async function resolveTalkingHeadElementImpl(
   element: VargElement<"talking-head">,
   props: TalkingHeadProps,
 ): Promise<ResolvedElement<"talking-head">> {
@@ -1139,14 +1379,17 @@ export async function resolveTalkingHeadElement(
       : await resolveImageElement(props.image, props.image.props as ImageProps);
   const characterBytes = new Uint8Array(await resolvedImage.file.arrayBuffer());
 
-  // Step 2: Resolve speech — same pattern.
+  // Step 2: Resolve speech/audio — same pattern. Derived audio nodes
+  // (video.audio / speech.audio) resolve through resolveAudioElement.
   const resolvedSpeech =
     props.audio instanceof ResolvedElement
       ? props.audio
-      : await resolveSpeechElement(
-          props.audio,
-          props.audio.props as SpeechProps,
-        );
+      : props.audio.type === "audio"
+        ? await resolveAudioElement(props.audio as VargElement<"audio">)
+        : await resolveSpeechElement(
+            props.audio as VargElement<"speech">,
+            props.audio.props as SpeechProps,
+          );
   const speechBytes = new Uint8Array(await resolvedSpeech.file.arrayBuffer());
 
   // Step 3: Generate lipsync video (image + audio → video)

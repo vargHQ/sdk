@@ -75,7 +75,7 @@ async function uploadAssetToHeyGen(
       "X-Api-Key": apiKey,
       "Content-Type": contentType,
     },
-    body: data,
+    body: data as BodyInit,
   });
 
   if (!res.ok) {
@@ -106,7 +106,7 @@ async function uploadTalkingPhoto(
       "X-Api-Key": apiKey,
       "Content-Type": contentType,
     },
-    body: data,
+    body: data as BodyInit,
   });
 
   if (!res.ok) {

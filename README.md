@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">varg — AI Video Generation SDK</h1>
+  <h1 align="center">varg — Agentic AI Video Generation SDK</h1>
   <p align="center">Create AI videos with JSX. One SDK for Kling, Flux, ElevenLabs, Sora and more. Built on Vercel AI SDK.</p>
 </p>
 
@@ -16,7 +16,7 @@
 
 ---
 
-**varg** is an open-source TypeScript SDK for AI video generation. One API key, one gateway — generate images, video, speech, music, lipsync, and captions through `varg.*` providers. Write videos as JSX components (like React), render locally or in the cloud.
+**varg** is an open-source TypeScript SDK for AI video generation. One API key, one API — generate images, video, speech, music, lipsync, and captions through `varg.*` providers. Write videos as JSX components (like React), render locally or in the cloud.
 
 ## Get started
 
@@ -65,7 +65,7 @@ Or ask your AI agent to create something from scratch.
 ```
 Your prompt / JSX code
         |
-   varg gateway (api.varg.ai)
+   varg API (api.varg.ai/v2)
    /     |      \        \
  Kling  Flux  ElevenLabs  Wan ...   (AI providers)
    \     |      /        /
@@ -74,10 +74,10 @@ Your prompt / JSX code
    output.mp4
 ```
 
-- **One API key** (`VARG_API_KEY`) routes to all providers through the varg gateway
+- **One API key** (`VARG_API_KEY`) routes to all providers through the varg API
 - **Declarative JSX** — compose videos like React components with `<Clip>`, `<Video>`, `<Music>`, `<Captions>`
 - **Automatic caching** — same props = instant cache hit at $0. Re-render without re-generating
-- **Local or cloud** — render with `bunx vargai render` locally, or submit via the Cloud Render API
+- **Local or cloud** — render with `bunx vargai render` locally, or submit via the cloud render endpoint (`POST https://api.varg.ai/v2/render`)
 
 ## Quick examples
 
@@ -296,6 +296,7 @@ FAL_API_KEY=fal_xxx                # fal.ai direct
 ELEVENLABS_API_KEY=xxx             # ElevenLabs direct
 OPENAI_API_KEY=sk_xxx              # OpenAI / Sora
 REPLICATE_API_TOKEN=r8_xxx         # Replicate
+KREA_API_KEY=xxx                   # Krea direct (krea.imageModel("krea"))
 ```
 
 See the [BYOK docs](https://docs.varg.ai/sdk/byok) for details.
@@ -320,11 +321,14 @@ A typical 3-clip video costs $2-5. Cache hits are always free.
 <img width="2832" height="2253" alt="star-history-202643" src="https://github.com/user-attachments/assets/63e84279-d756-43a9-b328-118fb69ed2d5" />
 
 
+## Discord 
 
+[https://discord.com/channels/1463766525117861922/1463766526250188824
+](https://discord.com/invite/VAecJay7R9)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup.
 
 ## License
 

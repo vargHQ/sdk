@@ -36,17 +36,8 @@ src/ai-sdk/examples/
 src/react/examples/
 
 # Dev scripts & docs
-scripts/
-launch-videos/
-pipeline/
-ffmpeg/
 docs/
-plan.md
 hello.tsx
-video.tsx
-CONTRIBUTING.md
-SKILLS.md
-STRUCTURE.md
 CLAUDE.md
 AGENTS.md
 

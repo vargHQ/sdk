@@ -319,8 +319,10 @@ export async function generateMusic(
 
   const audio = await client.music.compose({
     prompt,
+    // ElevenLabs requires integer ms — fractional seconds must be rounded
+    // or the API rejects the request with a 422.
     ...(durationSeconds != null
-      ? { musicLengthMs: durationSeconds * 1000 }
+      ? { musicLengthMs: Math.round(durationSeconds * 1000) }
       : {}),
     modelId: "music_v1",
   });

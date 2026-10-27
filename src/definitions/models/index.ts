@@ -10,7 +10,9 @@ import type {
 
 export { definition as elevenlabsTts } from "./elevenlabs";
 export { definition as flux } from "./flux";
+export { definition as gptImage25 } from "./gpt-image-2-5";
 export { definition as heygenAvatar } from "./heygen";
+export { definition as ideogramV45 } from "./ideogram-v4-5";
 export {
   definition as kling,
   kling4kDefinition as kling4k,
@@ -20,6 +22,14 @@ export {
   klingV3MotionDefinition as klingV3Motion,
   klingV3MotionStdDefinition as klingV3MotionStd,
 } from "./kling";
+export {
+  klingV4Definition as klingV4,
+  klingV4EditDefinition as klingV4Edit,
+  klingV4FlashDefinition as klingV4Flash,
+  klingV4FlashRefDefinition as klingV4FlashRef,
+  klingV4KeyframesDefinition as klingV4Keyframes,
+  klingV4RefDefinition as klingV4Ref,
+} from "./kling-v4";
 export { definition as llama } from "./llama";
 export { definition as ltxA2v } from "./ltx-a2v";
 export {
@@ -36,9 +46,17 @@ export {
   magnificUpscalePrecisionDefinition,
   magnificVfxDefinition,
 } from "./magnific";
+export {
+  imageToVideoDefinition as minimaxH3MaxImageToVideo,
+  referenceToVideoDefinition as minimaxH3MaxReferenceToVideo,
+  textToVideoDefinition as minimaxH3MaxTextToVideo,
+} from "./minimax-h3-max";
 export { definition as nanoBanana2 } from "./nano-banana-2";
 export { definition as nanoBananaPro } from "./nano-banana-pro";
-export { definition as omnihuman } from "./omnihuman";
+export {
+  definition as omnihuman,
+  v2Definition as omnihumanV2,
+} from "./omnihuman";
 export {
   photaDefinition as phota,
   photaEditDefinition as photaEdit,
@@ -60,7 +78,9 @@ export { definition as whisper } from "./whisper";
 // All model definitions for auto-loading
 import { definition as elevenlabsDefinition } from "./elevenlabs";
 import { definition as fluxDefinition } from "./flux";
+import { definition as gptImage25Definition } from "./gpt-image-2-5";
 import { definition as heygenAvatarDefinition } from "./heygen";
+import { definition as ideogramV45Definition } from "./ideogram-v4-5";
 import {
   kling4kDefinition,
   kling4kRefDefinition,
@@ -70,12 +90,28 @@ import {
   klingV3MotionDefinition,
   klingV3MotionStdDefinition,
 } from "./kling";
+import {
+  klingV4Definition,
+  klingV4EditDefinition,
+  klingV4FlashDefinition,
+  klingV4FlashRefDefinition,
+  klingV4KeyframesDefinition,
+  klingV4RefDefinition,
+} from "./kling-v4";
 import { definition as llamaDefinition } from "./llama";
 import { definition as ltxA2vDefinition } from "./ltx-a2v";
 import { allMagnificDefinitions } from "./magnific";
+import {
+  imageToVideoDefinition as minimaxH3MaxImageToVideoDefinition,
+  referenceToVideoDefinition as minimaxH3MaxReferenceToVideoDefinition,
+  textToVideoDefinition as minimaxH3MaxTextToVideoDefinition,
+} from "./minimax-h3-max";
 import { definition as nanoBanana2Definition } from "./nano-banana-2";
 import { definition as nanoBananaProDefinition } from "./nano-banana-pro";
-import { definition as omnihumanDefinition } from "./omnihuman";
+import {
+  definition as omnihumanDefinition,
+  v2Definition as omnihumanV2Definition,
+} from "./omnihuman";
 import {
   photaDefinition,
   photaEditDefinition,
@@ -102,7 +138,15 @@ export const allModels = [
   klingV2VRefDefinition,
   klingV3MotionDefinition,
   klingV3MotionStdDefinition,
+  klingV4Definition,
+  klingV4FlashDefinition,
+  klingV4RefDefinition,
+  klingV4FlashRefDefinition,
+  klingV4KeyframesDefinition,
+  klingV4EditDefinition,
   fluxDefinition,
+  gptImage25Definition,
+  ideogramV45Definition,
   nanoBananaProDefinition,
   nanoBanana2Definition,
   qwenImage2Definition,
@@ -113,7 +157,11 @@ export const allModels = [
   reveDefinition,
   wanDefinition,
   omnihumanDefinition,
+  omnihumanV2Definition,
   ltxA2vDefinition,
+  minimaxH3MaxTextToVideoDefinition,
+  minimaxH3MaxImageToVideoDefinition,
+  minimaxH3MaxReferenceToVideoDefinition,
   veedFabricDefinition,
   whisperDefinition,
   elevenlabsDefinition,

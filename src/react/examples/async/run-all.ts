@@ -67,10 +67,6 @@ async function runExample(name: string, path: string) {
 await runExample("simple", "./simple.tsx");
 await runExample("simple-with-deps", "./simple-with-deps.tsx");
 await runExample("talking-head", "./talking-head.tsx");
-await runExample(
-  "example_we_want_to_test (strawberry vs chocolate)",
-  "./example_we_want_to_test.tsx",
-);
 
 console.log(`\n${"=".repeat(60)}`);
 console.log("All examples completed.");

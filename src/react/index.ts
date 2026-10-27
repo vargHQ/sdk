@@ -3,11 +3,13 @@ export { File } from "../ai-sdk/file";
 export type { SizeValue } from "../ai-sdk/providers/editly/types";
 export type { Segment, WordTiming } from "../speech/types";
 export { assets } from "./assets";
+export type { AudioNode } from "./audio-element";
 export {
   Captions,
   Clip,
   FFmpeg,
   Image,
+  type ImageElement,
   Music,
   Overlay,
   Packshot,
@@ -16,18 +18,39 @@ export {
   Slice,
   Slider,
   Speech,
+  type SpeechElement,
   Subtitle,
   Swipe,
   TalkingHead,
   Title,
   Video,
+  type VideoElement,
 } from "./elements";
+export { compile } from "./ir/compile";
+export { type ExecuteOptions, executePlan } from "./ir/execute";
+export {
+  CompiledPlan,
+  CompileError,
+  type Diagnostic,
+  type OpKind,
+  type SerializedPlan,
+  type Step,
+  type StepEvent,
+  type StepId,
+  type StepStatus,
+} from "./ir/types";
 export { Grid, Slot, Split } from "./layouts";
-export { render, renderStream } from "./render";
+export type {
+  SilenceDetectOptions,
+  TimeRange,
+  TranscriptionResult,
+} from "./primitives/audio";
+export { type RenderStreamEvent, render, renderStream } from "./render";
 export { resolveLazy } from "./renderers/resolve-lazy";
 export { type ResolveContext, withResolveContext } from "./resolve-context";
 export { ResolvedElement } from "./resolved-element";
 export type {
+  AudioElementProps,
   CaptionsProps,
   ClipProps,
   ElementMeta,

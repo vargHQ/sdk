@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, rmSync } from "node:fs";
-import { computeFileHashes, computePendingKey } from "./fal";
+import { calculateIdeogramV45Cost } from "../../definitions/models/ideogram-v4-5";
+import {
+  applyImageFileInputs,
+  computeFileHashes,
+  computePendingKey,
+  resolveImageEndpoint,
+  supportsImageAcceleration,
+} from "./fal";
 
 const TEST_PENDING_DIR = ".cache/fal-pending-test";
 
@@ -210,5 +217,83 @@ describe("fal queue recovery", () => {
 
       expect(key1).not.toBe(key2);
     });
+  });
+});
+
+describe("ideogram v4.5 wiring", () => {
+  test("aliases and canonical id resolve to fal endpoints", () => {
+    expect(resolveImageEndpoint("ideogram-v4-5")).toBe("ideogram/v4.5");
+    expect(resolveImageEndpoint("ideogram_v4_5")).toBe("ideogram/v4.5");
+    expect(resolveImageEndpoint("ideogram-v4-5/edit")).toBe(
+      "ideogram/v4.5/edit",
+    );
+    expect(resolveImageEndpoint("ideogram/v4.5")).toBe("ideogram/v4.5");
+  });
+
+  test("files auto-route the t2i id to /edit", () => {
+    expect(resolveImageEndpoint("ideogram-v4-5", true)).toBe(
+      "ideogram/v4.5/edit",
+    );
+    expect(resolveImageEndpoint("ideogram_v4_5", true)).toBe(
+      "ideogram/v4.5/edit",
+    );
+    expect(resolveImageEndpoint("ideogram/v4.5", true)).toBe(
+      "ideogram/v4.5/edit",
+    );
+    expect(resolveImageEndpoint("raw:ideogram/v4.5", true)).toBe(
+      "ideogram/v4.5",
+    );
+  });
+
+  test("no acceleration field (strict fal schema)", () => {
+    expect(supportsImageAcceleration("ideogram-v4-5")).toBe(false);
+    expect(supportsImageAcceleration("ideogram/v4.5/edit")).toBe(false);
+    expect(supportsImageAcceleration("flux-schnell")).toBe(true);
+  });
+
+  test("files → image_url + reference_image_urls", () => {
+    const one: Record<string, unknown> = {};
+    applyImageFileInputs("ideogram-v4-5/edit", one, ["a"]);
+    expect(one).toEqual({ image_url: "a" });
+
+    const three: Record<string, unknown> = {};
+    applyImageFileInputs("ideogram-v4-5", three, ["a", "b", "c"]);
+    expect(three).toEqual({ image_url: "a", reference_image_urls: ["b", "c"] });
+  });
+
+  test("more than 4 references throws before submitting", () => {
+    expect(() =>
+      applyImageFileInputs("ideogram-v4-5/edit", {}, [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+      ]),
+    ).toThrow(/up to 4 references/);
+  });
+
+  test("other models keep their layout", () => {
+    const multi: Record<string, unknown> = {};
+    applyImageFileInputs("nano-banana-pro/edit", multi, ["a", "b"]);
+    expect(multi).toEqual({ image_urls: ["a", "b"] });
+
+    const single: Record<string, unknown> = {};
+    applyImageFileInputs("reve/edit", single, ["a", "b"]);
+    expect(single).toEqual({ image_url: "a" });
+  });
+
+  test("pricing by quality × num_images", () => {
+    expect(calculateIdeogramV45Cost({})).toBeCloseTo(0.06);
+    expect(
+      calculateIdeogramV45Cost({ providerOptions: { quality: "very_low" } }),
+    ).toBeCloseTo(0.008);
+    expect(
+      calculateIdeogramV45Cost({
+        numImages: 8,
+        providerOptions: { quality: "high" },
+      }),
+    ).toBeCloseTo(1.76);
   });
 });
