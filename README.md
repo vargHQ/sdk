@@ -277,17 +277,25 @@ bunx vargai list                               # list available models and actio
 bunx vargai studio                             # open visual editor
 ```
 
-Everything the [varg MCP server](https://github.com/vargHQ/mcp) does is a command too. These hand their words to `@vargai/mcp`'s CLI, so they match the MCP tool for tool:
+Everything the [varg MCP server](https://github.com/vargHQ/mcp) does is a command too, tool for tool. The standalone `vargai` (one file, no Node or Bun) installs with:
 
 ```bash
-bunx vargai skills search "captions for reels" # varg how to: skills, guides, presets (no key)
-bunx vargai skills install remotion-captions   # install a skill into your agent (no key)
-bunx vargai version                            # vargai, the MCP CLI, latest on npm (no key)
-bunx vargai tools                              # every MCP tool; ○ = no key needed
-bunx vargai whoami                             # account, team, balance
-bunx vargai mcp generate_image "a red fox"     # any MCP tool, options from its schema
-bunx vargai mcp help generate_video            # a tool's options
+curl -fsSL https://varg.ai/install | sh        # macOS, Linux
+irm https://varg.ai/install.ps1 | iex          # Windows
+vargai update                                  # later: the latest release
 ```
+
+```bash
+vargai search "captions for reels"             # varg how to: skills, guides, presets (no key)
+vargai install remotion-captions               # install a skill into your agent (no key)
+vargai version                                 # this version and the latest (no key)
+vargai tools                                   # every MCP tool; ○ = no key needed
+vargai login                                   # then: account, balance, every model
+vargai generate_image "a red fox"              # any MCP tool, options from its schema
+vargai help generate_video                     # a tool's options
+```
+
+From the npm package (`bunx vargai …`) the same commands work as `vargai mcp <tool>`, and they use the installed binary when there is one. The SDK commands (`render`, `init`, `studio`…) run on Bun either way. Releases: [`cli-v*`](https://github.com/vargHQ/sdk/releases).
 
 ## Environment
 
