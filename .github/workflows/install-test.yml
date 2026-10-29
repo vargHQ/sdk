@@ -20,7 +20,7 @@ jobs:
           - { os: ubuntu-latest }
           - { os: ubuntu-24.04-arm }
           - { os: macos-latest }
-          - { os: macos-13 }
+          - { os: macos-15-intel }
           - { os: ubuntu-latest, container: "alpine:3.20" }
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
