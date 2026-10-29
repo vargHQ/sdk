@@ -7,7 +7,7 @@
   },
   "scripts": {
     "check": "biome check . && tsc --noEmit",
-    "test:ci": "bun test src/react/tests src/react/renderers/ass.test.ts src/react/renderers/cache.test.ts src/react/renderers/emoji.test.ts src/react/renderers/fonts.test.ts src/react/renderers/merge-ass.test.ts src/react/renderers/text-measure.test.ts src/react/renderers/utils.test.ts src/react/layouts src/react/async-elements.test.ts src/react/resolve-context.test.ts src/ai-sdk/cache.test.ts src/ai-sdk/providers/varg-idempotency.test.ts src/speech src/tests/unit.test.ts",
+    "test:ci": "bun test src/react/tests src/react/renderers/ass.test.ts src/react/renderers/cache.test.ts src/react/renderers/emoji.test.ts src/react/renderers/fonts.test.ts src/react/renderers/merge-ass.test.ts src/react/renderers/text-measure.test.ts src/react/renderers/utils.test.ts src/react/layouts src/react/async-elements.test.ts src/react/resolve-context.test.ts src/ai-sdk/cache.test.ts src/ai-sdk/providers/varg-idempotency.test.ts src/speech src/tests/unit.test.ts src/cli/commands/mcp.test.ts",
     "lint": "biome check .",
     "format": "biome format --write .",
     "type-check": "tsc --noEmit",

@@ -40,6 +40,7 @@ import {
   topupCmd,
   whichCmd,
 } from "./commands";
+import { MCP_COMMANDS, runMcp } from "./commands/mcp";
 
 // Register all providers
 import "../providers"; // Side effect: registers providers to base registry
@@ -57,6 +58,16 @@ for (const provider of providers.all()) {
 
 // Intercept --help and -h to use our custom help views
 const args = process.argv.slice(2);
+
+// skills, tools, call, mcp, whoami, version: the varg MCP's own CLI answers
+// these (commands/mcp.ts), --help included, so they skip citty entirely.
+if (args[0] && MCP_COMMANDS.has(args[0])) {
+  if (args[0] === "version" && !args.includes("--json")) {
+    const { version } = await import("../../package.json");
+    console.log(`vargai ${version}`);
+  }
+  process.exit(await runMcp(args));
+}
 const hasHelp = args.includes("--help") || args.includes("-h");
 
 const subcommandHelp: Record<string, () => void> = {
