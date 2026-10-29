@@ -9,7 +9,9 @@
 #
 #   VARG_VERSION=0.17.0     install this version instead of the latest
 #   VARG_INSTALL_DIR=/path  install here instead of ~/.varg/bin
-#   VARG_NO_MODIFY_PATH=1   leave shell profiles alone
+#   VARG_NO_MODIFY_PATH=1   no link on PATH, no shell profile edits
+#
+# Uninstall: rm -rf ~/.varg/bin, and the vargai link it names (e.g. ~/bin/vargai).
 #   VARG_RELEASE_BASE=url   download from this mirror (holds the assets + SHA256SUMS)
 set -eu
 
@@ -51,10 +53,19 @@ asset="vargai-$os-$arch"
 
 # ── version ───────────────────────────────────────────────────────────
 if [ -z "$VERSION" ] && [ -z "${VARG_RELEASE_BASE:-}" ]; then
-  VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" \
-    | grep -o '"tag_name": *"cli-v[^"]*"' | head -n 1 | sed 's/.*cli-v//; s/"$//') \
-    || fail "could not reach GitHub to find the latest vargai"
-  [ -n "$VERSION" ] || fail "no vargai release found"
+  # The releases/latest page redirects to the newest release's tag. It is a
+  # page, not the API, so it has no 60-an-hour anonymous limit (offices and CI
+  # share an IP). This repo's latest release is the CLI's (release-cli.sh);
+  # if it ever is not, ask the API for the newest cli-v* tag.
+  latest_url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" 2>/dev/null || true)"
+  case "$latest_url" in
+    */tag/cli-v*) VERSION="${latest_url##*/tag/cli-v}" ;;
+    *)
+      VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" 2>/dev/null \
+        | grep -o '"tag_name": *"cli-v[^"]*"' | head -n 1 | sed 's/.*cli-v//; s/"$//') || true
+      ;;
+  esac
+  [ -n "$VERSION" ] || fail "could not find the latest vargai release (https://github.com/$REPO/releases). Set VARG_VERSION=<version> to pick one."
 fi
 VERSION="${VERSION#cli-}"
 VERSION="${VERSION#v}"
@@ -94,27 +105,59 @@ fi
 printf '%s\n' "${GREEN}✓${RESET} installed $INSTALL_DIR/vargai"
 
 # ── PATH ──────────────────────────────────────────────────────────────
-case ":$PATH:" in
-  *":$INSTALL_DIR:"*) on_path=1 ;;
-  *) on_path=0 ;;
-esac
+# `curl | sh` runs in a child process: it cannot change the PATH of the
+# terminal it was started from, so a profile line alone leaves `vargai` "not
+# found" until a new terminal. Link it into a directory that terminal already
+# searches instead, and it works on the very next line.
+on_path() { case ":$PATH:" in *":$1:"*) return 0 ;; *) return 1 ;; esac; }
 
-if [ "$on_path" = 0 ] && [ -z "${VARG_NO_MODIFY_PATH:-}" ]; then
-  line="export PATH=\"$INSTALL_DIR:\$PATH\""
-  case "$(basename "${SHELL:-sh}")" in
-    zsh) profile="${ZDOTDIR:-$HOME}/.zshrc" ;;
-    bash) if [ "$os" = darwin ]; then profile="$HOME/.bash_profile"; else profile="$HOME/.bashrc"; fi ;;
-    fish) profile="$HOME/.config/fish/config.fish"; line="fish_add_path \"$INSTALL_DIR\"" ;;
-    *) profile="$HOME/.profile" ;;
-  esac
-  if ! grep -qsF "$INSTALL_DIR" "$profile"; then
-    mkdir -p "$(dirname "$profile")"
-    printf '\n# vargai\n%s\n' "$line" >> "$profile"
-    printf '%s\n' "${GREEN}✓${RESET} added $INSTALL_DIR to PATH in ${profile#"$HOME"/}"
+ready=0
+if on_path "$INSTALL_DIR"; then
+  ready=1
+elif [ -z "${VARG_NO_MODIFY_PATH:-}" ]; then
+  for dir in "$HOME/.local/bin" "$HOME/bin" /usr/local/bin /opt/homebrew/bin; do
+    on_path "$dir" && [ -d "$dir" ] && [ -w "$dir" ] || continue
+    # Never replace another program's vargai: only a free name or our own link.
+    if [ -e "$dir/vargai" ] || [ -L "$dir/vargai" ]; then
+      [ "$(readlink "$dir/vargai" 2>/dev/null)" = "$INSTALL_DIR/vargai" ] || continue
+    fi
+    ln -sf "$INSTALL_DIR/vargai" "$dir/vargai"
+    printf '%s\n' "${GREEN}✓${RESET} linked $dir/vargai"
+    ready=1
+    break
+  done
+
+  # No such directory: add ~/.varg/bin to the shell profile for new terminals.
+  if [ "$ready" = 0 ]; then
+    line="export PATH=\"$INSTALL_DIR:\$PATH\""
+    case "$(basename "${SHELL:-sh}")" in
+      zsh) profile="${ZDOTDIR:-$HOME}/.zshrc" ;;
+      bash) if [ "$os" = darwin ]; then profile="$HOME/.bash_profile"; else profile="$HOME/.bashrc"; fi ;;
+      fish) profile="$HOME/.config/fish/config.fish"; line="fish_add_path \"$INSTALL_DIR\"" ;;
+      *) profile="$HOME/.profile" ;;
+    esac
+    if ! grep -qsF "$INSTALL_DIR" "$profile"; then
+      mkdir -p "$(dirname "$profile")"
+      printf '\n# vargai\n%s\n' "$line" >> "$profile"
+      printf '%s\n' "${GREEN}✓${RESET} added $INSTALL_DIR to PATH in ${profile#"$HOME"/} (new terminals)"
+    fi
   fi
-  printf '\n%s\n' "Open a new terminal, or run:  ${BOLD}$line${RESET}"
 fi
 
-printf '\n%s\n' "Try it:"
-printf '%s\n' "  vargai search \"captions for reels\"   ${DIM}find skills, no key needed${RESET}"
-printf '%s\n' "  vargai login                        ${DIM}then every varg model and tool${RESET}"
+# Another vargai earlier on PATH would answer instead of this one.
+found="$(command -v vargai 2>/dev/null || true)"
+if [ "$ready" = 1 ] && [ -n "$found" ] && [ "$found" != "$INSTALL_DIR/vargai" ] && [ "$(readlink "$found" 2>/dev/null)" != "$INSTALL_DIR/vargai" ]; then
+  printf '%s\n' "${BOLD}note${RESET}: $found comes first on your PATH; remove it to use this vargai."
+fi
+
+if [ "$ready" = 1 ]; then
+  printf '\n%s\n' "${BOLD}vargai is ready.${RESET} Try it:"
+  printf '%s\n' "  vargai search \"captions for reels\"   ${DIM}find skills, no key needed${RESET}"
+  printf '%s\n' "  vargai login                        ${DIM}then every varg model and tool${RESET}"
+else
+  printf '\n%s\n' "${BOLD}One more step:${RESET} this terminal does not see $INSTALL_DIR yet. Run:"
+  printf '\n%s\n' "  ${BOLD}export PATH=\"$INSTALL_DIR:\$PATH\"${RESET}"
+  printf '\n%s\n' "Then try it:"
+  printf '%s\n' "  vargai search \"captions for reels\"   ${DIM}find skills, no key needed${RESET}"
+  printf '%s\n' "  vargai login                        ${DIM}then every varg model and tool${RESET}"
+fi

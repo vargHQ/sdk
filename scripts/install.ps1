@@ -20,10 +20,19 @@ $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6
 $asset = "vargai-windows-$arch.zip"
 
 if (-not $version) {
-  $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases?per_page=30"
-  $latest = $releases | Where-Object { $_.tag_name -like "cli-v*" -and -not $_.draft -and -not $_.prerelease } | Select-Object -First 1
-  if (-not $latest) { throw "no vargai release found" }
-  $version = $latest.tag_name.Substring(5)
+  # releases/latest redirects to the newest release's tag: a page, not the API,
+  # so no 60-an-hour anonymous limit. The API is the fallback.
+  try {
+    $resp = Invoke-WebRequest "https://github.com/$repo/releases/latest" -Method Head -UseBasicParsing
+    $final = if ($resp.BaseResponse.ResponseUri) { $resp.BaseResponse.ResponseUri.AbsoluteUri } else { $resp.BaseResponse.RequestMessage.RequestUri.AbsoluteUri }
+    if ($final -match "/tag/cli-v([^/]+)$") { $version = $Matches[1] }
+  } catch {}
+  if (-not $version) {
+    $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases?per_page=30"
+    $latest = $releases | Where-Object { $_.tag_name -like "cli-v*" -and -not $_.draft -and -not $_.prerelease } | Select-Object -First 1
+    if (-not $latest) { throw "could not find the latest vargai release (https://github.com/$repo/releases). Set `$env:VARG_VERSION to pick one." }
+    $version = $latest.tag_name.Substring(5)
+  }
 }
 $version = ($version -replace "^cli-", "").TrimStart("v")
 $base = "https://github.com/$repo/releases/download/cli-v$version"
