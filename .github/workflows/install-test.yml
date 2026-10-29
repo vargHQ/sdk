@@ -1,0 +1,58 @@
+# Installs the standalone vargai CLI the way people do, from a published
+# cli-v* release, on every platform the installers support, and runs it.
+# The binaries are built and released by vargHQ/mcp (scripts/release-cli.sh).
+name: Install test
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [scripts/install.sh, scripts/install.ps1, .github/workflows/install-test.yml]
+
+jobs:
+  unix:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'cli-v')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest }
+          - { os: ubuntu-24.04-arm }
+          - { os: macos-latest }
+          - { os: macos-13 }
+          - { os: ubuntu-latest, container: "alpine:3.20" }
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.container
+        run: apk add --no-cache curl gzip libstdc++ libgcc
+      - name: Install
+        run: sh scripts/install.sh
+        env:
+          VARG_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+      - name: Run
+        run: |
+          export PATH="$HOME/.varg/bin:$PATH"
+          vargai version
+          vargai search "captions for reels" --limit 2
+          vargai install remotion-captions --print
+
+  windows:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'cli-v')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        shell: pwsh
+        run: ./scripts/install.ps1
+        env:
+          VARG_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+      - name: Run
+        shell: pwsh
+        run: |
+          $env:Path = "$HOME\.varg\bin;$env:Path"
+          vargai version
+          vargai search "captions for reels" --limit 2
+          vargai install remotion-captions --print

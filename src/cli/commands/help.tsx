@@ -52,8 +52,12 @@ function HelpView() {
       <Header>VARG MCP</Header>
       <Box flexDirection="column" marginY={1}>
         <CommandRow
-          name="skills"
-          description="search, show, install skills (no key needed)"
+          name="search"
+          description="find skills and how-to guides (no key needed)"
+        />
+        <CommandRow
+          name="install"
+          description="install a skill into your agent (no key needed)"
         />
         <CommandRow
           name="tools"

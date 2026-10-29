@@ -15,13 +15,18 @@ describe("vargai → @vargai/mcp", () => {
     ]);
   });
 
-  test("runs a release with the CLI, or a local checkout", () => {
+  test("runs a local checkout, the installed binary, or a release from npm", () => {
     const saved = process.env.VARG_MCP_BIN;
     delete process.env.VARG_MCP_BIN;
-    expect(mcpCommand(["version"]).slice(1)).toEqual([
+    expect(mcpCommand(["version"], null).slice(1)).toEqual([
       "x",
       "@vargai/mcp@^0.16.0",
       "version",
+    ]);
+    expect(mcpCommand(["search", "x"], "/home/me/.varg/bin/vargai")).toEqual([
+      "/home/me/.varg/bin/vargai",
+      "search",
+      "x",
     ]);
     process.env.VARG_MCP_BIN = "/src/mcp/src/index.ts";
     expect(mcpCommand(["tools"]).slice(1)).toEqual([
@@ -33,7 +38,9 @@ describe("vargai → @vargai/mcp", () => {
   });
 
   test("does not take over vargai's own commands", () => {
-    for (const own of ["login", "logout", "balance", "find", "list", "run"]) {
+    // The binary hands exactly these back to the vargai package; overlap would loop.
+    const sdk = ["render", "preview", "frame", "storyboard", "studio", "run", "hello", "init", "list", "ls", "find", "which", "inspect", "topup"];
+    for (const own of [...sdk, "login", "logout", "balance"]) {
       expect(MCP_COMMANDS.has(own)).toBe(false);
     }
   });
