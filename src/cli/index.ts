@@ -38,6 +38,7 @@ import {
   storyboardCmd,
   studioCmd,
   topupCmd,
+  usageCmd,
   whichCmd,
 } from "./commands";
 import { MCP_COMMANDS, runMcp } from "./commands/mcp";
@@ -135,6 +136,7 @@ const main = defineCommand({
     logout: logoutCmd,
     balance: balanceCmd,
     topup: topupCmd,
+    usage: usageCmd,
     hello: helloCmd,
     init: initCmd,
     render: renderCmd,
