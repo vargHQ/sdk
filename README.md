@@ -277,6 +277,18 @@ bunx vargai list                               # list available models and actio
 bunx vargai studio                             # open visual editor
 ```
 
+Everything the [varg MCP server](https://github.com/vargHQ/mcp) does is a command too. These hand their words to `@vargai/mcp`'s CLI, so they match the MCP tool for tool:
+
+```bash
+bunx vargai skills search "captions for reels" # varg how to: skills, guides, presets (no key)
+bunx vargai skills install remotion-captions   # install a skill into your agent (no key)
+bunx vargai version                            # vargai, the MCP CLI, latest on npm (no key)
+bunx vargai tools                              # every MCP tool; ○ = no key needed
+bunx vargai whoami                             # account, team, balance
+bunx vargai mcp generate_image "a red fox"     # any MCP tool, options from its schema
+bunx vargai mcp help generate_video            # a tool's options
+```
+
 ## Environment
 
 ```bash

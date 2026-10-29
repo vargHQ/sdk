@@ -49,6 +49,27 @@ function HelpView() {
         />
       </Box>
 
+      <Header>VARG MCP</Header>
+      <Box flexDirection="column" marginY={1}>
+        <CommandRow
+          name="skills"
+          description="search, show, install skills (no key needed)"
+        />
+        <CommandRow
+          name="tools"
+          description="every varg MCP tool; ○ = no key needed"
+        />
+        <CommandRow
+          name="mcp <tool>"
+          description="run any MCP tool: vargai mcp generate_image 'a fox'"
+        />
+        <CommandRow name="whoami" description="account, team, balance" />
+        <CommandRow
+          name="version"
+          description="vargai, the varg MCP CLI, latest on npm"
+        />
+      </Box>
+
       <Header>QUICKSTART</Header>
       <Box marginTop={1}>
         <HelpBlock examples={examples} />
