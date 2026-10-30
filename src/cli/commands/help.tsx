@@ -29,7 +29,7 @@ function HelpView() {
       command: 'vargai mcp generate_video --prompt "waves at dusk"',
       description: "make a video",
     },
-    { command: "vargai run image --prompt 'a fox'", description: "one model" },
+    { command: 'vargai mcp generate_image "a fox"', description: "an image" },
   ];
 
   return (

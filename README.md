@@ -25,7 +25,7 @@
 > curl -fsSL https://varg.ai/install | sh
 > vargai login
 > vargai generate_video --prompt "waves at dusk" --duration 5
-> vargai call_tool '{"tool":"ffmpeg","input":{...}}'
+> vargai get_tool ffmpeg          # the ffmpeg tool's input, for call_tool
 > ```
 >
 > The rest of this README describes the deprecated JSX API.
@@ -92,6 +92,7 @@ Your prompt / JSX code
 ### Image to video
 
 ```tsx
+/** @jsxImportSource vargai */
 import { Render, Clip, Image, Video } from "vargai/react";
 import { varg } from "vargai/ai";
 
@@ -114,7 +115,8 @@ export default (
 ```
 
 ```ts
-// render.ts — the CLI no longer renders, so call render() yourself
+// render.ts — the CLI no longer renders, so call render() yourself.
+// hello.tsx needs the JSX pragma on its first line (see above).
 import { render } from "vargai/react";
 import video from "./hello.tsx";
 await render(video, { output: "output/hello.mp4" });

@@ -19,8 +19,9 @@ export function showRemoved(command: string): void {
 Make videos with the varg MCP tools instead, from this terminal:
   vargai mcp generate_video --prompt "waves at dusk" --duration 5
   vargai mcp generate_image "a red fox in snow"
-  vargai mcp call_tool '{"tool":"ffmpeg","input":{...}}'   cut, join, mix and caption
-  vargai tools                                             every tool
+  vargai mcp get_tool ffmpeg       the ffmpeg tool: cut, join, mix, caption
+                                   (run it with vargai mcp call_tool)
+  vargai tools                     every tool
 
 Or install the standalone vargai: curl -fsSL https://varg.ai/install | sh`);
 }
