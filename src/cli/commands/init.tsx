@@ -6,10 +6,9 @@
  * 2. Optionally show credit package selector
  * 3. Create project structure (output/, .cache/ai/)
  * 4. Install varg-ai Agent Skill via `npx skills add vargHQ/skills`
- * 5. Create hello.tsx template (gateway pattern)
- * 6. Update .gitignore
- * 7. Print next steps (Claude-first messaging)
- * 8. Ask to star the repo on GitHub (via gh CLI, if available)
+ * 5. Update .gitignore
+ * 6. Print next steps (Claude-first messaging)
+ * 7. Ask to star the repo on GitHub (via gh CLI, if available)
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -64,43 +63,6 @@ async function maybeAskForStar(): Promise<void> {
   }
 }
 
-const HELLO_TEMPLATE = `/** @jsxImportSource vargai */
-import { Render, Clip, Image, Video, assets } from "vargai/react";
-import { varg } from "vargai/ai";
-
-const girl = Image({
-  prompt: {
-    text: \`Using the attached reference images, generate a photorealistic three-quarter editorial portrait of the exact same character — maintain identical face, hairstyle, and proportions from Image 1.
-
-Framing: Head and shoulders, cropped at upper chest. Direct eye contact with camera.
-
-Natural confident expression, relaxed shoulders.
-Preserve the outfit neckline and visible clothing details from reference.
-
-Background: Deep black with two contrasting orange gradient accents matching Reference 2. Soft gradient bleed, no hard edges.
-
-Shot on 85mm f/1.4 lens, shallow depth of field. Clean studio lighting — soft key light on face, subtle rim light on hair and shoulders for separation. High-end fashion editorial aesthetic.\`,
-    images: [assets.characters.orangeGirl, assets.backgrounds.orangeGradient],
-  },
-  model: varg.imageModel("nano-banana-pro/edit"),
-  aspectRatio: "9:16",
-});
-
-export default (
-  <Render width={1080} height={1920}>
-    <Clip duration={5}>
-      <Video
-        prompt={{
-          text: "She waves hello warmly, natural smile, friendly expression. Studio lighting, authentic confident slightly playful atmosphere. Camera static. Intense orange lighting.",
-          images: [girl],
-        }}
-        model={varg.videoModel("kling-v2.5")}
-      />
-    </Clip>
-  </Render>
-);
-`;
-
 export function showInitHelp() {
   console.log(`
 ${COLORS.bold}vargai init${COLORS.reset}
@@ -119,14 +81,13 @@ ${COLORS.bold}WHAT IT DOES${COLORS.reset}
   2. Offers credit packages for purchase
   3. Creates project structure (output/, .cache/ai/)
   4. Installs varg-ai Agent Skill (10 reference docs, setup scripts)
-  5. Creates hello.tsx starter template
 `);
 }
 
 export const initCmd = defineCommand({
   meta: {
     name: "init",
-    description: "setup project with authentication, skills, and hello.tsx",
+    description: "setup project with authentication and skills",
   },
   args: {
     directory: {
@@ -264,19 +225,7 @@ ${COLORS.bold}AI Video Generation Setup${COLORS.reset}
       }
     }
 
-    // ──── Step 4: Create hello.tsx ────
-
-    log.step("Creating hello.tsx");
-
-    const helloPath = join(cwd, "hello.tsx");
-    if (!existsSync(helloPath)) {
-      writeFileSync(helloPath, HELLO_TEMPLATE);
-      log.success("Created hello.tsx");
-    } else {
-      log.info("hello.tsx already exists");
-    }
-
-    // ──── Step 5: Update .gitignore ────
+    // ──── Step 4: Update .gitignore ────
 
     log.step("Updating .gitignore");
 
@@ -307,7 +256,6 @@ ${COLORS.bold}AI Video Generation Setup${COLORS.reset}
 ${COLORS.green}${COLORS.bold}Setup complete!${COLORS.reset}
 
 ${COLORS.bold}What was installed:${COLORS.reset}
-  ${COLORS.dim}├─${COLORS.reset} hello.tsx ${COLORS.dim}(starter video — gateway pattern)${COLORS.reset}
   ${COLORS.dim}├─${COLORS.reset} .claude/skills/varg-ai/ ${COLORS.dim}(Agent Skill v2 + references)${COLORS.reset}
   ${COLORS.dim}├─${COLORS.reset} output/ ${COLORS.dim}(video output folder)${COLORS.reset}
   ${COLORS.dim}└─${COLORS.reset} .cache/ai/ ${COLORS.dim}(generation cache)${COLORS.reset}
@@ -317,18 +265,18 @@ ${COLORS.bold}Next steps:${COLORS.reset}
   ${COLORS.bold}1.${COLORS.reset} Ask Claude to create a video:
      ${COLORS.cyan}claude "create a 10-second product video for white sneakers, 9:16, UGC style, with captions and background music"${COLORS.reset}
 
-  ${COLORS.bold}2.${COLORS.reset} Or render the starter template:
-     ${COLORS.cyan}bunx vargai render hello.tsx${COLORS.reset}
+  ${COLORS.bold}2.${COLORS.reset} Or make one from this terminal:
+     ${COLORS.cyan}bunx vargai mcp generate_video --prompt "waves at dusk" --duration 5${COLORS.reset}
 `);
 
     if (!hasVargCredentials) {
       console.log(
-        `  ${COLORS.yellow}Note: Run ${COLORS.cyan}vargai login${COLORS.reset}${COLORS.yellow} to authenticate before rendering.${COLORS.reset}`,
+        `  ${COLORS.yellow}Note: Run ${COLORS.cyan}vargai login${COLORS.reset}${COLORS.yellow} to authenticate before generating.${COLORS.reset}`,
       );
       console.log();
     }
 
-    // ──── Step 6: GitHub Star ────
+    // ──── Step 5: GitHub Star ────
 
     await maybeAskForStar();
 

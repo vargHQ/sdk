@@ -2,6 +2,8 @@
 
 declarative video rendering with ai generation. jsx for videos.
 
+> **deprecated.** jsx/tsx videos get no new features and the vargai cli no longer renders them. generate with the varg api or the varg mcp tools and edit with the ffmpeg tool.
+
 ## quick start
 
 ```bash

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { MCP_COMMANDS, mcpCommand, mcpWords } from "./mcp";
+import { REMOVED_COMMANDS } from "./removed";
 
 describe("vargai → @vargai/mcp", () => {
   test("mcp drops itself; the other commands pass through unchanged", () => {
@@ -39,8 +40,23 @@ describe("vargai → @vargai/mcp", () => {
 
   test("does not take over vargai's own commands", () => {
     // The binary hands exactly these back to the vargai package; overlap would loop.
-    const sdk = ["render", "preview", "frame", "storyboard", "studio", "run", "hello", "init", "list", "ls", "find", "which", "inspect", "topup"];
-    for (const own of [...sdk, "login", "logout", "balance"]) {
+    const sdk = [
+      "run",
+      "init",
+      "list",
+      "ls",
+      "find",
+      "which",
+      "inspect",
+      "topup",
+    ];
+    for (const own of [
+      ...sdk,
+      ...REMOVED_COMMANDS,
+      "login",
+      "logout",
+      "balance",
+    ]) {
       expect(MCP_COMMANDS.has(own)).toBe(false);
     }
   });

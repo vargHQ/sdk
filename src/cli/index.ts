@@ -14,33 +14,24 @@ import { allDefinitions } from "../definitions";
 import {
   balanceCmd,
   findCmd,
-  frameCmd,
-  helloCmd,
   helpCmd,
   initCmd,
   listCmd,
   loginCmd,
   logoutCmd,
-  previewCmd,
-  renderCmd,
   runCmd,
   showFindHelp,
-  showFrameHelp,
   showHelp,
   showInitHelp,
   showListHelp,
-  showPreviewHelp,
-  showRenderHelp,
   showRunHelp,
-  showStoryboardHelp,
   showTargetHelp,
   showWhichHelp,
-  storyboardCmd,
-  studioCmd,
   topupCmd,
   whichCmd,
 } from "./commands";
 import { MCP_COMMANDS, runMcp } from "./commands/mcp";
+import { REMOVED_COMMANDS, showRemoved } from "./commands/removed";
 
 // Register all providers
 import "../providers"; // Side effect: registers providers to base registry
@@ -68,14 +59,16 @@ if (args[0] && MCP_COMMANDS.has(args[0])) {
   }
   process.exit(await runMcp(args));
 }
+// render, preview, frame, storyboard, studio, hello: JSX/TSX is deprecated and
+// the CLI no longer renders it. Say where to go instead.
+if (args[0] && REMOVED_COMMANDS.has(args[0])) {
+  showRemoved(args[0]);
+  process.exit(1);
+}
 const hasHelp = args.includes("--help") || args.includes("-h");
 
 const subcommandHelp: Record<string, () => void> = {
   run: showRunHelp,
-  render: showRenderHelp,
-  preview: showPreviewHelp,
-  frame: showFrameHelp,
-  storyboard: showStoryboardHelp,
   init: showInitHelp,
   list: showListHelp,
   ls: showListHelp,
@@ -135,13 +128,7 @@ const main = defineCommand({
     logout: logoutCmd,
     balance: balanceCmd,
     topup: topupCmd,
-    hello: helloCmd,
     init: initCmd,
-    render: renderCmd,
-    preview: previewCmd,
-    frame: frameCmd,
-    storyboard: storyboardCmd,
-    studio: studioCmd,
     run: runCmd,
     list: listCmd,
     ls: listCmd,
