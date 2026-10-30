@@ -21,26 +21,28 @@ function CommandRow({ name, description }: CommandRowProps) {
 
 function HelpView() {
   const examples = [
-    { command: "vargai hello", description: "create hello.tsx starter" },
-    { command: "vargai render hello.tsx", description: "render jsx to video" },
-    { command: "vargai init", description: "full setup with api keys" },
+    {
+      command: "vargai init",
+      description: "sign in and install the agent skill",
+    },
+    {
+      command: 'vargai mcp generate_video --prompt "waves at dusk"',
+      description: "make a video",
+    },
+    { command: 'vargai mcp generate_image "a fox"', description: "an image" },
   ];
 
   return (
     <VargBox title="vargai">
       <Box marginBottom={1}>
-        <Text>ai video generation sdk. jsx for videos.</Text>
+        <Text>ai video generation sdk.</Text>
       </Box>
 
       <Header>COMMANDS</Header>
       <Box flexDirection="column" marginY={1}>
-        <CommandRow name="hello" description="create hello.tsx starter video" />
-        <CommandRow name="render" description="render jsx component to video" />
-        <CommandRow name="preview" description="fast preview (placeholders)" />
-        <CommandRow name="init" description="full setup with api keys" />
         <CommandRow
-          name="studio"
-          description="visual editor at localhost:8282"
+          name="init"
+          description="sign in, install the agent skill"
         />
         <CommandRow name="run" description="run a single model or action" />
         <CommandRow

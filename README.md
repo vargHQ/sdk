@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">varg — Agentic AI Video Generation SDK</h1>
-  <p align="center">Create AI videos with JSX. One SDK for Kling, Flux, ElevenLabs, Sora and more. Built on Vercel AI SDK.</p>
+  <p align="center">One SDK for Kling, Flux, ElevenLabs and more. Built on Vercel AI SDK.</p>
 </p>
 
 <p align="center">
@@ -15,6 +15,20 @@
 </p>
 
 ---
+
+> [!WARNING]
+> **JSX/TSX videos are deprecated.** `vargai/react` (`<Render>`, `<Clip>`, `<Video>`…), `vargai/studio` and the JSX runtime still work but get no new features, and `render()` prints a `DeprecationWarning` (code `VARGAI_JSX`). The CLI no longer renders: `vargai render`, `preview`, `frame`, `storyboard`, `studio` and `hello` were removed.
+>
+> Generate with the [varg API](https://docs.varg.ai) or the varg MCP tools and edit with the ffmpeg tool, from the terminal:
+>
+> ```bash
+> curl -fsSL https://varg.ai/install | sh
+> vargai login
+> vargai generate_video --prompt "waves at dusk" --duration 5
+> vargai get_tool ffmpeg          # the ffmpeg tool's input, for call_tool
+> ```
+>
+> The rest of this README describes the deprecated JSX API.
 
 **varg** is an open-source TypeScript SDK for AI video generation. One API key, one API — generate images, video, speech, music, lipsync, and captions through `varg.*` providers. Write videos as JSX components (like React), render locally or in the cloud.
 
@@ -46,17 +60,11 @@ bun install vargai ai
 # Or with npm
 npm install vargai ai
 
-# Set up project (auth, skills, hello.tsx, cache dirs)
+# Set up project (auth, skills, cache dirs)
 bunx vargai init
 ```
 
-`vargai init` handles everything: signs you in, installs the agent skill, creates a starter template, and sets up your project structure.
-
-Then render the starter template:
-
-```bash
-bunx vargai render hello.tsx
-```
+`vargai init` signs you in, installs the agent skill and sets up your project structure.
 
 Or ask your AI agent to create something from scratch.
 
@@ -77,13 +85,14 @@ Your prompt / JSX code
 - **One API key** (`VARG_API_KEY`) routes to all providers through the varg API
 - **Declarative JSX** — compose videos like React components with `<Clip>`, `<Video>`, `<Music>`, `<Captions>`
 - **Automatic caching** — same props = instant cache hit at $0. Re-render without re-generating
-- **Local or cloud** — render with `bunx vargai render` locally, or submit via the cloud render endpoint (`POST https://api.varg.ai/v2/render`)
+- **Local or cloud** — render with `render()` from `vargai/react` locally, or submit via the cloud render endpoint (`POST https://api.varg.ai/v2/render`)
 
 ## Quick examples
 
 ### Image to video
 
 ```tsx
+/** @jsxImportSource vargai */
 import { Render, Clip, Image, Video } from "vargai/react";
 import { varg } from "vargai/ai";
 
@@ -105,8 +114,12 @@ export default (
 );
 ```
 
-```bash
-bunx vargai render hello.tsx
+```ts
+// render.ts — the CLI no longer renders, so call render() yourself.
+// hello.tsx needs the JSX pragma on its first line (see above).
+import { render } from "vargai/react";
+import video from "./hello.tsx";
+await render(video, { output: "output/hello.mp4" });
 ```
 
 ### With music and captions
@@ -265,16 +278,12 @@ import { varg } from "vargai/ai";
 
 ```bash
 bunx vargai login                              # sign in (email OTP or API key)
-bunx vargai init                               # set up project (auth + skills + template)
-bunx vargai render video.tsx                   # render a video
-bunx vargai render video.tsx --preview         # free preview with placeholders
-bunx vargai render video.tsx --verbose         # render with detailed output
+bunx vargai init                               # set up project (auth + skills)
 bunx vargai balance                            # check credit balance
 bunx vargai topup                              # add credits
 bunx vargai run image --prompt "sunset"        # generate a single image
 bunx vargai run video --prompt "ocean waves"   # generate a single video
 bunx vargai list                               # list available models and actions
-bunx vargai studio                             # open visual editor
 ```
 
 Everything the [varg MCP server](https://github.com/vargHQ/mcp) does is a command too, tool for tool. The standalone `vargai` (one file, no Node or Bun) installs with:
@@ -295,7 +304,7 @@ vargai generate_image "a red fox"              # any MCP tool, options from its 
 vargai help generate_video                     # a tool's options
 ```
 
-From the npm package (`bunx vargai …`) the same commands work as `vargai mcp <tool>`, and they use the installed binary when there is one. The SDK commands (`render`, `init`, `studio`…) run on Bun either way. Releases: [`cli-v*`](https://github.com/vargHQ/sdk/releases).
+From the npm package (`bunx vargai …`) the same commands work as `vargai mcp <tool>`, and they use the installed binary when there is one. The SDK commands (`init`, `run`, `list`…) run on Bun either way. The CLI does not render JSX/TSX any more. Releases: [`cli-v*`](https://github.com/vargHQ/sdk/releases).
 
 ## Environment
 

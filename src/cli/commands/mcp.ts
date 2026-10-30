@@ -20,7 +20,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-/** Where the installer puts the standalone vargai. It hands render, init and
+/** Where the installer puts the standalone vargai. It hands init, run and
  *  the other SDK commands back here, so the two command sets stay disjoint. */
 const BINARY = join(
   homedir(),

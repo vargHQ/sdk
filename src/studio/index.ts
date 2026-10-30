@@ -1,3 +1,8 @@
+/**
+ * varg studio — the JSX/TSX visual editor.
+ *
+ * @deprecated JSX/TSX videos are deprecated, and so is this editor.
+ */
 import { resolve } from "node:path";
 import { createStudioServer } from "./server";
 

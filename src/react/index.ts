@@ -1,3 +1,11 @@
+/**
+ * vargai/react — JSX/TSX videos.
+ *
+ * @deprecated JSX/TSX videos are deprecated and get no new features. The
+ * vargai CLI no longer renders them. Generate with the varg API or the varg
+ * MCP tools (generate_video, generate_image, generate_speech…) and edit with
+ * the ffmpeg tool (`vargai mcp call_tool '{"tool":"ffmpeg",…}'`).
+ */
 export type { CacheStorage } from "../ai-sdk/cache";
 export { File } from "../ai-sdk/file";
 export type { SizeValue } from "../ai-sdk/providers/editly/types";

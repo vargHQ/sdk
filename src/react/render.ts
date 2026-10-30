@@ -62,6 +62,18 @@ async function prepare(
   return { resolved: resolved as VargElement<"render">, plan, resolveCtx };
 }
 
+let warned = false;
+
+/** Once per process. Silence with --no-deprecation, like any DeprecationWarning. */
+function warnDeprecated(): void {
+  if (warned) return;
+  warned = true;
+  process.emitWarning(
+    "vargai JSX/TSX videos are deprecated and get no new features. Generate with the varg API or the varg MCP tools and edit with the ffmpeg tool: https://varg.ai/how-to/cli",
+    { type: "DeprecationWarning", code: "VARGAI_JSX" },
+  );
+}
+
 /**
  * Render a VargElement tree into a video.
  *
@@ -73,12 +85,16 @@ async function prepare(
  * When async components use `await Speech()` / `await Video()` etc., the
  * resolve context provides them with the same backend, cache, and storage
  * as the render pipeline — enabling cloud rendering via Rendi or other backends.
+ *
+ * @deprecated JSX/TSX videos are deprecated: generate with the varg API or
+ * the varg MCP tools and edit with the ffmpeg tool.
  */
 export async function render(
   element: VargElement,
   options: RenderOptions = {},
   onStepEvent?: (event: StepEvent) => void,
 ): Promise<RenderResult> {
+  warnDeprecated();
   // Lifecycle hooks from <Render> props (React-style declarative callbacks).
   const renderProps = element.props as Partial<{
     onStep?: (event: StepEvent) => void;
