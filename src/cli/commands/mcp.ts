@@ -29,9 +29,10 @@ const BINARY = join(
   process.platform === "win32" ? "vargai.exe" : "vargai",
 );
 
-/** The first release of @vargai/mcp with the CLI. Older ones would start a
- *  stdio MCP server on these words instead of answering them. */
-const MCP_SPEC = "@vargai/mcp@^0.16.0";
+/** The first release of @vargai/mcp whose upload_file{path} stays in the
+ *  project and asks first, and whose --http is loopback + token. Older ones
+ *  read any local file and listened on every interface. */
+const MCP_SPEC = "@vargai/mcp@^0.20.0";
 
 /** First words handed to @vargai/mcp. `mcp` itself is dropped: `vargai mcp
  *  generate_image …` runs `generate_image …`. */

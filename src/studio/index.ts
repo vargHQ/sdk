@@ -24,8 +24,8 @@ if (initialFile) {
   console.log(`initial file: ${initialFile}`);
 }
 
-const { port } = createStudioServer({ cacheDir, initialFile });
+const { url } = createStudioServer({ cacheDir, initialFile });
 
-console.log(`\nopen http://localhost:${port}`);
+console.log(`\nopen ${url}`);
 console.log("  /editor - code editor");
 console.log("  /cache  - cache viewer");
