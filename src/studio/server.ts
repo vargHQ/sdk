@@ -1,3 +1,4 @@
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { getCacheItemMedia, scanCacheFolder } from "./scanner";
@@ -67,12 +68,73 @@ function scanTemplates(dir: string): TemplateInfo[] {
   return templates.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+const HOST = "127.0.0.1";
+const COOKIE = "varg_studio";
+
+function sameSecret(a: string | undefined, b: string): boolean {
+  if (!a) return false;
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+/**
+ * Who may talk to studio. POST /api/render runs whatever code it is sent, so
+ * studio used to be remote code execution for anyone on the same network
+ * (it listened on every interface) and for any web page (a cross-site POST to
+ * localhost:8282). Now it listens on loopback, wants a per-launch token — the
+ * printed URL carries it once, then an HttpOnly SameSite=Strict cookie — and
+ * a Host of 127.0.0.1/localhost, which a DNS-rebinding page cannot fake.
+ */
+function guard(
+  req: Request,
+  url: URL,
+  token: string,
+  port: number,
+): Response | undefined {
+  const host = req.headers.get("host") ?? "";
+  if (host !== `${HOST}:${port}` && host !== `localhost:${port}`) {
+    return new Response("forbidden host", { status: 403 });
+  }
+
+  const fromQuery = url.searchParams.get("token") ?? undefined;
+  if (sameSecret(fromQuery, token)) {
+    url.searchParams.delete("token");
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: url.pathname + url.search,
+        "set-cookie": `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/`,
+      },
+    });
+  }
+
+  const cookie = req.headers
+    .get("cookie")
+    ?.split(/;\s*/)
+    .find((c) => c.startsWith(`${COOKIE}=`))
+    ?.slice(COOKIE.length + 1);
+  const bearer = req.headers.get("authorization")?.match(/^Bearer (.+)$/)?.[1];
+  if (sameSecret(cookie, token) || sameSecret(bearer, token)) return undefined;
+
+  return new Response(
+    "varg studio: open the URL with ?token= printed in the terminal",
+    {
+      status: 401,
+    },
+  );
+}
+
+/** @deprecated JSX/TSX videos are deprecated, and so is studio. */
 export function createStudioServer(config: Partial<StudioConfig> = {}) {
   const cacheDir = resolve(config.cacheDir ?? DEFAULT_CACHE_DIR);
   const outputDir = resolve(config.outputDir ?? DEFAULT_OUTPUT_DIR);
   const sharesDir = resolve(DEFAULT_SHARES_DIR);
   const port = config.port ?? 8282;
   const initialFile = config.initialFile;
+  const token =
+    process.env.VARG_STUDIO_TOKEN?.trim() ||
+    randomBytes(32).toString("base64url");
 
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true });
@@ -155,9 +217,12 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
 
   const server = Bun.serve({
     port,
+    hostname: HOST,
     idleTimeout: 0,
     async fetch(req) {
       const url = new URL(req.url);
+      const denied = guard(req, url, token, server.port ?? port);
+      if (denied) return denied;
       const method = req.method;
       const path = url.pathname;
 
@@ -559,5 +624,11 @@ export function createStudioServer(config: Partial<StudioConfig> = {}) {
     },
   });
 
-  return { server, port };
+  const boundPort = server.port ?? port;
+  return {
+    server,
+    port: boundPort,
+    token,
+    url: `http://${HOST}:${boundPort}/?token=${token}`,
+  };
 }

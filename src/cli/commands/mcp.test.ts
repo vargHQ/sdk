@@ -21,7 +21,7 @@ describe("vargai → @vargai/mcp", () => {
     delete process.env.VARG_MCP_BIN;
     expect(mcpCommand(["version"], null).slice(1)).toEqual([
       "x",
-      "@vargai/mcp@^0.16.0",
+      "@vargai/mcp@^0.20.0",
       "version",
     ]);
     expect(mcpCommand(["search", "x"], "/home/me/.varg/bin/vargai")).toEqual([
