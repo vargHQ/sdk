@@ -12,8 +12,20 @@
 #   VARG_NO_MODIFY_PATH=1   no link on PATH, no shell profile edits
 #
 # Uninstall: rm -rf ~/.varg/bin, and the vargai link it names (e.g. ~/bin/vargai).
-#   VARG_RELEASE_BASE=url   download from this mirror (holds the assets + SHA256SUMS)
+#   VARG_RELEASE_BASE=url   download from this mirror (holds the assets, SHA256SUMS and SHA256SUMS.sig)
+#
+# Every release's SHA256SUMS is signed with the varg CLI release key, which
+# never leaves the releaser's machine (vargHQ/mcp scripts/release-cli.sh).
+# This script checks that signature with openssl against the public key
+# below before it trusts a checksum, so an edited release, a mirror or a
+# swapped download cannot install. The key is also built into vargai, which
+# checks it again on `vargai update`.
 set -eu
+
+RELEASE_KEY="-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYOag9iQfWoMmdhDjNirIF4Hxmgw1
+tFR3gQKm5KO2PTMWNCJ9stkEfPDJgpOiWGtxhh5gv95wxVbs9s+fwJqf0g==
+-----END PUBLIC KEY-----"
 
 REPO="vargHQ/sdk"
 INSTALL_DIR="${VARG_INSTALL_DIR:-$HOME/.varg/bin}"
@@ -28,6 +40,7 @@ fail() { printf '%s\n' "${RED}error${RESET}: $*" >&2; exit 1; }
 
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v gzip >/dev/null 2>&1 || fail "gzip is required"
+command -v openssl >/dev/null 2>&1 || fail "openssl is required to check the release signature (Alpine: apk add openssl; Debian/Ubuntu: apt-get install openssl)"
 
 # ── platform ──────────────────────────────────────────────────────────
 case "$(uname -s)" in
@@ -79,6 +92,18 @@ trap 'rm -rf "$tmp"' EXIT INT TERM
 
 curl -fL --progress-bar "$base/$asset.gz" -o "$tmp/$asset.gz" || fail "download failed: $base/$asset.gz"
 curl -fsSL "$base/SHA256SUMS" -o "$tmp/SHA256SUMS" || fail "could not download SHA256SUMS"
+curl -fsSL "$base/SHA256SUMS.sig" -o "$tmp/SHA256SUMS.sig" || fail "could not download SHA256SUMS.sig (releases before 0.21.0 are not signed; install 0.21.0 or later)"
+
+printf '%s\n' "$RELEASE_KEY" > "$tmp/release-key.pem"
+openssl dgst -sha256 -verify "$tmp/release-key.pem" -signature "$tmp/SHA256SUMS.sig" "$tmp/SHA256SUMS" >/dev/null 2>&1 \
+  || fail "the signature on SHA256SUMS does not match the varg release key: not installing. Report it at https://github.com/$REPO/issues"
+# The signed file names its version, so an older signed release cannot pass for this one.
+signed="$(sed -n 's/^# vargai cli-v\([^ ]*\)$/\1/p' "$tmp/SHA256SUMS" | head -n 1)"
+[ -n "$signed" ] || fail "SHA256SUMS does not name its version"
+if [ -n "$VERSION" ]; then
+  [ "$signed" = "$VERSION" ] || fail "SHA256SUMS is signed for $signed, not $VERSION"
+fi
+printf '%s\n' "${GREEN}✓${RESET} signed by the varg release key ${DIM}(cli-v$signed)${RESET}"
 
 expected="$(grep " $asset.gz\$" "$tmp/SHA256SUMS" | cut -d ' ' -f 1)"
 [ -n "$expected" ] || fail "$asset.gz is not in SHA256SUMS"

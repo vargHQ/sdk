@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - if: matrix.container
-        run: apk add --no-cache curl gzip libstdc++ libgcc
+        run: apk add --no-cache curl gzip openssl libstdc++ libgcc
       - name: Install
         run: sh scripts/install.sh
         env:
@@ -38,21 +38,29 @@ jobs:
           vargai version
           vargai search "captions for reels" --limit 2
           vargai install remotion-captions --print
+          vargai update --force
 
+  # pwsh 7 (.NET) and Windows PowerShell 5.1 (.NET Framework): both check the signature.
   windows:
     if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'cli-v')
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [pwsh, powershell]
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
     steps:
       - uses: actions/checkout@v4
       - name: Install
-        shell: pwsh
         run: ./scripts/install.ps1
         env:
           VARG_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
       - name: Run
-        shell: pwsh
         run: |
           $env:Path = "$HOME\.varg\bin;$env:Path"
           vargai version
           vargai search "captions for reels" --limit 2
           vargai install remotion-captions --print
+          vargai update --force
