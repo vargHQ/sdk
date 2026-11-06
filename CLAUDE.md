@@ -4,6 +4,8 @@ globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ---
 
+Start with `CODEMAP.md` for the code map (layers, key flows, where to change what, gotchas).
+
 Default to using Bun instead of Node.js.
 
 ## Working with this SDK
