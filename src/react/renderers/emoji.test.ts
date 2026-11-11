@@ -4,10 +4,10 @@ import {
   calculateEmojiSize,
   calculateEmojiX,
   calculateEmojiY,
+  type EmojiOverlay,
   extractEmoji,
   hasEmoji,
   stripEmoji,
-  type EmojiOverlay,
 } from "./emoji";
 
 // ---------------------------------------------------------------------------

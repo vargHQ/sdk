@@ -18,18 +18,23 @@
  */
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { extractEmoji, stripEmoji, calculateEmojiSize, calculateEmojiY } from "./emoji";
 import {
+  calculateEmojiSize,
+  calculateEmojiY,
+  extractEmoji,
+  stripEmoji,
+} from "./emoji";
+import { detectScriptsInText, resolveFonts } from "./fonts";
+import {
+  type FontPathMap,
   getCharXPositions,
+  getEffectivePpem,
   getFontMetrics,
   getSpaceWidth,
-  getEffectivePpem,
-  parseASSSegments,
-  measureEmojiGapPositions,
   loadFont,
-  type FontPathMap,
+  measureEmojiGapPositions,
+  parseASSSegments,
 } from "./text-measure";
-import { resolveFonts, detectScriptsInText } from "./fonts";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -44,25 +49,71 @@ const VIDEO_HEIGHT = 1920;
 // All fonts: primary + Noto fallbacks
 const FONTS_TO_DOWNLOAD: Record<string, { url: string; fontName: string }> = {
   // Primary fonts
-  "Montserrat-Bold.ttf": { url: "https://s3.varg.ai/fonts/Montserrat-Bold.ttf", fontName: "Montserrat" },
-  "Poppins-Bold.ttf": { url: "https://s3.varg.ai/fonts/Poppins-Bold.ttf", fontName: "Poppins" },
-  "Roboto-Bold.ttf": { url: "https://s3.varg.ai/fonts/Roboto-Bold.ttf", fontName: "Roboto" },
-  "BebasNeue-Regular.ttf": { url: "https://s3.varg.ai/fonts/BebasNeue-Regular.ttf", fontName: "Bebas Neue" },
+  "Montserrat-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/Montserrat-Bold.ttf",
+    fontName: "Montserrat",
+  },
+  "Poppins-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/Poppins-Bold.ttf",
+    fontName: "Poppins",
+  },
+  "Roboto-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/Roboto-Bold.ttf",
+    fontName: "Roboto",
+  },
+  "BebasNeue-Regular.ttf": {
+    url: "https://s3.varg.ai/fonts/BebasNeue-Regular.ttf",
+    fontName: "Bebas Neue",
+  },
   // Noto fallbacks
-  "NotoSans-Bold.ttf": { url: "https://s3.varg.ai/fonts/NotoSans-Bold.ttf", fontName: "Noto Sans" },
-  "NotoSansCJKjp-Bold.otf": { url: "https://s3.varg.ai/fonts/NotoSansCJKjp-Bold.otf", fontName: "Noto Sans CJK JP" },
-  "NotoSansCJKkr-Bold.otf": { url: "https://s3.varg.ai/fonts/NotoSansCJKkr-Bold.otf", fontName: "Noto Sans CJK KR" },
-  "NotoSansCJKsc-Bold.otf": { url: "https://s3.varg.ai/fonts/NotoSansCJKsc-Bold.otf", fontName: "Noto Sans CJK SC" },
-  "NotoSansArabic-Bold.ttf": { url: "https://s3.varg.ai/fonts/NotoSansArabic-Bold.ttf", fontName: "Noto Sans Arabic" },
-  "NotoSansHebrew-Bold.ttf": { url: "https://s3.varg.ai/fonts/NotoSansHebrew-Bold.ttf", fontName: "Noto Sans Hebrew" },
-  "NotoSansDevanagari-Bold.ttf": { url: "https://s3.varg.ai/fonts/NotoSansDevanagari-Bold.ttf", fontName: "Noto Sans Devanagari" },
-  "NotoSansThai-Bold.ttf": { url: "https://s3.varg.ai/fonts/NotoSansThai-Bold.ttf", fontName: "Noto Sans Thai" },
+  "NotoSans-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/NotoSans-Bold.ttf",
+    fontName: "Noto Sans",
+  },
+  "NotoSansCJKjp-Bold.otf": {
+    url: "https://s3.varg.ai/fonts/NotoSansCJKjp-Bold.otf",
+    fontName: "Noto Sans CJK JP",
+  },
+  "NotoSansCJKkr-Bold.otf": {
+    url: "https://s3.varg.ai/fonts/NotoSansCJKkr-Bold.otf",
+    fontName: "Noto Sans CJK KR",
+  },
+  "NotoSansCJKsc-Bold.otf": {
+    url: "https://s3.varg.ai/fonts/NotoSansCJKsc-Bold.otf",
+    fontName: "Noto Sans CJK SC",
+  },
+  "NotoSansArabic-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/NotoSansArabic-Bold.ttf",
+    fontName: "Noto Sans Arabic",
+  },
+  "NotoSansHebrew-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/NotoSansHebrew-Bold.ttf",
+    fontName: "Noto Sans Hebrew",
+  },
+  "NotoSansDevanagari-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/NotoSansDevanagari-Bold.ttf",
+    fontName: "Noto Sans Devanagari",
+  },
+  "NotoSansThai-Bold.ttf": {
+    url: "https://s3.varg.ai/fonts/NotoSansThai-Bold.ttf",
+    fontName: "Noto Sans Thai",
+  },
 };
 
 const EMOJI_TO_DOWNLOAD = [
-  "1f525", "1f4aa", "1f389", "2b50", "1f680",
-  "1f60d", "1f917", "1f64f", "2764", "1f44d",
-  "1f30d", "1f1ef-1f1f5", "1f30f",
+  "1f525",
+  "1f4aa",
+  "1f389",
+  "2b50",
+  "1f680",
+  "1f60d",
+  "1f917",
+  "1f64f",
+  "2764",
+  "1f44d",
+  "1f30d",
+  "1f1ef-1f1f5",
+  "1f30f",
 ];
 
 // ---------------------------------------------------------------------------
@@ -80,87 +131,388 @@ interface TestCase {
 
 const TEST_CASES: TestCase[] = [
   // ========== LATIN (baseline) ==========
-  { label: "lat-begin",  text: "💪 Hello world",         primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "lat-end",    text: "Hello world 💪",         primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "lat-middle", text: "Hello 💪 world",         primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "lat-multi",  text: "💪 Hello 🔥 world 💪",  primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "lat-consec", text: "Let's go 💪🔥",          primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "lat-begin",
+    text: "💪 Hello world",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "lat-end",
+    text: "Hello world 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "lat-middle",
+    text: "Hello 💪 world",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "lat-multi",
+    text: "💪 Hello 🔥 world 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "lat-consec",
+    text: "Let's go 💪🔥",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== JAPANESE ==========
-  { label: "jp-begin",   text: "💪 こんにちは世界",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "jp-end",     text: "こんにちは世界 💪",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "jp-middle",  text: "こんにちは 💪 世界",      primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "jp-multi",   text: "🔥 すごい 💪 最高 🎉",   primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "jp-begin",
+    text: "💪 こんにちは世界",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "jp-end",
+    text: "こんにちは世界 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "jp-middle",
+    text: "こんにちは 💪 世界",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "jp-multi",
+    text: "🔥 すごい 💪 最高 🎉",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== KOREAN ==========
-  { label: "kr-begin",   text: "💪 안녕하세요",           primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "kr-end",     text: "안녕하세요 세계 💪",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "kr-middle",  text: "안녕 💪 하세요",           primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "kr-begin",
+    text: "💪 안녕하세요",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "kr-end",
+    text: "안녕하세요 세계 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "kr-middle",
+    text: "안녕 💪 하세요",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== CHINESE ==========
-  { label: "cn-begin",   text: "💪 你好世界",             primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "cn-end",     text: "你好世界 💪",             primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "cn-begin",
+    text: "💪 你好世界",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "cn-end",
+    text: "你好世界 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== ARABIC (RTL script) ==========
-  { label: "ar-begin",   text: "💪 مرحبا بالعالم",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "ar-end",     text: "مرحبا بالعالم 💪",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "ar-middle",  text: "مرحبا 💪 بالعالم",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "ar-begin",
+    text: "💪 مرحبا بالعالم",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "ar-end",
+    text: "مرحبا بالعالم 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "ar-middle",
+    text: "مرحبا 💪 بالعالم",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== THAI ==========
-  { label: "th-begin",   text: "💪 สวัสดีชาวโลก",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "th-end",     text: "สวัสดีชาวโลก 💪",       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "th-begin",
+    text: "💪 สวัสดีชาวโลก",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "th-end",
+    text: "สวัสดีชาวโลก 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== HINDI (Devanagari) ==========
-  { label: "hi-begin",   text: "💪 नमस्ते दुनिया",       primaryFontId: "poppins", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "hi-end",     text: "नमस्ते दुनिया 💪",       primaryFontId: "poppins", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "hi-begin",
+    text: "💪 नमस्ते दुनिया",
+    primaryFontId: "poppins",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "hi-end",
+    text: "नमस्ते दुनिया 💪",
+    primaryFontId: "poppins",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== HEBREW ==========
-  { label: "he-begin",   text: "💪 שלום עולם",           primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "he-end",     text: "שלום עולם 💪",           primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "he-begin",
+    text: "💪 שלום עולם",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "he-end",
+    text: "שלום עולם 💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== MIXED LANGUAGE + EMOJI ==========
   // English + Japanese
-  { label: "mix-en-jp",      text: "Hello 💪 世界",                primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "mix-jp-en",      text: "こんにちは 💪 World",          primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "mix-en-jp-en",   text: "Hi 💪 世界 🔥 Bye",           primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "mix-en-jp",
+    text: "Hello 💪 世界",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "mix-jp-en",
+    text: "こんにちは 💪 World",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "mix-en-jp-en",
+    text: "Hi 💪 世界 🔥 Bye",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // English + Korean
-  { label: "mix-en-kr",      text: "Hello 💪 세계",                primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "mix-en-kr",
+    text: "Hello 💪 세계",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // English + Arabic
-  { label: "mix-en-ar",      text: "Hello 💪 عالم",               primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "mix-en-ar",
+    text: "Hello 💪 عالم",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // English + Chinese + emoji
-  { label: "mix-en-cn-em",   text: "Good 🔥 好的 💪 Nice",        primaryFontId: "montserrat", fontSize: 48, alignment: 2, marginV: 480 },
+  {
+    label: "mix-en-cn-em",
+    text: "Good 🔥 好的 💪 Nice",
+    primaryFontId: "montserrat",
+    fontSize: 48,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // Japanese + Korean mix
-  { label: "mix-jp-kr",      text: "日本語 💪 한국어",              primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "mix-jp-kr",
+    text: "日本語 💪 한국어",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== STRESS TESTS / EDGE CASES ==========
   // Triple consecutive emoji
-  { label: "stress-3emoji",       text: "Go 💪🔥🚀",                primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "stress-3emoji",
+    text: "Go 💪🔥🚀",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
   // Emoji sandwiched between every word
-  { label: "stress-alt",          text: "A 💪 B 🔥 C 🚀 D",        primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "stress-alt",
+    text: "A 💪 B 🔥 C 🚀 D",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
   // Only emoji
-  { label: "stress-only3",        text: "💪🔥🚀",                   primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "stress-only3",
+    text: "💪🔥🚀",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
   // Single emoji
-  { label: "stress-single",       text: "💪",                       primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "stress-single",
+    text: "💪",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
   // Very long mixed
-  { label: "stress-long-mix",     text: "🚀 The quick 💪 brown fox 🔥 jumps", primaryFontId: "montserrat", fontSize: 48, alignment: 2, marginV: 480 },
+  {
+    label: "stress-long-mix",
+    text: "🚀 The quick 💪 brown fox 🔥 jumps",
+    primaryFontId: "montserrat",
+    fontSize: 48,
+    alignment: 2,
+    marginV: 480,
+  },
   // CJK with consecutive emoji
-  { label: "stress-jp-consec",    text: "すごい💪🔥最高",             primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "stress-jp-consec",
+    text: "すごい💪🔥最高",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
   // Emoji between CJK chars (no spaces)
-  { label: "stress-jp-nospace",   text: "日本💪語",                  primaryFontId: "montserrat", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "stress-jp-nospace",
+    text: "日本💪語",
+    primaryFontId: "montserrat",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== DIFFERENT FONTS ==========
-  { label: "roboto-jp",      text: "Hello 💪 世界",                primaryFontId: "roboto",  fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "poppins-hi",     text: "💪 नमस्ते World",              primaryFontId: "poppins", fontSize: 72, alignment: 2, marginV: 480 },
-  { label: "bebas-lat",      text: "💪 HELLO 🔥 WORLD 💪",        primaryFontId: "bebas-neue", fontSize: 72, alignment: 2, marginV: 480 },
+  {
+    label: "roboto-jp",
+    text: "Hello 💪 世界",
+    primaryFontId: "roboto",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "poppins-hi",
+    text: "💪 नमस्ते World",
+    primaryFontId: "poppins",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "bebas-lat",
+    text: "💪 HELLO 🔥 WORLD 💪",
+    primaryFontId: "bebas-neue",
+    fontSize: 72,
+    alignment: 2,
+    marginV: 480,
+  },
 
   // ========== DIFFERENT SIZES ==========
-  { label: "sz48-jp",        text: "こんにちは 💪 世界",            primaryFontId: "montserrat", fontSize: 48, alignment: 2, marginV: 480 },
-  { label: "sz96-kr",        text: "안녕 💪 세계",                  primaryFontId: "montserrat", fontSize: 96, alignment: 2, marginV: 480 },
-  { label: "sz24-mix",       text: "Hello 💪 世界",                primaryFontId: "montserrat", fontSize: 24, alignment: 2, marginV: 480 },
+  {
+    label: "sz48-jp",
+    text: "こんにちは 💪 世界",
+    primaryFontId: "montserrat",
+    fontSize: 48,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "sz96-kr",
+    text: "안녕 💪 세계",
+    primaryFontId: "montserrat",
+    fontSize: 96,
+    alignment: 2,
+    marginV: 480,
+  },
+  {
+    label: "sz24-mix",
+    text: "Hello 💪 世界",
+    primaryFontId: "montserrat",
+    fontSize: 24,
+    alignment: 2,
+    marginV: 480,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -234,9 +586,16 @@ async function main() {
   const baseVideo = "/tmp/varg-emoji-test-black.mp4";
   if (!existsSync(baseVideo)) {
     const proc = Bun.spawnSync([
-      "ffmpeg", "-y", "-f", "lavfi",
-      "-i", `color=black:s=${VIDEO_WIDTH}x${VIDEO_HEIGHT}:d=1:r=1`,
-      "-c:v", "libx264", "-pix_fmt", "yuv420p",
+      "ffmpeg",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `color=black:s=${VIDEO_WIDTH}x${VIDEO_HEIGHT}:d=1:r=1`,
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
       baseVideo,
     ]);
     if (proc.exitCode !== 0) {
@@ -254,16 +613,26 @@ async function main() {
   // 6. Run each test case
   console.log(`\nStep 4: Running ${TEST_CASES.length} test cases...\n`);
 
-  const results: { label: string; emoji: string; computedX: number; computedY: number; emojiSize: number }[] = [];
+  const results: {
+    label: string;
+    emoji: string;
+    computedX: number;
+    computedY: number;
+    emojiSize: number;
+  }[] = [];
   let okCount = 0;
   let failCount = 0;
 
   for (const tc of TEST_CASES) {
-    console.log(`  [${tc.label}] "${tc.text}" — ${tc.primaryFontId} @ ${tc.fontSize}`);
+    console.log(
+      `  [${tc.label}] "${tc.text}" — ${tc.primaryFontId} @ ${tc.fontSize}`,
+    );
 
     // Use resolveFonts to get tagText, primary font, and all font files
     const fontResolution = resolveFonts(tc.text, tc.primaryFontId);
-    const primaryFontPath = masterFontPaths.get(fontResolution.primary.fontName);
+    const primaryFontPath = masterFontPaths.get(
+      fontResolution.primary.fontName,
+    );
     if (!primaryFontPath || !existsSync(primaryFontPath)) {
       console.log(`    SKIP: primary font not found`);
       failCount++;
@@ -281,7 +650,11 @@ async function main() {
 
     // Compute font metrics from primary font
     const metrics = getFontMetrics(primaryFontPath, tc.fontSize);
-    const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_HEIGHT, VIDEO_HEIGHT);
+    const emojiSize = calculateEmojiSize(
+      metrics.winAscent,
+      VIDEO_HEIGHT,
+      VIDEO_HEIGHT,
+    );
     const spaceWidth = getSpaceWidth(primaryFontPath, tc.fontSize);
     const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
 
@@ -303,18 +676,27 @@ async function main() {
     const scripts = detectScriptsInText(tc.text);
     const hasRTL = scripts.has("arabic") || scripts.has("hebrew");
 
-    console.log(`    spacesPerEmoji=${spacesPerEmoji}, emojiSize=${emojiSize}px, fonts=${[...fontPathMap.keys()].join("+")}${hasRTL ? " [RTL]" : ""}`);
-    console.log(`    stripped="${strippedText}" (${strippedText.length} chars)`);
+    console.log(
+      `    spacesPerEmoji=${spacesPerEmoji}, emojiSize=${emojiSize}px, fonts=${[...fontPathMap.keys()].join("+")}${hasRTL ? " [RTL]" : ""}`,
+    );
+    console.log(
+      `    stripped="${strippedText}" (${strippedText.length} chars)`,
+    );
     if (taggedText !== strippedText) {
       console.log(`    tagged="${taggedText}"`);
     }
 
     // Compute emoji overlay positions
-    const overlays: { emojiCp: string; x: number; y: number; size: number }[] = [];
+    const overlays: { emojiCp: string; x: number; y: number; size: number }[] =
+      [];
     const y = calculateEmojiY(
-      tc.alignment, tc.marginV,
-      metrics.winDescent, metrics.winAscent, metrics.capHeight,
-      VIDEO_HEIGHT, VIDEO_HEIGHT,
+      tc.alignment,
+      tc.marginV,
+      metrics.winDescent,
+      metrics.winAscent,
+      metrics.capHeight,
+      VIDEO_HEIGHT,
+      VIDEO_HEIGHT,
     );
 
     if (hasRTL) {
@@ -327,25 +709,46 @@ async function main() {
         VIDEO_WIDTH,
         VIDEO_HEIGHT,
         tc.alignment,
-        10, 10, tc.marginV,
+        10,
+        10,
+        tc.marginV,
         emojiSize,
         emojiInstances.length,
       );
-      console.log(`    gaps found: ${gaps.length} (need ${emojiInstances.length})`);
+      console.log(
+        `    gaps found: ${gaps.length} (need ${emojiInstances.length})`,
+      );
 
       for (let i = 0; i < emojiInstances.length; i++) {
         const inst = emojiInstances[i]!;
         const gap = gaps[i];
         const x = gap ? gap.x : 0;
         overlays.push({ emojiCp: inst.codepoints, x, y, size: emojiSize });
-        console.log(`    ${inst.emoji} (${inst.codepoints}): gap=[${gap?.gapStart},${gap?.gapEnd}] x=${x} y=${y}`);
-        results.push({ label: tc.label, emoji: inst.codepoints, computedX: x, computedY: y, emojiSize });
+        console.log(
+          `    ${inst.emoji} (${inst.codepoints}): gap=[${gap?.gapStart},${gap?.gapEnd}] x=${x} y=${y}`,
+        );
+        results.push({
+          label: tc.label,
+          emoji: inst.codepoints,
+          computedX: x,
+          computedY: y,
+          emojiSize,
+        });
       }
     } else {
       // LTR text: use character-position-based positioning
-      const segments = parseASSSegments(taggedText, fontResolution.primary.fontName);
+      const segments = parseASSSegments(
+        taggedText,
+        fontResolution.primary.fontName,
+      );
       const charPositions = getCharXPositions(
-        segments, fontPathMap, tc.fontSize, VIDEO_WIDTH, tc.alignment, 10, 10,
+        segments,
+        fontPathMap,
+        tc.fontSize,
+        VIDEO_WIDTH,
+        tc.alignment,
+        10,
+        10,
       );
       console.log(`    charPositions.length=${charPositions.length}`);
 
@@ -360,8 +763,16 @@ async function main() {
         const blockWidth = blockEndX - firstSpaceX;
         const x = Math.round(firstSpaceX + blockWidth / 2 - emojiSize / 2);
         overlays.push({ emojiCp: inst.codepoints, x, y, size: emojiSize });
-        console.log(`    ${inst.emoji} (${inst.codepoints}): idx=${inst.charIndex} x=${x} y=${y}`);
-        results.push({ label: tc.label, emoji: inst.codepoints, computedX: x, computedY: y, emojiSize });
+        console.log(
+          `    ${inst.emoji} (${inst.codepoints}): idx=${inst.charIndex} x=${x} y=${y}`,
+        );
+        results.push({
+          label: tc.label,
+          emoji: inst.codepoints,
+          computedX: x,
+          computedY: y,
+          emojiSize,
+        });
       }
     }
 
@@ -383,20 +794,32 @@ async function main() {
     // Frame A: ASS text + red marker boxes
     const frameAPath = `${OUTPUT_DIR}/${tc.label}-markers.png`;
     const drawboxes = overlays
-      .map((o) => `drawbox=x=${o.x}:y=${o.y}:w=${o.size}:h=${o.size}:color=red@0.5:t=2`)
+      .map(
+        (o) =>
+          `drawbox=x=${o.x}:y=${o.y}:w=${o.size}:h=${o.size}:color=red@0.5:t=2`,
+      )
       .join(",");
     const filterA = drawboxes
       ? `subtitles='${escapedAssPath}':fontsdir='${FONT_DIR}',${drawboxes}`
       : `subtitles='${escapedAssPath}':fontsdir='${FONT_DIR}'`;
 
     const procA = Bun.spawnSync([
-      "ffmpeg", "-y", "-i", baseVideo,
-      "-vf", filterA,
-      "-frames:v", "1", "-update", "1",
+      "ffmpeg",
+      "-y",
+      "-i",
+      baseVideo,
+      "-vf",
+      filterA,
+      "-frames:v",
+      "1",
+      "-update",
+      "1",
       frameAPath,
     ]);
     if (procA.exitCode !== 0) {
-      console.error(`    FAIL (markers): ${procA.stderr.toString().slice(-200)}`);
+      console.error(
+        `    FAIL (markers): ${procA.stderr.toString().slice(-200)}`,
+      );
       failCount++;
       continue;
     }
@@ -412,26 +835,41 @@ async function main() {
     }
 
     const filterParts: string[] = [];
-    filterParts.push(`[0:v]subtitles='${escapedAssPath}':fontsdir='${FONT_DIR}'[sub]`);
+    filterParts.push(
+      `[0:v]subtitles='${escapedAssPath}':fontsdir='${FONT_DIR}'[sub]`,
+    );
     let prevLabel = "sub";
     for (let i = 0; i < overlays.length; i++) {
       const o = overlays[i]!;
       const inputIdx = 1 + i;
       const nextLabel = i === overlays.length - 1 ? "vout" : `v${i}`;
-      filterParts.push(`[${inputIdx}:v]scale=${o.size}:${o.size}:flags=lanczos,format=rgba[emoji${i}]`);
-      filterParts.push(`[${prevLabel}][emoji${i}]overlay=x=${o.x}:y=${o.y}[${nextLabel}]`);
+      filterParts.push(
+        `[${inputIdx}:v]scale=${o.size}:${o.size}:flags=lanczos,format=rgba[emoji${i}]`,
+      );
+      filterParts.push(
+        `[${prevLabel}][emoji${i}]overlay=x=${o.x}:y=${o.y}[${nextLabel}]`,
+      );
       prevLabel = nextLabel;
     }
 
     const procB = Bun.spawnSync([
-      "ffmpeg", "-y", ...inputArgs,
-      "-filter_complex", filterParts.join(";"),
-      "-map", "[vout]",
-      "-frames:v", "1", "-update", "1",
+      "ffmpeg",
+      "-y",
+      ...inputArgs,
+      "-filter_complex",
+      filterParts.join(";"),
+      "-map",
+      "[vout]",
+      "-frames:v",
+      "1",
+      "-update",
+      "1",
       frameBPath,
     ]);
     if (procB.exitCode !== 0) {
-      console.error(`    FAIL (overlay): ${procB.stderr.toString().slice(-300)}`);
+      console.error(
+        `    FAIL (overlay): ${procB.stderr.toString().slice(-300)}`,
+      );
       failCount++;
       continue;
     }
@@ -451,7 +889,9 @@ async function main() {
   }
 
   console.log(`\nOutput: ${OUTPUT_DIR}/`);
-  console.log("  *-markers.png = ASS text + red box at computed emoji position");
+  console.log(
+    "  *-markers.png = ASS text + red box at computed emoji position",
+  );
   console.log("  *-overlay.png = ASS text + actual emoji PNG overlay");
 }
 

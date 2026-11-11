@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import {
+  calculateEmojiSize,
+  calculateEmojiY,
+  extractEmoji,
+  stripEmoji,
+} from "./emoji";
+import {
   type FontPathMap,
   getCharAdvances,
   getCharXPositions,
@@ -11,12 +17,6 @@ import {
   measureLineWidth,
   parseASSSegments,
 } from "./text-measure";
-import {
-  calculateEmojiSize,
-  calculateEmojiY,
-  extractEmoji,
-  stripEmoji,
-} from "./emoji";
 
 // ---------------------------------------------------------------------------
 // parseASSSegments
@@ -45,9 +45,7 @@ describe("parseASSSegments", () => {
       "{\\c&H428CFF&}Hello{\\c&HFFFFFF&} world",
       "Montserrat",
     );
-    expect(segments).toEqual([
-      { fontName: "Montserrat", text: "Hello world" },
-    ]);
+    expect(segments).toEqual([{ fontName: "Montserrat", text: "Hello world" }]);
   });
 
   test("handles font tag with color tag in same block", () => {
@@ -150,9 +148,7 @@ describe("getCharAdvances", () => {
 
 describe("measureLineWidth", () => {
   test("sums character advances for a single segment", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Hello", "Montserrat");
     const width = measureLineWidth(segments, fontPaths, 72);
     // Should be > 0 and reasonable (5 chars at ~30-80px each)
@@ -161,9 +157,7 @@ describe("measureLineWidth", () => {
   });
 
   test("uses effective ppem, not raw fontSize", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Hello world", "Montserrat");
     const measured = measureLineWidth(segments, fontPaths, 72);
 
@@ -178,18 +172,14 @@ describe("measureLineWidth", () => {
 
 describe("getCharXPositions", () => {
   test("returns correct number of positions", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Hello", "Montserrat");
     const positions = getCharXPositions(segments, fontPaths, 72, 1080, 2);
     expect(positions).toHaveLength(5);
   });
 
   test("positions are strictly increasing", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Hello world", "Montserrat");
     const positions = getCharXPositions(segments, fontPaths, 72, 1080, 2);
     for (let i = 1; i < positions.length; i++) {
@@ -198,9 +188,7 @@ describe("getCharXPositions", () => {
   });
 
   test("center-aligned positions are symmetric around midpoint", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Hello", "Montserrat");
     const positions = getCharXPositions(segments, fontPaths, 72, 1000, 2);
     const width = measureLineWidth(segments, fontPaths, 72);
@@ -210,30 +198,40 @@ describe("getCharXPositions", () => {
   });
 
   test("left-aligned starts at marginL", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Hello", "Montserrat");
     // alignment=1 (bottom-left), marginL=10
-    const positions = getCharXPositions(segments, fontPaths, 72, 1080, 1, 10, 10);
+    const positions = getCharXPositions(
+      segments,
+      fontPaths,
+      72,
+      1080,
+      1,
+      10,
+      10,
+    );
     expect(positions[0]).toBeCloseTo(10, 1);
   });
 
   test("right-aligned ends at playResX - marginR", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Hello", "Montserrat");
     const width = measureLineWidth(segments, fontPaths, 72);
     // alignment=3 (bottom-right), marginR=10
-    const positions = getCharXPositions(segments, fontPaths, 72, 1080, 3, 10, 10);
+    const positions = getCharXPositions(
+      segments,
+      fontPaths,
+      72,
+      1080,
+      3,
+      10,
+      10,
+    );
     expect(positions[0]).toBeCloseTo(1080 - 10 - width, 1);
   });
 
   test("variable character widths differ from fixed-width heuristic", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const segments = parseASSSegments("Wi", "Montserrat");
     const positions = getCharXPositions(segments, fontPaths, 72, 1080, 2);
 
@@ -244,9 +242,7 @@ describe("getCharXPositions", () => {
   });
 
   test("trailing spaces are trimmed for center alignment (matching libass)", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     // "Hello" without trailing spaces
     const segPlain = parseASSSegments("Hello", "Montserrat");
     const posPlain = getCharXPositions(segPlain, fontPaths, 72, 1080, 2);
@@ -264,9 +260,7 @@ describe("getCharXPositions", () => {
   });
 
   test("leading spaces are trimmed for center alignment (matching libass)", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     // "Hello" without leading spaces
     const segPlain = parseASSSegments("Hello", "Montserrat");
     const posPlain = getCharXPositions(segPlain, fontPaths, 72, 1080, 2);
@@ -284,9 +278,7 @@ describe("getCharXPositions", () => {
   });
 
   test("leading spaces shift cursor left from visible text start", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     const spaceWidth = getSpaceWidth(MONTSERRAT_PATH, 72);
 
     // "     Hello" — 5 leading spaces
@@ -300,9 +292,7 @@ describe("getCharXPositions", () => {
   });
 
   test("both leading and trailing spaces are trimmed for center alignment", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     // "Hello" without any spaces
     const segPlain = parseASSSegments("Hello", "Montserrat");
     const posPlain = getCharXPositions(segPlain, fontPaths, 72, 1080, 2);
@@ -317,15 +307,29 @@ describe("getCharXPositions", () => {
   });
 
   test("left alignment is unaffected by whitespace trimming", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Montserrat", MONTSERRAT_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
     // Left alignment: startX = marginL regardless of trimming
     const segPlain = parseASSSegments("Hello", "Montserrat");
-    const posPlain = getCharXPositions(segPlain, fontPaths, 72, 1080, 1, 10, 10);
+    const posPlain = getCharXPositions(
+      segPlain,
+      fontPaths,
+      72,
+      1080,
+      1,
+      10,
+      10,
+    );
 
     const segTrailing = parseASSSegments("Hello     ", "Montserrat");
-    const posTrailing = getCharXPositions(segTrailing, fontPaths, 72, 1080, 1, 10, 10);
+    const posTrailing = getCharXPositions(
+      segTrailing,
+      fontPaths,
+      72,
+      1080,
+      1,
+      10,
+      10,
+    );
 
     // Both should start at marginL=10
     expect(posPlain[0]).toBeCloseTo(10, 1);
@@ -339,9 +343,7 @@ describe("getCharXPositions", () => {
 
 describe("Arabic text measurement (GSUB fallback)", () => {
   test("getCharXPositions does not crash on Arabic text", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Noto Sans Arabic", ARABIC_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Noto Sans Arabic", ARABIC_PATH]]);
     const segments = parseASSSegments(
       "{\fnNoto Sans Arabic}مرحبا بالعالم",
       "Montserrat",
@@ -355,9 +357,7 @@ describe("Arabic text measurement (GSUB fallback)", () => {
   });
 
   test("measureLineWidth does not crash on Arabic text", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Noto Sans Arabic", ARABIC_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Noto Sans Arabic", ARABIC_PATH]]);
     const segments = parseASSSegments(
       "{\fnNoto Sans Arabic}مرحبا",
       "Montserrat",
@@ -408,9 +408,7 @@ describe("Arabic text measurement (GSUB fallback)", () => {
 
 describe("CJK text measurement", () => {
   test("Japanese text positions are valid", () => {
-    const fontPaths: FontPathMap = new Map([
-      ["Noto Sans CJK JP", CJK_JP_PATH],
-    ]);
+    const fontPaths: FontPathMap = new Map([["Noto Sans CJK JP", CJK_JP_PATH]]);
     const segments = parseASSSegments(
       "{\fnNoto Sans CJK JP}こんにちは",
       "Montserrat",
@@ -445,14 +443,54 @@ describe("CJK text measurement", () => {
 // ---------------------------------------------------------------------------
 
 describe("getEffectivePpem across fonts", () => {
-  const fontCases: { name: string; path: string; fontSize: number; expectedRange: [number, number] }[] = [
-    { name: "Montserrat@72", path: MONTSERRAT_PATH, fontSize: 72, expectedRange: [44, 48] },
-    { name: "Montserrat@48", path: MONTSERRAT_PATH, fontSize: 48, expectedRange: [29, 33] },
-    { name: "Montserrat@96", path: MONTSERRAT_PATH, fontSize: 96, expectedRange: [59, 63] },
-    { name: "Montserrat@24", path: MONTSERRAT_PATH, fontSize: 24, expectedRange: [14, 17] },
-    { name: "Poppins@48", path: POPPINS_PATH, fontSize: 48, expectedRange: [25, 30] },
-    { name: "Roboto@96", path: ROBOTO_PATH, fontSize: 96, expectedRange: [70, 76] },
-    { name: "Bebas Neue@72", path: BEBAS_PATH, fontSize: 72, expectedRange: [52, 58] },
+  const fontCases: {
+    name: string;
+    path: string;
+    fontSize: number;
+    expectedRange: [number, number];
+  }[] = [
+    {
+      name: "Montserrat@72",
+      path: MONTSERRAT_PATH,
+      fontSize: 72,
+      expectedRange: [44, 48],
+    },
+    {
+      name: "Montserrat@48",
+      path: MONTSERRAT_PATH,
+      fontSize: 48,
+      expectedRange: [29, 33],
+    },
+    {
+      name: "Montserrat@96",
+      path: MONTSERRAT_PATH,
+      fontSize: 96,
+      expectedRange: [59, 63],
+    },
+    {
+      name: "Montserrat@24",
+      path: MONTSERRAT_PATH,
+      fontSize: 24,
+      expectedRange: [14, 17],
+    },
+    {
+      name: "Poppins@48",
+      path: POPPINS_PATH,
+      fontSize: 48,
+      expectedRange: [25, 30],
+    },
+    {
+      name: "Roboto@96",
+      path: ROBOTO_PATH,
+      fontSize: 96,
+      expectedRange: [70, 76],
+    },
+    {
+      name: "Bebas Neue@72",
+      path: BEBAS_PATH,
+      fontSize: 72,
+      expectedRange: [52, 58],
+    },
   ];
 
   for (const tc of fontCases) {
@@ -481,7 +519,12 @@ describe("getFontMetrics across fonts", () => {
   });
 
   test("winAscent > capHeight for all fonts", () => {
-    for (const path of [MONTSERRAT_PATH, POPPINS_PATH, ROBOTO_PATH, BEBAS_PATH]) {
+    for (const path of [
+      MONTSERRAT_PATH,
+      POPPINS_PATH,
+      ROBOTO_PATH,
+      BEBAS_PATH,
+    ]) {
       const m = getFontMetrics(path, 72);
       expect(m.winAscent).toBeGreaterThan(m.capHeight);
     }
@@ -490,7 +533,12 @@ describe("getFontMetrics across fonts", () => {
   test("winAscent + winDescent approximately equals fontSize", () => {
     // For any font, winAscent + winDescent in pixels should be close to
     // the fontSize since fontSize = cellHeight in ASS
-    for (const path of [MONTSERRAT_PATH, POPPINS_PATH, ROBOTO_PATH, BEBAS_PATH]) {
+    for (const path of [
+      MONTSERRAT_PATH,
+      POPPINS_PATH,
+      ROBOTO_PATH,
+      BEBAS_PATH,
+    ]) {
       const m = getFontMetrics(path, 72);
       expect(m.winAscent + m.winDescent).toBeCloseTo(72, 0);
     }
@@ -499,7 +547,12 @@ describe("getFontMetrics across fonts", () => {
 
 describe("getSpaceWidth across fonts and sizes", () => {
   test("space width is positive for all fonts", () => {
-    for (const path of [MONTSERRAT_PATH, POPPINS_PATH, ROBOTO_PATH, BEBAS_PATH]) {
+    for (const path of [
+      MONTSERRAT_PATH,
+      POPPINS_PATH,
+      ROBOTO_PATH,
+      BEBAS_PATH,
+    ]) {
       const w = getSpaceWidth(path, 72);
       expect(w).toBeGreaterThan(0);
     }
@@ -537,22 +590,71 @@ describe("emoji positioning pipeline", () => {
   }
 
   const cases: PipelineTestCase[] = [
-    { label: "Montserrat@72", text: "Hello 💪 world", fontPath: MONTSERRAT_PATH, fontName: "Montserrat", fontSize: 72 },
-    { label: "Montserrat@48", text: "Hello 💪 world", fontPath: MONTSERRAT_PATH, fontName: "Montserrat", fontSize: 48 },
-    { label: "Montserrat@96", text: "Hello 💪 world", fontPath: MONTSERRAT_PATH, fontName: "Montserrat", fontSize: 96 },
-    { label: "Montserrat@24", text: "Hello 💪 world", fontPath: MONTSERRAT_PATH, fontName: "Montserrat", fontSize: 24 },
-    { label: "Poppins@48", text: "Hello 💪 world", fontPath: POPPINS_PATH, fontName: "Poppins", fontSize: 48 },
-    { label: "Roboto@96", text: "Hello 💪 world", fontPath: ROBOTO_PATH, fontName: "Roboto", fontSize: 96 },
-    { label: "Bebas@72", text: "HELLO 💪 WORLD", fontPath: BEBAS_PATH, fontName: "Bebas Neue", fontSize: 72 },
+    {
+      label: "Montserrat@72",
+      text: "Hello 💪 world",
+      fontPath: MONTSERRAT_PATH,
+      fontName: "Montserrat",
+      fontSize: 72,
+    },
+    {
+      label: "Montserrat@48",
+      text: "Hello 💪 world",
+      fontPath: MONTSERRAT_PATH,
+      fontName: "Montserrat",
+      fontSize: 48,
+    },
+    {
+      label: "Montserrat@96",
+      text: "Hello 💪 world",
+      fontPath: MONTSERRAT_PATH,
+      fontName: "Montserrat",
+      fontSize: 96,
+    },
+    {
+      label: "Montserrat@24",
+      text: "Hello 💪 world",
+      fontPath: MONTSERRAT_PATH,
+      fontName: "Montserrat",
+      fontSize: 24,
+    },
+    {
+      label: "Poppins@48",
+      text: "Hello 💪 world",
+      fontPath: POPPINS_PATH,
+      fontName: "Poppins",
+      fontSize: 48,
+    },
+    {
+      label: "Roboto@96",
+      text: "Hello 💪 world",
+      fontPath: ROBOTO_PATH,
+      fontName: "Roboto",
+      fontSize: 96,
+    },
+    {
+      label: "Bebas@72",
+      text: "HELLO 💪 WORLD",
+      fontPath: BEBAS_PATH,
+      fontName: "Bebas Neue",
+      fontSize: 72,
+    },
   ];
 
   for (const tc of cases) {
     describe(tc.label, () => {
       test("spacesPerEmoji reserves enough room for emoji", () => {
         const metrics = getFontMetrics(tc.fontPath, tc.fontSize);
-        const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+        const emojiSize = calculateEmojiSize(
+          metrics.winAscent,
+          VIDEO_SIZE,
+          VIDEO_SIZE,
+        );
         const spaceWidth = getSpaceWidth(tc.fontPath, tc.fontSize);
-        const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
+        const spacesPerEmoji = Math.max(
+          1,
+          Math.ceil(emojiSize / spaceWidth) + 1,
+        );
 
         // Reserved space block must be wider than the emoji
         const blockWidth = spacesPerEmoji * spaceWidth;
@@ -563,9 +665,16 @@ describe("emoji positioning pipeline", () => {
 
       test("emoji charIndex points to a space in stripped text", () => {
         const metrics = getFontMetrics(tc.fontPath, tc.fontSize);
-        const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+        const emojiSize = calculateEmojiSize(
+          metrics.winAscent,
+          VIDEO_SIZE,
+          VIDEO_SIZE,
+        );
         const spaceWidth = getSpaceWidth(tc.fontPath, tc.fontSize);
-        const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
+        const spacesPerEmoji = Math.max(
+          1,
+          Math.ceil(emojiSize / spaceWidth) + 1,
+        );
 
         const stripped = stripEmoji(tc.text, spacesPerEmoji);
         const instances = extractEmoji(tc.text, spacesPerEmoji);
@@ -577,15 +686,28 @@ describe("emoji positioning pipeline", () => {
 
       test("charPositions has correct length for stripped text", () => {
         const metrics = getFontMetrics(tc.fontPath, tc.fontSize);
-        const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+        const emojiSize = calculateEmojiSize(
+          metrics.winAscent,
+          VIDEO_SIZE,
+          VIDEO_SIZE,
+        );
         const spaceWidth = getSpaceWidth(tc.fontPath, tc.fontSize);
-        const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
+        const spacesPerEmoji = Math.max(
+          1,
+          Math.ceil(emojiSize / spaceWidth) + 1,
+        );
 
         const stripped = stripEmoji(tc.text, spacesPerEmoji);
         const fontPathMap: FontPathMap = new Map([[tc.fontName, tc.fontPath]]);
         const segments = parseASSSegments(stripped, tc.fontName);
         const charPositions = getCharXPositions(
-          segments, fontPathMap, tc.fontSize, VIDEO_SIZE, 2, 10, 10,
+          segments,
+          fontPathMap,
+          tc.fontSize,
+          VIDEO_SIZE,
+          2,
+          10,
+          10,
         );
 
         expect(charPositions.length).toBe(stripped.length);
@@ -593,16 +715,29 @@ describe("emoji positioning pipeline", () => {
 
       test("emoji overlay X is within the reserved space block", () => {
         const metrics = getFontMetrics(tc.fontPath, tc.fontSize);
-        const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+        const emojiSize = calculateEmojiSize(
+          metrics.winAscent,
+          VIDEO_SIZE,
+          VIDEO_SIZE,
+        );
         const spaceWidth = getSpaceWidth(tc.fontPath, tc.fontSize);
-        const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
+        const spacesPerEmoji = Math.max(
+          1,
+          Math.ceil(emojiSize / spaceWidth) + 1,
+        );
 
         const stripped = stripEmoji(tc.text, spacesPerEmoji);
         const instances = extractEmoji(tc.text, spacesPerEmoji);
         const fontPathMap: FontPathMap = new Map([[tc.fontName, tc.fontPath]]);
         const segments = parseASSSegments(stripped, tc.fontName);
         const charPositions = getCharXPositions(
-          segments, fontPathMap, tc.fontSize, VIDEO_SIZE, 2, 10, 10,
+          segments,
+          fontPathMap,
+          tc.fontSize,
+          VIDEO_SIZE,
+          2,
+          10,
+          10,
         );
 
         for (const inst of instances) {
@@ -625,8 +760,20 @@ describe("emoji positioning pipeline", () => {
 
       test("emoji overlay Y is within video bounds", () => {
         const metrics = getFontMetrics(tc.fontPath, tc.fontSize);
-        const y = calculateEmojiY(2, 480, metrics.winDescent, metrics.winAscent, metrics.capHeight, VIDEO_SIZE, VIDEO_SIZE);
-        const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+        const y = calculateEmojiY(
+          2,
+          480,
+          metrics.winDescent,
+          metrics.winAscent,
+          metrics.capHeight,
+          VIDEO_SIZE,
+          VIDEO_SIZE,
+        );
+        const emojiSize = calculateEmojiSize(
+          metrics.winAscent,
+          VIDEO_SIZE,
+          VIDEO_SIZE,
+        );
 
         expect(y).toBeGreaterThanOrEqual(0);
         expect(y + emojiSize).toBeLessThanOrEqual(VIDEO_SIZE);
@@ -637,9 +784,15 @@ describe("emoji positioning pipeline", () => {
   // Begin/end specific tests
   describe("begin emoji positioning", () => {
     test("begin emoji is at or near the start of the text line", () => {
-      const fontPathMap: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
+      const fontPathMap: FontPathMap = new Map([
+        ["Montserrat", MONTSERRAT_PATH],
+      ]);
       const metrics = getFontMetrics(MONTSERRAT_PATH, 72);
-      const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+      const emojiSize = calculateEmojiSize(
+        metrics.winAscent,
+        VIDEO_SIZE,
+        VIDEO_SIZE,
+      );
       const spaceWidth = getSpaceWidth(MONTSERRAT_PATH, 72);
       const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
 
@@ -648,7 +801,13 @@ describe("emoji positioning pipeline", () => {
       const instances = extractEmoji("💪 Hello world", spacesPerEmoji);
       const segments = parseASSSegments(stripped, "Montserrat");
       const charPositions = getCharXPositions(
-        segments, fontPathMap, 72, VIDEO_SIZE, 2, 10, 10,
+        segments,
+        fontPathMap,
+        72,
+        VIDEO_SIZE,
+        2,
+        10,
+        10,
       );
 
       const inst = instances[0]!;
@@ -661,9 +820,15 @@ describe("emoji positioning pipeline", () => {
 
   describe("end emoji positioning", () => {
     test("end emoji is at or near the end of the text line", () => {
-      const fontPathMap: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
+      const fontPathMap: FontPathMap = new Map([
+        ["Montserrat", MONTSERRAT_PATH],
+      ]);
       const metrics = getFontMetrics(MONTSERRAT_PATH, 72);
-      const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+      const emojiSize = calculateEmojiSize(
+        metrics.winAscent,
+        VIDEO_SIZE,
+        VIDEO_SIZE,
+      );
       const spaceWidth = getSpaceWidth(MONTSERRAT_PATH, 72);
       const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
 
@@ -672,7 +837,13 @@ describe("emoji positioning pipeline", () => {
       const instances = extractEmoji("Hello world 💪", spacesPerEmoji);
       const segments = parseASSSegments(stripped, "Montserrat");
       const charPositions = getCharXPositions(
-        segments, fontPathMap, 72, VIDEO_SIZE, 2, 10, 10,
+        segments,
+        fontPathMap,
+        72,
+        VIDEO_SIZE,
+        2,
+        10,
+        10,
       );
 
       const inst = instances[0]!;
@@ -687,9 +858,15 @@ describe("emoji positioning pipeline", () => {
 
   describe("multiple emoji positioning", () => {
     test("multiple emoji are in strictly increasing X order", () => {
-      const fontPathMap: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
+      const fontPathMap: FontPathMap = new Map([
+        ["Montserrat", MONTSERRAT_PATH],
+      ]);
       const metrics = getFontMetrics(MONTSERRAT_PATH, 72);
-      const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+      const emojiSize = calculateEmojiSize(
+        metrics.winAscent,
+        VIDEO_SIZE,
+        VIDEO_SIZE,
+      );
       const spaceWidth = getSpaceWidth(MONTSERRAT_PATH, 72);
       const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
 
@@ -698,14 +875,23 @@ describe("emoji positioning pipeline", () => {
       const instances = extractEmoji(text, spacesPerEmoji);
       const segments = parseASSSegments(stripped, "Montserrat");
       const charPositions = getCharXPositions(
-        segments, fontPathMap, 72, VIDEO_SIZE, 2, 10, 10,
+        segments,
+        fontPathMap,
+        72,
+        VIDEO_SIZE,
+        2,
+        10,
+        10,
       );
 
       expect(instances.length).toBe(3);
 
       const xPositions = instances.map((inst) => {
         const firstSpaceX = charPositions[inst.charIndex]!;
-        const lastSpaceIdx = Math.min(inst.charIndex + spacesPerEmoji - 1, charPositions.length - 1);
+        const lastSpaceIdx = Math.min(
+          inst.charIndex + spacesPerEmoji - 1,
+          charPositions.length - 1,
+        );
         const lastSpaceX = charPositions[lastSpaceIdx]!;
         const blockEndX = lastSpaceX + spaceWidth;
         const blockWidth = blockEndX - firstSpaceX;
@@ -721,9 +907,15 @@ describe("emoji positioning pipeline", () => {
 
   describe("consecutive emoji positioning", () => {
     test("consecutive emoji do not overlap", () => {
-      const fontPathMap: FontPathMap = new Map([["Montserrat", MONTSERRAT_PATH]]);
+      const fontPathMap: FontPathMap = new Map([
+        ["Montserrat", MONTSERRAT_PATH],
+      ]);
       const metrics = getFontMetrics(MONTSERRAT_PATH, 72);
-      const emojiSize = calculateEmojiSize(metrics.winAscent, VIDEO_SIZE, VIDEO_SIZE);
+      const emojiSize = calculateEmojiSize(
+        metrics.winAscent,
+        VIDEO_SIZE,
+        VIDEO_SIZE,
+      );
       const spaceWidth = getSpaceWidth(MONTSERRAT_PATH, 72);
       const spacesPerEmoji = Math.max(1, Math.ceil(emojiSize / spaceWidth) + 1);
 
@@ -732,14 +924,23 @@ describe("emoji positioning pipeline", () => {
       const instances = extractEmoji(text, spacesPerEmoji);
       const segments = parseASSSegments(stripped, "Montserrat");
       const charPositions = getCharXPositions(
-        segments, fontPathMap, 72, VIDEO_SIZE, 2, 10, 10,
+        segments,
+        fontPathMap,
+        72,
+        VIDEO_SIZE,
+        2,
+        10,
+        10,
       );
 
       expect(instances.length).toBe(2);
 
       const overlays = instances.map((inst) => {
         const firstSpaceX = charPositions[inst.charIndex]!;
-        const lastSpaceIdx = Math.min(inst.charIndex + spacesPerEmoji - 1, charPositions.length - 1);
+        const lastSpaceIdx = Math.min(
+          inst.charIndex + spacesPerEmoji - 1,
+          charPositions.length - 1,
+        );
         const lastSpaceX = charPositions[lastSpaceIdx]!;
         const blockEndX = lastSpaceX + spaceWidth;
         const blockWidth = blockEndX - firstSpaceX;
