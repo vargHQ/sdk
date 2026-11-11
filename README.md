@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://docs.varg.ai">Docs</a> &middot; <a href="https://app.varg.ai">Dashboard</a> &middot; <a href="https://docs.varg.ai/quickstart">Quickstart</a> &middot; <a href="https://docs.varg.ai/sdk/models">Models</a> &middot; <a href="https://discord.gg/varg">Discord</a>
+  <a href="https://docs.varg.ai">Docs</a> &middot; <a href="https://varg.ai/dashboard/api">Dashboard</a> &middot; <a href="https://docs.varg.ai/quickstart">Quickstart</a> &middot; <a href="https://varg.ai/models">Models and prices</a> &middot; <a href="https://varg.ai/how-to">How to</a> &middot; <a href="https://discord.gg/varg">Discord</a>
 </p>
 
 ---
@@ -42,7 +42,7 @@ Install the varg skill into Claude Code, Cursor, Windsurf, or any agent that sup
 # 1. Install the varg skill
 npx -y skills add vargHQ/skills --all --copy -y
 
-# 2. Set your API key (get one at app.varg.ai)
+# 2. Set your API key (get one at varg.ai/dashboard/api; a new account gets 50 free credits)
 export VARG_API_KEY=varg_live_xxx
 
 # 3. Create your first video
@@ -313,7 +313,7 @@ From the npm package (`bunx vargai …`) the same commands work as `vargai mcp <
 VARG_API_KEY=varg_live_xxx
 ```
 
-Get your API key at [app.varg.ai](https://app.varg.ai). Bun auto-loads `.env` files.
+Get your API key at [varg.ai/dashboard/api](https://varg.ai/dashboard/api). A new account gets 50 free credits ($0.50) on its first sign-in; after that you pay each model's provider price, listed at [varg.ai/models](https://varg.ai/models). Bun auto-loads `.env` files.
 
 <details>
 <summary>Bring your own keys (optional)</summary>
